@@ -7,7 +7,7 @@ with ``BBBikeProviderAdapter``/``OSMapaProviderAdapter`` ``validIdentity`` and
 ``MapPackage.hasUsableMainArtifact`` and the reviewed provider URL policies.
 Released clients reject the *whole* catalog when one package fails, so a
 backend publication must satisfy every rule for every package. OSMapaPL is
-only published in catalog v5, which app 1.0.2 and later read.
+only published in catalog v5, which app 1.1.0 and later read.
 
 Provider-specific IMG identity matching (``MapIdentityMatcher``) is not
 mirrored here; the native released-client gate

@@ -40,6 +40,17 @@ same override is used by the web, native, backend, and release checks.
 
 ## Full release validation
 
+The next candidate is **1.1.0 / build 46** on the `stable` channel (see
+[versioning](../VERSIONING.md)). It reads `catalog-v5.json`, adds OSMapaPL and
+BBBike (OpenTopoMap) maps, lists installed maps in Install maps, waits for a
+busy watch at install start, saves a report when the map scan fails, and
+reports the native read-back result and the folder of a changed watch file. Its
+server additions (`contracts/APP_API_RELEASE_CONTRACT.md`, "1.1.0 server-first
+acceptance") are already deployed. OSMapaPL stays `PAUSED` until the 1.1.0
+publication, then the owner activates it in Admin. Public metadata continues to
+identify 1.0.1 until signed, notarized artifacts exist, and the draft
+release-note section stays marked as a draft until the owner approves it.
+
 The published release is **1.0.1 / build 45**, a fix release on the `stable`
 channel (see [versioning](../VERSIONING.md)), from GitHub-verified source
 `6fb3e56b8d0f289f802f7a6ead2d8801596fe903` (tag `v1.0.1-build45`). Installed
@@ -189,6 +200,18 @@ through the public rollout policy.
 The local package is ad-hoc signed, arm64-only, not notarized, and not a public
 release. Its `TerentoReleaseLabel` must remain a strict local label so its
 diagnostic and map-statistics events are classified as purgeable test data.
+
+## Local paused-provider test build
+
+A provider the server holds `PAUSED` stays visible but cannot be installed.
+To hardware-test it before activation, put
+`Packaging/local-paused-provider-test.command` beside a Debug `*-local`
+`Terento.app` and start the app with it. It sets the Debug-only
+`TERENTO_DEBUG_UNPAUSE_PROVIDERS` (default `osmapa`), which lifts only the
+`PROVIDER_PAUSED` reason for the named providers; `RETIRED`, other block
+reasons, region policy and installation authorization still apply, and the
+server state is not changed. Launching `Terento.app` directly keeps the
+provider paused. Release builds ignore the variable.
 
 ## Local Finishing diagnostic build
 

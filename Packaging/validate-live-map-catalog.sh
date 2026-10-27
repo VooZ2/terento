@@ -62,7 +62,7 @@ if sys.argv[2].endswith('/maps/catalog-v4.json'):
 if sys.argv[2].endswith('/maps/catalog-v5.json'):
     ids = {provider.get('id') for provider in providers}
     if ids - {'freizeitkarte', 'opentopomap', 'maprando', 'bbbike', 'osmapa'}:
-        raise SystemExit('v5 catalog must not expose providers unknown to 1.0.2 clients')
+        raise SystemExit('v5 catalog must not expose providers unknown to 1.1.0 clients')
 for provider in providers:
     print(f"Catalog provider {provider.get('id', '<missing>')}: {len(provider.get('maps', []))} maps")
 print(f"Catalog total: {sum(len(provider.get('maps', [])) for provider in providers)} maps")

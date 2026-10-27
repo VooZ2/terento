@@ -614,6 +614,8 @@ private extension CodingUserInfoKey {
 }
 
 struct MapCatalogDocumentDecoder: Sendable {
+    var unpausedProviderIDs: Set<String> = MapCatalogDebugUnpause.providerIDs
+
     /// Strict decode used for the bundled catalog and release gates: any
     /// malformed package or unknown artifact kind fails the whole document.
     func decode(_ data: Data) throws -> MapCatalog {
@@ -656,7 +658,7 @@ struct MapCatalogDocumentDecoder: Sendable {
             let document = try decoder.decode(MapCatalogDocument.self, from: data)
             let dropped = document.providers.flatMap(\.maps.droppedPackageIDs)
             return MapCatalogDecodeReport(
-                catalog: try document.catalog(),
+                catalog: try document.catalog(unpausedProviderIDs: unpausedProviderIDs),
                 droppedPackageIDs: Set(dropped.compactMap { $0 }),
                 droppedPackageCount: dropped.count
             )
@@ -685,12 +687,30 @@ enum MapCatalogError: LocalizedError, Sendable {
     }
 }
 
+/// Local hardware testing of a provider the server still holds PAUSED: a
+/// Debug build run with TERENTO_DEBUG_UNPAUSE_PROVIDERS=<id,...> treats that
+/// provider as active. Only the PROVIDER_PAUSED reason is lifted; region,
+/// package and authorization checks stay. Release builds never read it.
+enum MapCatalogDebugUnpause {
+    #if DEBUG
+    static let providerIDs = parse(ProcessInfo.processInfo.environment["TERENTO_DEBUG_UNPAUSE_PROVIDERS"])
+    #else
+    static let providerIDs: Set<String> = []
+    #endif
+
+    static func parse(_ value: String?) -> Set<String> {
+        Set((value ?? "").split(separator: ",")
+            .map { MapIdentity.normalizeProvider(String($0)) }
+            .filter { !$0.isEmpty })
+    }
+}
+
 private struct MapCatalogDocument: Decodable {
     let catalogVersion: Int
     let updatedAt: Date
     let providers: [ProviderDocument]
 
-    func catalog() throws -> MapCatalog {
+    func catalog(unpausedProviderIDs: Set<String>) throws -> MapCatalog {
         guard catalogVersion > 0 else {
             throw MapCatalogError.invalidMetadata("catalogVersion must be positive")
         }
@@ -700,7 +720,13 @@ private struct MapCatalogDocument: Decodable {
         var packages: [MapPackage] = []
 
         for providerDocument in self.providers {
-            let lifecycleStatus = MapProviderLifecycleStatus(apiValue: providerDocument.status)
+            let serverLifecycleStatus = MapProviderLifecycleStatus(apiValue: providerDocument.status)
+            let unpaused = serverLifecycleStatus == .paused && unpausedProviderIDs
+                .contains(MapIdentity.normalizeProvider(providerDocument.id))
+            let lifecycleStatus = unpaused ? .active : serverLifecycleStatus
+            func blockReason(_ reason: String?) -> String? {
+                unpaused && reason == "PROVIDER_PAUSED" ? nil : reason
+            }
             let health = MapProviderHealth(apiValue: providerDocument.health)
             let provider = MapProvider(
                 id: providerDocument.id,
@@ -713,7 +739,7 @@ private struct MapCatalogDocument: Decodable {
                 health: health,
                 lastCheckedAt: providerDocument.lastCheckedAt,
                 lastSuccessfulCatalogSync: providerDocument.lastSuccessfulCatalogSync,
-                downloadBlockReason: providerDocument.downloadBlockReason
+                downloadBlockReason: blockReason(providerDocument.downloadBlockReason)
             )
             providers.append(
                 provider
@@ -752,7 +778,7 @@ private struct MapCatalogDocument: Decodable {
                         capabilities: map.capabilities ?? [],
                         releaseMetadata: map.releaseMetadata,
                         artifacts: map.artifacts?.artifacts,
-                        downloadBlockReason: map.downloadBlockReason ?? provider.downloadBlockReason
+                        downloadBlockReason: blockReason(map.downloadBlockReason) ?? provider.downloadBlockReason
                             ?? (provider.lifecycleStatus != .active ? "PROVIDER_PAUSED" : nil)
                     )
                 )

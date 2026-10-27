@@ -103,12 +103,13 @@ private struct PathPrefixReader: DeviceFileReader {
         return map
     }
 
-    static func catalog(_ maps: [[String: Any]], status: String = "ACTIVE") throws -> MapCatalog {
+    static func catalog(_ maps: [[String: Any]], status: String = "ACTIVE",
+                        unpaused: Set<String> = []) throws -> MapCatalog {
         let json: [String: Any] = ["catalogVersion": 5, "updatedAt": "2026-10-26T00:00:00Z", "providers": [[
             "id": "osmapa", "name": "OSMapaPL", "status": status, "website": "https://osmapa-garmin.las.org.pl/",
             "maps": maps
         ]]]
-        return try MapCatalogDocumentDecoder().decode(JSONSerialization.data(withJSONObject: json))
+        return try MapCatalogDocumentDecoder(unpausedProviderIDs: unpaused).decode(JSONSerialization.data(withJSONObject: json))
     }
 
     static func package(_ coverage: OSMapaCoverage, _ style: OSMapaStyle, fixture: String? = nil,
@@ -207,6 +208,17 @@ private struct PathPrefixReader: DeviceFileReader {
         check(MapCatalogClientCompatibilityValidator().isCompatible(paused)
             && paused.packages.allSatisfy { MapPackageAcquisitionPolicyResolver().availability(for: $0) != .available },
               "a paused provider stays visible and cannot be acquired")
+        let serverPaused = maps.map { $0.merging(["downloadBlockReason": "PROVIDER_PAUSED"]) { $1 } }
+        let unpaused = try catalog(serverPaused, status: "PAUSED", unpaused: MapCatalogDebugUnpause.parse(" OSMapa ,"))
+        check(unpaused.provider(for: "osmapa")?.lifecycleStatus == .active
+            && unpaused.packages.allSatisfy { MapPackageAcquisitionPolicyResolver().availability(for: $0) == .available },
+              "the Debug unpause option lifts only PROVIDER_PAUSED for the named provider")
+        let retired = try catalog(maps, status: "RETIRED", unpaused: ["osmapa"])
+        let otherReason = try catalog(maps.map { $0.merging(["downloadBlockReason": "PACKAGE_UNAVAILABLE"]) { $1 } },
+                                      status: "PAUSED", unpaused: ["osmapa"])
+        check((retired.packages + otherReason.packages).allSatisfy {
+            MapPackageAcquisitionPolicyResolver().availability(for: $0) != .available
+        }, "the Debug unpause option never lifts RETIRED or another block reason")
         check(Set(decoded.packages.map { MapProviderDisplay.filterID(providerID: $0.providerId, regionID: $0.canonicalRegionId) })
             == Set(OSMapaStyle.installable.map(\.filterID))
             && MapProviderDisplay.filterOptions(providers: decoded.providers).count == 4

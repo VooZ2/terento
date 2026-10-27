@@ -72,7 +72,7 @@ if ! grep -Fq 'return selectedGeography == .all ? "No maps are available." : "No
     || ! grep -Fq '.accessibilityLabel("Map provider")' "$connect_screen" \
     || grep -Fq 'Button("Manage maps")' "$connect_screen" \
     || ! grep -Fq 'baseDetail = "Already installed"' "$connect_screen" \
-    || ! grep -Fq '(!terms.isEmpty || row.item.comparison.installedMap == nil)' \
+    || grep -Fq 'row.item.comparison.installedMap == nil' \
         "$project_root/Sources/TerentoPoC/MapCatalog/MapSelectionPresentation.swift"; then
     printf '%s\n' "FAIL: Install empty state or installed-search presentation is missing" >&2
     exit 1

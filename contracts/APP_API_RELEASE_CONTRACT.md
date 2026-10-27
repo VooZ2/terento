@@ -1,9 +1,12 @@
 # App–API compatibility and release contract
 
-## Next release server-first acceptance
+## 1.1.0 server-first acceptance
 
-Deploy and verify this API before any client that sends it is published. It
-adds:
+Deployed: every addition below is in catalog API revision `80f54a77` (main
+after PR #563, deploy run 40394035206 finished 2026-10-26 20:32 UTC), which
+contains #550, #551, #554, #560 and #563. The 1.1.0 app changes #553, #555,
+#565 and #568 are app-only. Deploy and verify this API before any client that sends it is
+published. It adds:
 
 - the failure-context native code namespace `terento_map_verify`, the
   result of the native sampled read-back after a complete map write
@@ -21,7 +24,7 @@ The 1.0.1 API rejects both with `400`; a report sent to it would stay parked
 on the Mac until this API is deployed. These two additions change no route,
 migration or other payload.
 
-### OSMapaPL (planned for 1.0.2)
+### OSMapaPL (1.1.0)
 
 Deploy and verify this API before any client that requests catalog-v5 is
 published. It adds:
@@ -41,11 +44,11 @@ once because providers they do not publish stop counting; released clients use
 `updatedAt` for display only. Released 1.0.x clients are otherwise unchanged. The provider is
 registered `PAUSED` and every v5 OSMapaPL package carries
 `downloadBlockReason=PROVIDER_PAUSED` until the activation gate passes
-(hardware evidence per package). The 1.0.2 client requests v5 and is added to
+(hardware evidence per package). The 1.1.0 client requests v5 and is added to
 `released-catalog-clients.json` only when it is published; the live
 checkout-client validator adds v5 with that client change, never before.
 
-The 1.0.2 client accepts an OSMapaPL package only with the full source proof
+The 1.1.0 client accepts an OSMapaPL package only with the full source proof
 (reviewed URL whose coverage, style and date match the package, strong ETag,
 family ID, header title, sizes, CRC-32 and revision); an unavailable package
 must carry exactly one artifact and no `sourceProof` at all (JSON `null`
@@ -57,6 +60,23 @@ foreign map with the same family ID. The final check before writing repeats
 this content check over the scan of the same inventory, and any map image
 without scan evidence blocks. It never deletes a watch file to resolve a
 conflict.
+
+## Stable release 1.1.0 build 46 — staged
+
+Staged, not published. The app source sets `1.1.0` / build 46
+(`Packaging/release-candidate.json`) on the `stable` channel. It requests
+`catalog-v5.json`, sends the `terento_map_verify` native code and the
+protection `affectedFolder`, and reports `retryCount` for a busy watch at
+install start; the 1.1.0 server-first acceptance API above is deployed. It adds
+no route, telemetry event or migration of its own. The owner's local build
+`1.0.2-local` (46), the same app source before the version change, passed the
+real-watch checks of every OSMapaPL package,
+BBBike (OpenTopoMap) with the same-region block, and installed maps in Install
+maps. Before publication: owner-approved release notes, the full packaging
+suite, notarization and the DMG/ZIP digests recorded here. After publication
+the tag joins `released-catalog-clients.json` with `catalog-v5.json`, and only
+then does the owner activate OSMapaPL (`PAUSED` → `ACTIVE`) in Admin; the site
+shows the provider only while it is `ACTIVE`.
 
 ## 1.0.1 server-first acceptance
 
