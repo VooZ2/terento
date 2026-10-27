@@ -51,4 +51,14 @@ Für Wanderungen und Radtouren bei wenig Speicherplatz.
 - Auch kleinere Straßen und Wege enthalten
 - Navigation entlang kartierter Straßen und Wege
 
+### BBBike (OpenTopoMap)
+
+Zum Wandern und Radfahren im bekannten OpenTopoMap-Stil, auch wo andere Karten fehlen.
+
+- OpenTopoMap-Stil: Wege, Pfade und Bodenbedeckung
+- Wöchentlich aktualisierte Regionalkarten
+- Auch für Länder, die keine andere Karte hier abdeckt
+
+Diese Karte enthält keine Höhenlinien.
+
 Vorschauen sind nah dran, aber nicht exakt: Deine Uhr zeichnet die Karte selbst, daher können Farben und Details je nach Modell und Karteneinstellungen abweichen.

@@ -51,4 +51,14 @@ Pour marcher et pédaler en économisant le stockage.
 - Petites routes et chemins inclus
 - Navigation le long des routes et chemins cartographiés
 
+### BBBike (OpenTopoMap)
+
+Pour la randonnée et le vélo dans le style OpenTopoMap, même là où les autres cartes manquent.
+
+- Style OpenTopoMap : sentiers, chemins et occupation du sol
+- Cartes régionales actualisées chaque semaine
+- Aussi pour des pays qu’aucune autre carte ne couvre ici
+
+Cette carte n’a pas de courbes de niveau.
+
 Les aperçus sont proches, mais pas exacts : votre montre dessine elle-même la carte, les couleurs et le niveau de détail peuvent donc varier selon le modèle et ses réglages de carte.

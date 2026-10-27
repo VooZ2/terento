@@ -408,6 +408,50 @@ for _locale, (_base_summary, _trail_summary, _base_benefits, _trail_benefits) in
             "benefits": _benefits,
         }
 
+# BBBike (OpenTopoMap) ships hidden like the other BBBike types; provider-list.js
+# shows it once the catalog lists available opentopo-latin1 maps (catalog v5, app 1.1.0).
+BBBIKE_OPENTOPO_CARD_COPY = {
+    "en": ("For hiking and cycling in the familiar OpenTopoMap look, also where other maps are missing.", [
+        "OpenTopoMap look: trails, paths and land cover",
+        "Regional maps updated weekly",
+        "Also for countries no other map here covers",
+    ], "This map has no contour lines."),
+    "de": ("Zum Wandern und Radfahren im bekannten OpenTopoMap-Stil, auch wo andere Karten fehlen.", [
+        "OpenTopoMap-Stil: Wege, Pfade und Bodenbedeckung",
+        "Wöchentlich aktualisierte Regionalkarten",
+        "Auch für Länder, die keine andere Karte hier abdeckt",
+    ], "Diese Karte enthält keine Höhenlinien."),
+    "fr": ("Pour la randonnée et le vélo dans le style OpenTopoMap, même là où les autres cartes manquent.", [
+        "Style OpenTopoMap : sentiers, chemins et occupation du sol",
+        "Cartes régionales actualisées chaque semaine",
+        "Aussi pour des pays qu’aucune autre carte ne couvre ici",
+    ], "Cette carte n’a pas de courbes de niveau."),
+    "pl": ("Na piesze i rowerowe wycieczki w znanym stylu OpenTopoMap, także tam, gdzie brakuje innych map.", [
+        "Styl OpenTopoMap: szlaki, ścieżki i pokrycie terenu",
+        "Mapy regionów aktualizowane co tydzień",
+        "Także dla krajów, których nie obejmuje tu żadna inna mapa",
+    ], "Ta mapa nie ma poziomic."),
+    "cs": ("Na pěší a cyklistické výlety ve známém stylu OpenTopoMap, i tam, kde jiné mapy chybí.", [
+        "Styl OpenTopoMap: stezky, cesty a pokryv krajiny",
+        "Regionální mapy aktualizované každý týden",
+        "Také pro země, které tu žádná jiná mapa nepokrývá",
+    ], "Tato mapa nemá vrstevnice."),
+    "it": ("Per escursioni a piedi e in bici nello stile OpenTopoMap, anche dove mancano altre mappe.", [
+        "Stile OpenTopoMap: sentieri, percorsi e copertura del suolo",
+        "Mappe regionali aggiornate ogni settimana",
+        "Anche per paesi che nessun’altra mappa copre qui",
+    ], "Questa mappa non ha curve di livello."),
+}
+BBBIKE_OPENTOPO_NOTES = {}
+for _locale, (_summary, _benefits, _note) in BBBIKE_OPENTOPO_CARD_COPY.items():
+    PROVIDER_CARD_COPY[_locale]["bbbike-opentopo"] = {
+        "name": "BBBike (OpenTopoMap)",
+        "count_template": PROVIDER_CARD_COPY[_locale]["maprando"]["count_template"],
+        "summary": _summary,
+        "benefits": _benefits,
+    }
+    BBBIKE_OPENTOPO_NOTES[_locale] = _note
+
 # OSMapaPL ships hidden; provider-list.js shows it once the catalog lists the provider as active.
 OSMAPA_CARD_COPY = {
     "en": ("For trips across Poland, on foot or by bike.", [
@@ -453,7 +497,7 @@ MAPRANDO_LANGUAGE_NOTES = {'en': 'Some map labels are in French.', 'de': 'Einige
 
 def provider_cards_markup(locale: str, copy: dict[str, str]) -> str:
     cards = []
-    for provider_id in ("freizeitkarte", "opentopomap", "maprando", "bbbike", "bbbike-ontrail", "osmapa"):
+    for provider_id in ("freizeitkarte", "opentopomap", "maprando", "bbbike", "bbbike-ontrail", "bbbike-opentopo", "osmapa"):
         provider = PROVIDER_CARD_COPY[locale][provider_id]
         fallback_count = {"freizeitkarte": "63", "opentopomap": "177"}.get(provider_id)
         count_markup = provider["count_template"].replace("{count}", fallback_count) if fallback_count else ""
@@ -462,6 +506,8 @@ def provider_cards_markup(locale: str, copy: dict[str, str]) -> str:
         addon = ""
         if provider_id == "maprando":
             addon = f'<p class="provider-language-note"><span aria-hidden="true">ⓘ</span><span>{html.escape(MAPRANDO_LANGUAGE_NOTES[locale])}</span></p>'
+        if provider_id == "bbbike-opentopo":
+            addon = f'<p class="provider-language-note"><span aria-hidden="true">ⓘ</span><span>{html.escape(BBBIKE_OPENTOPO_NOTES[locale])}</span></p>'
         if provider_id == "opentopomap":
             contour = PROVIDER_CARD_COPY[locale]["contours"]
             addon = f'''<details class="provider-addon" data-provider-addon="contours">
@@ -472,7 +518,7 @@ def provider_cards_markup(locale: str, copy: dict[str, str]) -> str:
         catalog_provider_id = "bbbike" if provider_id.startswith("bbbike") else provider_id
         type_attributes = ""
         if provider_id.startswith("bbbike"):
-            map_type = "ontrail-latin1" if provider_id == "bbbike-ontrail" else "bbbike-latin1"
+            map_type = {"bbbike-ontrail": "ontrail-latin1", "bbbike-opentopo": "opentopo-latin1"}.get(provider_id, "bbbike-latin1")
             type_attributes = f' data-provider-type="{map_type}" hidden'
         if provider_id == "osmapa":
             type_attributes = " hidden"

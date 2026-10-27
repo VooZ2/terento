@@ -186,9 +186,10 @@ The current catalog includes main-map packages from
 [OpenTopoMap](https://garmin.opentopomap.org/),
 [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), and
 [BBBike](https://garmin.bbbike.org), based on OpenStreetMap data.
-BBBike offers two map choices: BBBike and the smaller BBBike (Ontrail)
-packages for hiking and cycling. In the Mac app, maps download directly from
-their providers.
+BBBike offers the smaller BBBike (Ontrail) packages for hiking and cycling and
+BBBike (OpenTopoMap) packages in the OpenTopoMap look, without contour lines.
+Only one BBBike map type can be installed for the same region.
+In the Mac app, maps download directly from their providers.
 
 - Install several regions together by choosing maps from the same provider.
 - Some MapRando map labels are in French.

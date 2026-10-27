@@ -90,9 +90,9 @@ function testPages() {
     assert.deepEqual(page.areas.map((area) => area.id), contract.areas.map((area) => area.id));
     assert.ok(page.areas.some((area) => area.id === "dolomites-tre-cime"), `${locale}: default area exists`);
     // BBBike no longer publishes its classic style for regular regions, so the
-    // page compares four styles and opens on one that has previews.
+    // page compares its Ontrail and OpenTopoMap styles and opens on one that has previews.
     assert.deepEqual(page.styles.filter((style) => !style.optional).map((style) => style.id),
-      ["freizeitkarte", "opentopomap", "maprando", "bbbike-ontrail"], `${locale}: public styles are always listed`);
+      ["freizeitkarte", "opentopomap", "maprando", "bbbike-ontrail", "bbbike-opentopo"], `${locale}: public styles are always listed`);
     assert.deepEqual(page.styles.filter((style) => style.optional).map((style) => style.id),
       ["osmapa-podstawowa", "osmapa-ogonki", "osmapa-light"], `${locale}: OSMapaPL styles wait for the manifest`);
     assert.ok(page.styles.every((style) => style.name && style.summary), `${locale}: every style has a name and summary`);
@@ -131,7 +131,7 @@ function testPages() {
     const cards = homeCards(locale);
     assert.ok(cards.length >= 4, `${locale}: home provider cards found`);
     const about = [...source.matchAll(/<article class="map-styles-about-card" data-style-card="([^"]+)">([\s\S]*?)<\/article>/g)];
-    assert.equal(about.length, 4, `${locale}: four always-shown style descriptions`);
+    assert.equal(about.length, 5, `${locale}: five always-shown style descriptions`);
     const optional = [...source.matchAll(/<article class="map-styles-about-card" data-style-card="([^"]+)" data-style-ids="([^"]+)" hidden>([\s\S]*?)<\/article>/g)];
     assert.deepEqual(optional.map((item) => [item[1], item[2]]), [["osmapa", "osmapa-podstawowa osmapa-ogonki osmapa-light"]],
       `${locale}: the OSMapaPL description starts hidden`);

@@ -51,4 +51,14 @@ For walks and bike rides when storage matters.
 - Smaller roads and paths included
 - Supports navigation along mapped roads and paths
 
+### BBBike (OpenTopoMap)
+
+For hiking and cycling in the familiar OpenTopoMap look, also where other maps are missing.
+
+- OpenTopoMap look: trails, paths and land cover
+- Regional maps updated weekly
+- Also for countries no other map here covers
+
+This map has no contour lines.
+
 Previews are close, not exact: your watch draws the map itself, so colours and detail can differ with the watch model and its map settings.

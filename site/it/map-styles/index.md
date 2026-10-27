@@ -51,4 +51,14 @@ Per camminare e pedalare quando lo spazio conta.
 - Incluse anche strade e sentieri minori
 - Navigazione lungo strade e sentieri presenti sulla mappa
 
+### BBBike (OpenTopoMap)
+
+Per escursioni a piedi e in bici nello stile OpenTopoMap, anche dove mancano altre mappe.
+
+- Stile OpenTopoMap: sentieri, percorsi e copertura del suolo
+- Mappe regionali aggiornate ogni settimana
+- Anche per paesi che nessun’altra mappa copre qui
+
+Questa mappa non ha curve di livello.
+
 Le anteprime sono vicine, ma non identiche: l’orologio disegna la mappa da sé, quindi colori e dettagli possono variare in base al modello e alle impostazioni della mappa.

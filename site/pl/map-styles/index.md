@@ -51,4 +51,14 @@ Na piesze i rowerowe wycieczki, gdy liczy się miejsce.
 - Uwzględnione mniejsze drogi i ścieżki
 - Nawigacja po drogach i ścieżkach zaznaczonych na mapie
 
+### BBBike (OpenTopoMap)
+
+Na piesze i rowerowe wycieczki w znanym stylu OpenTopoMap, także tam, gdzie brakuje innych map.
+
+- Styl OpenTopoMap: szlaki, ścieżki i pokrycie terenu
+- Mapy regionów aktualizowane co tydzień
+- Także dla krajów, których nie obejmuje tu żadna inna mapa
+
+Ta mapa nie ma poziomic.
+
 Podglądy są zbliżone, ale nie dokładne: zegarek sam rysuje mapę, więc kolory i szczegóły mogą się różnić w zależności od modelu i ustawień mapy.

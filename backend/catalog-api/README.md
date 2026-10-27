@@ -607,8 +607,9 @@ legacy compatibility branches and the OTM package-count guard remain in use.
 ## BBBike provider
 
 BBBike is active in the v4 projection with BBBike and BBBike (Ontrail) as distinct
-map types under one provider. Lifecycle IDs include type; geographic IDs remain
-shared for statistics. Same-region opposite types conflict. See the
+map types under one provider; v5 adds BBBike (OpenTopoMap) (`opentopo-latin1`).
+Lifecycle IDs include type; geographic IDs remain shared for statistics. Any two
+types of the same region conflict because they share Garmin tile numbers. See the
 [API contract](docs/api.md) and [historical source review](../../history/2026-09-12-bbbike-local-contract.md).
 Provider package counts are live metadata, not hardcoded compatibility claims.
 

@@ -33,6 +33,7 @@ STYLES = {
     "maprando": ("maprando", None),
     "bbbike": ("bbbike", "bbbike-latin1"),
     "bbbike-ontrail": ("bbbike", "ontrail-latin1"),
+    "bbbike-opentopo": ("bbbike", "opentopo-latin1"),
     "osmapa-podstawowa": ("osmapa", "podstawowa"),
     "osmapa-ogonki": ("osmapa", "ogonki"),
     "osmapa-light": ("osmapa", "light"),
