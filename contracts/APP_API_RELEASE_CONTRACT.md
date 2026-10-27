@@ -3,9 +3,9 @@
 ## 1.1.0 server-first acceptance
 
 Deployed: every addition below is in catalog API revision `80f54a77` (main
-after PR #563, deploy 2026-10-26 20:15 UTC), which contains #550, #551, #554,
-#560 and #563. The later 1.1.0 app changes (#553, #555, #565, #568) are
-app-only. Deploy and verify this API before any client that sends it is
+after PR #563, deploy run 40394035206 finished 2026-10-26 20:32 UTC), which
+contains #550, #551, #554, #560 and #563. The 1.1.0 app changes #553, #555,
+#565 and #568 are app-only. Deploy and verify this API before any client that sends it is
 published. It adds:
 
 - the failure-context native code namespace `terento_map_verify`, the
@@ -69,7 +69,8 @@ Staged, not published. The app source sets `1.1.0` / build 46
 protection `affectedFolder`, and reports `retryCount` for a busy watch at
 install start; the 1.1.0 server-first acceptance API above is deployed. It adds
 no route, telemetry event or migration of its own. The owner's local build
-`1.0.2-local` (46), the same app source before the version change, passed the real-watch checks of every OSMapaPL package,
+`1.0.2-local` (46), the same app source before the version change, passed the
+real-watch checks of every OSMapaPL package,
 BBBike (OpenTopoMap) with the same-region block, and installed maps in Install
 maps. Before publication: owner-approved release notes, the full packaging
 suite, notarization and the DMG/ZIP digests recorded here. After publication
