@@ -61,22 +61,33 @@ this content check over the scan of the same inventory, and any map image
 without scan evidence blocks. It never deletes a watch file to resolve a
 conflict.
 
-## Stable release 1.1.0 build 46 — staged
+## Stable release 1.1.0 build 46 — published
 
-Staged, not published. The app source sets `1.1.0` / build 46
-(`Packaging/release-candidate.json`) on the `stable` channel. It requests
+Published on 2026-10-27 from GitHub-verified source
+`380d08920d5055711fad7ca0335108c51ebe2bb1` (main after PR #569), tag
+`v1.1.0-build46`, on the `stable` update channel. It requests
 `catalog-v5.json`, sends the `terento_map_verify` native code and the
 protection `affectedFolder`, and reports `retryCount` for a busy watch at
-install start; the 1.1.0 server-first acceptance API above is deployed. It adds
-no route, telemetry event or migration of its own. The owner's local build
-`1.0.2-local` (46), the same app source before the version change, passed the
-real-watch checks of every OSMapaPL package,
+install start. The 1.1.0 server-first acceptance API above was deployed and
+verified first (revision `80f54a77`, an ancestor of the release source). It
+adds no route, telemetry event or migration of its own. The tag is listed in
+`contracts/released-catalog-clients.json` with `catalog-v5.json`.
+
+The full packaging suite and PR CI passed. Apple notarization was Accepted.
+Signing, stapling, Gatekeeper and ZIP/DMG launch checks passed. The owner
+approved the release notes and chose the 1.1.0 marketing version before
+publication. Real-watch evidence: the owner's local build `1.0.2-local` (46),
+the same app source before the version change, passed every OSMapaPL package,
 BBBike (OpenTopoMap) with the same-region block, and installed maps in Install
-maps. Before publication: owner-approved release notes, the full packaging
-suite, notarization and the DMG/ZIP digests recorded here. After publication
-the tag joins `released-catalog-clients.json` with `catalog-v5.json`, and only
-then does the owner activate OSMapaPL (`PAUSED` → `ACTIVE`) in Admin; the site
-shows the provider only while it is `ACTIVE`.
+maps; the other fixes and the deferred Freizeitkarte and OpenTopoMap Update
+gate are listed in KNOWN ISSUES. OSMapaPL stays `PAUSED` until the owner
+activates it in Admin after this publication.
+
+DMG: 7,566,176 bytes, SHA-256
+`a5c06992d1289adab36c894dad68cee249a4311bd8057c34aea0d5a83bc4a0c7`.
+ZIP: 6,818,630 bytes, SHA-256
+`f6842e8da662433d76f721c6209dee2e661f4bd1ac8c04bd27d61f20f1c8d96d`.
+GitHub asset digests match the digests of the locally built files.
 
 ## 1.0.1 server-first acceptance
 
