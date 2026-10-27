@@ -9,7 +9,7 @@ This release adds OSMapaPL maps of Poland and the BBBike (OpenTopoMap) style, an
 ## WHAT'S NEW?
 
 - OSMapaPL maps of Poland, for Poland alone or with border areas, in three styles: Podstawowa (labels without Polish letters), Ogonki (with Polish letters) and Light (uses less storage), plus contour lines. Only one area of the same style can be on the watch at a time; remove the other one in Manage maps first.
-- BBBike (OpenTopoMap), a third BBBike map style. Only one BBBike style can be installed for the same region.
+- BBBike (OpenTopoMap), a new BBBike map style based on OpenTopoMap. Only one BBBike style can be installed for the same region.
 - Install maps also lists the maps already on the watch, marked "Already installed", so you can see which installed map blocks another one.
 
 ## WHAT'S FIXED?
