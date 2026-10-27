@@ -40,13 +40,13 @@ same override is used by the web, native, backend, and release checks.
 
 ## Full release validation
 
-The next candidate is **1.0.2 / build 46** on the `stable` channel (see
+The next candidate is **1.1.0 / build 46** on the `stable` channel (see
 [versioning](../VERSIONING.md)). It reads `catalog-v5.json`, adds OSMapaPL and
 BBBike (OpenTopoMap) maps, lists installed maps in Install maps, waits for a
 busy watch at install start, saves a report when the map scan fails, and
 reports the native read-back result and the folder of a changed watch file. Its
-server additions (`contracts/APP_API_RELEASE_CONTRACT.md`, "1.0.2 server-first
-acceptance") are already deployed. OSMapaPL stays `PAUSED` until the 1.0.2
+server additions (`contracts/APP_API_RELEASE_CONTRACT.md`, "1.1.0 server-first
+acceptance") are already deployed. OSMapaPL stays `PAUSED` until the 1.1.0
 publication, then the owner activates it in Admin. Public metadata continues to
 identify 1.0.1 until signed, notarized artifacts exist, and the draft
 release-note section stays marked as a draft until the owner approves it.

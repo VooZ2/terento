@@ -1,8 +1,8 @@
-# Terento v1.0.2 (build 46)
+# Terento v1.1.0 (build 46)
 
 <!-- DRAFT: unpublished; needs owner approval and the DMG SHA-256 before publication -->
 
-Terento 1.0.2 is an update to Terento 1.0.1, the free, open-source app for installing community maps on map-capable Garmin smartwatches from Apple Silicon Macs running macOS 13 or later. Compatibility is still evaluated model by model.
+Terento 1.1.0 is an update to Terento 1.0.1, the free, open-source app for installing community maps on map-capable Garmin smartwatches from Apple Silicon Macs running macOS 13 or later. Compatibility is still evaluated model by model.
 
 This release adds OSMapaPL maps of Poland and the BBBike (OpenTopoMap) style, and makes installations more reliable when the watch is busy. Installed 1.0.x builds are offered it by the in-app update check.
 

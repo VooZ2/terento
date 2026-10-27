@@ -9,7 +9,7 @@ Python, Swift and JavaScript do not load JSON Schema validators.
 | `map-catalog.schema.json` | `GET /maps/catalog.json` | `schemaVersion: 2`, legacy `catalogVersion: 1` |
 | `map-catalog.schema.json` | `GET /maps/catalog-v3.json` | same body versions; Freizeitkarte, OpenTopoMap, MapRando |
 | `map-catalog.schema.json` | `GET /maps/catalog-v4.json` | same body versions; adds BBBike and its two map types |
-| `map-catalog.schema.json` | `GET /maps/catalog-v5.json` | same body versions; adds OSMapaPL (`osmapa`), its four map types and `conflictGroup`; for 1.0.2 and later |
+| `map-catalog.schema.json` | `GET /maps/catalog-v5.json` | same body versions; adds OSMapaPL (`osmapa`), its four map types and `conflictGroup`; for 1.1.0 and later |
 | `device-catalog.schema.json` | `GET /devices/catalog.json` | independent `catalogVersion: 2` |
 | `installation-policy.schema.json` | `GET /devices/installation-policy.json` | public-read `schemaVersion: 3`, capability-derived native write policy |
 | `compatibility-event.schema.json` | `POST /compatibility/events` request body | accepted versions 1–4; current emitter uses 4 |
@@ -112,7 +112,7 @@ package make the whole catalog incompatible, which the client reports as
 the package being acquired against the current catalog. Release and deploy gates
 still require every published package to pass the strict client validator. v4 additionally exposes
 BBBike with `bbbike-latin1` and `ontrail-latin1` map types. v5 additionally exposes
-OSMapaPL (`osmapa`) for clients from 1.0.2: map types `podstawowa`, `ogonki`, `light` and
+OSMapaPL (`osmapa`) for clients from 1.1.0: map types `podstawowa`, `ogonki`, `light` and
 `warstwice` (contour lines as a standalone package), each for Poland and Poland with border areas,
 and `conflictGroup`: two packages of one group share a Garmin family ID and tiles and must not be
 on one device; the client blocks and never deletes automatically. v5 also adds the BBBike
