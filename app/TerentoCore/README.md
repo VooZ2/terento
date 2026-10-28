@@ -837,6 +837,11 @@ FIT files in `/GARMIN/Monitor`, and descendant folders of `/GARMIN/TLG/PER`, bas
 on the captured no-write controls. Positive map classification or explicit target
 scope overrides those cases. There is no blanket FIT/XML rule. Unknown companion
 formats remain protected rather than assuming a complete Garmin format catalog.
+Plain non-map files under `/GARMIN/Debug` (the watch's own logs) stay protected,
+but a size change of an existing one is not a difference: watches rewrote such a
+log during long transfers. Adding or removing a file there, folder changes, and
+changes in any other folder still fail; the same rule applies to the pre-write
+check, post-write check, and the map update replacement check.
 Global changes outside protected/operation scope are observations, not proof that
 Terento mutated them. Metadata equality does not prove unchanged same-size bytes.
 

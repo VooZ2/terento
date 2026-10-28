@@ -465,6 +465,29 @@ struct Stage42InstallationTests {
             && protection?.affectedFolder == .metrics
             && !String(describing: protection as Any).contains("private-name"),
             "a changed watch data file reports its Garmin folder, never its filename")
+
+        // The watch rewrote its own log under /GARMIN/Debug during the write: not a violation.
+        let debug = DeviceFile(itemID: 710, parentID: 0, storageID: 1, path: "/GARMIN/Debug",
+            filename: "Debug", sizeBytes: 0, isFolder: true)
+        let log = DeviceFile(itemID: 711, parentID: 710, storageID: 1, path: "/GARMIN/Debug/log.txt",
+            filename: "log.txt", sizeBytes: 10, isFolder: false)
+        let debugHarness = Harness(beforeFilesTransform: { $0 + [debug, log] })
+        let debugResult = debugHarness.run(configureReader: { reader in
+            reader.files += [debug, DeviceFile(itemID: log.itemID, parentID: log.parentID,
+                storageID: log.storageID, path: log.path, filename: log.filename,
+                sizeBytes: 42, isFolder: false)]
+        })
+        passed += expect(debugResult.status == .installVerified && debugResult.failure == nil,
+            "a rewritten watch log under /GARMIN/Debug does not stop the install")
+
+        let addedLog = Harness(beforeFilesTransform: { $0 + [debug, log] })
+        let addedResult = addedLog.run(configureReader: { reader in
+            reader.files += [debug, log, DeviceFile(itemID: 712, parentID: 710, storageID: 1,
+                path: "/GARMIN/Debug/new.txt", filename: "new.txt", sizeBytes: 5, isFolder: false)]
+        })
+        passed += expect(addedResult.failure == .protectionViolation
+            && addedResult.failureContext?.protection?.protectionReason == .nonTargetObjectAdded,
+            "a new file under /GARMIN/Debug still stops the install")
         return passed
     }
 
