@@ -1235,8 +1235,11 @@ struct MapInstallationCoordinator: Sendable {
         let afterKeys = Set(afterGroups.keys)
         let added = pairable ? afterKeys.subtracting(beforeKeys).count : nil
         let removed = pairable ? beforeKeys.subtracting(afterKeys).count : nil
+        // A rewritten watch log file is not a protection difference.
         let changedKeys = pairable ? beforeKeys.intersection(afterKeys).filter {
-            comparable(beforeGroups[$0]![0]) != comparable(afterGroups[$0]![0])
+            !(ProtectedMapInventory.isWatchLogFile(beforeGroups[$0]![0])
+                && ProtectedMapInventory.isWatchLogFile(afterGroups[$0]![0]))
+                && comparable(beforeGroups[$0]![0]) != comparable(afterGroups[$0]![0])
         } : []
         let changed = pairable ? changedKeys.count : nil
         let reason: InstallationProtectionContext.Reason
@@ -1525,8 +1528,8 @@ struct MapInstallationCoordinator: Sendable {
         }
         recordToleratedDuplicates(after, event: "postwrite_inventory_duplicates")
         recordGlobalChanges(before: before, after: after, boundary: "postwrite")
-        let beforeComparable = baseline.protected
-        let afterComparable = Set(current.protected.filter { $0.path != targetPath })
+        let beforeComparable = ProtectedMapInventory.comparable(baseline.protected)
+        let afterComparable = ProtectedMapInventory.comparable(current.protected.filter { $0.path != targetPath })
         let targets = after.filter { $0.path == targetPath }
         let roots = before.filter { $0.path == "/GARMIN" && $0.isFolder }
         let targetUnchanged = roots.count == 1 && targets.count == 1 && targets.allSatisfy {
@@ -1565,7 +1568,7 @@ struct MapInstallationCoordinator: Sendable {
         }
         recordToleratedDuplicates(live, event: "prewrite_inventory_duplicates")
         recordGlobalChanges(before: before, after: live, boundary: "prewrite")
-        return baseline.protected == current.protected
+        return baseline.matches(current)
     }
 
     /// Local counts only. Firmware churn is an observation, not an attribution.

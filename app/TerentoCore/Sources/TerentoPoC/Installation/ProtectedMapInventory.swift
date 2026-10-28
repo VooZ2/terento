@@ -3,6 +3,7 @@ import Foundation
 /// Secondary metadata evidence, not mutation authorization or proof of byte equality.
 /// Unknown objects remain protected. Only the observed, narrowly typed runtime
 /// namespaces below are diagnostic; no extension grants a general exclusion.
+/// Watch log files stay protected; only their size may change (see `comparable`).
 struct ProtectedMapInventory: Sendable {
     struct Location: Hashable, Sendable {
         let storageID: UInt32
@@ -13,7 +14,7 @@ struct ProtectedMapInventory: Sendable {
         let storageID: UInt32
         let path: String
         let filename: String
-        let sizeBytes: UInt64
+        var sizeBytes: UInt64
         let isFolder: Bool
         /// 0 for a unique location. Tolerated duplicate entries of one location
         /// are numbered in canonical order, so set equality is multiset equality.
@@ -77,6 +78,35 @@ struct ProtectedMapInventory: Sendable {
     /// A plain file bearing a map suffix, wherever it is stored.
     static func isMapFile(_ file: DeviceFile) -> Bool {
         !file.isFolder && mapSuffixes.contains((file.filename as NSString).pathExtension.lowercased())
+    }
+
+    /// A plain, non-map file under `/GARMIN/Debug`, where the watch keeps its
+    /// own logs and may rewrite one during a long transfer. Only a size change
+    /// of such an existing file is tolerated; adding or removing one, folders,
+    /// and every other location still fail the comparison.
+    static func isWatchLogFile(path: String, filename: String, isFolder: Bool) -> Bool {
+        !isFolder && path.hasPrefix("/GARMIN/Debug/")
+            && !mapSuffixes.contains((filename as NSString).pathExtension.lowercased())
+    }
+
+    static func isWatchLogFile(_ file: DeviceFile) -> Bool {
+        isWatchLogFile(path: file.path, filename: file.filename, isFolder: file.isFolder)
+    }
+
+    /// Protected keys for comparison: watch log files keep their location and
+    /// kind but not their size, so rewriting one is not a difference.
+    static func comparable(_ keys: Set<Key>) -> Set<Key> {
+        Set(keys.map { key in
+            guard isWatchLogFile(path: key.path, filename: key.filename, isFolder: key.isFolder) else { return key }
+            var normalized = key
+            normalized.sizeBytes = 0
+            return normalized
+        })
+    }
+
+    /// Protected metadata is unchanged apart from rewritten watch log files.
+    func matches(_ other: ProtectedMapInventory) -> Bool {
+        Self.comparable(protected) == Self.comparable(other.protected)
     }
 
     init(files: [DeviceFile], forcedLocations: Set<Location> = []) throws {
@@ -168,7 +198,7 @@ struct ProtectedMapInventory: Sendable {
               !old.isFolder, !new.isFolder,
               baseline.protected.contains(old),
               !baseline.protectedLocations.contains(new.location) else { return false }
-        return protected == baseline.protected.subtracting([old]).union([new])
+        return Self.comparable(protected) == Self.comparable(baseline.protected.subtracting([old]).union([new]))
     }
 
     private static func key(_ file: DeviceFile, occurrence: Int = 0) -> Key {
