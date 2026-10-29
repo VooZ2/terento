@@ -393,6 +393,7 @@ class AppStoreConfigurationContract(unittest.TestCase):
         self.assertIn("@State private var share = false", app_store)
         self.assertIn("evidenceController.decideConsent(share ? .accepted : .declined)", app_store)
         self.assertIn("mapStatisticsController.decideConsent(share ? .accepted : .declined)", app_store)
+        self.assertIn("if share { evidenceController.shareOperation(evidenceOperationID) }", app_store)
         self.assertIn("mayRequest: !asksAboutSharing", app_store)
         self.assertIn('Image("CircleCheck")', app_store)
         icon = (ROOT / "app/Terento/Assets.xcassets/CircleCheck.imageset/circle-check.svg").read_text(encoding="utf-8")

@@ -558,6 +558,21 @@ final class LocalInstallationEvidenceStore: @unchecked Sendable {
         #endif
     }
 
+    /// Queues the stored results of one operation that were kept local
+    /// because sharing was not yet permitted.
+    func queueOperation(_ operationID: UUID) throws {
+        try lock.withLock {
+            var file = try loadUnlocked()
+            guard VersionedEvidenceConsent.permitsSharing(file.consent) else { return }
+            let known = Set(file.pendingUploadEventIDs + (file.uploadedEventIDs ?? [])
+                + (file.parkedUploads ?? []).map(\.eventID))
+            let ids = file.events.filter { $0.operationId == operationID && !known.contains($0.id) }.map(\.id)
+            guard !ids.isEmpty else { return }
+            file.pendingUploadEventIDs += ids
+            try saveUnlocked(file)
+        }
+    }
+
     func pendingUploads() -> [InstallationEvidenceEvent] {
         let file = lockedLoad()
         let ids = Set(file.pendingUploadEventIDs)
@@ -840,6 +855,13 @@ final class InstallationEvidenceController: ObservableObject {
     /// explicit choice remains persisted across app updates.
     var compatibilitySharingEnabled: Bool {
         VersionedEvidenceConsent.permitsSharing(store.consent())
+    }
+
+    /// Opting in from the success window also shares that installation.
+    func shareOperation(_ operationID: UUID) {
+        guard compatibilitySharingEnabled else { return }
+        try? store.queueOperation(operationID)
+        schedulePendingUploadFlush()
     }
 
     /// App Store builds ask once, after the first successful installation.

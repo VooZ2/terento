@@ -435,6 +435,7 @@ struct ConnectScreen: View {
                 onDone: { share in
                     evidenceController.decideConsent(share ? .accepted : .declined)
                     mapStatisticsController.decideConsent(share ? .accepted : .declined)
+                    if share { evidenceController.shareOperation(evidenceOperationID) }
                     isShowingInstallSharingPrompt = false
                 }
             )

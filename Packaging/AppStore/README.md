@@ -41,7 +41,8 @@ events are sent only after the person opts in (guideline 5.1.1, GDPR):
 
 - After the first successful installation, while no choice is recorded, the
   `Map installed` window asks once. `Share install results with Terento`
-  starts unticked; `Done` records `accepted` or `declined` for both streams.
+  starts unticked; `Done` records `accepted` or `declined` for both streams,
+  and `accepted` also queues that installation's compatibility results.
   Diagnostics keeps both checkboxes to change it later.
 - The App Store notice version is 100 (`VersionedEvidenceConsent`,
   `VersionedMapStatisticsConsent`); only `accepted` under that version
