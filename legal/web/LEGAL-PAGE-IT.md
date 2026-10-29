@@ -6,7 +6,7 @@ Terento è un’app macOS gratuita e open source per installare e gestire mappe 
 
 Terento è un progetto indipendente pubblicato da un privato. Scopri l’autore nella pagina [Informazioni](/it/about/). Contatto: [hello@terento.app](mailto:hello@terento.app).
 
-L’app è per Mac con Apple Silicon. L’installer web è una beta e richiede Google Chrome, Microsoft Edge, Opera o Brave su un Mac o un computer Linux. La compatibilità viene valutata per ogni modello e variante esatta di orologio. Controlla la [compatibilità](/it/compatibility/) prima dell’uso. Le donazioni sono facoltative e non sbloccano funzioni, mappe o fornitori.
+L’app è per Mac con Apple Silicon. L’installer web richiede Google Chrome, Microsoft Edge, Opera o Brave su un Mac o un computer Linux; su Linux è ancora in fase di test. La compatibilità viene valutata per ogni modello e variante esatta di orologio. Controlla la [compatibilità](/it/compatibility/) prima dell’uso. Le donazioni sono facoltative e non sbloccano funzioni, mappe o fornitori.
 
 ## Licenze del software e dei componenti
 

@@ -5,7 +5,7 @@
             <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>${p_eyebrow}</p>
             <h1 id="hero-title">${hero_title}</h1>
             <p class="hero-lede">${hero_lede}</p>
-            <div class="hero-actions"><a class="download-action hero-download-action" href="${a_download_action_hero_download_action_href}" data-umami-event="download-cta-click" data-umami-event-location="home-hero">${a_download_action_hero_download_action}<span aria-hidden="true">→</span></a><a class="text-link hero-compatibility-link" href="${scope_href}" data-umami-event="compatibility-link-click" data-umami-event-location="home-hero">${a_text_link_hero_compatibility_link}<span aria-hidden="true">→</span></a></div>
+            <div class="hero-actions"><a class="download-action hero-download-action" href="${a_download_action_hero_download_action_href}" data-umami-event="download-cta-click" data-umami-event-location="home-hero">${a_download_action_hero_download_action}<span aria-hidden="true">→</span></a><a class="text-link hero-compatibility-link" href="${scope_href}" data-umami-event="compatibility-link-click" data-umami-event-location="home-hero">${a_text_link_hero_compatibility_link}<span aria-hidden="true">→</span></a><a class="text-link hero-web-installer-link" href="${web_installer_href}" data-umami-event="web-installer-link-click" data-umami-event-location="home-hero">${web_installer_hero}<span aria-hidden="true">→</span></a></div>
           </div>
 
           <div class="hero-visual">
@@ -97,6 +97,19 @@
         </div>
         </div>
       </section>
+      <section class="web-installer section" id="web-installer" aria-labelledby="web-installer-title">
+        <div class="shell">
+          <div class="section-heading">
+            <p class="eyebrow">${web_installer_eyebrow}</p><h2 id="web-installer-title">${web_installer_title}</h2>
+          </div>
+          <div class="problem-statement">
+            <p>${web_installer_body}</p>
+            <p>${web_installer_limits}</p>
+          </div>
+          <p class="guide-facts web-installer-facts"><span>${web_installer_fact_0}</span><span>${web_installer_fact_1}</span><span>${web_installer_fact_2}</span></p>
+          <p class="web-installer-action"><a class="text-link" href="${web_installer_href}" data-umami-event="web-installer-link-click" data-umami-event-location="home-section">${web_installer_action}<span aria-hidden="true">→</span></a></p>
+        </div>
+      </section>
       ${provider_section}
       <section class="faq section" id="faq" aria-labelledby="faq-title">
         <div class="shell faq-grid">
@@ -132,6 +145,10 @@
                 <a class="text-link" href="https://github.com/VooZ2/terento/issues/new/choose" target="_blank" rel="noopener noreferrer" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="github-issue">${a_text_link}<span aria-hidden="true">→</span></a>
                 <a class="text-link" href="mailto:hello&#64;terento.app?subject=Terento%20installation%20issue" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="email">${a_text_link_2}<span aria-hidden="true">→</span></a>
               </div>
+            </details>
+            <details>
+              <summary>${faq_question_6}</summary>
+              <p>${web_installer_answer}</p>
             </details>
             </div>
         </div>

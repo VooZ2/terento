@@ -9,7 +9,7 @@ Projet open source
 
 Installez, mettez à jour et gérez des cartes tierces depuis une application macOS native — sans transferts manuels de fichiers.
 
-[Télécharger](https://terento.app/fr/download/) [Vérifier la compatibilité](https://terento.app/fr/compatibility/)
+[Télécharger](https://terento.app/fr/download/) [Vérifier la compatibilité](https://terento.app/fr/compatibility/) [Ou installez depuis votre navigateur](https://terento.app/fr/install/)
 
 Terento affiche la progression de l’installation de cartes communautaires sur macOS
 
@@ -44,6 +44,18 @@ Terento affiche les fournisseurs et les régions de cartes tierces sur macOS
 Consultez les cartes installées, mettez-les à jour lorsqu’une version plus récente est disponible et supprimez les cartes tierces gérées par Terento. Les cartes Garmin d’origine restent protégées.
 
 Terento affiche les cartes tierces installées, regroupées par fournisseur
+
+Installateur web
+
+## Pas d’application ? Installez depuis votre navigateur.
+
+Branchez votre Garmin avec un câble USB, choisissez des cartes et installez-les directement depuis Chrome, Edge, Opera ou Brave. Mettez-les à jour ou supprimez-les plus tard de la même façon.
+
+Fonctionne sur Mac et, encore en test, sous Linux. Pas encore sous Windows, ni sur téléphone ou tablette.
+
+Mac · Linux (en test)Chrome, Edge, Opera, BraveCâble USB de données
+
+[Ouvrir l’installateur web](https://terento.app/fr/install/)
 
 Cartes disponibles
 
@@ -118,6 +130,10 @@ Que dois-je faire si l’installation échoue ?
 Sur l’écran d’échec de l’installation, choisissez « Report issue ». Terento ouvre GitHub avec le rapport déjà rempli. Vérifiez-le avant de le publier : les issues GitHub sont publiques. Pour une aide par e-mail, indiquez le modèle de votre montre, la région de la carte et ce qui s’est passé. [Lisez le guide de dépannage.](https://terento.app/fr/guides/troubleshooting/)
 
 [Ouvrir une issue](https://github.com/VooZ2/terento/issues/new/choose) [Contacter le support](mailto:hello@terento.app?subject=Terento%20installation%20issue)
+
+Puis-je installer des cartes sans installer l’application ?
+
+Oui. L’ [installateur web](https://terento.app/fr/install/) installe, met à jour et supprime les cartes du catalogue depuis Chrome, Edge, Opera ou Brave sur Mac, et sous Linux, où il est encore en test. Il ne fonctionne pas encore sous Windows, sur téléphone ou tablette, et ne permet pas d’ajouter vos propres cartes .img.
 
 Commencez aujourd’hui
 

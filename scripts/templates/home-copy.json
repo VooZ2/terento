@@ -12,7 +12,8 @@
       "Can I add my own .img map?",
       "Can I update maps later?",
       "Why isn’t my Garmin watch showing up on my Mac?",
-      "What should I do if installation fails?"
+      "What should I do if installation fails?",
+      "Can I install maps without installing the app?"
     ],
     "provider_eyebrow": "Available maps",
     "provider_title": "Explore available maps.",
@@ -54,7 +55,18 @@
     "final_cta_title": "Ready for an easier way to install maps?",
     "final_cta_body": "Download Terento and start managing third-party maps from your Mac.",
     "a_download_action_href": "/download/",
-    "download_label": "Download"
+    "download_label": "Download",
+    "web_installer_href": "/install/",
+    "web_installer_hero": "Or install from your browser",
+    "web_installer_eyebrow": "Web installer",
+    "web_installer_title": "No app? Install from your browser.",
+    "web_installer_body": "Connect your Garmin with a USB cable, choose maps and install them straight from Chrome, Edge, Opera or Brave. Update or remove them later the same way.",
+    "web_installer_limits": "Works on a Mac and, still in testing, on Linux. Not on Windows, phones or tablets yet.",
+    "web_installer_fact_0": "Mac · Linux (testing)",
+    "web_installer_fact_1": "Chrome, Edge, Opera, Brave",
+    "web_installer_fact_2": "USB data cable",
+    "web_installer_action": "Open the web installer",
+    "web_installer_answer": "Yes. The <a href=\"/install/\" data-umami-event=\"web-installer-link-click\" data-umami-event-location=\"home-faq\">web installer</a> installs, updates and removes catalog maps from Chrome, Edge, Opera or Brave on a Mac, and on Linux, where it is still being tested. It does not work on Windows, phones or tablets yet, and it cannot add your own .img maps."
   },
   "de": {
     "compatibility_answer": "Auf der <a href=\"/de/compatibility/\" data-umami-event=\"compatibility-link-click\" data-umami-event-location=\"home-faq-compatibility\">Kompatibilitätsseite</a> findest du genaue Garmin-Modelle und Varianten mit mindestens einer erfolgreich geteilten Installation. Ein fehlendes Modell ist nicht unbedingt ununterstützt.",
@@ -69,7 +81,8 @@
       "Kann ich meine eigene .img-Karte hinzufügen?",
       "Kann ich Karten später aktualisieren?",
       "Warum wird meine Garmin-Uhr am Mac nicht erkannt?",
-      "Was soll ich tun, wenn die Installation fehlschlägt?"
+      "Was soll ich tun, wenn die Installation fehlschlägt?",
+      "Kann ich Karten installieren, ohne die App zu installieren?"
     ],
     "provider_eyebrow": "Verfügbare Karten",
     "provider_title": "Verfügbare Karten entdecken.",
@@ -111,7 +124,18 @@
     "final_cta_title": "Bereit für eine einfachere Karteninstallation?",
     "final_cta_body": "Lade Terento herunter und verwalte Drittanbieter-Karten von deinem Mac aus.",
     "a_download_action_href": "/de/download/",
-    "download_label": "Herunterladen"
+    "download_label": "Herunterladen",
+    "web_installer_href": "/de/install/",
+    "web_installer_hero": "Oder direkt aus dem Browser installieren",
+    "web_installer_eyebrow": "Web-Installer",
+    "web_installer_title": "Keine App? Installiere aus dem Browser.",
+    "web_installer_body": "Verbinde deine Garmin-Uhr per USB-Kabel, wähle Karten und installiere sie direkt aus Chrome, Edge, Opera oder Brave. Später aktualisierst oder entfernst du sie genauso.",
+    "web_installer_limits": "Funktioniert auf dem Mac und, noch im Test, unter Linux. Noch nicht unter Windows, auf Smartphones oder Tablets.",
+    "web_installer_fact_0": "Mac · Linux (im Test)",
+    "web_installer_fact_1": "Chrome, Edge, Opera, Brave",
+    "web_installer_fact_2": "USB-Datenkabel",
+    "web_installer_action": "Web-Installer öffnen",
+    "web_installer_answer": "Ja. Der <a href=\"/de/install/\" data-umami-event=\"web-installer-link-click\" data-umami-event-location=\"home-faq\">Web-Installer</a> installiert, aktualisiert und entfernt Karten aus dem Katalog in Chrome, Edge, Opera oder Brave auf dem Mac und unter Linux, wo er noch getestet wird. Unter Windows, auf Smartphones und Tablets funktioniert er noch nicht, und eigene .img-Karten kann er nicht hinzufügen."
   },
   "fr": {
     "compatibility_answer": "Consultez la <a href=\"/fr/compatibility/\" data-umami-event=\"compatibility-link-click\" data-umami-event-location=\"home-faq-compatibility\">page Compatibilité</a> pour voir les modèles et variantes Garmin exacts avec au moins une installation réussie partagée. L’absence d’un modèle ne signifie pas qu’il n’est pas pris en charge.",
@@ -126,7 +150,8 @@
       "Puis-je ajouter ma propre carte .img ?",
       "Puis-je mettre les cartes à jour plus tard ?",
       "Pourquoi ma montre Garmin n’apparaît-elle pas sur mon Mac ?",
-      "Que dois-je faire si l’installation échoue ?"
+      "Que dois-je faire si l’installation échoue ?",
+      "Puis-je installer des cartes sans installer l’application ?"
     ],
     "provider_eyebrow": "Cartes disponibles",
     "provider_title": "Découvrez les cartes disponibles.",
@@ -168,7 +193,18 @@
     "final_cta_title": "Prêt pour une façon plus simple d’installer vos cartes ?",
     "final_cta_body": "Téléchargez Terento et gérez vos cartes tierces depuis votre Mac.",
     "a_download_action_href": "/fr/download/",
-    "download_label": "Télécharger"
+    "download_label": "Télécharger",
+    "web_installer_href": "/fr/install/",
+    "web_installer_hero": "Ou installez depuis votre navigateur",
+    "web_installer_eyebrow": "Installateur web",
+    "web_installer_title": "Pas d’application ? Installez depuis votre navigateur.",
+    "web_installer_body": "Branchez votre Garmin avec un câble USB, choisissez des cartes et installez-les directement depuis Chrome, Edge, Opera ou Brave. Mettez-les à jour ou supprimez-les plus tard de la même façon.",
+    "web_installer_limits": "Fonctionne sur Mac et, encore en test, sous Linux. Pas encore sous Windows, ni sur téléphone ou tablette.",
+    "web_installer_fact_0": "Mac · Linux (en test)",
+    "web_installer_fact_1": "Chrome, Edge, Opera, Brave",
+    "web_installer_fact_2": "Câble USB de données",
+    "web_installer_action": "Ouvrir l’installateur web",
+    "web_installer_answer": "Oui. L’<a href=\"/fr/install/\" data-umami-event=\"web-installer-link-click\" data-umami-event-location=\"home-faq\">installateur web</a> installe, met à jour et supprime les cartes du catalogue depuis Chrome, Edge, Opera ou Brave sur Mac, et sous Linux, où il est encore en test. Il ne fonctionne pas encore sous Windows, sur téléphone ou tablette, et ne permet pas d’ajouter vos propres cartes .img."
   },
   "pl": {
     "compatibility_answer": "Na <a href=\"/pl/compatibility/\" data-umami-event=\"compatibility-link-click\" data-umami-event-location=\"home-faq-compatibility\">stronie zgodności</a> znajdziesz dokładne modele i warianty Garmin z co najmniej jedną udaną, udostępnioną instalacją. Brak modelu nie oznacza, że nie jest obsługiwany.",
@@ -183,7 +219,8 @@
       "Czy mogę dodać własną mapę .img?",
       "Czy mogę później aktualizować mapy?",
       "Dlaczego Mac nie widzi mojego zegarka Garmin?",
-      "Co zrobić, jeśli instalacja się nie powiedzie?"
+      "Co zrobić, jeśli instalacja się nie powiedzie?",
+      "Czy mogę zainstalować mapy bez instalowania aplikacji?"
     ],
     "provider_eyebrow": "Dostępne mapy",
     "provider_title": "Poznaj dostępne mapy.",
@@ -225,7 +262,18 @@
     "final_cta_title": "Gotowy na prostszy sposób instalowania map?",
     "final_cta_body": "Pobierz Terento i zarządzaj mapami innych firm z Maca.",
     "a_download_action_href": "/pl/download/",
-    "download_label": "Pobierz"
+    "download_label": "Pobierz",
+    "web_installer_href": "/pl/install/",
+    "web_installer_hero": "Albo zainstaluj z przeglądarki",
+    "web_installer_eyebrow": "Instalator webowy",
+    "web_installer_title": "Bez aplikacji? Instaluj z przeglądarki.",
+    "web_installer_body": "Podłącz zegarek Garmin kablem USB, wybierz mapy i zainstaluj je prosto z Chrome, Edge, Opery lub Brave. Później tak samo je zaktualizujesz lub usuniesz.",
+    "web_installer_limits": "Działa na Macu oraz, jeszcze w fazie testów, na Linuksie. Jeszcze nie na Windowsie, telefonach ani tabletach.",
+    "web_installer_fact_0": "Mac · Linux (w testach)",
+    "web_installer_fact_1": "Chrome, Edge, Opera, Brave",
+    "web_installer_fact_2": "Kabel USB do transmisji danych",
+    "web_installer_action": "Otwórz instalator webowy",
+    "web_installer_answer": "Tak. <a href=\"/pl/install/\" data-umami-event=\"web-installer-link-click\" data-umami-event-location=\"home-faq\">Instalator webowy</a> instaluje, aktualizuje i usuwa mapy z katalogu w Chrome, Edge, Operze lub Brave na Macu oraz na Linuksie, gdzie jest jeszcze testowany. Nie działa jeszcze na Windowsie, telefonach ani tabletach i nie dodaje własnych map .img."
   },
   "cs": {
     "compatibility_answer": "Na stránce <a href=\"/cs/compatibility/\" data-umami-event=\"compatibility-link-click\" data-umami-event-location=\"home-faq-compatibility\">Kompatibilita</a> najdete konkrétní modely a varianty Garmin s alespoň jednou úspěšnou sdílenou instalací. Chybějící model nemusí znamenat, že není podporován.",
@@ -240,7 +288,8 @@
       "Mohu přidat vlastní mapu .img?",
       "Mohu mapy aktualizovat později?",
       "Proč Mac nevidí moje hodinky Garmin?",
-      "Co mám dělat, když instalace selže?"
+      "Co mám dělat, když instalace selže?",
+      "Mohu instalovat mapy bez instalace aplikace?"
     ],
     "provider_eyebrow": "Dostupné mapy",
     "provider_title": "Prozkoumejte dostupné mapy.",
@@ -282,7 +331,18 @@
     "final_cta_title": "Chcete jednodušší způsob instalace map?",
     "final_cta_body": "Stáhněte si Terento a spravujte mapy třetích stran z Macu.",
     "a_download_action_href": "/cs/download/",
-    "download_label": "Stáhnout"
+    "download_label": "Stáhnout",
+    "web_installer_href": "/cs/install/",
+    "web_installer_hero": "Nebo instalujte z prohlížeče",
+    "web_installer_eyebrow": "Webový instalátor",
+    "web_installer_title": "Bez aplikace? Instalujte z prohlížeče.",
+    "web_installer_body": "Připojte hodinky Garmin kabelem USB, vyberte mapy a nainstalujte je přímo z Chrome, Edge, Opery nebo Brave. Později je stejně aktualizujete nebo odeberete.",
+    "web_installer_limits": "Funguje na Macu a, zatím ve zkušebním provozu, na Linuxu. Zatím ne ve Windows, na telefonech ani tabletech.",
+    "web_installer_fact_0": "Mac · Linux (v testu)",
+    "web_installer_fact_1": "Chrome, Edge, Opera, Brave",
+    "web_installer_fact_2": "Datový kabel USB",
+    "web_installer_action": "Otevřít webový instalátor",
+    "web_installer_answer": "Ano. <a href=\"/cs/install/\" data-umami-event=\"web-installer-link-click\" data-umami-event-location=\"home-faq\">Webový instalátor</a> instaluje, aktualizuje a odebírá mapy z katalogu v Chrome, Edge, Opeře nebo Brave na Macu a na Linuxu, kde se ještě testuje. Zatím nefunguje ve Windows, na telefonech ani tabletech a nepřidá vlastní mapy .img."
   },
   "it": {
     "compatibility_answer": "Consulta la pagina <a href=\"/it/compatibility/\" data-umami-event=\"compatibility-link-click\" data-umami-event-location=\"home-faq-compatibility\">Compatibilità</a> per i modelli e le varianti Garmin esatti con almeno un’installazione riuscita condivisa. L’assenza di un modello non significa necessariamente che non sia supportato.",
@@ -297,7 +357,8 @@
       "Posso aggiungere la mia mappa .img?",
       "Posso aggiornare le mappe in un secondo momento?",
       "Perché il Mac non rileva il mio orologio Garmin?",
-      "Cosa devo fare se l’installazione non riesce?"
+      "Cosa devo fare se l’installazione non riesce?",
+      "Posso installare le mappe senza installare l’app?"
     ],
     "provider_eyebrow": "Mappe disponibili",
     "provider_title": "Scopri le mappe disponibili.",
@@ -339,6 +400,17 @@
     "final_cta_title": "Pronto per un modo più semplice di installare le mappe?",
     "final_cta_body": "Scarica Terento e gestisci le mappe di terze parti dal tuo Mac.",
     "a_download_action_href": "/it/download/",
-    "download_label": "Scarica"
+    "download_label": "Scarica",
+    "web_installer_href": "/it/install/",
+    "web_installer_hero": "Oppure installa dal browser",
+    "web_installer_eyebrow": "Installer web",
+    "web_installer_title": "Niente app? Installa dal browser.",
+    "web_installer_body": "Collega il tuo Garmin con un cavo USB, scegli le mappe e installale direttamente da Chrome, Edge, Opera o Brave. In seguito le aggiorni o le rimuovi allo stesso modo.",
+    "web_installer_limits": "Funziona su Mac e, ancora in fase di test, su Linux. Non ancora su Windows, telefoni o tablet.",
+    "web_installer_fact_0": "Mac · Linux (in test)",
+    "web_installer_fact_1": "Chrome, Edge, Opera, Brave",
+    "web_installer_fact_2": "Cavo USB dati",
+    "web_installer_action": "Apri l’installer web",
+    "web_installer_answer": "Sì. L’<a href=\"/it/install/\" data-umami-event=\"web-installer-link-click\" data-umami-event-location=\"home-faq\">installer web</a> installa, aggiorna e rimuove le mappe del catalogo da Chrome, Edge, Opera o Brave su Mac e su Linux, dove è ancora in fase di test. Non funziona ancora su Windows, telefoni o tablet e non può aggiungere mappe .img personali."
   }
 }

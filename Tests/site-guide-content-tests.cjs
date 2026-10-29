@@ -170,7 +170,7 @@ for (const locale of locales) {
     assert.ok(primary && footer, relative + ": static shell navs");
     const hrefs = (fragment) => [...fragment.matchAll(/<a[^>]*href="([^"]+)"/g)].map((match) => match[1]);
     assert.deepEqual(hrefs(primary).slice(0, 5), [rootPath + "compatibility/", rootPath + "map-styles/", rootPath + slug, rootPath + "about/", rootPath + "download/"], relative + ": primary nav");
-    assert.deepEqual(hrefs(footer), [rootPath + "#faq", rootPath + "guides/troubleshooting/", "https://lab.terento.app/install/" + (locale === "en" ? "" : "?lang=" + locale), "/legal/", "/privacy/"], relative + ": footer nav");
+    assert.deepEqual(hrefs(footer), [rootPath + "#faq", rootPath + "guides/troubleshooting/", rootPath + "install/", "/legal/", "/privacy/"], relative + ": footer nav");
     assert.match(source, /Support Terento/);
     const languageOptions = source.match(/<div class="language-options">([\s\S]*?)<\/div>/)?.[1];
     assert.ok(languageOptions, relative + ": language options");
@@ -287,7 +287,7 @@ for (const pageName of ["legal", "privacy", "home", "guide"]) {
     assert.equal(nodes.get("troubleshooting").href, prefix + "guides/troubleshooting/");
     assert.equal(aria.attributes["aria-label"], translations[locale].primary);
     assert.equal(home.href, prefix);
-    assert.equal(installer.search, locale === "en" ? "" : "?lang=" + locale);
+    assert.equal(installer.href, prefix + "install/");
     assert.equal(code.textContent, locale.toUpperCase());
     assert.equal(name.textContent, translations[locale].name);
     menu.events.click();

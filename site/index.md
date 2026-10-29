@@ -9,7 +9,7 @@ Open-source project
 
 Install, update, and manage third-party maps from a native macOS app — without manual file transfers.
 
-[Download](https://terento.app/download/) [Check compatibility](https://terento.app/compatibility/)
+[Download](https://terento.app/download/) [Check compatibility](https://terento.app/compatibility/) [Or install from your browser](https://terento.app/install/)
 
 Terento showing community map installation progress on macOS
 
@@ -44,6 +44,18 @@ Terento showing third-party map providers and regions on macOS
 See what's installed, update maps when newer releases are available, and remove third-party maps managed by Terento. Original Garmin maps remain protected.
 
 Terento showing installed third-party maps grouped by provider
+
+Web installer
+
+## No app? Install from your browser.
+
+Connect your Garmin with a USB cable, choose maps and install them straight from Chrome, Edge, Opera or Brave. Update or remove them later the same way.
+
+Works on a Mac and, still in testing, on Linux. Not on Windows, phones or tablets yet.
+
+Mac · Linux (testing)Chrome, Edge, Opera, BraveUSB data cable
+
+[Open the web installer](https://terento.app/install/)
 
 Available maps
 
@@ -118,6 +130,10 @@ What should I do if installation fails?
 On the failed installation screen, choose “Report issue”. Terento opens GitHub with the report already filled in. Review it before posting: GitHub issues are public. For help by email, include your watch model, map region and what happened. [Read the troubleshooting guide.](https://terento.app/guides/troubleshooting/)
 
 [Open an issue](https://github.com/VooZ2/terento/issues/new/choose) [Email support](mailto:hello@terento.app?subject=Terento%20installation%20issue)
+
+Can I install maps without installing the app?
+
+Yes. The [web installer](https://terento.app/install/) installs, updates and removes catalog maps from Chrome, Edge, Opera or Brave on a Mac, and on Linux, where it is still being tested. It does not work on Windows, phones or tablets yet, and it cannot add your own .img maps.
 
 Get started today
 

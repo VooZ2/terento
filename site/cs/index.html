@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="cs" data-language="cs">
   <head>
-    <script defer src="/site-shell.js?v=20261010-web-installer-shell-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20261011-install-sources-v1">
+    <script defer src="/site-shell.js?v=20261029-web-installer-public-v1"></script>
+    <link rel="stylesheet" href="/styles.css?v=20261029-web-installer-v1">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
@@ -144,6 +144,14 @@
                   "@type": "Answer",
                   "text": "Na obrazovce neúspěšné instalace zvolte „Report issue“. Terento otevře GitHub s již vyplněnou zprávou. Před zveřejněním ji zkontrolujte: hlášení na GitHubu jsou veřejná. Pro pomoc e-mailem uveďte model hodinek, oblast mapy a popis problému. Přečtěte si průvodce řešením potíží."
                 }
+              },
+              {
+                "@type": "Question",
+                "name": "Mohu instalovat mapy bez instalace aplikace?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Ano. Webový instalátor instaluje, aktualizuje a odebírá mapy z katalogu v Chrome, Edge, Opeře nebo Brave na Macu a na Linuxu, kde se ještě testuje. Zatím nefunguje ve Windows, na telefonech ani tabletech a nepřidá vlastní mapy .img."
+                }
               }
             ]
           }
@@ -191,7 +199,7 @@
             <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>Open-source projekt</p>
             <h1 id="hero-title">Instalujte mapy do hodinek Garmin jednoduše</h1>
             <p class="hero-lede">Instalujte, aktualizujte a spravujte mapy třetích stran z nativní aplikace pro macOS — bez ručních přenosů souborů.</p>
-            <div class="hero-actions"><a class="download-action hero-download-action" href="/cs/download/" data-umami-event="download-cta-click" data-umami-event-location="home-hero">Stáhnout <span aria-hidden="true">→</span></a><a class="text-link hero-compatibility-link" href="/cs/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="home-hero">Ověřit kompatibilitu <span aria-hidden="true">→</span></a></div>
+            <div class="hero-actions"><a class="download-action hero-download-action" href="/cs/download/" data-umami-event="download-cta-click" data-umami-event-location="home-hero">Stáhnout <span aria-hidden="true">→</span></a><a class="text-link hero-compatibility-link" href="/cs/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="home-hero">Ověřit kompatibilitu <span aria-hidden="true">→</span></a><a class="text-link hero-web-installer-link" href="/cs/install/" data-umami-event="web-installer-link-click" data-umami-event-location="home-hero">Nebo instalujte z prohlížeče<span aria-hidden="true">→</span></a></div>
           </div>
 
           <div class="hero-visual">
@@ -281,6 +289,19 @@
         </div></div>
       </section>
         </div>
+        </div>
+      </section>
+      <section class="web-installer section" id="web-installer" aria-labelledby="web-installer-title">
+        <div class="shell">
+          <div class="section-heading">
+            <p class="eyebrow">Webový instalátor</p><h2 id="web-installer-title">Bez aplikace? Instalujte z prohlížeče.</h2>
+          </div>
+          <div class="problem-statement">
+            <p>Připojte hodinky Garmin kabelem USB, vyberte mapy a nainstalujte je přímo z Chrome, Edge, Opery nebo Brave. Později je stejně aktualizujete nebo odeberete.</p>
+            <p>Funguje na Macu a, zatím ve zkušebním provozu, na Linuxu. Zatím ne ve Windows, na telefonech ani tabletech.</p>
+          </div>
+          <p class="guide-facts web-installer-facts"><span>Mac · Linux (v testu)</span><span>Chrome, Edge, Opera, Brave</span><span>Datový kabel USB</span></p>
+          <p class="web-installer-action"><a class="text-link" href="/cs/install/" data-umami-event="web-installer-link-click" data-umami-event-location="home-section">Otevřít webový instalátor<span aria-hidden="true">→</span></a></p>
         </div>
       </section>
       <section class="provider-section section" id="providers" aria-labelledby="providers-title">
@@ -389,6 +410,10 @@
                 <a class="text-link" href="mailto:hello&#64;terento.app?subject=Terento%20installation%20issue" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="email">Napsat podpoře <span aria-hidden="true">→</span></a>
               </div>
             </details>
+            <details>
+              <summary>Mohu instalovat mapy bez instalace aplikace?</summary>
+              <p>Ano. <a href="/cs/install/" data-umami-event="web-installer-link-click" data-umami-event-location="home-faq">Webový instalátor</a> instaluje, aktualizuje a odebírá mapy z katalogu v Chrome, Edge, Opeře nebo Brave na Macu a na Linuxu, kde se ještě testuje. Zatím nefunguje ve Windows, na telefonech ani tabletech a nepřidá vlastní mapy .img.</p>
+            </details>
             </div>
         </div>
       </section>
@@ -416,7 +441,7 @@
         </div>
         <nav class="footer-nav" data-shell-aria="footer" aria-label="Navigace v zápatí">
           <a href="/cs/#faq" data-shell-copy="faq" data-shell-route="faq" data-umami-event="faq-link-click" data-umami-event-location="footer-nav">FAQ</a><a href="/cs/guides/troubleshooting/" data-shell-copy="troubleshooting" data-shell-route="troubleshooting" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Řešení potíží</a>
-          <a data-shell-copy="web_installer" href="https://lab.terento.app/install/?lang=cs" data-umami-event="web-installer-link-click" data-umami-event-location="footer-nav">Webový instalátor</a>
+          <a data-shell-copy="web_installer" href="/cs/install/" data-umami-event="web-installer-link-click" data-umami-event-location="footer-nav">Webový instalátor</a>
           <a data-shell-copy="legal" href="/legal/" data-umami-event="legal-link-click" data-umami-event-location="footer-nav">Právní informace</a>
           <a data-shell-copy="privacy" href="/privacy/" data-umami-event="privacy-link-click" data-umami-event-location="footer-nav">Soukromí</a>
         </nav>

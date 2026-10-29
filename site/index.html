@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en" data-language="en">
   <head>
-    <script defer src="/site-shell.js?v=20261010-web-installer-shell-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20261011-install-sources-v1">
+    <script defer src="/site-shell.js?v=20261029-web-installer-public-v1"></script>
+    <link rel="stylesheet" href="/styles.css?v=20261029-web-installer-v1">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
@@ -144,6 +144,14 @@
                   "@type": "Answer",
                   "text": "On the failed installation screen, choose “Report issue”. Terento opens GitHub with the report already filled in. Review it before posting: GitHub issues are public. For help by email, include your watch model, map region and what happened. Read the troubleshooting guide."
                 }
+              },
+              {
+                "@type": "Question",
+                "name": "Can I install maps without installing the app?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. The web installer installs, updates and removes catalog maps from Chrome, Edge, Opera or Brave on a Mac, and on Linux, where it is still being tested. It does not work on Windows, phones or tablets yet, and it cannot add your own .img maps."
+                }
               }
             ]
           }
@@ -192,7 +200,7 @@
             <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>Open-source project</p>
             <h1 id="hero-title">Install maps on Garmin watches, simply</h1>
             <p class="hero-lede">Install, update, and manage third-party maps from a native macOS app — without manual file transfers.</p>
-            <div class="hero-actions"><a class="download-action hero-download-action" href="/download/" data-umami-event="download-cta-click" data-umami-event-location="home-hero">Download <span aria-hidden="true">→</span></a><a class="text-link hero-compatibility-link" href="/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="home-hero">Check compatibility <span aria-hidden="true">→</span></a></div>
+            <div class="hero-actions"><a class="download-action hero-download-action" href="/download/" data-umami-event="download-cta-click" data-umami-event-location="home-hero">Download <span aria-hidden="true">→</span></a><a class="text-link hero-compatibility-link" href="/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="home-hero">Check compatibility <span aria-hidden="true">→</span></a><a class="text-link hero-web-installer-link" href="/install/" data-umami-event="web-installer-link-click" data-umami-event-location="home-hero">Or install from your browser<span aria-hidden="true">→</span></a></div>
           </div>
 
           <div class="hero-visual">
@@ -282,6 +290,19 @@
         </div></div>
       </section>
         </div>
+        </div>
+      </section>
+      <section class="web-installer section" id="web-installer" aria-labelledby="web-installer-title">
+        <div class="shell">
+          <div class="section-heading">
+            <p class="eyebrow">Web installer</p><h2 id="web-installer-title">No app? Install from your browser.</h2>
+          </div>
+          <div class="problem-statement">
+            <p>Connect your Garmin with a USB cable, choose maps and install them straight from Chrome, Edge, Opera or Brave. Update or remove them later the same way.</p>
+            <p>Works on a Mac and, still in testing, on Linux. Not on Windows, phones or tablets yet.</p>
+          </div>
+          <p class="guide-facts web-installer-facts"><span>Mac · Linux (testing)</span><span>Chrome, Edge, Opera, Brave</span><span>USB data cable</span></p>
+          <p class="web-installer-action"><a class="text-link" href="/install/" data-umami-event="web-installer-link-click" data-umami-event-location="home-section">Open the web installer<span aria-hidden="true">→</span></a></p>
         </div>
       </section>
       <section class="provider-section section" id="providers" aria-labelledby="providers-title">
@@ -390,6 +411,10 @@
                 <a class="text-link" href="mailto:hello&#64;terento.app?subject=Terento%20installation%20issue" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="email">Email support <span aria-hidden="true">→</span></a>
               </div>
             </details>
+            <details>
+              <summary>Can I install maps without installing the app?</summary>
+              <p>Yes. The <a href="/install/" data-umami-event="web-installer-link-click" data-umami-event-location="home-faq">web installer</a> installs, updates and removes catalog maps from Chrome, Edge, Opera or Brave on a Mac, and on Linux, where it is still being tested. It does not work on Windows, phones or tablets yet, and it cannot add your own .img maps.</p>
+            </details>
             </div>
         </div>
       </section>
@@ -417,7 +442,7 @@
         </div>
         <nav class="footer-nav" data-shell-aria="footer" aria-label="Footer navigation">
           <a href="/#faq" data-shell-copy="faq" data-shell-route="faq" data-umami-event="faq-link-click" data-umami-event-location="footer-nav">FAQ</a><a href="/guides/troubleshooting/" data-shell-copy="troubleshooting" data-shell-route="troubleshooting" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Troubleshooting</a>
-          <a data-shell-copy="web_installer" href="https://lab.terento.app/install/" data-umami-event="web-installer-link-click" data-umami-event-location="footer-nav">Web installer</a>
+          <a data-shell-copy="web_installer" href="/install/" data-umami-event="web-installer-link-click" data-umami-event-location="footer-nav">Web installer</a>
           <a data-shell-copy="legal" href="/legal/" data-umami-event="legal-link-click" data-umami-event-location="footer-nav">Legal</a>
           <a data-shell-copy="privacy" href="/privacy/" data-umami-event="privacy-link-click" data-umami-event-location="footer-nav">Privacy</a>
         </nav>

@@ -29,7 +29,7 @@ function visibleFaq(source, file) {
   assert.ok(section, `${file}: Home FAQ section`);
   const entries = [...section[1].matchAll(/<details>\s*<summary>([\s\S]*?)<\/summary>\s*<p>([\s\S]*?)<\/p>\s*(?:<div class="faq-support-actions">[\s\S]*?<\/div>\s*)?<\/details>/gi)]
     .map((match) => ({ question: visibleText(match[1]), answer: visibleText(match[2]), markup: match[0] }));
-  assert.equal(entries.length, 6, `${file}: exactly six FAQ entries`);
+  assert.equal(entries.length, 7, `${file}: exactly seven FAQ entries`);
   return entries;
 }
 
@@ -40,6 +40,7 @@ const questionSignals = [
   [/update|aktual|mise à jour|à jour|nowsz|novější|più recent|aggiorn/i, /Terento|map/i],
   [/Garmin/, /Garmin Express[\s\S]*Android File Transfer[\s\S]*OpenMTP/],
   [/fail|fehlsch|échou|nie powied|selže|riesce/i, /GitHub|hello@terento\.app/i],
+  [/app|aplikac|application/i, /Chrome[\s\S]*Linu[xk][\s\S]*Windows/],
 ];
 
 for (const locale of locales) {

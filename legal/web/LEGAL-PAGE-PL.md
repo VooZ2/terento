@@ -6,7 +6,7 @@ Terento to bezpłatna aplikacja macOS o otwartym kodzie do instalowania i zarzą
 
 Terento to niezależny projekt publikowany przez osobę prywatną. Poznaj twórcę na stronie [O projekcie](/pl/about/). Kontakt: [hello@terento.app](mailto:hello@terento.app).
 
-Aplikacja jest przeznaczona dla komputerów Mac z Apple Silicon. Instalator webowy jest wersją beta i wymaga Google Chrome, Microsoft Edge, Opery lub Brave na Macu lub komputerze z Linuksem. Zgodność oceniamy dla każdego konkretnego modelu i wariantu zegarka. Przed użyciem sprawdź [zgodność](/pl/compatibility/). Wsparcie finansowe jest dobrowolne i nie odblokowuje funkcji, map ani dostawców.
+Aplikacja jest przeznaczona dla komputerów Mac z Apple Silicon. Instalator webowy wymaga Google Chrome, Microsoft Edge, Opery lub Brave na Macu lub komputerze z Linuksem; na Linuksie jest jeszcze testowany. Zgodność oceniamy dla każdego konkretnego modelu i wariantu zegarka. Przed użyciem sprawdź [zgodność](/pl/compatibility/). Wsparcie finansowe jest dobrowolne i nie odblokowuje funkcji, map ani dostawców.
 
 ## Licencje oprogramowania i komponentów
 
