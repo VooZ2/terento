@@ -315,7 +315,8 @@
 
   function renderList() {
     const list = $("map-styles-list");
-    const matching = areas.filter((item) => D.matches(item, state.query, countryName));
+    const matching = areas.filter((item) => (item.id === state.area || D.hasPreview(manifest, item.id))
+      && D.matches(item, state.query, countryName));
     let markup = "";
     let shown = 0;
     if (state.tab === "country") {

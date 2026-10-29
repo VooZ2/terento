@@ -87,6 +87,14 @@
     return layer && STATUSES.has(layer.status) ? layer.status : "PENDING";
   }
 
+  // Until a place has at least one drawn style it stays out of the list; without
+  // a manifest nothing is known yet, so every place is offered.
+  function hasPreview(manifest, areaId) {
+    if (!manifest) return true;
+    const area = manifestArea(manifest, areaId);
+    return Boolean(area && Array.isArray(area.layers) && area.layers.some((layer) => layer.status === "AVAILABLE"));
+  }
+
   function coveredCount(manifest, areaId, styleIds) {
     return styleIds.filter((styleId) => layerStatus(manifest, areaId, styleId) !== "NOT_COVERED").length;
   }
@@ -109,6 +117,6 @@
 
   return {
     bbox, defaultZoom, format, plural, normalize, matches, groupByCountry, parseHash, serializeHash,
-    layerStatus, coveredCount, tileUrl, bestAreas,
+    layerStatus, hasPreview, coveredCount, tileUrl, bestAreas,
   };
 });
