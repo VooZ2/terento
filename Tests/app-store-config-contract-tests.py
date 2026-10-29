@@ -286,14 +286,18 @@ class AppStoreConfigurationContract(unittest.TestCase):
             for layout in (nothing, other_support_folder):
                 self.assertIn("Run this on macOS", run(layout), layout.__name__)
 
-    def test_testflight_script_exports_and_checks_without_uploading(self) -> None:
+    def test_testflight_script_checks_the_package_before_uploading(self) -> None:
         script = (APP_STORE_DIR / "archive-for-testflight.sh").read_text(encoding="utf-8")
         self.assertIn("-configuration AppStore", script)
         self.assertIn('. "$repo_root/Packaging/release-config.sh"', script)
         self.assertIn("<string>app-store-connect</string>", script)
         self.assertIn("<key>destination</key>\n    <string>export</string>", script)
-        self.assertNotIn("<string>upload</string>", script)
-        self.assertNotRegex(script, r"altool|notarytool|--upload")
+        # Xcode's own upload with the signed-in Apple ID: no API key or
+        # password in the script, and only after every package check.
+        self.assertNotRegex(script, r"altool|notarytool|--upload|apiKey|authenticationKey")
+        upload = script.index('-exportOptionsPlist "$upload_options"')
+        self.assertLess(script.index('print("PASS: app and helper entitlements are exact")'), upload)
+        self.assertEqual(script.count("-exportArchive"), 2)
         self.assertIn('output="$HOME/TerentoAppStoreArchive"', script)
         # The exported package, not only the archive, is checked.
         checks = script.index('/usr/sbin/pkgutil --expand-full "$pkg" "$check"')
@@ -319,11 +323,15 @@ class AppStoreConfigurationContract(unittest.TestCase):
         self.assertIn('find "$app/Contents/MacOS" "$app/Contents/Frameworks" -type f >"$work/bundle-code.txt"', verify)
         self.assertIn('"$control_app/Contents/MacOS/"*', verify)
 
-    def test_docs_say_migration_copies(self) -> None:
+    def test_docs_say_migration_moves_the_dmg_data(self) -> None:
+        # Apple documents a copy, but a real first launch moved the files
+        # (2026-10-29), so every instruction plans for a move and a backup.
         readme = (APP_STORE_DIR / "README.md").read_text(encoding="utf-8")
-        self.assertIn('"The\noperating system will copy the file"', readme)
-        self.assertIn("The originals stay where they were.", readme)
-        self.assertNotRegex(readme, r"(?i)\bmoves?\b.{0,40}\bcontainer\b")
+        self.assertIn("so treat it as\na move.", readme)
+        self.assertNotIn("The originals stay where they were.", readme)
+        script = (APP_STORE_DIR / "archive-for-testflight.sh").read_text(encoding="utf-8")
+        self.assertIn("MOVES ~/Library/Application Support/Terento", script)
+        self.assertIn('ditto "$HOME/Library/Application Support/Terento" "$backup"', script)
 
     def test_helper_exits_unless_the_app_is_its_parent(self) -> None:
         app_store = {"RELEASE", "TERENTO_BUNDLED_MTP", "TERENTO_APP_STORE"}
@@ -399,6 +407,11 @@ class AppStoreConfigurationContract(unittest.TestCase):
         icon = (ROOT / "app/Terento/Assets.xcassets/CircleCheck.imageset/circle-check.svg").read_text(encoding="utf-8")
         self.assertIn("Font Awesome Free 7.3.1", icon)
         self.assertIn("CircleCheck.imageset/circle-check.svg", (ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8"))
+        # An undecided App Store build shows both Diagnostics boxes unticked;
+        # a same-value set from SwiftUI must not turn that into "declined".
+        diagnostics = (SWIFT_SOURCES / "Views" / "DiagnosticsView.swift").read_text(encoding="utf-8")
+        self.assertIn("guard enabled != evidenceController.compatibilitySharingEnabled else { return }", diagnostics)
+        self.assertIn("guard enabled != mapStatisticsController.sharingEnabled else { return }", diagnostics)
         about = active_source((SWIFT_SOURCES / "Views" / "AboutTerentoView.swift").read_text(encoding="utf-8"), APP_STORE_ONLY)
         self.assertIn("TerentoAppLinks.appStoreReview", about)
         links = (SWIFT_SOURCES / "Views" / "AppLinks.swift").read_text(encoding="utf-8")

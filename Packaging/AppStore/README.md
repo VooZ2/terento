@@ -113,10 +113,12 @@ entitlements.
 
 ## Container migration
 
-macOS copies the items in `Contents/Resources/container-migration.plist` into
-the app container once, when it first creates the container (Apple: "The
-operating system will copy the file"). The originals stay where they were. The manifest
-cannot use wildcards or filter file content.
+macOS moves the items in `Contents/Resources/container-migration.plist` into
+the app container once, when it first creates the container. Apple's
+documentation says "The operating system will copy the file", but on the
+owner's Mac (2026-10-29) the originals were gone from
+`~/Library/Application Support/Terento` after the first launch, so treat it as
+a move. The manifest cannot use wildcards or filter file content.
 
 `container-migration.plist` (production) lists, under
 `~/Library/Application Support/Terento`:
@@ -148,11 +150,13 @@ Embedding rules (`embed-sandbox-helper.sh`):
   `app.terento.mac` creates that container without migration, and macOS then
   never migrates for that ID on this Mac; the build prints a warning.
 
-Installing a TestFlight build copies the real DMG data into the container.
-After that the DMG app and the App Store app each keep their own manifests,
-and they are not synchronised: a map installed or removed with one app is not
-recorded by the other. Use one app per Mac. Back up
-`~/Library/Application Support/Terento` before the first TestFlight install.
+The first launch of a build with the bundle ID `app.terento.mac` (TestFlight,
+or an archive run directly) moves the real DMG data into the container. The
+DMG app then starts without its manifests and device key, so it must not be
+used on that Mac until the backup is copied back. The two apps never share
+manifests: a map installed or removed with one app is not recorded by the
+other. Use one app per Mac. Back up `~/Library/Application Support/Terento`
+before the first launch.
 
 ## Local sandbox test
 
@@ -184,7 +188,8 @@ Checks with a real watch (plan stage 1):
   Terento process ending (not of the click: quitting first removes partial
   downloads, and the helper ends with the process);
 - B6: the migrated files are in the container and DMG-installed maps show as
-  managed. The seed may keep its originals (Apple documents a copy).
+  managed. The seed may keep its originals (Apple documents a copy), but a
+  real install moved them.
 
 Install only a map that is not on the watch yet and remove it again with the
 test app. The test app works on a copy of the manifests, so do not update or
@@ -203,7 +208,7 @@ It:
    creates the certificates and the Mac App Store profile). The archive
    embeds the production migration manifest;
 2. exports a Mac App Store `.pkg` (`method` `app-store-connect`, `destination`
-   `export`). It never uploads;
+   `export`);
 3. checks the exported package, because the export re-signs nested code:
    - bundle ID, embedded profile, production migration manifest;
    - valid app signature and a signed package;
@@ -216,8 +221,11 @@ a version keeps the Release build number (`46`); each later upload of the same
 version passes a sequence number, `archive-for-testflight.sh 1` builds `46.1`,
 `2` builds `46.2`.
 
-The owner uploads the `.pkg` with Transporter. Installing it from TestFlight
-copies the real DMG data into the container once, so the script prints a
+After every check passes, the script exports the same archive again with
+`destination` `upload`: Xcode uploads it with the Apple ID signed in to Xcode,
+so no App Store Connect key leaves the Mac. If that fails, the checked `.pkg`
+can still be delivered with Transporter. The first launch moves the real DMG
+data into the container (see Container migration), so the script prints a
 `ditto` backup command to run first.
 
 ## CI

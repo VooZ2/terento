@@ -8,13 +8,14 @@
 # Xcode then creates the Apple Development and distribution certificates and
 # the Mac App Store provisioning profile itself (-allowProvisioningUpdates).
 #
-# This script does not upload anything. It prints the .pkg path; open that
-# file in Transporter (Mac App Store, free) and press Deliver.
+# After every check passes, Xcode uploads the package to App Store Connect with
+# the Apple ID signed in to Xcode (no API key leaves this Mac). The build then
+# appears in TestFlight after Apple's processing.
 #
-# The package carries the production container migration. Installing it from
-# TestFlight copies ~/Library/Application Support/Terento into
-# ~/Library/Containers/app.terento.mac once; the originals stay. Back them up
-# before installing (the script prints the command).
+# The package carries the production container migration. Its first launch
+# MOVES ~/Library/Application Support/Terento into the app container; the DMG
+# app then lacks its manifests. Back the folder up before the first launch
+# (the script prints the command).
 #
 # App Store Connect accepts each build number once per version. The package
 # keeps the Release build number (for example 46); a second upload of the same
@@ -28,7 +29,7 @@ die() {
     exit 1
 }
 
-usage() { sed -n '2,23p' "$0"; exit 2; }
+usage() { sed -n '2,/^# Usage:/p' "$0"; exit 2; }
 [ "$#" -le 1 ] || usage
 sequence="${1:-}"
 case "$sequence" in
@@ -172,16 +173,29 @@ version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/
 build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app/Contents/Info.plist")"
 backup="$HOME/TerentoDataBackup-$(date +%Y%m%d)"
 
+# The same archive is exported again, now straight to App Store Connect.
+upload_options="$output/UploadOptions.plist"
+sed 's#<string>export</string>#<string>upload</string>#' "$options" >"$upload_options"
+grep -q '<string>upload</string>' "$upload_options" || die "Could not write the upload options."
+echo "Uploading version $version, build $build to App Store Connect..."
+xcodebuild \
+    -exportArchive \
+    -archivePath "$archive" \
+    -exportPath "$output/upload" \
+    -exportOptionsPlist "$upload_options" \
+    -allowProvisioningUpdates >>"$log" 2>&1 || {
+    tail -n 60 "$log" >&2
+    die "Upload failed. The checked package is still at $pkg; Transporter can deliver it. Full log: $log"
+}
+
 cat <<EOF
 
-Package: $pkg
-Version $version, build $build. Signature:
+Uploaded: version $version, build $build. Signature:
 $(sed -n '1,4p' "$output/pkg-signature.txt")
 
 Next steps
-1. Upload: open Transporter, sign in with your Apple ID, drag the package
-   above into it and press Deliver.
-2. Before installing from TestFlight, back up the DMG app's data:
+1. Wait for Apple's processing email, then open TestFlight and press Update.
+2. Before the first TestFlight install, back up the DMG app's data:
      ditto "$HOME/Library/Application Support/Terento" "$backup"
-3. After installing, use only one Terento on this Mac at a time.
+3. Use only one Terento on this Mac at a time.
 EOF

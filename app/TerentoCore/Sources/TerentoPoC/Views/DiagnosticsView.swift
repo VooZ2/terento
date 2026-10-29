@@ -201,6 +201,9 @@ struct DiagnosticsView: View {
         Binding(
             get: { evidenceController.compatibilitySharingEnabled },
             set: { enabled in
+                // Only a real change is a choice. A same-value set must not
+                // record "declined" while an App Store build is still undecided.
+                guard enabled != evidenceController.compatibilitySharingEnabled else { return }
                 actionMessage = nil
                 evidenceController.decideConsent(enabled ? .accepted : .declined)
             }
@@ -211,6 +214,7 @@ struct DiagnosticsView: View {
         Binding(
             get: { mapStatisticsController.sharingEnabled },
             set: { enabled in
+                guard enabled != mapStatisticsController.sharingEnabled else { return }
                 actionMessage = nil
                 mapStatisticsController.decideConsent(enabled ? .accepted : .declined)
             }
