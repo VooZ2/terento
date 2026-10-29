@@ -13,7 +13,8 @@
 #      seed-only manifest), or the production manifest during `archive`.
 #      An ordinary build never embeds the production manifest, so running it
 #      can never migrate the real DMG data;
-#   3. signs nested code inside-out when code signing is allowed: both bundled
+#   3. declares ITSAppUsesNonExemptEncryption = NO in the app's Info.plist;
+#   4. signs nested code inside-out when code signing is allowed: both bundled
 #      dylibs and the helper. Xcode then signs the app itself.
 set -eu
 
@@ -59,6 +60,12 @@ if [ -n "$manifest" ]; then
 elif [ "$PRODUCT_BUNDLE_IDENTIFIER" = "app.terento.mac" ]; then
     echo "warning: this AppStore build has no container migration manifest. Running it creates ~/Library/Containers/app.terento.mac without migrating DMG data, and a later migration test with this bundle ID would then be skipped. Use Packaging/AppStore/build-local-sandbox-test.sh for local runs."
 fi
+
+# Terento uses only the encryption built into macOS (HTTPS, CommonCrypto and
+# CryptoKit hashes), so App Store Connect needs no export compliance answer.
+info_plist="${contents}/Info.plist"
+/usr/libexec/PlistBuddy -c "Delete :ITSAppUsesNonExemptEncryption" "$info_plist" >/dev/null 2>&1 || true
+/usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$info_plist"
 
 # 3. Nested code signing. Xcode does not sign files that build phases copy.
 identity="${EXPANDED_CODE_SIGN_IDENTITY:-}"

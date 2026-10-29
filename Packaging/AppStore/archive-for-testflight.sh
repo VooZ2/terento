@@ -114,6 +114,8 @@ helper="$app/Contents/MacOS/TerentoFinishingWorker"
     || die "The package does not carry the production migration manifest."
 [ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Contents/Info.plist")" = "$bundle_id" ] \
     || die "The package has the wrong bundle ID."
+[ "$(/usr/libexec/PlistBuddy -c 'Print :ITSAppUsesNonExemptEncryption' "$app/Contents/Info.plist")" = "false" ] \
+    || die "The package does not declare ITSAppUsesNonExemptEncryption = NO."
 /usr/bin/codesign --verify --deep --strict "$app" || die "The package's app signature is invalid."
 /usr/sbin/pkgutil --check-signature "$pkg" >"$output/pkg-signature.txt" || die "The package is not signed."
 

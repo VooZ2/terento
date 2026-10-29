@@ -302,6 +302,12 @@ class AppStoreConfigurationContract(unittest.TestCase):
                        "TerentoFinishingWorker-AppStore.entitlements"):
             self.assertGreater(script.index(needle, checks), checks, needle)
         self.assertTrue(os.access(APP_STORE_DIR / "archive-for-testflight.sh", os.X_OK))
+        self.assertIn("Print :ITSAppUsesNonExemptEncryption", script[checks:])
+        # Only the AppStore build phase adds the key; the DMG Info.plist stays as it is.
+        embed = (APP_STORE_DIR / "embed-sandbox-helper.sh").read_text(encoding="utf-8")
+        self.assertIn('"Add :ITSAppUsesNonExemptEncryption bool false"', embed)
+        self.assertLess(embed.index('!= "YES" ]; then\n    exit 0'), embed.index('"Add :ITSAppUsesNonExemptEncryption'))
+        self.assertNotIn("ITSAppUsesNonExemptEncryption", (ROOT / "app" / "Terento" / "Info.plist").read_text(encoding="utf-8"))
 
     def test_ci_scan_covers_all_bundle_code(self) -> None:
         verify = (APP_STORE_DIR / "verify-app-store-build.sh").read_text(encoding="utf-8")
