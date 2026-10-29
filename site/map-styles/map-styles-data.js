@@ -43,6 +43,17 @@
     return haystack.includes(needle);
   }
 
+  // A place that spans a border is listed under each of its countries.
+  function groupByCountry(items, countryName) {
+    const groups = {};
+    items.forEach((item) => {
+      new Set(item.countryCodes.map(countryName)).forEach((name) => {
+        (groups[name] = groups[name] || []).push(item);
+      });
+    });
+    return groups;
+  }
+
   function parseHash(hash) {
     const params = new URLSearchParams(String(hash || "").replace(/^#/, ""));
     const mode = params.get("mode");
@@ -97,7 +108,7 @@
   }
 
   return {
-    bbox, defaultZoom, format, plural, normalize, matches, parseHash, serializeHash,
+    bbox, defaultZoom, format, plural, normalize, matches, groupByCountry, parseHash, serializeHash,
     layerStatus, coveredCount, tileUrl, bestAreas,
   };
 });

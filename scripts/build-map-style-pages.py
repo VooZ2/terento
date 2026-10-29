@@ -24,7 +24,7 @@ PROVIDER_COPY = HOME["PROVIDER_CARD_COPY"]
 MAPRANDO_NOTES = HOME["MAPRANDO_LANGUAGE_NOTES"]
 STYLE_NOTES = {"maprando": MAPRANDO_NOTES, "bbbike-opentopo": HOME["BBBIKE_OPENTOPO_NOTES"]}
 LEAFLET_VERSION = "1.9.4"
-SCRIPT_VERSION = "20261026-map-styles-v11"
+SCRIPT_VERSION = "20261029-map-styles-v12"
 MANIFEST_URL = "https://api.terento.app/maps/previews/manifest.json"
 # BBBike stopped publishing its classic "bbbike" Garmin style for regular
 # regions in October 2026, so its Ontrail and OpenTopoMap styles are compared.
