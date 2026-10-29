@@ -43,6 +43,17 @@
     return haystack.includes(needle);
   }
 
+  // A place that spans a border is listed under each of its countries.
+  function groupByCountry(items, countryName) {
+    const groups = {};
+    items.forEach((item) => {
+      new Set(item.countryCodes.map(countryName)).forEach((name) => {
+        (groups[name] = groups[name] || []).push(item);
+      });
+    });
+    return groups;
+  }
+
   function parseHash(hash) {
     const params = new URLSearchParams(String(hash || "").replace(/^#/, ""));
     const mode = params.get("mode");
@@ -76,6 +87,14 @@
     return layer && STATUSES.has(layer.status) ? layer.status : "PENDING";
   }
 
+  // Until a place has at least one drawn style it stays out of the list; without
+  // a manifest nothing is known yet, so every place is offered.
+  function hasPreview(manifest, areaId) {
+    if (!manifest) return true;
+    const area = manifestArea(manifest, areaId);
+    return Boolean(area && Array.isArray(area.layers) && area.layers.some((layer) => layer.status === "AVAILABLE"));
+  }
+
   function coveredCount(manifest, areaId, styleIds) {
     return styleIds.filter((styleId) => layerStatus(manifest, areaId, styleId) !== "NOT_COVERED").length;
   }
@@ -97,7 +116,7 @@
   }
 
   return {
-    bbox, defaultZoom, format, plural, normalize, matches, parseHash, serializeHash,
-    layerStatus, coveredCount, tileUrl, bestAreas,
+    bbox, defaultZoom, format, plural, normalize, matches, groupByCountry, parseHash, serializeHash,
+    layerStatus, hasPreview, coveredCount, tileUrl, bestAreas,
   };
 });
