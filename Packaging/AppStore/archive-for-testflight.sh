@@ -16,7 +16,11 @@
 # ~/Library/Containers/app.terento.mac once; the originals stay. Back them up
 # before installing (the script prints the command).
 #
-# Usage: Packaging/AppStore/archive-for-testflight.sh
+# App Store Connect accepts each build number once per version. The package
+# keeps the Release build number (for example 46); a second upload of the same
+# version passes a sequence number and gets build 46.1, 46.2, ...
+#
+# Usage: Packaging/AppStore/archive-for-testflight.sh [UPLOAD_SEQUENCE]
 set -eu
 
 die() {
@@ -24,7 +28,13 @@ die() {
     exit 1
 }
 
-[ "$#" -eq 0 ] || { sed -n '2,19p' "$0"; exit 2; }
+usage() { sed -n '2,23p' "$0"; exit 2; }
+[ "$#" -le 1 ] || usage
+sequence="${1:-}"
+case "$sequence" in
+    "") ;;
+    *[!0-9]* | 0*) usage ;;
+esac
 [ "$(uname -s)" = "Darwin" ] || die "Run this on macOS with Xcode."
 command -v xcodebuild >/dev/null 2>&1 || die "xcodebuild not found. Install Xcode and run: sudo xcode-select -s /Applications/Xcode.app"
 
@@ -66,7 +76,19 @@ cat >"$options" <<EOF
 </plist>
 EOF
 
+build_override=""
+if [ -n "$sequence" ]; then
+    release_build="$(xcodebuild -project "$repo_root/$RELEASE_PROJECT" -scheme "$RELEASE_SCHEME" \
+        -configuration AppStore -showBuildSettings 2>/dev/null \
+        | awk '$1 == "CURRENT_PROJECT_VERSION" { print $3; exit }')"
+    case "$release_build" in
+        "" | *[!0-9]*) die "Could not read the AppStore build number." ;;
+    esac
+    build_override="CURRENT_PROJECT_VERSION=$release_build.$sequence"
+fi
+
 echo "Archiving the AppStore configuration (bundle ID $bundle_id, team $team)..."
+# shellcheck disable=SC2086 # build_override is one word or empty
 xcodebuild \
     -project "$repo_root/$RELEASE_PROJECT" \
     -scheme "$RELEASE_SCHEME" \
@@ -78,6 +100,7 @@ xcodebuild \
     CODE_SIGN_IDENTITY="Apple Development" \
     DEVELOPMENT_TEAM="$team" \
     PROVISIONING_PROFILE_SPECIFIER= \
+    $build_override \
     archive >"$log" 2>&1 || {
     tail -n 60 "$log" >&2
     die "Archive failed. Full log: $log"

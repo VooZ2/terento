@@ -374,12 +374,6 @@ enum AppFunnelUploadError: Error, Equatable, Sendable {
 }
 
 struct HTTPAppFunnelEventUploader: AppFunnelEventUploading {
-    #if TERENTO_APP_STORE
-    // App Store builds compile out diagnostics delivery (Packaging/AppStore/README.md).
-    func upload(_ event: AppFunnelEvent) async throws {
-        throw URLError(.cancelled)
-    }
-    #else
     let endpoint: URL
 
     init(endpoint: URL = URL(string: "https://api.terento.app/app-funnel/events")!) {
@@ -398,7 +392,6 @@ struct HTTPAppFunnelEventUploader: AppFunnelEventUploading {
         guard let http = response as? HTTPURLResponse else { throw AppFunnelUploadError.invalidResponse }
         guard (200..<300).contains(http.statusCode) else { throw AppFunnelUploadError.httpStatus(http.statusCode) }
     }
-    #endif
 }
 
 enum AppFunnelEventEncoding {
@@ -437,7 +430,7 @@ final class AppFunnelTelemetryController {
         retryDelays: [UInt64] = [0, 5_000_000_000, 30_000_000_000],
         now: @escaping @Sendable () -> Date = { Date() },
         appBuild: String = TerentoTelemetryMetadata.eventBuild,
-        releaseLabel: String = TerentoTelemetryMetadata.releaseLabel,
+        releaseLabel: String = TerentoTelemetryMetadata.eventReleaseLabel,
         sessionID: UUID = AppFunnelSession.id
     ) {
         self.store = store

@@ -68,16 +68,6 @@ struct DiagnosticsView: View {
                     }
                     #endif
 
-                    #if TERENTO_APP_STORE
-                    // App Store builds compile out every diagnostics upload;
-                    // results stay in local history (Packaging/AppStore/README.md).
-                    diagnosticsSection(title: "Sharing") {
-                        Text("This build does not send diagnostics. Installation results and failure reports stay on this Mac.")
-                            .font(.terentoUI(size: 13, weight: .regular))
-                            .foregroundStyle(TerentoColors.secondaryText)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    #else
                     diagnosticsSection(title: "Sharing") {
                         Toggle(isOn: compatibilitySharingBinding) {
                             VStack(alignment: .leading, spacing: 3) {
@@ -105,13 +95,21 @@ struct DiagnosticsView: View {
                         .toggleStyle(.checkbox)
                         .tint(TerentoColors.interactive)
 
+                        #if TERENTO_APP_STORE
+                        // App Store builds share only after an opt-in.
+                        Text("Both diagnostics streams are off until you turn them on here or choose Share install results with Terento after an installation. Turning either option off stops future sharing and clears its unsent local queue. Custom IMG installations are sent only as compatibility diagnostics, never as map usage diagnostics.")
+                            .font(.terentoUI(size: 12, weight: .regular))
+                            .foregroundStyle(TerentoColors.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.top, 4)
+                        #else
                         Text("Both diagnostics streams are enabled by default. Turning either option off stops future sharing and clears its unsent local queue. Custom IMG installations are sent only as compatibility diagnostics, never as map usage diagnostics.")
                             .font(.terentoUI(size: 12, weight: .regular))
                             .foregroundStyle(TerentoColors.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
                             .padding(.top, 4)
+                        #endif
                     }
-                    #endif
 
                     diagnosticsSection(title: "Failure report") {
                         #if TERENTO_APP_STORE
@@ -152,7 +150,6 @@ struct DiagnosticsView: View {
                         #endif
                     }
 
-                    #if !TERENTO_APP_STORE
                     diagnosticsSection(title: "Delivery") {
                         VStack(alignment: .leading, spacing: 8) {
                             diagnosticCountRow(
@@ -189,7 +186,6 @@ struct DiagnosticsView: View {
                                 .padding(.top, 8)
                         }
                     }
-                    #endif
 
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

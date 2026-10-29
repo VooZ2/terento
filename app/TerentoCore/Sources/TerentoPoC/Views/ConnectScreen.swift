@@ -1,4 +1,7 @@
 import AppKit
+#if TERENTO_APP_STORE
+import StoreKit
+#endif
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -65,6 +68,10 @@ struct ConnectScreen: View {
     @State private var resolvedDeviceAsset = ResolvedDeviceAsset.fallback
     @State private var diagnosticLogMessage: String?
     @State private var isShowingInstallationFailure = false
+    #if TERENTO_APP_STORE
+    @State private var isShowingInstallSharingPrompt = false
+    @Environment(\.requestReview) private var requestReview
+    #endif
     @State private var supportReportPayload: SupportReportPayload?
     @State private var installationFailureFollowUp: InstallationFailureFollowUp = .backToDevice
     @State private var retryInstallationAfterScan = false
@@ -352,6 +359,9 @@ struct ConnectScreen: View {
             if phase == .completed {
                 selectedSection = .installMaps
                 localInstallStep = .done
+                #if TERENTO_APP_STORE
+                handleSuccessfulInstallation()
+                #endif
             }
         }
         .onChange(of: lifecycleViewModel.isBusy) { _ in
@@ -417,7 +427,34 @@ struct ConnectScreen: View {
             }
             .interactiveDismissDisabled(false)
         }
+        #if TERENTO_APP_STORE
+        .sheet(isPresented: $isShowingInstallSharingPrompt) {
+            InstallSharingDialog(
+                mapTitles: successfullyInstalledItems.map(\.title),
+                isPartial: hasPartialInstallation,
+                onDone: { share in
+                    evidenceController.decideConsent(share ? .accepted : .declined)
+                    mapStatisticsController.decideConsent(share ? .accepted : .declined)
+                    isShowingInstallSharingPrompt = false
+                }
+            )
+            .interactiveDismissDisabled(true)
+        }
+        #endif
     }
+
+    #if TERENTO_APP_STORE
+    /// App Store builds ask about sharing once, after the first successful
+    /// installation, and later let macOS decide whether to ask for a rating.
+    private func handleSuccessfulInstallation() {
+        let asksAboutSharing = evidenceController.needsSharingDecision
+        if AppStoreReviewPolicy.recordSuccessfulInstallation(
+            version: TerentoTelemetryMetadata.version, mayRequest: !asksAboutSharing) {
+            requestReview()
+        }
+        isShowingInstallSharingPrompt = asksAboutSharing
+    }
+    #endif
 
     private var mainContent: some View {
         Group {
@@ -3136,6 +3173,120 @@ private struct InstallationFailureDialog: View {
         .accessibilityElement(children: .contain)
     }
 }
+
+#if TERENTO_APP_STORE
+/// Shown once, after the first successful installation in App Store builds.
+/// Sharing starts unticked; Done records the choice either way.
+private struct InstallSharingDialog: View {
+    let mapTitles: [String]
+    let isPartial: Bool
+    let onDone: (Bool) -> Void
+    @State private var share = false
+
+    private var title: String {
+        mapTitles.count > 1 ? "Maps installed" : "Map installed"
+    }
+
+    private var message: String {
+        if isPartial {
+            return "The main map is ready and verified. You can safely disconnect your Garmin; the optional contours were not completed."
+        }
+        return mapTitles.count > 1
+            ? "Your maps are ready and verified. You can safely disconnect your Garmin."
+            : "Your map is ready and verified. You can safely disconnect your Garmin."
+    }
+
+    private var shareDetails: AttributedString {
+        var link = AttributedString("Privacy Policy ↗")
+        link.link = TerentoAppLinks.privacyFromApp
+        link.foregroundColor = TerentoColors.interactive
+        link.font = Font.terentoUI(size: 12, weight: .semibold)
+        return AttributedString("Watch model and software, map name, result, and app versions. Never serial numbers, Unit IDs or files. Change anytime in Diagnostics. ") + link
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image("CircleCheck")
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 29, height: 29)
+                .foregroundStyle(TerentoColors.lichenDark)
+                .frame(width: 40, height: 40, alignment: .top)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 0) {
+                Text(title)
+                    .font(.terentoHeading(size: 27, weight: .semibold))
+                    .foregroundStyle(TerentoColors.graphite)
+                    .accessibilityAddTraits(.isHeader)
+
+                if !mapTitles.isEmpty {
+                    Text(mapTitles.joined(separator: ", "))
+                        .font(.terentoUI(size: 13, weight: .semibold))
+                        .foregroundStyle(TerentoColors.secondaryText)
+                        .lineLimit(2)
+                        .truncationMode(.middle)
+                        .padding(.top, 5)
+                }
+
+                Text(message)
+                    .font(.terentoUI(size: 14, weight: .regular))
+                    .foregroundStyle(TerentoColors.graphite)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 22)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle(isOn: $share) {
+                        Text("Share install results with Terento")
+                            .font(.terentoUI(size: 14, weight: .semibold))
+                            .foregroundStyle(TerentoColors.graphite)
+                    }
+                    .toggleStyle(.checkbox)
+                    .tint(TerentoColors.interactive)
+
+                    Text(shareDetails)
+                        .font(.terentoUI(size: 12, weight: .medium))
+                        .foregroundStyle(TerentoColors.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.leading, 20)
+                }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(TerentoColors.surfaceElevated, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(TerentoColors.border, lineWidth: 1)
+                }
+                .padding(.top, 20)
+
+                HStack {
+                    Spacer(minLength: 0)
+                    Button {
+                        onDone(share)
+                    } label: {
+                        Text("Done")
+                            .font(.terentoUI(size: 14, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 16)
+                            .frame(minHeight: 38)
+                            .background(TerentoColors.interactive, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .keyboardShortcut(.defaultAction)
+                }
+                .padding(.top, 24)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(28)
+        .frame(width: 500)
+        .background(TerentoColors.canvas, in: RoundedRectangle(cornerRadius: 27, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 27, style: .continuous))
+        .preferredColorScheme(.light)
+    }
+}
+#endif
 
 private struct TerentoConfirmationDialog: View {
     private static let cornerRadius: CGFloat = 27

@@ -176,7 +176,7 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
         mapResultIndex: Int = 0,
         selectedMapCount: Int = 1,
         appBuild: String = TerentoTelemetryMetadata.eventBuild,
-        releaseLabel: String = TerentoTelemetryMetadata.releaseLabel,
+        releaseLabel: String = TerentoTelemetryMetadata.eventReleaseLabel,
         failureStage: EvidenceFailureStage? = nil,
         failureCode: String? = nil,
         nativeFailureCode: EvidenceNativeFailureCode? = nil,
@@ -185,7 +185,7 @@ struct InstallationEvidenceEvent: Codable, Equatable, Identifiable, Sendable {
         cleanupAttempted: Bool = false,
         cleanupSucceeded: Bool = false,
         transferProgressBucket: EvidenceTransferProgressBucket? = .zero,
-        terentoVersion: String = TerentoTelemetryMetadata.releaseLabel,
+        terentoVersion: String = TerentoTelemetryMetadata.eventReleaseLabel,
         macOSVersion: String = ProcessInfo.processInfo.operatingSystemVersionString,
         failureContext: InstallationFailureContext? = nil,
         originalFailureContext: InstallationFailureContext? = nil,
@@ -364,10 +364,27 @@ enum EvidenceConsentChoice: String, Codable, Sendable {
 }
 
 struct VersionedEvidenceConsent: Codable, Equatable, Sendable {
+    #if TERENTO_APP_STORE
+    /// App Store builds share only after an explicit opt-in. Their notice
+    /// numbers never overlap the direct-download app's, so a choice copied
+    /// from that app's container is recognised as made under its notice.
+    static let currentNoticeVersion = 100
+    #else
     static let currentNoticeVersion = 4
+    #endif
     let noticeVersion: Int
     let choice: EvidenceConsentChoice
     let decidedAt: Date
+
+    /// The direct-download app shares unless the person opted out. App Store
+    /// builds share only after the person opted in under the current notice.
+    static func permitsSharing(_ consent: VersionedEvidenceConsent?) -> Bool {
+        #if TERENTO_APP_STORE
+        return consent?.choice == .accepted && consent?.noticeVersion == currentNoticeVersion
+        #else
+        return consent?.choice != .declined
+        #endif
+    }
 }
 
 struct CompatibilityEvidenceSummary: Equatable, Sendable {
@@ -474,7 +491,9 @@ final class LocalInstallationEvidenceStore: @unchecked Sendable {
             var file = try loadUnlocked()
             guard !file.events.contains(where: { $0.id == event.id }) else { return false }
             file.events.append(event)
-            if queueForUpload && file.consent?.choice != .declined { file.pendingUploadEventIDs.append(event.id) }
+            if queueForUpload && VersionedEvidenceConsent.permitsSharing(file.consent) {
+                file.pendingUploadEventIDs.append(event.id)
+            }
             try saveUnlocked(file)
             return true
         }
@@ -497,6 +516,28 @@ final class LocalInstallationEvidenceStore: @unchecked Sendable {
     }
 
     func migrateConsentToCurrentNotice() throws {
+        #if TERENTO_APP_STORE
+        // A choice copied from the direct-download app was made under its
+        // opt-out notice. Only a refusal carries over; everything else asks
+        // again, and nothing queued under the old notice is ever sent.
+        try lock.withLock {
+            var file = try loadUnlocked()
+            guard file.consent?.noticeVersion != VersionedEvidenceConsent.currentNoticeVersion,
+                  file.consent != nil || !file.pendingUploadEventIDs.isEmpty || file.parkedUploads != nil else {
+                return
+            }
+            file.consent = file.consent.flatMap { consent in
+                consent.choice == .declined ? VersionedEvidenceConsent(
+                    noticeVersion: VersionedEvidenceConsent.currentNoticeVersion,
+                    choice: .declined,
+                    decidedAt: consent.decidedAt
+                ) : nil
+            }
+            file.pendingUploadEventIDs.removeAll()
+            file.parkedUploads = nil
+            try saveUnlocked(file)
+        }
+        #else
         try lock.withLock {
             var file = try loadUnlocked()
             guard let consent = file.consent,
@@ -514,6 +555,7 @@ final class LocalInstallationEvidenceStore: @unchecked Sendable {
             }
             try saveUnlocked(file)
         }
+        #endif
     }
 
     func pendingUploads() -> [InstallationEvidenceEvent] {
@@ -706,12 +748,6 @@ enum InstallationEvidenceUploadError: LocalizedError, Equatable, Sendable {
 }
 
 struct HTTPInstallationEvidenceUploader: InstallationEvidenceUploading {
-    #if TERENTO_APP_STORE
-    // App Store builds compile out diagnostics delivery (Packaging/AppStore/README.md).
-    func upload(_ event: InstallationEvidenceEvent) async throws {
-        throw URLError(.cancelled)
-    }
-    #else
     let endpoint: URL
 
     init(endpoint: URL = URL(string: "https://api.terento.app/compatibility/events")!) {
@@ -737,7 +773,6 @@ struct HTTPInstallationEvidenceUploader: InstallationEvidenceUploading {
         }
     }
 
-    #endif
 }
 
 enum InstallationEvidenceUploadStatus: Equatable, Sendable {
@@ -786,33 +821,34 @@ final class InstallationEvidenceController: ObservableObject {
         self.automaticRetryDelays = automaticRetryDelays
         self.now = now
         self.appBuild = appBuild
-        #if !TERENTO_APP_STORE
-        // App Store builds keep a migrated choice untouched; a later consent
-        // flow, not this build, decides what it means.
         try? store.migrateConsentToCurrentNotice()
-        #endif
         if uploadEnabled {
             schedulePendingUploadFlush()
         }
     }
 
     var uploadEnabled: Bool {
-        #if TERENTO_APP_STORE
-        // Results stay in local history only; nothing is queued or sent.
-        return false
-        #else
-        return compatibilitySharingEnabled
-        #endif
+        compatibilitySharingEnabled
     }
 
     var currentConsentChoice: EvidenceConsentChoice? {
         store.consent()?.choice
     }
 
-    /// No consent record means privacy-minimised diagnostics are enabled by default.
-    /// An explicit opt-out remains persisted across app updates.
+    /// No consent record means privacy-minimised diagnostics are enabled by
+    /// default, except in App Store builds, which wait for an opt-in. An
+    /// explicit choice remains persisted across app updates.
     var compatibilitySharingEnabled: Bool {
-        currentConsentChoice != .declined
+        VersionedEvidenceConsent.permitsSharing(store.consent())
+    }
+
+    /// App Store builds ask once, after the first successful installation.
+    var needsSharingDecision: Bool {
+        #if TERENTO_APP_STORE
+        return store.consent() == nil
+        #else
+        return false
+        #endif
     }
 
     /// Notified when device-compatibility reporting is turned off, so other
@@ -850,11 +886,7 @@ final class InstallationEvidenceController: ObservableObject {
     /// Returns false when the local write failed; delivery then retries it.
     @discardableResult
     nonisolated func persistResults(_ events: [InstallationEvidenceEvent]) -> Bool {
-        #if TERENTO_APP_STORE
-        let queueForUpload = false
-        #else
-        let queueForUpload = store.consent()?.choice != .declined
-        #endif
+        let queueForUpload = VersionedEvidenceConsent.permitsSharing(store.consent())
         do {
             for event in events { try store.append(event, queueForUpload: queueForUpload) }
             return true

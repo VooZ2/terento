@@ -33,16 +33,11 @@ struct TerentoPoCApp: App {
     init() {
         let statistics = MapStatisticsEventController()
         let evidence = InstallationEvidenceController()
-        #if TERENTO_APP_STORE
-        // App Store builds compile out funnel delivery (Packaging/AppStore/README.md).
-        let funnel = AppFunnelTelemetryController(sharingEnabled: { false })
-        #else
         // The funnel shares the device-compatibility reporting preference.
         let evidenceStore = evidence.store
         let funnel = AppFunnelTelemetryController(sharingEnabled: {
-            evidenceStore.consent()?.choice != .declined
+            VersionedEvidenceConsent.permitsSharing(evidenceStore.consent())
         })
-        #endif
         evidence.onSharingDeclined = { [weak funnel] in funnel?.sharingDeclined() }
         self.funnel = funnel
         let device = DeviceEngine()

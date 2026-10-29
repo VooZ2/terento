@@ -69,7 +69,7 @@ struct MapStatisticsEvent: Codable, Equatable, Identifiable, Sendable {
         componentKind: MapArtifactKind? = nil,
         mapResultIndex: Int? = nil,
         appBuild: String = TerentoTelemetryMetadata.eventBuild,
-        releaseLabel: String = TerentoTelemetryMetadata.releaseLabel
+        releaseLabel: String = TerentoTelemetryMetadata.eventReleaseLabel
     ) {
         schemaVersion = Self.schemaVersion
         self.id = id
@@ -155,10 +155,25 @@ enum MapStatisticsConsentChoice: String, Codable, Sendable {
 }
 
 struct VersionedMapStatisticsConsent: Codable, Equatable, Sendable {
+    #if TERENTO_APP_STORE
+    /// App Store builds share only after an explicit opt-in; see
+    /// `VersionedEvidenceConsent.currentNoticeVersion`.
+    static let currentNoticeVersion = 100
+    #else
     static let currentNoticeVersion = 2
+    #endif
     let noticeVersion: Int
     let choice: MapStatisticsConsentChoice
     let decidedAt: Date
+
+    /// Opt-out in the direct-download app, opt-in in App Store builds.
+    static func permitsSharing(_ consent: VersionedMapStatisticsConsent?) -> Bool {
+        #if TERENTO_APP_STORE
+        return consent?.choice == .accepted && consent?.noticeVersion == currentNoticeVersion
+        #else
+        return consent?.choice != .declined
+        #endif
+    }
 }
 
 /// A queued event that the server rejected with a non-retryable status. It is
@@ -262,7 +277,7 @@ final class LocalMapStatisticsEventStore: @unchecked Sendable {
     func appendIfSharingEnabled(_ event: MapStatisticsEvent) throws -> Bool {
         try lock.withLock {
             var file = try loadUnlocked()
-            guard file.consent?.choice != .declined,
+            guard VersionedMapStatisticsConsent.permitsSharing(file.consent),
                   !file.pendingEvents.contains(where: { $0.id == event.id }),
                   !(file.parkedEvents ?? []).contains(where: { $0.event.id == event.id }) else {
                 return false
@@ -290,14 +305,7 @@ final class LocalMapStatisticsEventStore: @unchecked Sendable {
     func reconcileInterruptedAcquisitions() throws {
         try lock.withLock {
             var file = try loadUnlocked()
-            #if TERENTO_APP_STORE
-            // App Store builds send nothing, so a migrated interrupted download
-            // is dropped instead of queued.
-            let queueInterrupted = false
-            #else
-            let queueInterrupted = file.consent?.choice != .declined
-            #endif
-            if queueInterrupted {
+            if VersionedMapStatisticsConsent.permitsSharing(file.consent) {
                 file.pendingEvents += (file.activeAcquisitions ?? []).map { $0.phase(.downloadInterrupted) }
             }
             file.activeAcquisitions = []
@@ -306,6 +314,29 @@ final class LocalMapStatisticsEventStore: @unchecked Sendable {
     }
 
     func migrateConsentToCurrentNotice() throws {
+        #if TERENTO_APP_STORE
+        // Only a refusal copied from the direct-download app carries over;
+        // nothing queued under its opt-out notice is ever sent.
+        try lock.withLock {
+            var file = try loadUnlocked()
+            guard file.consent?.noticeVersion != VersionedMapStatisticsConsent.currentNoticeVersion,
+                  file.consent != nil || !file.pendingEvents.isEmpty || file.parkedEvents != nil
+                    || !(file.activeAcquisitions ?? []).isEmpty else {
+                return
+            }
+            file.consent = file.consent.flatMap { consent in
+                consent.choice == .declined ? VersionedMapStatisticsConsent(
+                    noticeVersion: VersionedMapStatisticsConsent.currentNoticeVersion,
+                    choice: .declined,
+                    decidedAt: consent.decidedAt
+                ) : nil
+            }
+            file.pendingEvents.removeAll()
+            file.activeAcquisitions = []
+            file.parkedEvents = nil
+            try saveUnlocked(file)
+        }
+        #else
         try lock.withLock {
             var file = try loadUnlocked()
             guard let consent = file.consent,
@@ -324,6 +355,7 @@ final class LocalMapStatisticsEventStore: @unchecked Sendable {
             }
             try saveUnlocked(file)
         }
+        #endif
     }
 
     func markUploaded(eventID: UUID) throws {
@@ -389,12 +421,6 @@ enum MapStatisticsUploadError: Error, Sendable {
 }
 
 struct HTTPMapStatisticsEventUploader: MapStatisticsEventUploading {
-    #if TERENTO_APP_STORE
-    // App Store builds compile out diagnostics delivery (Packaging/AppStore/README.md).
-    func upload(_ event: MapStatisticsEvent) async throws {
-        throw URLError(.cancelled)
-    }
-    #else
     let endpoint: URL
 
     init(endpoint: URL = URL(string: "https://api.terento.app/map-events")!) {
@@ -419,7 +445,6 @@ struct HTTPMapStatisticsEventUploader: MapStatisticsEventUploading {
             throw MapStatisticsUploadError.httpStatus(http.statusCode)
         }
     }
-    #endif
 }
 
 enum MapStatisticsUploadStatus: Equatable, Sendable {
@@ -458,23 +483,16 @@ final class MapStatisticsEventController: ObservableObject {
         self.retryDelays = retryDelays
         self.now = now
         self.appBuild = appBuild
-        #if !TERENTO_APP_STORE
-        // App Store builds keep a migrated choice untouched.
         try? store.migrateConsentToCurrentNotice()
-        #endif
         try? store.reconcileInterruptedAcquisitions()
         if sharingEnabled { scheduleFlush() }
     }
 
-    /// Privacy-minimised map usage diagnostics are enabled by default. An explicit
-    /// opt-out remains persisted and is independent from compatibility data.
+    /// Privacy-minimised map usage diagnostics are enabled by default, except
+    /// in App Store builds, which wait for an opt-in. An explicit choice
+    /// remains persisted and is independent from compatibility data.
     var sharingEnabled: Bool {
-        #if TERENTO_APP_STORE
-        // Map usage events exist only to be sent, so nothing is recorded.
-        return false
-        #else
-        return store.consent()?.choice != .declined
-        #endif
+        VersionedMapStatisticsConsent.permitsSharing(store.consent())
     }
 
     func decideConsent(_ choice: MapStatisticsConsentChoice) {
@@ -508,16 +526,12 @@ final class MapStatisticsEventController: ObservableObject {
     /// so callbacks delivered in order are queued in that order and survive a
     /// quit; only network delivery hops to the main actor afterwards.
     nonisolated func recordFromAnyContext(_ event: MapStatisticsEvent) {
-        #if TERENTO_APP_STORE
-        return
-        #else
         guard event.providerId != "custom" else { return }
         let persisted = (try? store.appendIfSharingEnabled(event)) != nil
         Task { @MainActor [weak self] in
             guard let self else { return }
             if persisted { self.scheduleFlush() } else { self.record(event) }
         }
-        #endif
     }
 
     private func persistBufferedEvents() {

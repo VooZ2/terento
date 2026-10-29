@@ -4,9 +4,10 @@
 The macOS CI job builds the configuration and inspects the signed bundle
 (Packaging/AppStore/verify-app-store-build.sh). This test runs anywhere and
 checks the sources that decide that bundle: entitlements, Xcode settings,
-container migration manifests, and that update, donation and diagnostics-upload
-code is compiled out of the AppStore configuration but still present in the
-DMG configuration.
+container migration manifests, that update, donation and support-report code
+is compiled out of the AppStore configuration but still present in the DMG
+configuration, and that the AppStore configuration sends other diagnostics only
+after an explicit opt-in.
 """
 
 from __future__ import annotations
@@ -55,11 +56,10 @@ NOT_MIGRATED = [
 FORBIDDEN_IN_APP_STORE = [
     "updates/macos-arm64.json",
     "buymeacoffee",
-    "api.terento.app/compatibility/events",
-    "api.terento.app/map-events",
-    "api.terento.app/app-funnel/events",
     "api.terento.app/support/reports",
 ]
+DMG_ONLY = {"RELEASE", "TERENTO_BUNDLED_MTP"}
+APP_STORE_ONLY = DMG_ONLY | {"TERENTO_APP_STORE"}
 # Settings in which the AppStore target configuration may differ from Release.
 APP_STORE_DIFFERENCES = {
     "CODE_SIGN_ENTITLEMENTS",
@@ -302,6 +302,9 @@ class AppStoreConfigurationContract(unittest.TestCase):
                        "TerentoFinishingWorker-AppStore.entitlements"):
             self.assertGreater(script.index(needle, checks), checks, needle)
         self.assertTrue(os.access(APP_STORE_DIR / "archive-for-testflight.sh", os.X_OK))
+        # A repeat upload keeps the Release build number as its first part.
+        self.assertIn('build_override="CURRENT_PROJECT_VERSION=$release_build.$sequence"', script)
+        self.assertIn("    $build_override \\\n    archive", script)
         self.assertIn("Print :ITSAppUsesNonExemptEncryption", script[checks:])
         # Only the AppStore build phase adds the key; the DMG Info.plist stays as it is.
         embed = (APP_STORE_DIR / "embed-sandbox-helper.sh").read_text(encoding="utf-8")
@@ -344,21 +347,64 @@ class AppStoreConfigurationContract(unittest.TestCase):
         self.assertNotIn("BoundedNativeChildren", launcher + app)
         self.assertNotIn("terminateAll", launcher + app)
 
-    def test_app_store_build_queues_no_interrupted_download_events(self) -> None:
-        source = (SWIFT_SOURCES / "Statistics" / "MapStatisticsEvent.swift").read_text(encoding="utf-8")
-        app_store = active_source(source, {"RELEASE", "TERENTO_APP_STORE"})
-        dmg = active_source(source, {"RELEASE"})
-        self.assertIn("let queueInterrupted = false", app_store)
-        self.assertIn("let queueInterrupted = file.consent?.choice != .declined", dmg)
-        # The only place interrupted downloads are queued is behind that flag.
-        guarded = "if queueInterrupted {\n                file.pendingEvents += (file.activeAcquisitions ?? []).map { $0.phase(.downloadInterrupted) }"
-        for text in (app_store, dmg):
-            self.assertEqual(text.count(".phase(.downloadInterrupted)"), 1)
-            self.assertIn(guarded, text)
+    def test_sharing_is_opt_in_and_ignores_migrated_choices(self) -> None:
+        for path, consent, dmg_version, queue in (
+            ("Compatibility/InstallationEvidence.swift", "VersionedEvidenceConsent", 4, "file.pendingUploadEventIDs"),
+            ("Statistics/MapStatisticsEvent.swift", "VersionedMapStatisticsConsent", 2, "file.pendingEvents"),
+        ):
+            source = (SWIFT_SOURCES / path).read_text(encoding="utf-8")
+            app_store, dmg = active_source(source, APP_STORE_ONLY), active_source(source, DMG_ONLY)
+            # Notice numbers never overlap, so a copied DMG choice is recognisable.
+            self.assertIn("static let currentNoticeVersion = 100", app_store)
+            self.assertIn(f"static let currentNoticeVersion = {dmg_version}", dmg)
+            self.assertIn("return consent?.choice == .accepted && consent?.noticeVersion == currentNoticeVersion", app_store)
+            self.assertIn("return consent?.choice != .declined", dmg)
+            # Every opt-out test in the store and controller goes through the policy.
+            self.assertNotIn("consent()?.choice != .declined", app_store)
+            self.assertNotIn("guard file.consent?.choice != .declined,\n                  !file", app_store)
+            # Start-up migration: only a refusal survives; every queue is dropped.
+            migration = app_store[app_store.index("func migrateConsentToCurrentNotice() throws {"):]
+            migration = migration[:migration.index("\n    }\n")]
+            self.assertIn("consent.choice == .declined ? " + consent + "(", migration)
+            self.assertIn(") : nil", migration)
+            self.assertIn(queue + ".removeAll()", migration)
+            self.assertIn("try? store.migrateConsentToCurrentNotice()", app_store)
+            self.assertIn(f"{consent}.permitsSharing(", app_store)
+        app = active_source((SWIFT_SOURCES / "TerentoPoCApp.swift").read_text(encoding="utf-8"), APP_STORE_ONLY)
+        self.assertIn("VersionedEvidenceConsent.permitsSharing(evidenceStore.consent())", app)
+
+    def test_app_store_events_are_labelled(self) -> None:
+        metadata = (SWIFT_SOURCES / "Telemetry" / "TerentoTelemetryMetadata.swift").read_text(encoding="utf-8")
+        self.assertIn("return appStoreEventReleaseLabel(releaseLabel)", active_source(metadata, APP_STORE_ONLY))
+        self.assertIn('label + (label.contains("+") ? ".appstore" : "+appstore")', metadata)
+        for path in ("Compatibility/InstallationEvidence.swift", "Statistics/MapStatisticsEvent.swift",
+                     "Telemetry/AppFunnelTelemetry.swift"):
+            source = (SWIFT_SOURCES / path).read_text(encoding="utf-8")
+            self.assertIn("= TerentoTelemetryMetadata.eventReleaseLabel", source, path)
+            self.assertNotIn("= TerentoTelemetryMetadata.releaseLabel", source, path)
+
+    def test_sharing_prompt_and_review_request_are_app_store_only(self) -> None:
+        source = (SWIFT_SOURCES / "Views" / "ConnectScreen.swift").read_text(encoding="utf-8")
+        app_store, dmg = active_source(source, APP_STORE_ONLY), active_source(source, DMG_ONLY)
+        for needle in ("InstallSharingDialog(", "requestReview()", '"Share install results with Terento"'):
+            self.assertIn(needle, app_store)
+            self.assertNotIn(needle, dmg)
+        # Unticked until the person ticks it (no pre-ticked consent).
+        self.assertIn("@State private var share = false", app_store)
+        self.assertIn("evidenceController.decideConsent(share ? .accepted : .declined)", app_store)
+        self.assertIn("mapStatisticsController.decideConsent(share ? .accepted : .declined)", app_store)
+        self.assertIn("mayRequest: !asksAboutSharing", app_store)
+        self.assertIn('Image("CircleCheck")', app_store)
+        icon = (ROOT / "app/Terento/Assets.xcassets/CircleCheck.imageset/circle-check.svg").read_text(encoding="utf-8")
+        self.assertIn("Font Awesome Free 7.3.1", icon)
+        self.assertIn("CircleCheck.imageset/circle-check.svg", (ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8"))
+        about = active_source((SWIFT_SOURCES / "Views" / "AboutTerentoView.swift").read_text(encoding="utf-8"), APP_STORE_ONLY)
+        self.assertIn("TerentoAppLinks.appStoreReview", about)
+        links = (SWIFT_SOURCES / "Views" / "AppLinks.swift").read_text(encoding="utf-8")
+        self.assertIn("https://apps.apple.com/app/id6828556832?action=write-review", active_source(links, APP_STORE_ONLY))
 
     def test_uploads_update_check_and_donation_are_compiled_out(self) -> None:
-        dmg = {"RELEASE", "TERENTO_BUNDLED_MTP"}
-        app_store = dmg | {"TERENTO_APP_STORE"}
+        dmg, app_store = DMG_ONLY, APP_STORE_ONLY
         dmg_text = []
         for source in sorted(SWIFT_SOURCES.rglob("*.swift")):
             text = source.read_text(encoding="utf-8")

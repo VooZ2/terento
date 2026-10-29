@@ -92,8 +92,9 @@ struct AboutTerentoView: View {
 
                 section(title: "Privacy") {
                     #if TERENTO_APP_STORE
-                    // App Store builds compile out diagnostics delivery and the update check.
-                    Text("This build does not send diagnostics. Device state, maps, manifests, Unit IDs, serial numbers, and local paths stay on this Mac.")
+                    // App Store builds share diagnostics only after an opt-in and
+                    // compile out the update check.
+                    Text("Terento sends privacy-minimised diagnostics only if you choose to share them, to help improve the app and its services. Device state, maps, manifests, Unit IDs, serial numbers, and local paths stay on this Mac.")
                         .font(.terentoUI(size: 15, weight: .medium))
                     #else
                     Text("Terento sends privacy-minimised diagnostics by default to help improve the app and its services. Device state, maps, manifests, Unit IDs, serial numbers, and local paths stay on this Mac.")
@@ -124,7 +125,9 @@ struct AboutTerentoView: View {
         supportLink("GitHub repository ↗", destination: TerentoAppLinks.repository)
         supportLink("Report an issue ↗", destination: TerentoAppLinks.issues)
         supportLink("Website ↗", destination: TerentoAppLinks.websiteFromApp)
-        #if !TERENTO_APP_STORE
+        #if TERENTO_APP_STORE
+        supportLink("Rate Terento on the App Store ↗", destination: TerentoAppLinks.appStoreReview)
+        #else
         supportLink("Donate ↗", destination: TerentoAppLinks.donate)
         #endif
     }

@@ -31,18 +31,33 @@ These code paths are removed at compile time, not hidden:
   menu item, no About `Update` button or status, no update prompt
   (guideline 2.4.5(vii));
 - the `Donate` link (guideline 3.1.1);
-- every diagnostics upload: compatibility and update diagnostics,
-  map usage events, first-run funnel events, and support reports. The HTTP
-  uploaders contain no endpoint. Installation results stay in local history,
-  nothing is queued for upload, and data migrated from the DMG app is never
-  sent by this build. The About and Diagnostics windows say that this build
-  does not send diagnostics, and offer only the GitHub failure report;
-- the consent rewrite at start-up, so a migrated sharing choice stays as the
-  DMG app wrote it.
+- support reports sent to Terento: the failure dialog and Diagnostics offer
+  only the GitHub failure report.
+
+### Opt-in diagnostics (stage 3)
+
+Compatibility and update diagnostics, map usage events and first-run funnel
+events are sent only after the person opts in (guideline 5.1.1, GDPR):
+
+- After the first successful installation, while no choice is recorded, the
+  `Map installed` window asks once. `Share install results with Terento`
+  starts unticked; `Done` records `accepted` or `declined` for both streams.
+  Diagnostics keeps both checkboxes to change it later.
+- The App Store notice version is 100 (`VersionedEvidenceConsent`,
+  `VersionedMapStatisticsConsent`); only `accepted` under that version
+  permits sharing. At start-up a choice copied from the DMG app becomes
+  `declined` if it was declined and unanswered otherwise, and every migrated
+  queue is dropped, so nothing recorded under the DMG notice is sent.
+- Events carry `releaseLabel` with `+appstore` SemVer build metadata (for
+  example `1.1.0+appstore`), so Admin tells App Store results apart without
+  an API change.
+- From the third successful installation, at most once per app version, the
+  app asks macOS for the system rating prompt (`requestReview`, guideline
+  5.6.1). About links to the App Store review page instead of `Donate`.
 
 Catalog, device catalog, installation policy and public compatibility
-requests, map downloads and device images keep working. The consent window and
-the catalog without a watch are stage 3, not this configuration.
+requests, map downloads and device images keep working. The catalog without a
+watch is not part of this configuration.
 
 ## Entitlements
 
@@ -119,10 +134,9 @@ copy), `support-report-unsent.json`, `DeviceAssets` (image cache), Caches,
 Logs and the preferences (window size and download-speed samples only; no
 sharing choice is kept in user defaults).
 
-The three mixed JSON files are copied whole. This build never uploads their
-queues. Before a build sends anything (stage 3), it must drop the migrated
-queues and treat a migrated `accepted` or missing choice as not answered, and
-only a migrated `declined` as an answer (plan section 2).
+The three mixed JSON files are copied whole. At start-up the app drops their
+migrated queues and treats a migrated `accepted` or missing choice as not
+answered, and only a migrated `declined` as an answer (plan section 2).
 
 Embedding rules (`embed-sandbox-helper.sh`):
 
@@ -196,6 +210,11 @@ It:
      application and team identifiers;
    - helper entitlements exactly `app-sandbox` + `inherit`.
 
+App Store Connect accepts a build number once per version. The first upload of
+a version keeps the Release build number (`46`); each later upload of the same
+version passes a sequence number, `archive-for-testflight.sh 1` builds `46.1`,
+`2` builds `46.2`.
+
 The owner uploads the `.pkg` with Transporter. Installing it from TestFlight
 copies the real DMG data into the container once, so the script prints a
 `ditto` backup command to run first.
@@ -204,11 +223,12 @@ copies the real DMG data into the container once, so the script prints a
 
 - `Tests/run-app-store-config-contract-tests.sh` (app suite, runs anywhere):
   exact entitlements, `AppStore` settings against `Release`, both migration
-  manifests, and that the update, donation and upload strings are compiled out
-  of `AppStore` but still present in the DMG configuration.
+  manifests, that the update, donation and support-report strings are compiled
+  out of `AppStore` but still present in the DMG configuration, and the
+  opt-in rules above.
 - The macOS app job runs `verify-app-store-build.sh`: it builds `AppStore`
   ad-hoc signed, verifies every nested signature, compares the app and helper
   entitlements with the files above, and checks that no executable in the
-  bundle contains `updates/macos-arm64.json`, `buymeacoffee` or an upload
-  endpoint. The Debug app built in the same job is the control that must still
-  contain them.
+  bundle contains `updates/macos-arm64.json`, `buymeacoffee` or the support
+  report endpoint. The Debug app built in the same job is the control that
+  must still contain them.
