@@ -171,7 +171,7 @@ PYCHECK
 
 version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")"
 build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app/Contents/Info.plist")"
-backup="$HOME/TerentoDataBackup-$(date +%Y%m%d)"
+backup="$HOME/TerentoDataBackup-$(date +%Y%m%d-%H%M%S)"
 
 # The same archive is exported again, now straight to App Store Connect.
 upload_options="$output/UploadOptions.plist"
@@ -195,7 +195,8 @@ $(sed -n '1,4p' "$output/pkg-signature.txt")
 
 Next steps
 1. Wait for Apple's processing email, then open TestFlight and press Update.
-2. Before the first TestFlight install, back up the DMG app's data:
+2. Only before the first launch of any App Store build on this Mac (it moves
+   the DMG app's data), back that data up to a new folder:
      ditto "$HOME/Library/Application Support/Terento" "$backup"
 3. Use only one Terento on this Mac at a time.
 EOF
