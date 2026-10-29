@@ -10,7 +10,7 @@ Data controller: private individual. Read [About Terento](/about/) or contact [p
 
 In the app downloaded from terento.app, two diagnostic streams are enabled by default to improve installation reliability and compatibility. There is no sharing choice during installation. Turn either stream off in **Terento → Diagnostics** without limiting the app. This stops future sharing and clears that stream’s unsent queue; uploaded reports cannot be deleted from the app. Privacy-rights requests can be sent to the contact above.
 
-- **Compatibility:** watch model and firmware, app and macOS versions, selected provider/maps, installation result and limited technical error information, plus short notes on how connecting the watch, checking its model and loading the map catalog went, grouped by a random code created at each app launch.
+- **Compatibility:** watch model and firmware, app and macOS versions, selected provider/maps, installation result and limited technical error information, plus short notes on how connecting the watch, checking its model and loading the map catalog went and why an installation could not start, grouped by a random code created at each app launch.
 - **Map usage:** provider, map/region, download or installation outcome, time, app build and random operation/event IDs. Custom `.img` imports are excluded from this stream.
 
 Reports exclude Garmin Unit IDs, serial-number values, account details, local paths, map files and raw logs. Individual reports are private; only reviewed aggregate compatibility results are published. The basis is legitimate interests in improving reliability and device coverage, under GDPR Article 6(1)(f).

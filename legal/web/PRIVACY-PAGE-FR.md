@@ -10,7 +10,7 @@ Responsable du traitement : particulier. Consultez [À propos de Terento](/fr/ab
 
 Dans l’application téléchargée depuis terento.app, deux flux sont activés par défaut pour améliorer la fiabilité et la compatibilité. Il n’y a pas de choix de partage pendant l’installation. Désactivez chaque flux dans **Terento → Diagnostics** sans limiter l’application. Cela arrête les futurs envois et vide la file correspondante non envoyée. Les rapports transmis ne peuvent pas être supprimés depuis l’application ; utilisez le contact ci-dessus pour vos demandes.
 
-- **Compatibilité :** modèle et micrologiciel de la montre, versions de l’application et de macOS, fournisseur/cartes sélectionnés, résultat et informations techniques limitées sur les erreurs, ainsi que de brèves notes sur le déroulement de la connexion de la montre, de la vérification de son modèle et du chargement du catalogue, regroupées par un code aléatoire créé à chaque lancement de l’application.
+- **Compatibilité :** modèle et micrologiciel de la montre, versions de l’application et de macOS, fournisseur/cartes sélectionnés, résultat et informations techniques limitées sur les erreurs, ainsi que de brèves notes sur le déroulement de la connexion de la montre, de la vérification de son modèle et du chargement du catalogue, et sur la raison pour laquelle une installation n’a pas pu démarrer, regroupées par un code aléatoire créé à chaque lancement de l’application.
 - **Utilisation des cartes :** fournisseur, carte/région, résultat du téléchargement ou de l’installation, heure, build et identifiants aléatoires d’opération/événement. Les imports `.img` personnels sont exclus.
 
 Les rapports excluent les Garmin Unit IDs, valeurs de numéros de série, comptes, chemins locaux, cartes et journaux bruts. Les rapports individuels sont privés ; seuls des résultats agrégés de compatibilité vérifiés sont publiés. Le fondement est l’intérêt légitime à améliorer la fiabilité et la couverture des appareils, selon l’article 6(1)(f) du RGPD.
@@ -77,4 +77,4 @@ La compatibilité peut aussi inclure un libellé MTP nettoyé, USB VID/PID, tran
 
 Les rapports peuvent aussi contenir la description originale du modèle XML (160 caractères maximum) et son code produit (64 lettres ASCII, chiffres ou traits d’union maximum). Ces données désignent un modèle, pas une montre individuelle. Les documents XML complets, Unit IDs et numéros de série sont exclus. Les correspondances des codes et les corrections administratives sont conservées séparément du rapport original.
 
-Mise à jour : 26 octobre 2026.
+Mise à jour : 29 octobre 2026.

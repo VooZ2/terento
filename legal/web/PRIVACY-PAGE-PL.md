@@ -10,7 +10,7 @@ Administrator danych: osoba prywatna. Przeczytaj [O Terento](/pl/about/) lub nap
 
 W aplikacji pobranej z terento.app dwa strumienie są domyślnie włączone, aby poprawiać niezawodność i zgodność. Podczas instalacji nie ma wyboru udostępniania. Każdy strumień można wyłączyć w **Terento → Diagnostics** bez ograniczania aplikacji. Zatrzymuje to przyszłe wysyłanie i usuwa niewysłaną kolejkę tego strumienia. Wysłanych raportów nie można usunąć z aplikacji; żądania dotyczące prywatności kieruj na adres powyżej.
 
-- **Zgodność:** model i oprogramowanie zegarka, wersje aplikacji i macOS, dostawca/mapy, wynik instalacji i ograniczone techniczne informacje o błędach, a także krótkie informacje o przebiegu łączenia zegarka, sprawdzania modelu i wczytywania katalogu map, grupowane losowym kodem tworzonym przy każdym uruchomieniu aplikacji.
+- **Zgodność:** model i oprogramowanie zegarka, wersje aplikacji i macOS, dostawca/mapy, wynik instalacji i ograniczone techniczne informacje o błędach, a także krótkie informacje o przebiegu łączenia zegarka, sprawdzania modelu i wczytywania katalogu map oraz o tym, dlaczego instalacja nie mogła się rozpocząć, grupowane losowym kodem tworzonym przy każdym uruchomieniu aplikacji.
 - **Użycie map:** dostawca, mapa/region, wynik pobrania lub instalacji, czas, build aplikacji i losowe identyfikatory operacji/zdarzeń. Własne importy `.img` są wyłączone z tego strumienia.
 
 Raporty nie zawierają Garmin Unit IDs, wartości numerów seryjnych, kont, lokalnych ścieżek, map ani surowych logów. Raporty indywidualne są prywatne; publikowane są tylko sprawdzone zbiorcze wyniki zgodności. Podstawą jest uzasadniony interes w poprawie niezawodności i obsługi urządzeń, zgodnie z art. 6 ust. 1 lit. f RODO.
@@ -77,4 +77,4 @@ Zgodność może obejmować oczyszczoną nazwę modelu MTP, USB VID/PID, transpo
 
 Raporty mogą dodatkowo zawierać oryginalny opis modelu z XML (do 160 znaków) i kod produktu modelu (do 64 liter ASCII, cyfr lub łączników). Dane te określają model produktu, a nie pojedynczy zegarek. Pełne dokumenty XML, Unit ID i numery seryjne są wykluczone. Powiązania kodów modeli i poprawki administratora są przechowywane oddzielnie od oryginalnego raportu.
 
-Aktualizacja: 26 października 2026 r.
+Aktualizacja: 29 października 2026 r.

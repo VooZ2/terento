@@ -15,7 +15,7 @@ Data controller: private individual. Read [About Terento](https://terento.app/ab
 
 In the app downloaded from terento.app, two diagnostic streams are enabled by default to improve installation reliability and compatibility. There is no sharing choice during installation. Turn either stream off in **Terento → Diagnostics** without limiting the app. This stops future sharing and clears that stream’s unsent queue; uploaded reports cannot be deleted from the app. Privacy-rights requests can be sent to the contact above.
 
-- **Compatibility:** watch model and firmware, app and macOS versions, selected provider/maps, installation result and limited technical error information, plus short notes on how connecting the watch, checking its model and loading the map catalog went, grouped by a random code created at each app launch.
+- **Compatibility:** watch model and firmware, app and macOS versions, selected provider/maps, installation result and limited technical error information, plus short notes on how connecting the watch, checking its model and loading the map catalog went and why an installation could not start, grouped by a random code created at each app launch.
 - **Map usage:** provider, map/region, download or installation outcome, time, app build and random operation/event IDs. Custom `.img` imports are excluded from this stream.
 
 Reports exclude Garmin Unit IDs, serial-number values, account details, local paths, map files and raw logs. Individual reports are private; only reviewed aggregate compatibility results are published. The basis is legitimate interests in improving reliability and device coverage, under GDPR Article 6(1)(f).
@@ -96,7 +96,7 @@ Verantwortlicher: Privatperson. Lies [Über Terento](https://terento.app/de/abou
 
 In der App von terento.app sind zwei Diagnoseströme standardmäßig aktiviert, um Installation und Kompatibilität zu verbessern. Während der Installation gibt es keine Freigabeauswahl. Deaktiviere jeden Strom unter **Terento → Diagnostics**, ohne die App einzuschränken. Dies beendet künftige Übermittlungen und leert die jeweilige ungesendete Warteschlange. Hochgeladene Berichte können nicht in der App gelöscht werden; Datenschutzanfragen sind über den Kontakt oben möglich.
 
-- **Kompatibilität:** Uhrenmodell und Firmware, App- und macOS-Version, gewählte Anbieter/Karten, Installationsergebnis und begrenzte technische Fehlerinformationen, dazu kurze Meldungen, wie das Verbinden der Uhr, die Modellprüfung und das Laden des Kartenkatalogs verliefen, gruppiert über einen Zufallscode, der bei jedem App-Start neu entsteht.
+- **Kompatibilität:** Uhrenmodell und Firmware, App- und macOS-Version, gewählte Anbieter/Karten, Installationsergebnis und begrenzte technische Fehlerinformationen, dazu kurze Meldungen, wie das Verbinden der Uhr, die Modellprüfung und das Laden des Kartenkatalogs verliefen und warum eine Installation nicht starten konnte, gruppiert über einen Zufallscode, der bei jedem App-Start neu entsteht.
 - **Kartennutzung:** Anbieter, Karte/Region, Download- oder Installationsergebnis, Zeit, App-Build und zufällige Vorgangs-/Ereignis-IDs. Eigene `.img`-Importe sind ausgeschlossen.
 
 Berichte enthalten keine Garmin Unit IDs, Seriennummernwerte, Kontodaten, lokalen Pfade, Kartendateien oder Rohprotokolle. Einzelberichte sind privat; nur geprüfte zusammengefasste Kompatibilitätsergebnisse werden veröffentlicht. Grundlage sind berechtigte Interessen an Zuverlässigkeit und Geräteabdeckung nach Art. 6 Abs. 1 lit. f DSGVO.
@@ -177,7 +177,7 @@ Responsable du traitement : particulier. Consultez [À propos de Terento](https:
 
 Dans l’application téléchargée depuis terento.app, deux flux sont activés par défaut pour améliorer la fiabilité et la compatibilité. Il n’y a pas de choix de partage pendant l’installation. Désactivez chaque flux dans **Terento → Diagnostics** sans limiter l’application. Cela arrête les futurs envois et vide la file correspondante non envoyée. Les rapports transmis ne peuvent pas être supprimés depuis l’application ; utilisez le contact ci-dessus pour vos demandes.
 
-- **Compatibilité :** modèle et micrologiciel de la montre, versions de l’application et de macOS, fournisseur/cartes sélectionnés, résultat et informations techniques limitées sur les erreurs, ainsi que de brèves notes sur le déroulement de la connexion de la montre, de la vérification de son modèle et du chargement du catalogue, regroupées par un code aléatoire créé à chaque lancement de l’application.
+- **Compatibilité :** modèle et micrologiciel de la montre, versions de l’application et de macOS, fournisseur/cartes sélectionnés, résultat et informations techniques limitées sur les erreurs, ainsi que de brèves notes sur le déroulement de la connexion de la montre, de la vérification de son modèle et du chargement du catalogue, et sur la raison pour laquelle une installation n’a pas pu démarrer, regroupées par un code aléatoire créé à chaque lancement de l’application.
 - **Utilisation des cartes :** fournisseur, carte/région, résultat du téléchargement ou de l’installation, heure, build et identifiants aléatoires d’opération/événement. Les imports `.img` personnels sont exclus.
 
 Les rapports excluent les Garmin Unit IDs, valeurs de numéros de série, comptes, chemins locaux, cartes et journaux bruts. Les rapports individuels sont privés ; seuls des résultats agrégés de compatibilité vérifiés sont publiés. Le fondement est l’intérêt légitime à améliorer la fiabilité et la couverture des appareils, selon l’article 6(1)(f) du RGPD.
@@ -244,7 +244,7 @@ La compatibilité peut aussi inclure un libellé MTP nettoyé, USB VID/PID, tran
 
 Les rapports peuvent aussi contenir la description originale du modèle XML (160 caractères maximum) et son code produit (64 lettres ASCII, chiffres ou traits d’union maximum). Ces données désignent un modèle, pas une montre individuelle. Les documents XML complets, Unit IDs et numéros de série sont exclus. Les correspondances des codes et les corrections administratives sont conservées séparément du rapport original.
 
-Mise à jour : 26 octobre 2026.
+Mise à jour : 29 octobre 2026.
 
 # Prywatność
 
@@ -258,7 +258,7 @@ Administrator danych: osoba prywatna. Przeczytaj [O Terento](https://terento.app
 
 W aplikacji pobranej z terento.app dwa strumienie są domyślnie włączone, aby poprawiać niezawodność i zgodność. Podczas instalacji nie ma wyboru udostępniania. Każdy strumień można wyłączyć w **Terento → Diagnostics** bez ograniczania aplikacji. Zatrzymuje to przyszłe wysyłanie i usuwa niewysłaną kolejkę tego strumienia. Wysłanych raportów nie można usunąć z aplikacji; żądania dotyczące prywatności kieruj na adres powyżej.
 
-- **Zgodność:** model i oprogramowanie zegarka, wersje aplikacji i macOS, dostawca/mapy, wynik instalacji i ograniczone techniczne informacje o błędach, a także krótkie informacje o przebiegu łączenia zegarka, sprawdzania modelu i wczytywania katalogu map, grupowane losowym kodem tworzonym przy każdym uruchomieniu aplikacji.
+- **Zgodność:** model i oprogramowanie zegarka, wersje aplikacji i macOS, dostawca/mapy, wynik instalacji i ograniczone techniczne informacje o błędach, a także krótkie informacje o przebiegu łączenia zegarka, sprawdzania modelu i wczytywania katalogu map oraz o tym, dlaczego instalacja nie mogła się rozpocząć, grupowane losowym kodem tworzonym przy każdym uruchomieniu aplikacji.
 - **Użycie map:** dostawca, mapa/region, wynik pobrania lub instalacji, czas, build aplikacji i losowe identyfikatory operacji/zdarzeń. Własne importy `.img` są wyłączone z tego strumienia.
 
 Raporty nie zawierają Garmin Unit IDs, wartości numerów seryjnych, kont, lokalnych ścieżek, map ani surowych logów. Raporty indywidualne są prywatne; publikowane są tylko sprawdzone zbiorcze wyniki zgodności. Podstawą jest uzasadniony interes w poprawie niezawodności i obsługi urządzeń, zgodnie z art. 6 ust. 1 lit. f RODO.
@@ -325,7 +325,7 @@ Zgodność może obejmować oczyszczoną nazwę modelu MTP, USB VID/PID, transpo
 
 Raporty mogą dodatkowo zawierać oryginalny opis modelu z XML (do 160 znaków) i kod produktu modelu (do 64 liter ASCII, cyfr lub łączników). Dane te określają model produktu, a nie pojedynczy zegarek. Pełne dokumenty XML, Unit ID i numery seryjne są wykluczone. Powiązania kodów modeli i poprawki administratora są przechowywane oddzielnie od oryginalnego raportu.
 
-Aktualizacja: 26 października 2026 r.
+Aktualizacja: 29 października 2026 r.
 
 # Soukromí
 
@@ -339,7 +339,7 @@ Správce údajů: soukromá osoba. Přečtěte si [O Terento](https://terento.ap
 
 V aplikaci stažené z terento.app jsou dva proudy standardně zapnuté pro zlepšení spolehlivosti a kompatibility. Během instalace není volba sdílení. Každý proud vypnete v **Terento → Diagnostics** bez omezení aplikace. Zastaví se další sdílení a smaže jeho neodeslaná fronta. Odeslané zprávy nelze smazat v aplikaci; žádosti ohledně soukromí zašlete na kontakt výše.
 
-- **Kompatibilita:** model a firmware hodinek, verze aplikace a macOS, poskytovatel/mapy, výsledek instalace a omezené technické údaje o chybách, a také krátké zprávy o průběhu připojení hodinek, kontroly modelu a načtení katalogu map, seskupené náhodným kódem vytvořeným při každém spuštění aplikace.
+- **Kompatibilita:** model a firmware hodinek, verze aplikace a macOS, poskytovatel/mapy, výsledek instalace a omezené technické údaje o chybách, a také krátké zprávy o průběhu připojení hodinek, kontroly modelu a načtení katalogu map a o tom, proč instalace nemohla začít, seskupené náhodným kódem vytvořeným při každém spuštění aplikace.
 - **Použití map:** poskytovatel, mapa/oblast, výsledek stažení či instalace, čas, build a náhodná ID operací/událostí. Vlastní importy `.img` jsou z tohoto proudu vyloučeny.
 
 Zprávy neobsahují Garmin Unit IDs, hodnoty sériových čísel, účty, místní cesty, mapy ani surové protokoly. Jednotlivé zprávy jsou soukromé; zveřejňují se jen ověřené souhrnné výsledky kompatibility. Základem jsou oprávněné zájmy na spolehlivosti a pokrytí zařízení podle čl. 6 odst. 1 písm. f GDPR.
@@ -406,7 +406,7 @@ Kompatibilita může zahrnovat očištěný název modelu MTP, USB VID/PID, tran
 
 Zprávy mohou navíc obsahovat původní popis modelu z XML (nejvýše 160 znaků) a produktový kód modelu (nejvýše 64 písmen ASCII, číslic nebo spojovníků). Tyto údaje označují model výrobku, nikoli jednotlivé hodinky. Celé dokumenty XML, Unit ID a sériová čísla jsou vyloučeny. Přiřazení kódů modelů a opravy správce se ukládají odděleně od původní zprávy.
 
-Aktualizováno: 26. října 2026.
+Aktualizováno: 29. října 2026.
 
 # Privacy
 
@@ -420,7 +420,7 @@ Titolare del trattamento: privato. Leggi [Informazioni su Terento](https://teren
 
 Nell’app scaricata da terento.app due flussi sono attivi per impostazione predefinita per migliorare affidabilità e compatibilità. Durante l’installazione non c’è una scelta di condivisione. Disattiva ciascun flusso in **Terento → Diagnostics** senza limitare l’app. Questo interrompe gli invii futuri e cancella la relativa coda non inviata. I rapporti inviati non si eliminano dall’app; usa il contatto sopra per le richieste sui dati.
 
-- **Compatibilità:** modello e firmware dell’orologio, versioni app/macOS, fornitore/mappe scelti, esito e informazioni tecniche limitate sugli errori, oltre a brevi note sull’esito di connessione dell’orologio, verifica del modello e caricamento del catalogo, raggruppate da un codice casuale creato a ogni avvio dell’app.
+- **Compatibilità:** modello e firmware dell’orologio, versioni app/macOS, fornitore/mappe scelti, esito e informazioni tecniche limitate sugli errori, oltre a brevi note sull’esito di connessione dell’orologio, verifica del modello e caricamento del catalogo e sul motivo per cui un’installazione non è potuta partire, raggruppate da un codice casuale creato a ogni avvio dell’app.
 - **Uso delle mappe:** fornitore, mappa/regione, esito del download o installazione, ora, build e ID casuali di operazioni/eventi. Le importazioni `.img` personali sono escluse.
 
 I rapporti escludono Garmin Unit IDs, valori dei numeri di serie, account, percorsi locali, mappe e log grezzi. I rapporti individuali sono privati; vengono pubblicati solo risultati aggregati di compatibilità verificati. La base è il legittimo interesse a migliorare affidabilità e copertura dei dispositivi, ai sensi dell’art. 6(1)(f) GDPR.
@@ -487,4 +487,4 @@ La compatibilità può includere un nome modello MTP ripulito, USB VID/PID, tras
 
 I rapporti possono includere anche la descrizione originale del modello XML (fino a 160 caratteri) e il codice prodotto del modello (fino a 64 lettere ASCII, cifre o trattini). Questi dati identificano un modello, non un singolo orologio. Sono esclusi documenti XML completi, Unit ID e numeri di serie. Le associazioni dei codici e le correzioni amministrative sono conservate separatamente dal rapporto originale.
 
-Aggiornamento: 26 ottobre 2026.
+Aggiornamento: 29 ottobre 2026.

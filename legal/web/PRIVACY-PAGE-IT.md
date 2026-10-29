@@ -10,7 +10,7 @@ Titolare del trattamento: privato. Leggi [Informazioni su Terento](/it/about/) o
 
 Nell’app scaricata da terento.app due flussi sono attivi per impostazione predefinita per migliorare affidabilità e compatibilità. Durante l’installazione non c’è una scelta di condivisione. Disattiva ciascun flusso in **Terento → Diagnostics** senza limitare l’app. Questo interrompe gli invii futuri e cancella la relativa coda non inviata. I rapporti inviati non si eliminano dall’app; usa il contatto sopra per le richieste sui dati.
 
-- **Compatibilità:** modello e firmware dell’orologio, versioni app/macOS, fornitore/mappe scelti, esito e informazioni tecniche limitate sugli errori, oltre a brevi note sull’esito di connessione dell’orologio, verifica del modello e caricamento del catalogo, raggruppate da un codice casuale creato a ogni avvio dell’app.
+- **Compatibilità:** modello e firmware dell’orologio, versioni app/macOS, fornitore/mappe scelti, esito e informazioni tecniche limitate sugli errori, oltre a brevi note sull’esito di connessione dell’orologio, verifica del modello e caricamento del catalogo e sul motivo per cui un’installazione non è potuta partire, raggruppate da un codice casuale creato a ogni avvio dell’app.
 - **Uso delle mappe:** fornitore, mappa/regione, esito del download o installazione, ora, build e ID casuali di operazioni/eventi. Le importazioni `.img` personali sono escluse.
 
 I rapporti escludono Garmin Unit IDs, valori dei numeri di serie, account, percorsi locali, mappe e log grezzi. I rapporti individuali sono privati; vengono pubblicati solo risultati aggregati di compatibilità verificati. La base è il legittimo interesse a migliorare affidabilità e copertura dei dispositivi, ai sensi dell’art. 6(1)(f) GDPR.
@@ -77,4 +77,4 @@ La compatibilità può includere un nome modello MTP ripulito, USB VID/PID, tras
 
 I rapporti possono includere anche la descrizione originale del modello XML (fino a 160 caratteri) e il codice prodotto del modello (fino a 64 lettere ASCII, cifre o trattini). Questi dati identificano un modello, non un singolo orologio. Sono esclusi documenti XML completi, Unit ID e numeri di serie. Le associazioni dei codici e le correzioni amministrative sono conservate separatamente dal rapporto originale.
 
-Aggiornamento: 26 ottobre 2026.
+Aggiornamento: 29 ottobre 2026.

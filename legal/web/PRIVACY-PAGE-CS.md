@@ -10,7 +10,7 @@ Správce údajů: soukromá osoba. Přečtěte si [O Terento](/cs/about/) nebo n
 
 V aplikaci stažené z terento.app jsou dva proudy standardně zapnuté pro zlepšení spolehlivosti a kompatibility. Během instalace není volba sdílení. Každý proud vypnete v **Terento → Diagnostics** bez omezení aplikace. Zastaví se další sdílení a smaže jeho neodeslaná fronta. Odeslané zprávy nelze smazat v aplikaci; žádosti ohledně soukromí zašlete na kontakt výše.
 
-- **Kompatibilita:** model a firmware hodinek, verze aplikace a macOS, poskytovatel/mapy, výsledek instalace a omezené technické údaje o chybách, a také krátké zprávy o průběhu připojení hodinek, kontroly modelu a načtení katalogu map, seskupené náhodným kódem vytvořeným při každém spuštění aplikace.
+- **Kompatibilita:** model a firmware hodinek, verze aplikace a macOS, poskytovatel/mapy, výsledek instalace a omezené technické údaje o chybách, a také krátké zprávy o průběhu připojení hodinek, kontroly modelu a načtení katalogu map a o tom, proč instalace nemohla začít, seskupené náhodným kódem vytvořeným při každém spuštění aplikace.
 - **Použití map:** poskytovatel, mapa/oblast, výsledek stažení či instalace, čas, build a náhodná ID operací/událostí. Vlastní importy `.img` jsou z tohoto proudu vyloučeny.
 
 Zprávy neobsahují Garmin Unit IDs, hodnoty sériových čísel, účty, místní cesty, mapy ani surové protokoly. Jednotlivé zprávy jsou soukromé; zveřejňují se jen ověřené souhrnné výsledky kompatibility. Základem jsou oprávněné zájmy na spolehlivosti a pokrytí zařízení podle čl. 6 odst. 1 písm. f GDPR.
@@ -77,4 +77,4 @@ Kompatibilita může zahrnovat očištěný název modelu MTP, USB VID/PID, tran
 
 Zprávy mohou navíc obsahovat původní popis modelu z XML (nejvýše 160 znaků) a produktový kód modelu (nejvýše 64 písmen ASCII, číslic nebo spojovníků). Tyto údaje označují model výrobku, nikoli jednotlivé hodinky. Celé dokumenty XML, Unit ID a sériová čísla jsou vyloučeny. Přiřazení kódů modelů a opravy správce se ukládají odděleně od původní zprávy.
 
-Aktualizováno: 26. října 2026.
+Aktualizováno: 29. října 2026.
