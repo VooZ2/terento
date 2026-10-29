@@ -286,6 +286,23 @@ class AppStoreConfigurationContract(unittest.TestCase):
             for layout in (nothing, other_support_folder):
                 self.assertIn("Run this on macOS", run(layout), layout.__name__)
 
+    def test_testflight_script_exports_and_checks_without_uploading(self) -> None:
+        script = (APP_STORE_DIR / "archive-for-testflight.sh").read_text(encoding="utf-8")
+        self.assertIn("-configuration AppStore", script)
+        self.assertIn('. "$repo_root/Packaging/release-config.sh"', script)
+        self.assertIn("<string>app-store-connect</string>", script)
+        self.assertIn("<key>destination</key>\n    <string>export</string>", script)
+        self.assertNotIn("<string>upload</string>", script)
+        self.assertNotRegex(script, r"altool|notarytool|--upload")
+        self.assertIn('output="$HOME/TerentoAppStoreArchive"', script)
+        # The exported package, not only the archive, is checked.
+        checks = script.index('/usr/sbin/pkgutil --expand-full "$pkg" "$check"')
+        for needle in ('embedded.provisionprofile', 'container-migration.plist',
+                       '"$output/helper-entitlements.plist"',
+                       "TerentoFinishingWorker-AppStore.entitlements"):
+            self.assertGreater(script.index(needle, checks), checks, needle)
+        self.assertTrue(os.access(APP_STORE_DIR / "archive-for-testflight.sh", os.X_OK))
+
     def test_ci_scan_covers_all_bundle_code(self) -> None:
         verify = (APP_STORE_DIR / "verify-app-store-build.sh").read_text(encoding="utf-8")
         # Debug builds keep app code in Terento.debug.dylib and the libraries

@@ -175,10 +175,30 @@ Install only a map that is not on the watch yet and remove it again with the
 test app. The test app works on a copy of the manifests, so do not update or
 remove maps that the DMG app manages.
 
-An ad-hoc test does not prove the App Store signature. The stage 1 gate still
-needs an internal TestFlight build: archive with automatic signing, export for
-App Store Connect, and check `codesign -d --entitlements -` for the app and the
-helper in the exported build, because the export re-signs nested code.
+An ad-hoc test does not prove the App Store signature. That needs the internal
+TestFlight build below.
+
+## Internal TestFlight build
+
+`archive-for-testflight.sh` runs on the owner's Mac. It needs Xcode signed in
+to team `VXALAZU3B5` and an App Store Connect record for `app.terento.mac`.
+It:
+
+1. archives `AppStore` with automatic signing (`-allowProvisioningUpdates`
+   creates the certificates and the Mac App Store profile). The archive
+   embeds the production migration manifest;
+2. exports a Mac App Store `.pkg` (`method` `app-store-connect`, `destination`
+   `export`). It never uploads;
+3. checks the exported package, because the export re-signs nested code:
+   - bundle ID, embedded profile, production migration manifest;
+   - valid app signature and a signed package;
+   - app entitlements equal to the file plus only the profile's
+     application and team identifiers;
+   - helper entitlements exactly `app-sandbox` + `inherit`.
+
+The owner uploads the `.pkg` with Transporter. Installing it from TestFlight
+copies the real DMG data into the container once, so the script prints a
+`ditto` backup command to run first.
 
 ## CI
 
