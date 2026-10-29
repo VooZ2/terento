@@ -277,8 +277,8 @@ def update_summary_markup(summary: dict[str, Any], device_id: str, *, web: dict[
     """Update reports for one model: diagnostic stream, all time. Styled like
     the Installs card beside it, with plain (unlinked) counts (owner decision
     2026-10-06); the update history below filters by outcome. App, Web and All
-    rows (owner decision 2026-10-11); the web installer has no blocked-before-
-    writing result."""
+    rows (owner decision 2026-10-11); the web installer has no Not started
+    result."""
     from .admin import _metric_row, _metric_tile, _source_count_grid
 
     app = {
