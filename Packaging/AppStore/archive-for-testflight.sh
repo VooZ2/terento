@@ -172,6 +172,14 @@ PYCHECK
 version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")"
 build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app/Contents/Info.plist")"
 backup="$HOME/TerentoDataBackup-$(date +%Y%m%d-%H%M%S)"
+container="$HOME/Library/Containers/$bundle_id"
+if [ -e "$container" ]; then
+    backup_step="2. The App Store container already exists, so the DMG data was already
+   moved into it. Do not back up again; keep the earlier backup."
+else
+    backup_step="2. Before the first launch (it moves the DMG app's data), back it up:
+     ditto \"$HOME/Library/Application Support/Terento\" \"$backup\""
+fi
 
 # The same archive is exported again, now straight to App Store Connect.
 upload_options="$output/UploadOptions.plist"
@@ -195,8 +203,6 @@ $(sed -n '1,4p' "$output/pkg-signature.txt")
 
 Next steps
 1. Wait for Apple's processing email, then open TestFlight and press Update.
-2. Only before the first launch of any App Store build on this Mac (it moves
-   the DMG app's data), back that data up to a new folder:
-     ditto "$HOME/Library/Application Support/Terento" "$backup"
+$backup_step
 3. Use only one Terento on this Mac at a time.
 EOF

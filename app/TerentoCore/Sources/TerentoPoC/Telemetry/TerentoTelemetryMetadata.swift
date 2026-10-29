@@ -52,7 +52,9 @@ enum TerentoTelemetryMetadata {
     }()
 
     static func appStoreEventReleaseLabel(_ label: String) -> String {
-        guard !label.isEmpty else { return label }
+        // A local test label must keep its "-local" ending: the server marks
+        // a build as a purgeable local test only by that suffix.
+        guard !label.isEmpty, !isLocalReleaseLabel(label) else { return label }
         return label + (label.contains("+") ? ".appstore" : "+appstore")
     }
 

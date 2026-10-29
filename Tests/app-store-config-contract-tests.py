@@ -331,7 +331,8 @@ class AppStoreConfigurationContract(unittest.TestCase):
         self.assertNotIn("The originals stay where they were.", readme)
         script = (APP_STORE_DIR / "archive-for-testflight.sh").read_text(encoding="utf-8")
         self.assertIn("MOVES ~/Library/Application Support/Terento", script)
-        self.assertIn('ditto "$HOME/Library/Application Support/Terento" "$backup"', script)
+        self.assertIn('ditto \\"$HOME/Library/Application Support/Terento\\" \\"$backup\\"', script)
+        self.assertIn('if [ -e "$container" ]; then', script)
 
     def test_helper_exits_unless_the_app_is_its_parent(self) -> None:
         app_store = {"RELEASE", "TERENTO_BUNDLED_MTP", "TERENTO_APP_STORE"}
@@ -385,6 +386,8 @@ class AppStoreConfigurationContract(unittest.TestCase):
         metadata = (SWIFT_SOURCES / "Telemetry" / "TerentoTelemetryMetadata.swift").read_text(encoding="utf-8")
         self.assertIn("return appStoreEventReleaseLabel(releaseLabel)", active_source(metadata, APP_STORE_ONLY))
         self.assertIn('label + (label.contains("+") ? ".appstore" : "+appstore")', metadata)
+        # Local test builds keep "-local" last, so the server still purges them.
+        self.assertIn("guard !label.isEmpty, !isLocalReleaseLabel(label) else { return label }", metadata)
         for path in ("Compatibility/InstallationEvidence.swift", "Statistics/MapStatisticsEvent.swift",
                      "Telemetry/AppFunnelTelemetry.swift"):
             source = (SWIFT_SOURCES / path).read_text(encoding="utf-8")
@@ -400,7 +403,7 @@ class AppStoreConfigurationContract(unittest.TestCase):
         # Unticked until the person ticks it (no pre-ticked consent).
         self.assertIn("@State private var share = false", app_store)
         self.assertIn("evidenceController.decideConsent(share ? .accepted : .declined)", app_store)
-        self.assertIn("mapStatisticsController.decideConsent(share ? .accepted : .declined)", app_store)
+        self.assertIn("if mapStatisticsController.store.consent() == nil {\n                        mapStatisticsController.decideConsent(share ? .accepted : .declined)", app_store)
         self.assertIn("if share { evidenceController.shareOperation(evidenceOperationID) }", app_store)
         self.assertIn("mayRequest: !asksAboutSharing", app_store)
         self.assertIn('Image("CircleCheck")', app_store)

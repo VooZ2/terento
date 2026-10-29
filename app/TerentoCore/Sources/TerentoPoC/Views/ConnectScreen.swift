@@ -434,7 +434,10 @@ struct ConnectScreen: View {
                 isPartial: hasPartialInstallation,
                 onDone: { share in
                     evidenceController.decideConsent(share ? .accepted : .declined)
-                    mapStatisticsController.decideConsent(share ? .accepted : .declined)
+                    // A map usage refusal carried over from the DMG app stands.
+                    if mapStatisticsController.store.consent() == nil {
+                        mapStatisticsController.decideConsent(share ? .accepted : .declined)
+                    }
                     if share { evidenceController.shareOperation(evidenceOperationID) }
                     isShowingInstallSharingPrompt = false
                 }
