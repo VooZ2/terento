@@ -32,6 +32,6 @@ Before you install
 
 ## Release status
 
-This is the current Terento release. It supports maps from four map providers. The Compatibility page shows exact models and variants with successful shared installations. A model missing from the list is not an unsupported-device claim.
+This is the current Terento release. It supports maps from every provider in the catalog. The Compatibility page shows exact models and variants with successful shared installations. A model missing from the list is not an unsupported-device claim.
 
 [Check compatibility](https://terento.app/compatibility/)

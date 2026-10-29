@@ -31,6 +31,6 @@ Prima dell’installazione
 
 ## Stato della versione
 
-Questa è la versione attuale di Terento. Supporta le mappe di quattro provider. La pagina Compatibilità mostra i modelli e le varianti esatti con installazioni riuscite condivise. L’assenza di un modello non significa che il dispositivo non sia supportato.
+Questa è la versione attuale di Terento. Supporta le mappe di tutti i provider del catalogo. La pagina Compatibilità mostra i modelli e le varianti esatti con installazioni riuscite condivise. L’assenza di un modello non significa che il dispositivo non sia supportato.
 
 [Verifica la compatibilità](https://terento.app/it/compatibility/)

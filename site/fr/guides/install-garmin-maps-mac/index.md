@@ -43,7 +43,7 @@ Choisissez une carte dans le catalogue ou importez votre propre fichier .img com
 
 1. Choisir dans le catalogue
 
-Choisissez une région dans le catalogue de l’un des quatre fournisseurs de cartes.
+Choisissez un fournisseur et une région dans le catalogue.
 
 2. Importer votre carte
 

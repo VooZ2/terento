@@ -31,6 +31,6 @@ Vor der Installation
 
 ## Versionsstatus
 
-Dies ist die aktuelle Terento-Version. Sie unterstützt Karten von vier Kartenanbietern. Die Kompatibilitätsseite zeigt genaue Modelle und Varianten mit erfolgreich geteilten Installationen. Ein fehlendes Modell ist keine Aussage, dass das Gerät nicht unterstützt wird.
+Dies ist die aktuelle Terento-Version. Sie unterstützt Karten aller Anbieter im Katalog. Die Kompatibilitätsseite zeigt genaue Modelle und Varianten mit erfolgreich geteilten Installationen. Ein fehlendes Modell ist keine Aussage, dass das Gerät nicht unterstützt wird.
 
 [Kompatibilität prüfen](https://terento.app/de/compatibility/)

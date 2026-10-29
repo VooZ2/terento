@@ -31,6 +31,6 @@ Před instalací
 
 ## Stav verze
 
-Jde o aktuální verzi Terento. Podporuje mapy od čtyř poskytovatelů. Stránka Kompatibilita zobrazuje konkrétní modely a varianty s úspěšnými sdílenými instalacemi. Chybějící model neznamená, že zařízení není podporováno.
+Jde o aktuální verzi Terento. Podporuje mapy všech poskytovatelů v katalogu. Stránka Kompatibilita zobrazuje konkrétní modely a varianty s úspěšnými sdílenými instalacemi. Chybějící model neznamená, že zařízení není podporováno.
 
 [Ověřit kompatibilitu](https://terento.app/cs/compatibility/)

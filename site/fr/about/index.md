@@ -17,7 +17,7 @@ Pour les Mac avec Apple Silicon. La page Compatibilité affiche les modèles et 
 
 ## Vos cartes au même endroit
 
-- Choisissez et installez des cartes de l’un des quatre fournisseurs de cartes.
+- Choisissez et installez des cartes de n’importe quel fournisseur du catalogue.
 
 - Ajoutez votre propre carte compatible (.img) ; les cartes personnelles ne bénéficient pas de mises à jour automatiques.
 

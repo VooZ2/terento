@@ -43,7 +43,7 @@ Choose a map from the catalog or upload your own compatible .img file. Terento h
 
 1. Choose from the catalog
 
-Choose a region from one of the four map providers in the catalog.
+Choose a provider and a region from the catalog.
 
 2. Upload your own map
 
