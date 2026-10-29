@@ -117,13 +117,13 @@ class BlockedBeforeWritingTests(unittest.TestCase):
                                   open_problem_count=1).decode()
         row = body.split("<tbody id='diagnostic-rows'>", 1)[1].split("</tr>", 1)[0]
         self.assertIn("data-diagnostic-result='not_started'", row)
-        self.assertIn("title='Blocked before writing'", row); self.assertIn("<span>Blocked</span>", row)
+        self.assertIn("title='Nothing was written'", row); self.assertIn("<span>Not started</span>", row)
         # Pre-write storage blocks remain open problems that need review.
         self.assertIn("data-review-open='true'", row)
         self.assertIn("data-status='OPEN'", row)
         self.assertIn("data-history-filter='blocked'", body)
         self.assertIn("selected === 'blocked' && row.dataset.diagnosticResult === 'not_started'", body)
-        self.assertIn("Installation blocked before writing", body)
+        self.assertIn("Installation not started", body)
 
 
     def test_blocked_row_after_an_earlier_map_failure_names_the_cause(self):
@@ -137,7 +137,7 @@ class BlockedBeforeWritingTests(unittest.TestCase):
         body = device_detail_page(device, {"username": "operator"}, "csrf", operations=[later],
                                   open_problem_count=0).decode()
         row = body.split("<tbody id='diagnostic-rows'>", 1)[1].split("</tr>", 1)[0]
-        self.assertIn("<span>Blocked</span>", row)
+        self.assertIn("<span>Not started</span>", row)
         self.assertIn("<small>Earlier map failed</small>", row)
         self.assertNotIn("No error", row)
 

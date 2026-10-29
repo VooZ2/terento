@@ -277,8 +277,8 @@ def update_summary_markup(summary: dict[str, Any], device_id: str, *, web: dict[
     """Update reports for one model: diagnostic stream, all time. Styled like
     the Installs card beside it, with plain (unlinked) counts (owner decision
     2026-10-06); the update history below filters by outcome. App, Web and All
-    rows (owner decision 2026-10-11); the web installer has no blocked-before-
-    writing result."""
+    rows (owner decision 2026-10-11); the web installer has no Not started
+    result."""
     from .admin import _metric_row, _metric_tile, _source_count_grid
 
     app = {
@@ -291,14 +291,14 @@ def update_summary_markup(summary: dict[str, Any], device_id: str, *, web: dict[
         values = _metric_row([
             _metric_tile('Successful', app['successful'], data_stat='successfulUpdateCount'),
             _metric_tile('Failed', app['failed'], failure=True, data_stat='failedUpdateCount'),
-            _metric_tile('Blocked before writing', app['blocked'], data_stat='notStartedCount'),
+            _metric_tile('Not started', app['blocked'], data_stat='notStartedCount'),
         ], label='Update reports for this model')
     else:
         web_counts = {'successful': int(web.get('updatesSuccessful') or 0),
                       'failed': int(web.get('updatesFailed') or 0), 'blocked': None}
         values = _source_count_grid(
             [('Successful', 'successful', False), ('Failed', 'failed', True),
-             ('Blocked before writing', 'blocked', False)],
+             ('Not started', 'blocked', False)],
             [('app', app), ('web', web_counts),
              ('all', {'successful': app['successful'] + web_counts['successful'],
                       'failed': app['failed'] + web_counts['failed'], 'blocked': app['blocked']})],
@@ -328,7 +328,7 @@ def update_history_markup(data: dict[str, Any], *, base_url: str = '/admin/updat
 
 
 # Same order and labels as the Installation history quick filters (owner decision 2026-10-06).
-_UPDATE_OUTCOME_FILTERS = (('', 'All'), ('failed', 'Failed'), ('not_started', 'Blocked'), ('succeeded', 'Successful'))
+_UPDATE_OUTCOME_FILTERS = (('', 'All'), ('failed', 'Failed'), ('not_started', 'Not started'), ('succeeded', 'Successful'))
 
 
 def _embedded_update_history_markup(data: dict[str, Any], url: Any) -> str:
@@ -502,7 +502,7 @@ def _update_totals_markup(totals: dict[str, Any] | None) -> str:
         tile('Reports', 'total'),
         tile('Successful', 'succeeded'),
         tile('Failed', 'failed', failure=True),
-        tile('Blocked', 'not_started'),
+        tile('Not started', 'not_started'),
         tile('Open', 'open_failed', failure=True, href=open_href,
              hint='Failed update reports that are not resolved'),
     ], label='Update report totals')
