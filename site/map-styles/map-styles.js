@@ -315,23 +315,21 @@
 
   function renderList() {
     const list = $("map-styles-list");
-    const matching = areas.filter((item) => D.matches(item, state.query, countryName));
+    const matching = areas.filter((item) => (item.id === state.area || D.hasPreview(manifest, item.id))
+      && D.matches(item, state.query, countryName));
     let markup = "";
     let shown = 0;
     if (state.tab === "country") {
       const continents = ["europe", "north-america", "south-america", "africa", "asia", "oceania"];
       continents.forEach((continent) => {
-        const byCountry = {};
-        matching.filter((item) => item.continent === continent).forEach((item) => {
-          const name = countryName(item.countryCodes[0]);
-          (byCountry[name] = byCountry[name] || []).push(item);
-        });
+        const inContinent = matching.filter((item) => item.continent === continent);
+        const byCountry = D.groupByCountry(inContinent, countryName);
         const names = Object.keys(byCountry).sort((a, b) => a.localeCompare(b, locale));
         if (!names.length) return;
+        shown += inContinent.length;
         markup += `<p class="map-styles-group">${escapeHtml(copy.continents[continent])}</p>`;
         names.forEach((name) => {
           const items = byCountry[name];
-          shown += items.length;
           const open = state.query || items.some((item) => item.id === state.area);
           markup += `<details class="map-styles-country"${open ? " open" : ""}><summary><span>${escapeHtml(name)}</span><span class="map-styles-country-count">${items.length}${ICON_CHEVRON}</span></summary><ul>${items.map(areaButton).join("")}</ul></details>`;
         });

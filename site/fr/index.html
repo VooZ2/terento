@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="fr" data-language="fr">
   <head>
-    <script defer src="/site-shell.js?v=20261010-web-installer-shell-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20261011-install-sources-v1">
+    <script defer src="/site-shell.js?v=20261029-web-installer-public-v1"></script>
+    <link rel="stylesheet" href="/styles.css?v=20261029-web-installer-v1">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
@@ -144,6 +144,14 @@
                   "@type": "Answer",
                   "text": "Sur l’écran d’échec de l’installation, choisissez « Report issue ». Terento ouvre GitHub avec le rapport déjà rempli. Vérifiez-le avant de le publier : les issues GitHub sont publiques. Pour une aide par e-mail, indiquez le modèle de votre montre, la région de la carte et ce qui s’est passé. Lisez le guide de dépannage."
                 }
+              },
+              {
+                "@type": "Question",
+                "name": "Puis-je installer des cartes sans installer l’application ?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Oui. L’installateur web installe, met à jour et supprime les cartes du catalogue depuis Chrome, Edge, Opera ou Brave sur Mac, et sous Linux, où il est encore en test. Il ne fonctionne pas encore sous Windows, sur téléphone ou tablette, et ne permet pas d’ajouter vos propres cartes .img."
+                }
               }
             ]
           }
@@ -191,7 +199,7 @@
             <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>Projet open source</p>
             <h1 id="hero-title">Installez simplement des cartes sur les montres Garmin</h1>
             <p class="hero-lede">Installez, mettez à jour et gérez des cartes tierces depuis une application macOS native — sans transferts manuels de fichiers.</p>
-            <div class="hero-actions"><a class="download-action hero-download-action" href="/fr/download/" data-umami-event="download-cta-click" data-umami-event-location="home-hero">Télécharger <span aria-hidden="true">→</span></a><a class="text-link hero-compatibility-link" href="/fr/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="home-hero">Vérifier la compatibilité <span aria-hidden="true">→</span></a></div>
+            <div class="hero-actions"><a class="download-action hero-download-action" href="/fr/download/" data-umami-event="download-cta-click" data-umami-event-location="home-hero">Télécharger <span aria-hidden="true">→</span></a><a class="text-link hero-compatibility-link" href="/fr/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="home-hero">Vérifier la compatibilité <span aria-hidden="true">→</span></a><a class="text-link hero-web-installer-link" href="/fr/install/" data-umami-event="web-installer-link-click" data-umami-event-location="home-hero">Ou installez depuis votre navigateur<span aria-hidden="true">→</span></a></div>
           </div>
 
           <div class="hero-visual">
@@ -281,6 +289,19 @@
         </div></div>
       </section>
         </div>
+        </div>
+      </section>
+      <section class="web-installer section" id="web-installer" aria-labelledby="web-installer-title">
+        <div class="shell">
+          <div class="section-heading">
+            <p class="eyebrow">Installateur web</p><h2 id="web-installer-title">Pas d’application ? Installez depuis votre navigateur.</h2>
+          </div>
+          <div class="problem-statement">
+            <p>Branchez votre Garmin avec un câble USB, choisissez des cartes et installez-les directement depuis Chrome, Edge, Opera ou Brave. Mettez-les à jour ou supprimez-les plus tard de la même façon.</p>
+            <p>Fonctionne sur Mac et, encore en test, sous Linux. Pas encore sous Windows, ni sur téléphone ou tablette.</p>
+          </div>
+          <p class="guide-facts web-installer-facts"><span>Mac · Linux (en test)</span><span>Chrome, Edge, Opera, Brave</span><span>Câble USB de données</span></p>
+          <p class="web-installer-action"><a class="text-link" href="/fr/install/" data-umami-event="web-installer-link-click" data-umami-event-location="home-section">Ouvrir l’installateur web<span aria-hidden="true">→</span></a></p>
         </div>
       </section>
       <section class="provider-section section" id="providers" aria-labelledby="providers-title">
@@ -389,6 +410,10 @@
                 <a class="text-link" href="mailto:hello&#64;terento.app?subject=Terento%20installation%20issue" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="email">Contacter le support <span aria-hidden="true">→</span></a>
               </div>
             </details>
+            <details>
+              <summary>Puis-je installer des cartes sans installer l’application ?</summary>
+              <p>Oui. L’<a href="/fr/install/" data-umami-event="web-installer-link-click" data-umami-event-location="home-faq">installateur web</a> installe, met à jour et supprime les cartes du catalogue depuis Chrome, Edge, Opera ou Brave sur Mac, et sous Linux, où il est encore en test. Il ne fonctionne pas encore sous Windows, sur téléphone ou tablette, et ne permet pas d’ajouter vos propres cartes .img.</p>
+            </details>
             </div>
         </div>
       </section>
@@ -416,7 +441,7 @@
         </div>
         <nav class="footer-nav" data-shell-aria="footer" aria-label="Navigation du pied de page">
           <a href="/fr/#faq" data-shell-copy="faq" data-shell-route="faq" data-umami-event="faq-link-click" data-umami-event-location="footer-nav">FAQ</a><a href="/fr/guides/troubleshooting/" data-shell-copy="troubleshooting" data-shell-route="troubleshooting" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Dépannage</a>
-          <a data-shell-copy="web_installer" href="https://lab.terento.app/install/?lang=fr" data-umami-event="web-installer-link-click" data-umami-event-location="footer-nav">Installateur web</a>
+          <a data-shell-copy="web_installer" href="/fr/install/" data-umami-event="web-installer-link-click" data-umami-event-location="footer-nav">Installateur web</a>
           <a data-shell-copy="legal" href="/legal/" data-umami-event="legal-link-click" data-umami-event-location="footer-nav">Mentions légales</a>
           <a data-shell-copy="privacy" href="/privacy/" data-umami-event="privacy-link-click" data-umami-event-location="footer-nav">Confidentialité</a>
         </nav>

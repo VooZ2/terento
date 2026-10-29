@@ -19,7 +19,7 @@ Questo elenco si basa su installazioni Terento reali e riuscite condivise dagli 
 
 I risultati delle installazioni sono condivisi con Terento dagli utenti; non costituiscono una certificazione Garmin.
 
-La versione attuale include quattro provider di mappe. Questa informazione sul prodotto è distinta dai risultati dei dispositivi mostrati qui.
+La versione attuale include tutti i provider di mappe del catalogo. Questa informazione sul prodotto è distinta dai risultati dei dispositivi mostrati qui.
 
 36 modelli
 

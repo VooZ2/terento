@@ -97,6 +97,7 @@ allowed_internal_events = {
     "maps-link-click",
     "navigation-link-click",
     "privacy-link-click",
+    "web-installer-link-click",
 }
 for path in sorted((root / "site").rglob("*.html")):
     html = path.read_text(encoding="utf-8")
@@ -104,12 +105,12 @@ for path in sorted((root / "site").rglob("*.html")):
         text = re.sub(r"<[^>]+>", "", heading).strip()
         assert not text.endswith("."), f"{path}: H1 must not end with a full stop"
     if '<footer class="site-footer">' in html and "<nav class=\"footer-nav\"" in html:
-        assert html.count('data-umami-event="web-installer-link-click"') == 1, f"{path}: footer must link the Web installer once"
+        assert html.count('data-umami-event="web-installer-link-click" data-umami-event-location="footer-nav"') == 1, f"{path}: footer must link the Web installer once"
     for item in anchors(path):
         href = item["href"]
-        if href.startswith("https://lab.terento.app/install/"):
+        assert "lab.terento.app" not in href, f"{path}: the website links the public installer, not the lab"
+        if re.fullmatch(r"(?:/[a-z]{2})?/install/", href):
             assert item["attributes"].get("data-umami-event") == "web-installer-link-click", f"{path}: Web installer link must use web-installer-link-click"
-            assert item["attributes"].get("data-umami-event-location") == "footer-nav", f"{path}: Web installer link has no footer-nav location"
         if not (href.startswith("/") or href.startswith("#")):
             continue
         event = item["attributes"].get("data-umami-event")
@@ -156,7 +157,7 @@ for path in home_files:
     assert 'class="scope-section"' not in html, f"{path}: Beta scope section must be removed"
     assert html.count('data-provider-card=') == 7, f"{path}: expected seven map-type cards with the existing nested OTM add-on"
     assert html.count('class="provider-benefits"') == 7, f"{path}: expected one benefits list per map card"
-    assert html.count("<details>") == 6, f"{path}: expected six FAQ answers"
+    assert html.count("<details>") == 7, f"{path}: expected seven FAQ answers"
     assert 'class="final-cta"' in html, f"{path}: expected final CTA"
     assert "/assets/app/optimized/installing-maps-640.avif" in html, f"{path}: expected responsive hero artwork"
     items = anchors(path)

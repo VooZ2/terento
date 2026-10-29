@@ -1699,6 +1699,2544 @@
       ]
     },
     {
+      "id": "bieszczady-polonina-wetlinska",
+      "kind": "place",
+      "name": {
+        "en": "Bieszczady – Połonina Wetlińska"
+      },
+      "countryCodes": [
+        "PL"
+      ],
+      "continent": "europe",
+      "center": [
+        22.53,
+        49.15
+      ],
+      "tags": [
+        "mountains",
+        "highlands"
+      ],
+      "regionHints": [
+        "podkarpackie"
+      ]
+    },
+    {
+      "id": "pieniny-dunajec",
+      "kind": "place",
+      "name": {
+        "en": "Pieniny – Dunajec Gorge"
+      },
+      "countryCodes": [
+        "PL"
+      ],
+      "continent": "europe",
+      "center": [
+        20.41,
+        49.41
+      ],
+      "tags": [
+        "mountains",
+        "river"
+      ],
+      "regionHints": [
+        "malopolskie"
+      ]
+    },
+    {
+      "id": "babia-gora",
+      "kind": "place",
+      "name": {
+        "en": "Babia Góra"
+      },
+      "countryCodes": [
+        "PL"
+      ],
+      "continent": "europe",
+      "center": [
+        19.53,
+        49.57
+      ],
+      "tags": [
+        "mountains",
+        "forest"
+      ],
+      "regionHints": [
+        "malopolskie"
+      ]
+    },
+    {
+      "id": "gory-stolowe",
+      "kind": "place",
+      "name": {
+        "en": "Table Mountains – Szczeliniec"
+      },
+      "countryCodes": [
+        "PL"
+      ],
+      "continent": "europe",
+      "center": [
+        16.34,
+        50.48
+      ],
+      "tags": [
+        "rocks",
+        "forest"
+      ],
+      "regionHints": [
+        "dolnoslaskie"
+      ]
+    },
+    {
+      "id": "ojcow",
+      "kind": "place",
+      "name": {
+        "en": "Ojców National Park"
+      },
+      "countryCodes": [
+        "PL"
+      ],
+      "continent": "europe",
+      "center": [
+        19.83,
+        50.21
+      ],
+      "tags": [
+        "rocks",
+        "forest"
+      ],
+      "regionHints": [
+        "malopolskie"
+      ]
+    },
+    {
+      "id": "masuria-mikolajki",
+      "kind": "place",
+      "name": {
+        "en": "Masuria – Mikołajki"
+      },
+      "countryCodes": [
+        "PL"
+      ],
+      "continent": "europe",
+      "center": [
+        21.59,
+        53.8
+      ],
+      "tags": [
+        "lakes",
+        "forest"
+      ],
+      "regionHints": [
+        "warminsko-mazurskie"
+      ]
+    },
+    {
+      "id": "slowinski-leba-dunes",
+      "kind": "place",
+      "name": {
+        "en": "Słowiński – Łeba Dunes"
+      },
+      "countryCodes": [
+        "PL"
+      ],
+      "continent": "europe",
+      "center": [
+        17.53,
+        54.76
+      ],
+      "tags": [
+        "dunes",
+        "coast"
+      ],
+      "regionHints": [
+        "poland-pomorskie"
+      ]
+    },
+    {
+      "id": "bialowieza-forest",
+      "kind": "place",
+      "name": {
+        "en": "Białowieża Forest"
+      },
+      "countryCodes": [
+        "PL"
+      ],
+      "continent": "europe",
+      "center": [
+        23.85,
+        52.72
+      ],
+      "tags": [
+        "forest"
+      ],
+      "regionHints": [
+        "podlaskie"
+      ]
+    },
+    {
+      "id": "trakai",
+      "kind": "place",
+      "name": {
+        "en": "Trakai Lakes"
+      },
+      "countryCodes": [
+        "LT"
+      ],
+      "continent": "europe",
+      "center": [
+        24.93,
+        54.65
+      ],
+      "tags": [
+        "lakes",
+        "forest"
+      ]
+    },
+    {
+      "id": "lahemaa",
+      "kind": "place",
+      "name": {
+        "en": "Lahemaa National Park"
+      },
+      "countryCodes": [
+        "EE"
+      ],
+      "continent": "europe",
+      "center": [
+        25.85,
+        59.55
+      ],
+      "tags": [
+        "coast",
+        "forest"
+      ]
+    },
+    {
+      "id": "pallas-yllastunturi",
+      "kind": "place",
+      "name": {
+        "en": "Pallas–Yllästunturi"
+      },
+      "countryCodes": [
+        "FI"
+      ],
+      "continent": "europe",
+      "center": [
+        24.07,
+        68.05
+      ],
+      "tags": [
+        "highlands",
+        "forest"
+      ]
+    },
+    {
+      "id": "koli",
+      "kind": "place",
+      "name": {
+        "en": "Koli National Park"
+      },
+      "countryCodes": [
+        "FI"
+      ],
+      "continent": "europe",
+      "center": [
+        29.99,
+        63.1
+      ],
+      "tags": [
+        "lakes",
+        "forest"
+      ]
+    },
+    {
+      "id": "geiranger",
+      "kind": "place",
+      "name": {
+        "en": "Geirangerfjord"
+      },
+      "countryCodes": [
+        "NO"
+      ],
+      "continent": "europe",
+      "center": [
+        7.21,
+        62.1
+      ],
+      "tags": [
+        "coast",
+        "mountains"
+      ],
+      "regionHints": [
+        "nor-south"
+      ]
+    },
+    {
+      "id": "senja-segla",
+      "kind": "place",
+      "name": {
+        "en": "Senja – Segla"
+      },
+      "countryCodes": [
+        "NO"
+      ],
+      "continent": "europe",
+      "center": [
+        17.55,
+        69.48
+      ],
+      "tags": [
+        "coast",
+        "mountains"
+      ],
+      "regionHints": [
+        "nor-north"
+      ]
+    },
+    {
+      "id": "kebnekaise",
+      "kind": "place",
+      "name": {
+        "en": "Kebnekaise"
+      },
+      "countryCodes": [
+        "SE"
+      ],
+      "continent": "europe",
+      "center": [
+        18.55,
+        67.9
+      ],
+      "tags": [
+        "mountains",
+        "glaciers"
+      ]
+    },
+    {
+      "id": "high-coast-skuleskogen",
+      "kind": "place",
+      "name": {
+        "en": "High Coast – Skuleskogen"
+      },
+      "countryCodes": [
+        "SE"
+      ],
+      "continent": "europe",
+      "center": [
+        18.48,
+        63.1
+      ],
+      "tags": [
+        "coast",
+        "forest"
+      ]
+    },
+    {
+      "id": "mons-klint",
+      "kind": "place",
+      "name": {
+        "en": "Møns Klint"
+      },
+      "countryCodes": [
+        "DK"
+      ],
+      "continent": "europe",
+      "center": [
+        12.54,
+        54.97
+      ],
+      "tags": [
+        "coast",
+        "forest"
+      ]
+    },
+    {
+      "id": "skaftafell",
+      "kind": "place",
+      "name": {
+        "en": "Skaftafell – Vatnajökull"
+      },
+      "countryCodes": [
+        "IS"
+      ],
+      "continent": "europe",
+      "center": [
+        -16.97,
+        64.02
+      ],
+      "tags": [
+        "glaciers",
+        "mountains"
+      ]
+    },
+    {
+      "id": "faroe-vagar",
+      "kind": "place",
+      "name": {
+        "en": "Faroe Islands – Vágar"
+      },
+      "countryCodes": [
+        "FO"
+      ],
+      "continent": "europe",
+      "center": [
+        -7.25,
+        62.06
+      ],
+      "tags": [
+        "coast",
+        "island"
+      ]
+    },
+    {
+      "id": "bohemian-paradise",
+      "kind": "place",
+      "name": {
+        "en": "Bohemian Paradise"
+      },
+      "countryCodes": [
+        "CZ"
+      ],
+      "continent": "europe",
+      "center": [
+        15.18,
+        50.53
+      ],
+      "tags": [
+        "rocks",
+        "forest"
+      ]
+    },
+    {
+      "id": "sumava-cerne-jezero",
+      "kind": "place",
+      "name": {
+        "en": "Šumava – Černé jezero"
+      },
+      "countryCodes": [
+        "CZ"
+      ],
+      "continent": "europe",
+      "center": [
+        13.18,
+        49.18
+      ],
+      "tags": [
+        "forest",
+        "lakes"
+      ]
+    },
+    {
+      "id": "slovak-paradise",
+      "kind": "place",
+      "name": {
+        "en": "Slovak Paradise"
+      },
+      "countryCodes": [
+        "SK"
+      ],
+      "continent": "europe",
+      "center": [
+        20.4,
+        48.94
+      ],
+      "tags": [
+        "canyon",
+        "forest"
+      ]
+    },
+    {
+      "id": "balaton-tihany",
+      "kind": "place",
+      "name": {
+        "en": "Lake Balaton – Tihany"
+      },
+      "countryCodes": [
+        "HU"
+      ],
+      "continent": "europe",
+      "center": [
+        17.89,
+        46.91
+      ],
+      "tags": [
+        "lakes"
+      ]
+    },
+    {
+      "id": "lucerne-pilatus",
+      "kind": "place",
+      "name": {
+        "en": "Lucerne – Pilatus"
+      },
+      "countryCodes": [
+        "CH"
+      ],
+      "continent": "europe",
+      "center": [
+        8.25,
+        46.98
+      ],
+      "tags": [
+        "lakes",
+        "mountains"
+      ]
+    },
+    {
+      "id": "appenzell-saentis",
+      "kind": "place",
+      "name": {
+        "en": "Appenzell – Säntis"
+      },
+      "countryCodes": [
+        "CH"
+      ],
+      "continent": "europe",
+      "center": [
+        9.4,
+        47.27
+      ],
+      "tags": [
+        "mountains"
+      ]
+    },
+    {
+      "id": "logar-valley",
+      "kind": "place",
+      "name": {
+        "en": "Logar Valley"
+      },
+      "countryCodes": [
+        "SI"
+      ],
+      "continent": "europe",
+      "center": [
+        14.62,
+        46.38
+      ],
+      "tags": [
+        "mountains"
+      ]
+    },
+    {
+      "id": "bavarian-forest",
+      "kind": "place",
+      "name": {
+        "en": "Bavarian Forest – Rachel and Lusen"
+      },
+      "countryCodes": [
+        "DE"
+      ],
+      "continent": "europe",
+      "center": [
+        13.4,
+        48.97
+      ],
+      "tags": [
+        "forest"
+      ],
+      "regionHints": [
+        "bayern",
+        "deu-south",
+        "allemagne"
+      ]
+    },
+    {
+      "id": "jasmund-ruegen",
+      "kind": "place",
+      "name": {
+        "en": "Jasmund – Rügen Chalk Cliffs"
+      },
+      "countryCodes": [
+        "DE"
+      ],
+      "continent": "europe",
+      "center": [
+        13.65,
+        54.57
+      ],
+      "tags": [
+        "coast",
+        "forest"
+      ],
+      "regionHints": [
+        "mecklenburg-vorpommern",
+        "deu-north",
+        "allemagne"
+      ]
+    },
+    {
+      "id": "ardennes-semois",
+      "kind": "place",
+      "name": {
+        "en": "Ardennes – Semois"
+      },
+      "countryCodes": [
+        "BE"
+      ],
+      "continent": "europe",
+      "center": [
+        5.07,
+        49.79
+      ],
+      "tags": [
+        "forest",
+        "river"
+      ]
+    },
+    {
+      "id": "high-fens",
+      "kind": "place",
+      "name": {
+        "en": "High Fens"
+      },
+      "countryCodes": [
+        "BE"
+      ],
+      "continent": "europe",
+      "center": [
+        6.08,
+        50.5
+      ],
+      "tags": [
+        "highlands"
+      ]
+    },
+    {
+      "id": "pic-du-midi-ossau",
+      "kind": "place",
+      "name": {
+        "en": "Pyrenees – Pic du Midi d'Ossau"
+      },
+      "countryCodes": [
+        "FR"
+      ],
+      "continent": "europe",
+      "center": [
+        -0.44,
+        42.85
+      ],
+      "tags": [
+        "mountains",
+        "lakes"
+      ],
+      "regionHints": [
+        "aquitaine",
+        "southwest"
+      ]
+    },
+    {
+      "id": "verdon-gorge",
+      "kind": "place",
+      "name": {
+        "en": "Verdon Gorge"
+      },
+      "countryCodes": [
+        "FR"
+      ],
+      "continent": "europe",
+      "center": [
+        6.33,
+        43.76
+      ],
+      "tags": [
+        "canyon",
+        "lakes"
+      ],
+      "regionHints": [
+        "provence-alpes-cote-d-azur",
+        "southeast"
+      ]
+    },
+    {
+      "id": "calanques",
+      "kind": "place",
+      "name": {
+        "en": "Calanques – Marseille"
+      },
+      "countryCodes": [
+        "FR"
+      ],
+      "continent": "europe",
+      "center": [
+        5.47,
+        43.22
+      ],
+      "tags": [
+        "coast",
+        "rocks"
+      ],
+      "regionHints": [
+        "provence-alpes-cote-d-azur",
+        "southeast"
+      ]
+    },
+    {
+      "id": "ecrins-la-berarde",
+      "kind": "place",
+      "name": {
+        "en": "Écrins – La Bérarde"
+      },
+      "countryCodes": [
+        "FR"
+      ],
+      "continent": "europe",
+      "center": [
+        6.3,
+        45.0
+      ],
+      "tags": [
+        "mountains",
+        "glaciers"
+      ],
+      "regionHints": [
+        "rhone-alpes",
+        "southeast",
+        "alpes"
+      ]
+    },
+    {
+      "id": "annecy",
+      "kind": "place",
+      "name": {
+        "en": "Lake Annecy"
+      },
+      "countryCodes": [
+        "FR"
+      ],
+      "continent": "europe",
+      "center": [
+        6.2,
+        45.85
+      ],
+      "tags": [
+        "lakes",
+        "mountains"
+      ],
+      "regionHints": [
+        "rhone-alpes",
+        "southeast",
+        "alpes"
+      ]
+    },
+    {
+      "id": "vosges-hohneck",
+      "kind": "place",
+      "name": {
+        "en": "Vosges – Hohneck"
+      },
+      "countryCodes": [
+        "FR"
+      ],
+      "continent": "europe",
+      "center": [
+        7.02,
+        48.04
+      ],
+      "tags": [
+        "forest",
+        "highlands"
+      ],
+      "regionHints": [
+        "alsace",
+        "lorraine",
+        "northeast"
+      ]
+    },
+    {
+      "id": "reunion-mafate",
+      "kind": "place",
+      "name": {
+        "en": "Réunion – Cirque de Mafate"
+      },
+      "countryCodes": [
+        "FR"
+      ],
+      "continent": "africa",
+      "center": [
+        55.45,
+        -21.08
+      ],
+      "tags": [
+        "volcano",
+        "mountains",
+        "island"
+      ],
+      "regionHints": [
+        "reunion"
+      ]
+    },
+    {
+      "id": "seceda-val-gardena",
+      "kind": "place",
+      "name": {
+        "en": "Dolomites – Seceda and Val Gardena"
+      },
+      "countryCodes": [
+        "IT"
+      ],
+      "continent": "europe",
+      "center": [
+        11.72,
+        46.6
+      ],
+      "tags": [
+        "mountains"
+      ],
+      "regionHints": [
+        "nord-est",
+        "alpes"
+      ]
+    },
+    {
+      "id": "lake-garda-monte-baldo",
+      "kind": "place",
+      "name": {
+        "en": "Lake Garda – Monte Baldo"
+      },
+      "countryCodes": [
+        "IT"
+      ],
+      "continent": "europe",
+      "center": [
+        10.85,
+        45.7
+      ],
+      "tags": [
+        "lakes",
+        "mountains"
+      ],
+      "regionHints": [
+        "nord-est",
+        "alpes"
+      ]
+    },
+    {
+      "id": "gran-sasso",
+      "kind": "place",
+      "name": {
+        "en": "Gran Sasso – Campo Imperatore"
+      },
+      "countryCodes": [
+        "IT"
+      ],
+      "continent": "europe",
+      "center": [
+        13.57,
+        42.45
+      ],
+      "tags": [
+        "mountains",
+        "highlands"
+      ],
+      "regionHints": [
+        "sud",
+        "italie"
+      ]
+    },
+    {
+      "id": "val-d-orcia",
+      "kind": "place",
+      "name": {
+        "en": "Val d'Orcia"
+      },
+      "countryCodes": [
+        "IT"
+      ],
+      "continent": "europe",
+      "center": [
+        11.62,
+        43.06
+      ],
+      "tags": [
+        "highlands"
+      ],
+      "regionHints": [
+        "centro",
+        "italie"
+      ]
+    },
+    {
+      "id": "etna",
+      "kind": "place",
+      "name": {
+        "en": "Mount Etna"
+      },
+      "countryCodes": [
+        "IT"
+      ],
+      "continent": "europe",
+      "center": [
+        15.0,
+        37.75
+      ],
+      "tags": [
+        "volcano"
+      ],
+      "regionHints": [
+        "isole",
+        "italie"
+      ]
+    },
+    {
+      "id": "sardinia-cala-gonone",
+      "kind": "place",
+      "name": {
+        "en": "Sardinia – Cala Gonone"
+      },
+      "countryCodes": [
+        "IT"
+      ],
+      "continent": "europe",
+      "center": [
+        9.63,
+        40.28
+      ],
+      "tags": [
+        "coast",
+        "canyon"
+      ],
+      "regionHints": [
+        "isole",
+        "italie"
+      ]
+    },
+    {
+      "id": "montserrat",
+      "kind": "place",
+      "name": {
+        "en": "Montserrat"
+      },
+      "countryCodes": [
+        "ES"
+      ],
+      "continent": "europe",
+      "center": [
+        1.83,
+        41.6
+      ],
+      "tags": [
+        "rocks",
+        "mountains"
+      ],
+      "regionHints": [
+        "cataluna",
+        "espagne"
+      ]
+    },
+    {
+      "id": "aiguestortes",
+      "kind": "place",
+      "name": {
+        "en": "Aigüestortes"
+      },
+      "countryCodes": [
+        "ES"
+      ],
+      "continent": "europe",
+      "center": [
+        0.95,
+        42.58
+      ],
+      "tags": [
+        "mountains",
+        "lakes"
+      ],
+      "regionHints": [
+        "cataluna",
+        "espagne"
+      ]
+    },
+    {
+      "id": "caminito-del-rey",
+      "kind": "place",
+      "name": {
+        "en": "Caminito del Rey"
+      },
+      "countryCodes": [
+        "ES"
+      ],
+      "continent": "europe",
+      "center": [
+        -4.79,
+        36.92
+      ],
+      "tags": [
+        "canyon"
+      ],
+      "regionHints": [
+        "andalucia",
+        "espagne"
+      ]
+    },
+    {
+      "id": "guadarrama-penalara",
+      "kind": "place",
+      "name": {
+        "en": "Sierra de Guadarrama – Peñalara"
+      },
+      "countryCodes": [
+        "ES"
+      ],
+      "continent": "europe",
+      "center": [
+        -3.9,
+        40.84
+      ],
+      "tags": [
+        "mountains",
+        "forest"
+      ],
+      "regionHints": [
+        "madrid",
+        "espagne"
+      ]
+    },
+    {
+      "id": "gran-canaria-roque-nublo",
+      "kind": "place",
+      "name": {
+        "en": "Gran Canaria – Roque Nublo"
+      },
+      "countryCodes": [
+        "ES"
+      ],
+      "continent": "europe",
+      "center": [
+        -15.61,
+        27.97
+      ],
+      "tags": [
+        "island",
+        "rocks"
+      ],
+      "regionHints": [
+        "canary",
+        "canarias",
+        "canaries"
+      ]
+    },
+    {
+      "id": "la-palma-taburiente",
+      "kind": "place",
+      "name": {
+        "en": "La Palma – Caldera de Taburiente"
+      },
+      "countryCodes": [
+        "ES"
+      ],
+      "continent": "europe",
+      "center": [
+        -17.88,
+        28.73
+      ],
+      "tags": [
+        "island",
+        "volcano"
+      ],
+      "regionHints": [
+        "canary",
+        "canarias",
+        "canaries"
+      ]
+    },
+    {
+      "id": "sintra",
+      "kind": "place",
+      "name": {
+        "en": "Sintra – Cabo da Roca"
+      },
+      "countryCodes": [
+        "PT"
+      ],
+      "continent": "europe",
+      "center": [
+        -9.42,
+        38.79
+      ],
+      "tags": [
+        "coast",
+        "forest"
+      ],
+      "regionHints": [
+        "europe-portugal",
+        "portugal"
+      ]
+    },
+    {
+      "id": "serra-da-estrela",
+      "kind": "place",
+      "name": {
+        "en": "Serra da Estrela"
+      },
+      "countryCodes": [
+        "PT"
+      ],
+      "continent": "europe",
+      "center": [
+        -7.61,
+        40.32
+      ],
+      "tags": [
+        "mountains"
+      ],
+      "regionHints": [
+        "europe-portugal",
+        "portugal"
+      ]
+    },
+    {
+      "id": "azores-sete-cidades",
+      "kind": "place",
+      "name": {
+        "en": "Azores – Sete Cidades"
+      },
+      "countryCodes": [
+        "PT"
+      ],
+      "continent": "europe",
+      "center": [
+        -25.78,
+        37.86
+      ],
+      "tags": [
+        "island",
+        "lakes",
+        "volcano"
+      ],
+      "regionHints": [
+        "azores",
+        "acores"
+      ]
+    },
+    {
+      "id": "skye-quiraing",
+      "kind": "place",
+      "name": {
+        "en": "Isle of Skye – Quiraing"
+      },
+      "countryCodes": [
+        "GB"
+      ],
+      "continent": "europe",
+      "center": [
+        -6.27,
+        57.63
+      ],
+      "tags": [
+        "island",
+        "highlands"
+      ],
+      "regionHints": [
+        "scotland",
+        "ecosse"
+      ]
+    },
+    {
+      "id": "cairngorms",
+      "kind": "place",
+      "name": {
+        "en": "Cairngorms"
+      },
+      "countryCodes": [
+        "GB"
+      ],
+      "continent": "europe",
+      "center": [
+        -3.64,
+        57.08
+      ],
+      "tags": [
+        "mountains",
+        "highlands"
+      ],
+      "regionHints": [
+        "scotland",
+        "ecosse"
+      ]
+    },
+    {
+      "id": "yorkshire-dales-three-peaks",
+      "kind": "place",
+      "name": {
+        "en": "Yorkshire Dales – Three Peaks"
+      },
+      "countryCodes": [
+        "GB"
+      ],
+      "continent": "europe",
+      "center": [
+        -2.3,
+        54.17
+      ],
+      "tags": [
+        "highlands"
+      ],
+      "regionHints": [
+        "england",
+        "grandebretagne"
+      ]
+    },
+    {
+      "id": "bannau-brycheiniog",
+      "kind": "place",
+      "name": {
+        "en": "Bannau Brycheiniog – Pen y Fan"
+      },
+      "countryCodes": [
+        "GB"
+      ],
+      "continent": "europe",
+      "center": [
+        -3.44,
+        51.88
+      ],
+      "tags": [
+        "highlands"
+      ],
+      "regionHints": [
+        "wales",
+        "grandebretagne"
+      ]
+    },
+    {
+      "id": "connemara",
+      "kind": "place",
+      "name": {
+        "en": "Connemara"
+      },
+      "countryCodes": [
+        "IE"
+      ],
+      "continent": "europe",
+      "center": [
+        -9.8,
+        53.55
+      ],
+      "tags": [
+        "coast",
+        "highlands"
+      ]
+    },
+    {
+      "id": "paklenica",
+      "kind": "place",
+      "name": {
+        "en": "Paklenica"
+      },
+      "countryCodes": [
+        "HR"
+      ],
+      "continent": "europe",
+      "center": [
+        15.47,
+        44.35
+      ],
+      "tags": [
+        "canyon",
+        "mountains"
+      ]
+    },
+    {
+      "id": "ohrid",
+      "kind": "place",
+      "name": {
+        "en": "Lake Ohrid"
+      },
+      "countryCodes": [
+        "MK"
+      ],
+      "continent": "europe",
+      "center": [
+        20.8,
+        41.11
+      ],
+      "tags": [
+        "lakes",
+        "old-town"
+      ]
+    },
+    {
+      "id": "pirin-vihren",
+      "kind": "place",
+      "name": {
+        "en": "Pirin – Vihren"
+      },
+      "countryCodes": [
+        "BG"
+      ],
+      "continent": "europe",
+      "center": [
+        23.4,
+        41.77
+      ],
+      "tags": [
+        "mountains",
+        "non-latin-labels"
+      ]
+    },
+    {
+      "id": "fagaras-balea",
+      "kind": "place",
+      "name": {
+        "en": "Făgăraș – Bâlea Lake"
+      },
+      "countryCodes": [
+        "RO"
+      ],
+      "continent": "europe",
+      "center": [
+        24.62,
+        45.6
+      ],
+      "tags": [
+        "mountains",
+        "lakes"
+      ]
+    },
+    {
+      "id": "bucegi",
+      "kind": "place",
+      "name": {
+        "en": "Bucegi"
+      },
+      "countryCodes": [
+        "RO"
+      ],
+      "continent": "europe",
+      "center": [
+        25.46,
+        45.4
+      ],
+      "tags": [
+        "mountains",
+        "rocks"
+      ]
+    },
+    {
+      "id": "chornohora-hoverla",
+      "kind": "place",
+      "name": {
+        "en": "Chornohora – Hoverla"
+      },
+      "countryCodes": [
+        "UA"
+      ],
+      "continent": "europe",
+      "center": [
+        24.5,
+        48.16
+      ],
+      "tags": [
+        "mountains",
+        "non-latin-labels"
+      ]
+    },
+    {
+      "id": "meteora",
+      "kind": "place",
+      "name": {
+        "en": "Meteora"
+      },
+      "countryCodes": [
+        "GR"
+      ],
+      "continent": "europe",
+      "center": [
+        21.63,
+        39.72
+      ],
+      "tags": [
+        "rocks",
+        "non-latin-labels"
+      ]
+    },
+    {
+      "id": "vikos-zagori",
+      "kind": "place",
+      "name": {
+        "en": "Vikos Gorge – Zagori"
+      },
+      "countryCodes": [
+        "GR"
+      ],
+      "continent": "europe",
+      "center": [
+        20.75,
+        39.92
+      ],
+      "tags": [
+        "canyon",
+        "mountains",
+        "non-latin-labels"
+      ]
+    },
+    {
+      "id": "andorra",
+      "kind": "place",
+      "name": {
+        "en": "Andorra – Coma Pedrosa"
+      },
+      "countryCodes": [
+        "AD"
+      ],
+      "continent": "europe",
+      "center": [
+        1.5,
+        42.57
+      ],
+      "tags": [
+        "mountains",
+        "lakes"
+      ]
+    },
+    {
+      "id": "svaneti-mestia",
+      "kind": "place",
+      "name": {
+        "en": "Svaneti – Mestia"
+      },
+      "countryCodes": [
+        "GE"
+      ],
+      "continent": "asia",
+      "center": [
+        42.73,
+        43.05
+      ],
+      "tags": [
+        "mountains",
+        "glaciers",
+        "non-latin-labels"
+      ]
+    },
+    {
+      "id": "kackar",
+      "kind": "place",
+      "name": {
+        "en": "Kaçkar Mountains"
+      },
+      "countryCodes": [
+        "TR"
+      ],
+      "continent": "asia",
+      "center": [
+        41.15,
+        40.84
+      ],
+      "tags": [
+        "mountains"
+      ]
+    },
+    {
+      "id": "grand-teton",
+      "kind": "place",
+      "name": {
+        "en": "Grand Teton – Jenny Lake"
+      },
+      "countryCodes": [
+        "US"
+      ],
+      "continent": "north-america",
+      "center": [
+        -110.72,
+        43.75
+      ],
+      "tags": [
+        "mountains",
+        "lakes"
+      ],
+      "regionHints": [
+        "wyoming"
+      ]
+    },
+    {
+      "id": "bryce-canyon",
+      "kind": "place",
+      "name": {
+        "en": "Bryce Canyon"
+      },
+      "countryCodes": [
+        "US"
+      ],
+      "continent": "north-america",
+      "center": [
+        -112.17,
+        37.62
+      ],
+      "tags": [
+        "canyon",
+        "rocks"
+      ],
+      "regionHints": [
+        "utah"
+      ]
+    },
+    {
+      "id": "joshua-tree",
+      "kind": "place",
+      "name": {
+        "en": "Joshua Tree"
+      },
+      "countryCodes": [
+        "US"
+      ],
+      "continent": "north-america",
+      "center": [
+        -116.0,
+        33.95
+      ],
+      "tags": [
+        "rocks"
+      ],
+      "regionHints": [
+        "socal",
+        "californie"
+      ]
+    },
+    {
+      "id": "big-sur",
+      "kind": "place",
+      "name": {
+        "en": "Big Sur"
+      },
+      "countryCodes": [
+        "US"
+      ],
+      "continent": "north-america",
+      "center": [
+        -121.8,
+        36.27
+      ],
+      "tags": [
+        "coast",
+        "forest"
+      ],
+      "regionHints": [
+        "norcal",
+        "californie"
+      ]
+    },
+    {
+      "id": "olympic-hurricane-ridge",
+      "kind": "place",
+      "name": {
+        "en": "Olympic – Hurricane Ridge"
+      },
+      "countryCodes": [
+        "US"
+      ],
+      "continent": "north-america",
+      "center": [
+        -123.5,
+        47.97
+      ],
+      "tags": [
+        "mountains",
+        "forest"
+      ],
+      "regionHints": [
+        "washington"
+      ]
+    },
+    {
+      "id": "maroon-bells",
+      "kind": "place",
+      "name": {
+        "en": "Maroon Bells – Aspen"
+      },
+      "countryCodes": [
+        "US"
+      ],
+      "continent": "north-america",
+      "center": [
+        -106.94,
+        39.07
+      ],
+      "tags": [
+        "mountains",
+        "lakes"
+      ],
+      "regionHints": [
+        "colorado"
+      ]
+    },
+    {
+      "id": "adirondacks-mount-marcy",
+      "kind": "place",
+      "name": {
+        "en": "Adirondacks – Mount Marcy"
+      },
+      "countryCodes": [
+        "US"
+      ],
+      "continent": "north-america",
+      "center": [
+        -73.92,
+        44.11
+      ],
+      "tags": [
+        "mountains",
+        "forest"
+      ],
+      "regionHints": [
+        "new-york",
+        "newyork"
+      ]
+    },
+    {
+      "id": "gros-morne",
+      "kind": "place",
+      "name": {
+        "en": "Gros Morne"
+      },
+      "countryCodes": [
+        "CA"
+      ],
+      "continent": "north-america",
+      "center": [
+        -57.8,
+        49.6
+      ],
+      "tags": [
+        "coast",
+        "mountains"
+      ],
+      "regionHints": [
+        "newfoundland",
+        "terre-neuve",
+        "canada-east"
+      ]
+    },
+    {
+      "id": "algonquin",
+      "kind": "place",
+      "name": {
+        "en": "Algonquin"
+      },
+      "countryCodes": [
+        "CA"
+      ],
+      "continent": "north-america",
+      "center": [
+        -78.4,
+        45.55
+      ],
+      "tags": [
+        "lakes",
+        "forest"
+      ],
+      "regionHints": [
+        "ontario",
+        "canada-east"
+      ]
+    },
+    {
+      "id": "mont-tremblant",
+      "kind": "place",
+      "name": {
+        "en": "Mont-Tremblant"
+      },
+      "countryCodes": [
+        "CA"
+      ],
+      "continent": "north-america",
+      "center": [
+        -74.58,
+        46.25
+      ],
+      "tags": [
+        "lakes",
+        "forest"
+      ],
+      "regionHints": [
+        "quebec",
+        "canada-east"
+      ]
+    },
+    {
+      "id": "copper-canyon",
+      "kind": "place",
+      "name": {
+        "en": "Copper Canyon"
+      },
+      "countryCodes": [
+        "MX"
+      ],
+      "continent": "north-america",
+      "center": [
+        -107.79,
+        27.53
+      ],
+      "tags": [
+        "canyon"
+      ]
+    },
+    {
+      "id": "chapada-diamantina",
+      "kind": "place",
+      "name": {
+        "en": "Chapada Diamantina"
+      },
+      "countryCodes": [
+        "BR"
+      ],
+      "continent": "south-america",
+      "center": [
+        -41.4,
+        -12.6
+      ],
+      "tags": [
+        "canyon",
+        "rocks"
+      ],
+      "regionHints": [
+        "nordeste",
+        "bresil-nord-est"
+      ]
+    },
+    {
+      "id": "aconcagua",
+      "kind": "place",
+      "name": {
+        "en": "Aconcagua"
+      },
+      "countryCodes": [
+        "AR"
+      ],
+      "continent": "south-america",
+      "center": [
+        -69.94,
+        -32.65
+      ],
+      "tags": [
+        "mountains",
+        "glaciers"
+      ]
+    },
+    {
+      "id": "bariloche",
+      "kind": "place",
+      "name": {
+        "en": "Bariloche – Nahuel Huapi"
+      },
+      "countryCodes": [
+        "AR"
+      ],
+      "continent": "south-america",
+      "center": [
+        -71.4,
+        -41.13
+      ],
+      "tags": [
+        "lakes",
+        "mountains"
+      ]
+    },
+    {
+      "id": "villarrica",
+      "kind": "place",
+      "name": {
+        "en": "Villarrica – Pucón"
+      },
+      "countryCodes": [
+        "CL"
+      ],
+      "continent": "south-america",
+      "center": [
+        -71.94,
+        -39.35
+      ],
+      "tags": [
+        "volcano",
+        "lakes"
+      ]
+    },
+    {
+      "id": "atacama-valle-de-la-luna",
+      "kind": "place",
+      "name": {
+        "en": "Atacama – Valle de la Luna"
+      },
+      "countryCodes": [
+        "CL"
+      ],
+      "continent": "south-america",
+      "center": [
+        -68.25,
+        -22.92
+      ],
+      "tags": [
+        "dunes",
+        "rocks"
+      ]
+    },
+    {
+      "id": "sossusvlei",
+      "kind": "place",
+      "name": {
+        "en": "Sossusvlei"
+      },
+      "countryCodes": [
+        "NA"
+      ],
+      "continent": "africa",
+      "center": [
+        15.29,
+        -24.73
+      ],
+      "tags": [
+        "dunes"
+      ]
+    },
+    {
+      "id": "daisetsuzan",
+      "kind": "place",
+      "name": {
+        "en": "Daisetsuzan"
+      },
+      "countryCodes": [
+        "JP"
+      ],
+      "continent": "asia",
+      "center": [
+        142.85,
+        43.66
+      ],
+      "tags": [
+        "mountains",
+        "volcano",
+        "non-latin-labels"
+      ],
+      "regionHints": [
+        "hokkaido"
+      ]
+    },
+    {
+      "id": "yakushima",
+      "kind": "place",
+      "name": {
+        "en": "Yakushima"
+      },
+      "countryCodes": [
+        "JP"
+      ],
+      "continent": "asia",
+      "center": [
+        130.53,
+        30.33
+      ],
+      "tags": [
+        "island",
+        "forest",
+        "non-latin-labels"
+      ],
+      "regionHints": [
+        "kyushu"
+      ]
+    },
+    {
+      "id": "ladakh-leh",
+      "kind": "place",
+      "name": {
+        "en": "Ladakh – Leh"
+      },
+      "countryCodes": [
+        "IN"
+      ],
+      "continent": "asia",
+      "center": [
+        77.58,
+        34.16
+      ],
+      "tags": [
+        "mountains",
+        "highlands",
+        "non-latin-labels"
+      ],
+      "regionHints": [
+        "northern-zone"
+      ]
+    },
+    {
+      "id": "munnar",
+      "kind": "place",
+      "name": {
+        "en": "Munnar"
+      },
+      "countryCodes": [
+        "IN"
+      ],
+      "continent": "asia",
+      "center": [
+        77.06,
+        10.09
+      ],
+      "tags": [
+        "highlands",
+        "forest",
+        "non-latin-labels"
+      ],
+      "regionHints": [
+        "southern-zone",
+        "inde-du-sud"
+      ]
+    },
+    {
+      "id": "doi-suthep-chiang-mai",
+      "kind": "place",
+      "name": {
+        "en": "Chiang Mai – Doi Suthep"
+      },
+      "countryCodes": [
+        "TH"
+      ],
+      "continent": "asia",
+      "center": [
+        98.9,
+        18.8
+      ],
+      "tags": [
+        "mountains",
+        "forest",
+        "non-latin-labels"
+      ]
+    },
+    {
+      "id": "krabi-railay",
+      "kind": "place",
+      "name": {
+        "en": "Krabi – Railay"
+      },
+      "countryCodes": [
+        "TH"
+      ],
+      "continent": "asia",
+      "center": [
+        98.84,
+        8.01
+      ],
+      "tags": [
+        "coast",
+        "rocks",
+        "non-latin-labels"
+      ]
+    },
+    {
+      "id": "sa-pa-fansipan",
+      "kind": "place",
+      "name": {
+        "en": "Sa Pa – Fansipan"
+      },
+      "countryCodes": [
+        "VN"
+      ],
+      "continent": "asia",
+      "center": [
+        103.8,
+        22.31
+      ],
+      "tags": [
+        "mountains"
+      ]
+    },
+    {
+      "id": "bali-batur",
+      "kind": "place",
+      "name": {
+        "en": "Bali – Mount Batur"
+      },
+      "countryCodes": [
+        "ID"
+      ],
+      "continent": "asia",
+      "center": [
+        115.38,
+        -8.24
+      ],
+      "tags": [
+        "volcano",
+        "lakes"
+      ],
+      "regionHints": [
+        "nusa-tenggara",
+        "indonesie"
+      ]
+    },
+    {
+      "id": "ella",
+      "kind": "place",
+      "name": {
+        "en": "Ella – Hill Country"
+      },
+      "countryCodes": [
+        "LK"
+      ],
+      "continent": "asia",
+      "center": [
+        81.05,
+        6.87
+      ],
+      "tags": [
+        "highlands",
+        "forest",
+        "non-latin-labels"
+      ]
+    },
+    {
+      "id": "ala-archa",
+      "kind": "place",
+      "name": {
+        "en": "Ala Archa"
+      },
+      "countryCodes": [
+        "KG"
+      ],
+      "continent": "asia",
+      "center": [
+        74.48,
+        42.56
+      ],
+      "tags": [
+        "mountains",
+        "glaciers",
+        "non-latin-labels"
+      ]
+    },
+    {
+      "id": "petra",
+      "kind": "place",
+      "name": {
+        "en": "Petra"
+      },
+      "countryCodes": [
+        "JO"
+      ],
+      "continent": "asia",
+      "center": [
+        35.44,
+        30.33
+      ],
+      "tags": [
+        "rocks",
+        "canyon",
+        "non-latin-labels"
+      ]
+    },
+    {
+      "id": "uluru",
+      "kind": "place",
+      "name": {
+        "en": "Uluru – Kata Tjuta"
+      },
+      "countryCodes": [
+        "AU"
+      ],
+      "continent": "oceania",
+      "center": [
+        131.0,
+        -25.32
+      ],
+      "tags": [
+        "rocks"
+      ]
+    },
+    {
+      "id": "huangshan",
+      "kind": "place",
+      "name": {
+        "en": "Huangshan – Yellow Mountains"
+      },
+      "countryCodes": [
+        "CN"
+      ],
+      "continent": "asia",
+      "center": [
+        118.17,
+        30.13
+      ],
+      "tags": [
+        "mountains",
+        "rocks",
+        "non-latin-labels"
+      ]
+    },
+    {
+      "id": "zhangjiajie",
+      "kind": "place",
+      "name": {
+        "en": "Zhangjiajie"
+      },
+      "countryCodes": [
+        "CN"
+      ],
+      "continent": "asia",
+      "center": [
+        110.43,
+        29.32
+      ],
+      "tags": [
+        "rocks",
+        "forest",
+        "non-latin-labels"
+      ]
+    },
+    {
+      "id": "guilin-yangshuo",
+      "kind": "place",
+      "name": {
+        "en": "Li River – Yangshuo"
+      },
+      "countryCodes": [
+        "CN"
+      ],
+      "continent": "asia",
+      "center": [
+        110.5,
+        24.85
+      ],
+      "tags": [
+        "river",
+        "rocks",
+        "non-latin-labels"
+      ]
+    },
+    {
+      "id": "great-wall-jinshanling",
+      "kind": "place",
+      "name": {
+        "en": "Great Wall – Jinshanling"
+      },
+      "countryCodes": [
+        "CN"
+      ],
+      "continent": "asia",
+      "center": [
+        117.24,
+        40.68
+      ],
+      "tags": [
+        "mountains",
+        "non-latin-labels"
+      ],
+      "regionHints": [
+        "hebei"
+      ]
+    },
+    {
+      "id": "hunza-karimabad",
+      "kind": "place",
+      "name": {
+        "en": "Hunza – Karimabad"
+      },
+      "countryCodes": [
+        "PK"
+      ],
+      "continent": "asia",
+      "center": [
+        74.66,
+        36.32
+      ],
+      "tags": [
+        "mountains",
+        "glaciers"
+      ]
+    },
+    {
+      "id": "angkor",
+      "kind": "place",
+      "name": {
+        "en": "Angkor"
+      },
+      "countryCodes": [
+        "KH"
+      ],
+      "continent": "asia",
+      "center": [
+        103.87,
+        13.43
+      ],
+      "tags": [
+        "forest",
+        "old-town",
+        "non-latin-labels"
+      ]
+    },
+    {
+      "id": "doi-inthanon",
+      "kind": "place",
+      "name": {
+        "en": "Doi Inthanon"
+      },
+      "countryCodes": [
+        "TH"
+      ],
+      "continent": "asia",
+      "center": [
+        98.49,
+        18.59
+      ],
+      "tags": [
+        "mountains",
+        "forest",
+        "non-latin-labels"
+      ]
+    },
+    {
+      "id": "ninh-binh-trang-an",
+      "kind": "place",
+      "name": {
+        "en": "Ninh Bình – Tràng An"
+      },
+      "countryCodes": [
+        "VN"
+      ],
+      "continent": "asia",
+      "center": [
+        105.9,
+        20.25
+      ],
+      "tags": [
+        "rocks",
+        "river"
+      ]
+    },
+    {
+      "id": "braslau-lakes",
+      "kind": "place",
+      "name": {
+        "en": "Braslau Lakes"
+      },
+      "countryCodes": [
+        "BY"
+      ],
+      "continent": "europe",
+      "center": [
+        27.05,
+        55.63
+      ],
+      "tags": [
+        "lakes",
+        "forest",
+        "non-latin-labels"
+      ]
+    },
+    {
+      "id": "black-river-gorges",
+      "kind": "place",
+      "name": {
+        "en": "Black River Gorges"
+      },
+      "countryCodes": [
+        "MU"
+      ],
+      "continent": "africa",
+      "center": [
+        57.43,
+        -20.42
+      ],
+      "tags": [
+        "forest",
+        "canyon",
+        "island"
+      ]
+    },
+    {
+      "id": "santo-antao",
+      "kind": "place",
+      "name": {
+        "en": "Santo Antão"
+      },
+      "countryCodes": [
+        "CV"
+      ],
+      "continent": "africa",
+      "center": [
+        -25.08,
+        17.07
+      ],
+      "tags": [
+        "island",
+        "mountains",
+        "coast"
+      ]
+    },
+    {
+      "id": "mercantour-merveilles",
+      "kind": "place",
+      "name": {
+        "en": "Mercantour – Vallée des Merveilles"
+      },
+      "countryCodes": [
+        "FR"
+      ],
+      "continent": "europe",
+      "center": [
+        7.45,
+        44.06
+      ],
+      "tags": [
+        "mountains",
+        "lakes"
+      ],
+      "regionHints": [
+        "provence-alpes-cote-d-azur",
+        "southeast",
+        "alpes"
+      ]
+    },
+    {
+      "id": "vanoise-pralognan",
+      "kind": "place",
+      "name": {
+        "en": "Vanoise – Pralognan"
+      },
+      "countryCodes": [
+        "FR"
+      ],
+      "continent": "europe",
+      "center": [
+        6.72,
+        45.38
+      ],
+      "tags": [
+        "mountains",
+        "glaciers"
+      ],
+      "regionHints": [
+        "rhone-alpes",
+        "southeast",
+        "alpes"
+      ]
+    },
+    {
+      "id": "gorges-du-tarn",
+      "kind": "place",
+      "name": {
+        "en": "Gorges du Tarn"
+      },
+      "countryCodes": [
+        "FR"
+      ],
+      "continent": "europe",
+      "center": [
+        3.35,
+        44.32
+      ],
+      "tags": [
+        "canyon",
+        "river"
+      ],
+      "regionHints": [
+        "languedoc-roussillon",
+        "southeast",
+        "southwest"
+      ]
+    },
+    {
+      "id": "puy-de-sancy",
+      "kind": "place",
+      "name": {
+        "en": "Puy de Sancy"
+      },
+      "countryCodes": [
+        "FR"
+      ],
+      "continent": "europe",
+      "center": [
+        2.81,
+        45.53
+      ],
+      "tags": [
+        "volcano",
+        "mountains"
+      ],
+      "regionHints": [
+        "auvergne"
+      ]
+    },
+    {
+      "id": "mont-saint-michel",
+      "kind": "place",
+      "name": {
+        "en": "Mont-Saint-Michel"
+      },
+      "countryCodes": [
+        "FR"
+      ],
+      "continent": "europe",
+      "center": [
+        -1.51,
+        48.63
+      ],
+      "tags": [
+        "coast"
+      ],
+      "regionHints": [
+        "basse-normandie",
+        "northwest"
+      ]
+    },
+    {
+      "id": "etretat",
+      "kind": "place",
+      "name": {
+        "en": "Étretat – Alabaster Coast"
+      },
+      "countryCodes": [
+        "FR"
+      ],
+      "continent": "europe",
+      "center": [
+        0.21,
+        49.7
+      ],
+      "tags": [
+        "coast",
+        "rocks"
+      ],
+      "regionHints": [
+        "haute-normandie",
+        "northwest"
+      ]
+    },
+    {
+      "id": "crozon-peninsula",
+      "kind": "place",
+      "name": {
+        "en": "Crozon Peninsula"
+      },
+      "countryCodes": [
+        "FR"
+      ],
+      "continent": "europe",
+      "center": [
+        -4.55,
+        48.24
+      ],
+      "tags": [
+        "coast"
+      ],
+      "regionHints": [
+        "bretagne",
+        "northwest"
+      ]
+    },
+    {
+      "id": "moravian-karst",
+      "kind": "place",
+      "name": {
+        "en": "Moravian Karst"
+      },
+      "countryCodes": [
+        "CZ"
+      ],
+      "continent": "europe",
+      "center": [
+        16.73,
+        49.37
+      ],
+      "tags": [
+        "rocks",
+        "forest"
+      ]
+    },
+    {
+      "id": "adrspach-rocks",
+      "kind": "place",
+      "name": {
+        "en": "Adršpach-Teplice Rocks"
+      },
+      "countryCodes": [
+        "CZ"
+      ],
+      "continent": "europe",
+      "center": [
+        16.12,
+        50.61
+      ],
+      "tags": [
+        "rocks",
+        "forest"
+      ]
+    },
+    {
+      "id": "soca-bovec",
+      "kind": "place",
+      "name": {
+        "en": "Soča Valley – Bovec"
+      },
+      "countryCodes": [
+        "SI"
+      ],
+      "continent": "europe",
+      "center": [
+        13.55,
+        46.34
+      ],
+      "tags": [
+        "river",
+        "mountains"
+      ]
+    },
+    {
+      "id": "lake-bled",
+      "kind": "place",
+      "name": {
+        "en": "Lake Bled"
+      },
+      "countryCodes": [
+        "SI"
+      ],
+      "continent": "europe",
+      "center": [
+        14.09,
+        46.36
+      ],
+      "tags": [
+        "lakes",
+        "mountains"
+      ]
+    },
+    {
+      "id": "aletsch-riederalp",
+      "kind": "place",
+      "name": {
+        "en": "Aletsch Glacier – Riederalp"
+      },
+      "countryCodes": [
+        "CH"
+      ],
+      "continent": "europe",
+      "center": [
+        8.03,
+        46.4
+      ],
+      "tags": [
+        "glaciers",
+        "mountains"
+      ]
+    },
+    {
+      "id": "verzasca",
+      "kind": "place",
+      "name": {
+        "en": "Verzasca Valley"
+      },
+      "countryCodes": [
+        "CH"
+      ],
+      "continent": "europe",
+      "center": [
+        8.84,
+        46.25
+      ],
+      "tags": [
+        "river",
+        "mountains"
+      ]
+    },
+    {
       "id": "tmb-val-ferret",
       "kind": "route",
       "name": {
@@ -2387,6 +4925,368 @@
       "routeName": "Overland Track"
     },
     {
+      "id": "main-beskid-trail-turbacz",
+      "kind": "route",
+      "name": {
+        "en": "Main Beskid Trail – Gorce and Turbacz"
+      },
+      "countryCodes": [
+        "PL"
+      ],
+      "continent": "europe",
+      "center": [
+        20.11,
+        49.54
+      ],
+      "tags": [
+        "long-distance-trail",
+        "mountains"
+      ],
+      "routeName": "Main Beskid Trail",
+      "regionHints": [
+        "malopolskie"
+      ]
+    },
+    {
+      "id": "eagles-nests-trail-ogrodzieniec",
+      "kind": "route",
+      "name": {
+        "en": "Trail of the Eagles' Nests – Ogrodzieniec"
+      },
+      "countryCodes": [
+        "PL"
+      ],
+      "continent": "europe",
+      "center": [
+        19.52,
+        50.45
+      ],
+      "tags": [
+        "long-distance-trail",
+        "rocks"
+      ],
+      "routeName": "Trail of the Eagles' Nests",
+      "regionHints": [
+        "poland-slaskie"
+      ]
+    },
+    {
+      "id": "karhunkierros-oulanka",
+      "kind": "route",
+      "name": {
+        "en": "Karhunkierros – Oulanka"
+      },
+      "countryCodes": [
+        "FI"
+      ],
+      "continent": "europe",
+      "center": [
+        29.4,
+        66.37
+      ],
+      "tags": [
+        "long-distance-trail",
+        "river",
+        "forest"
+      ],
+      "routeName": "Karhunkierros"
+    },
+    {
+      "id": "rheinsteig-loreley",
+      "kind": "route",
+      "name": {
+        "en": "Rheinsteig – Loreley"
+      },
+      "countryCodes": [
+        "DE"
+      ],
+      "continent": "europe",
+      "center": [
+        7.73,
+        50.14
+      ],
+      "tags": [
+        "long-distance-trail",
+        "river"
+      ],
+      "routeName": "Rheinsteig",
+      "regionHints": [
+        "rheinland-pfalz",
+        "deu-north",
+        "deu-south",
+        "allemagne"
+      ]
+    },
+    {
+      "id": "rennsteig-inselsberg",
+      "kind": "route",
+      "name": {
+        "en": "Rennsteig – Großer Inselsberg"
+      },
+      "countryCodes": [
+        "DE"
+      ],
+      "continent": "europe",
+      "center": [
+        10.47,
+        50.85
+      ],
+      "tags": [
+        "long-distance-trail",
+        "forest"
+      ],
+      "routeName": "Rennsteig",
+      "regionHints": [
+        "thueringen",
+        "deu-north",
+        "deu-south",
+        "allemagne"
+      ]
+    },
+    {
+      "id": "mullerthal-trail",
+      "kind": "route",
+      "name": {
+        "en": "Mullerthal Trail"
+      },
+      "countryCodes": [
+        "LU"
+      ],
+      "continent": "europe",
+      "center": [
+        6.33,
+        49.8
+      ],
+      "tags": [
+        "long-distance-trail",
+        "rocks"
+      ],
+      "routeName": "Mullerthal Trail"
+    },
+    {
+      "id": "via-podiensis-aubrac",
+      "kind": "route",
+      "name": {
+        "en": "Via Podiensis – Aubrac"
+      },
+      "countryCodes": [
+        "FR"
+      ],
+      "continent": "europe",
+      "center": [
+        2.98,
+        44.63
+      ],
+      "tags": [
+        "pilgrim-route",
+        "highlands"
+      ],
+      "routeName": "Camino de Santiago – Via Podiensis",
+      "regionHints": [
+        "midi-pyrenees",
+        "southwest"
+      ]
+    },
+    {
+      "id": "alta-via-2-pale",
+      "kind": "route",
+      "name": {
+        "en": "Alta Via 2 – Pale di San Martino"
+      },
+      "countryCodes": [
+        "IT"
+      ],
+      "continent": "europe",
+      "center": [
+        11.87,
+        46.27
+      ],
+      "tags": [
+        "long-distance-trail",
+        "mountains"
+      ],
+      "routeName": "Alta Via 2",
+      "regionHints": [
+        "nord-est",
+        "alpes"
+      ]
+    },
+    {
+      "id": "camino-del-norte-san-sebastian",
+      "kind": "route",
+      "name": {
+        "en": "Camino del Norte – San Sebastián"
+      },
+      "countryCodes": [
+        "ES"
+      ],
+      "continent": "europe",
+      "center": [
+        -2.05,
+        43.3
+      ],
+      "tags": [
+        "pilgrim-route",
+        "coast"
+      ],
+      "routeName": "Camino de Santiago – Camino del Norte",
+      "regionHints": [
+        "pais-vasco",
+        "espagne"
+      ]
+    },
+    {
+      "id": "hadrians-wall-path",
+      "kind": "route",
+      "name": {
+        "en": "Hadrian's Wall Path – Steel Rigg"
+      },
+      "countryCodes": [
+        "GB"
+      ],
+      "continent": "europe",
+      "center": [
+        -2.37,
+        55.0
+      ],
+      "tags": [
+        "long-distance-trail",
+        "highlands"
+      ],
+      "routeName": "Hadrian's Wall Path",
+      "regionHints": [
+        "england",
+        "grandebretagne"
+      ]
+    },
+    {
+      "id": "samaria-gorge",
+      "kind": "route",
+      "name": {
+        "en": "Samaria Gorge"
+      },
+      "countryCodes": [
+        "GR"
+      ],
+      "continent": "europe",
+      "center": [
+        23.96,
+        35.27
+      ],
+      "tags": [
+        "canyon",
+        "non-latin-labels"
+      ],
+      "routeName": "Samaria Gorge"
+    },
+    {
+      "id": "appalachian-trail-mcafee-knob",
+      "kind": "route",
+      "name": {
+        "en": "Appalachian Trail – McAfee Knob"
+      },
+      "countryCodes": [
+        "US"
+      ],
+      "continent": "north-america",
+      "center": [
+        -80.09,
+        37.38
+      ],
+      "tags": [
+        "long-distance-trail",
+        "forest"
+      ],
+      "routeName": "Appalachian Trail",
+      "regionHints": [
+        "us-virginia"
+      ]
+    },
+    {
+      "id": "santa-cruz-trek",
+      "kind": "route",
+      "name": {
+        "en": "Santa Cruz Trek – Cordillera Blanca"
+      },
+      "countryCodes": [
+        "PE"
+      ],
+      "continent": "south-america",
+      "center": [
+        -77.6,
+        -8.93
+      ],
+      "tags": [
+        "long-distance-trail",
+        "mountains",
+        "glaciers"
+      ],
+      "routeName": "Santa Cruz Trek"
+    },
+    {
+      "id": "nakasendo-magome-tsumago",
+      "kind": "route",
+      "name": {
+        "en": "Nakasendo – Magome to Tsumago"
+      },
+      "countryCodes": [
+        "JP"
+      ],
+      "continent": "asia",
+      "center": [
+        137.58,
+        35.54
+      ],
+      "tags": [
+        "forest",
+        "non-latin-labels"
+      ],
+      "routeName": "Nakasendo",
+      "regionHints": [
+        "chubu"
+      ]
+    },
+    {
+      "id": "abel-tasman-coast-track",
+      "kind": "route",
+      "name": {
+        "en": "Abel Tasman Coast Track"
+      },
+      "countryCodes": [
+        "NZ"
+      ],
+      "continent": "oceania",
+      "center": [
+        173.0,
+        -40.9
+      ],
+      "tags": [
+        "long-distance-trail",
+        "coast"
+      ],
+      "routeName": "Abel Tasman Coast Track"
+    },
+    {
+      "id": "great-ocean-walk-twelve-apostles",
+      "kind": "route",
+      "name": {
+        "en": "Great Ocean Walk – Twelve Apostles"
+      },
+      "countryCodes": [
+        "AU"
+      ],
+      "continent": "oceania",
+      "center": [
+        143.15,
+        -38.7
+      ],
+      "tags": [
+        "long-distance-trail",
+        "coast"
+      ],
+      "routeName": "Great Ocean Walk"
+    },
+    {
       "id": "amsterdam",
       "kind": "city",
       "name": {
@@ -2643,6 +5543,725 @@
         "kanto"
       ],
       "featured": true
+    },
+    {
+      "id": "krakow",
+      "kind": "city",
+      "name": {
+        "en": "Kraków"
+      },
+      "countryCodes": [
+        "PL"
+      ],
+      "continent": "europe",
+      "center": [
+        19.937,
+        50.061
+      ],
+      "tags": [
+        "city",
+        "old-town"
+      ],
+      "regionHints": [
+        "malopolskie"
+      ]
+    },
+    {
+      "id": "warsaw",
+      "kind": "city",
+      "name": {
+        "en": "Warsaw"
+      },
+      "countryCodes": [
+        "PL"
+      ],
+      "continent": "europe",
+      "center": [
+        21.012,
+        52.23
+      ],
+      "tags": [
+        "city",
+        "parks"
+      ],
+      "regionHints": [
+        "mazowieckie"
+      ]
+    },
+    {
+      "id": "gdansk",
+      "kind": "city",
+      "name": {
+        "en": "Gdańsk"
+      },
+      "countryCodes": [
+        "PL"
+      ],
+      "continent": "europe",
+      "center": [
+        18.653,
+        54.352
+      ],
+      "tags": [
+        "city",
+        "old-town"
+      ],
+      "regionHints": [
+        "poland-pomorskie"
+      ]
+    },
+    {
+      "id": "wroclaw",
+      "kind": "city",
+      "name": {
+        "en": "Wrocław"
+      },
+      "countryCodes": [
+        "PL"
+      ],
+      "continent": "europe",
+      "center": [
+        17.032,
+        51.11
+      ],
+      "tags": [
+        "city",
+        "old-town"
+      ],
+      "regionHints": [
+        "dolnoslaskie"
+      ]
+    },
+    {
+      "id": "kaunas",
+      "kind": "city",
+      "name": {
+        "en": "Kaunas"
+      },
+      "countryCodes": [
+        "LT"
+      ],
+      "continent": "europe",
+      "center": [
+        23.903,
+        54.897
+      ],
+      "tags": [
+        "city",
+        "old-town"
+      ]
+    },
+    {
+      "id": "riga",
+      "kind": "city",
+      "name": {
+        "en": "Riga"
+      },
+      "countryCodes": [
+        "LV"
+      ],
+      "continent": "europe",
+      "center": [
+        24.105,
+        56.949
+      ],
+      "tags": [
+        "city",
+        "old-town"
+      ]
+    },
+    {
+      "id": "tallinn",
+      "kind": "city",
+      "name": {
+        "en": "Tallinn"
+      },
+      "countryCodes": [
+        "EE"
+      ],
+      "continent": "europe",
+      "center": [
+        24.745,
+        59.437
+      ],
+      "tags": [
+        "city",
+        "old-town"
+      ]
+    },
+    {
+      "id": "helsinki",
+      "kind": "city",
+      "name": {
+        "en": "Helsinki"
+      },
+      "countryCodes": [
+        "FI"
+      ],
+      "continent": "europe",
+      "center": [
+        24.941,
+        60.17
+      ],
+      "tags": [
+        "city",
+        "coast"
+      ]
+    },
+    {
+      "id": "oslo",
+      "kind": "city",
+      "name": {
+        "en": "Oslo"
+      },
+      "countryCodes": [
+        "NO"
+      ],
+      "continent": "europe",
+      "center": [
+        10.752,
+        59.913
+      ],
+      "tags": [
+        "city",
+        "coast"
+      ],
+      "regionHints": [
+        "nor-south"
+      ]
+    },
+    {
+      "id": "stockholm",
+      "kind": "city",
+      "name": {
+        "en": "Stockholm"
+      },
+      "countryCodes": [
+        "SE"
+      ],
+      "continent": "europe",
+      "center": [
+        18.069,
+        59.329
+      ],
+      "tags": [
+        "city",
+        "old-town"
+      ]
+    },
+    {
+      "id": "budapest",
+      "kind": "city",
+      "name": {
+        "en": "Budapest"
+      },
+      "countryCodes": [
+        "HU"
+      ],
+      "continent": "europe",
+      "center": [
+        19.04,
+        47.498
+      ],
+      "tags": [
+        "city",
+        "river"
+      ]
+    },
+    {
+      "id": "salzburg",
+      "kind": "city",
+      "name": {
+        "en": "Salzburg"
+      },
+      "countryCodes": [
+        "AT"
+      ],
+      "continent": "europe",
+      "center": [
+        13.045,
+        47.8
+      ],
+      "tags": [
+        "city",
+        "old-town"
+      ]
+    },
+    {
+      "id": "ljubljana",
+      "kind": "city",
+      "name": {
+        "en": "Ljubljana"
+      },
+      "countryCodes": [
+        "SI"
+      ],
+      "continent": "europe",
+      "center": [
+        14.506,
+        46.051
+      ],
+      "tags": [
+        "city",
+        "old-town"
+      ]
+    },
+    {
+      "id": "hamburg",
+      "kind": "city",
+      "name": {
+        "en": "Hamburg"
+      },
+      "countryCodes": [
+        "DE"
+      ],
+      "continent": "europe",
+      "center": [
+        9.993,
+        53.551
+      ],
+      "tags": [
+        "city",
+        "parks"
+      ],
+      "regionHints": [
+        "hamburg",
+        "deu-north",
+        "allemagne"
+      ]
+    },
+    {
+      "id": "brussels",
+      "kind": "city",
+      "name": {
+        "en": "Brussels"
+      },
+      "countryCodes": [
+        "BE"
+      ],
+      "continent": "europe",
+      "center": [
+        4.352,
+        50.847
+      ],
+      "tags": [
+        "city",
+        "old-town"
+      ]
+    },
+    {
+      "id": "lyon",
+      "kind": "city",
+      "name": {
+        "en": "Lyon"
+      },
+      "countryCodes": [
+        "FR"
+      ],
+      "continent": "europe",
+      "center": [
+        4.835,
+        45.76
+      ],
+      "tags": [
+        "city",
+        "old-town"
+      ],
+      "regionHints": [
+        "rhone-alpes",
+        "southeast"
+      ]
+    },
+    {
+      "id": "rome",
+      "kind": "city",
+      "name": {
+        "en": "Rome"
+      },
+      "countryCodes": [
+        "IT"
+      ],
+      "continent": "europe",
+      "center": [
+        12.496,
+        41.903
+      ],
+      "tags": [
+        "city",
+        "old-town"
+      ],
+      "regionHints": [
+        "centro",
+        "italie"
+      ]
+    },
+    {
+      "id": "florence",
+      "kind": "city",
+      "name": {
+        "en": "Florence"
+      },
+      "countryCodes": [
+        "IT"
+      ],
+      "continent": "europe",
+      "center": [
+        11.256,
+        43.77
+      ],
+      "tags": [
+        "city",
+        "old-town"
+      ],
+      "regionHints": [
+        "centro",
+        "italie"
+      ]
+    },
+    {
+      "id": "madrid",
+      "kind": "city",
+      "name": {
+        "en": "Madrid"
+      },
+      "countryCodes": [
+        "ES"
+      ],
+      "continent": "europe",
+      "center": [
+        -3.703,
+        40.417
+      ],
+      "tags": [
+        "city",
+        "parks"
+      ],
+      "regionHints": [
+        "madrid",
+        "espagne"
+      ]
+    },
+    {
+      "id": "porto",
+      "kind": "city",
+      "name": {
+        "en": "Porto"
+      },
+      "countryCodes": [
+        "PT"
+      ],
+      "continent": "europe",
+      "center": [
+        -8.611,
+        41.149
+      ],
+      "tags": [
+        "city",
+        "old-town"
+      ],
+      "regionHints": [
+        "europe-portugal",
+        "portugal"
+      ]
+    },
+    {
+      "id": "edinburgh",
+      "kind": "city",
+      "name": {
+        "en": "Edinburgh"
+      },
+      "countryCodes": [
+        "GB"
+      ],
+      "continent": "europe",
+      "center": [
+        -3.188,
+        55.953
+      ],
+      "tags": [
+        "city",
+        "old-town"
+      ],
+      "regionHints": [
+        "scotland",
+        "ecosse"
+      ]
+    },
+    {
+      "id": "dubrovnik",
+      "kind": "city",
+      "name": {
+        "en": "Dubrovnik"
+      },
+      "countryCodes": [
+        "HR"
+      ],
+      "continent": "europe",
+      "center": [
+        18.092,
+        42.645
+      ],
+      "tags": [
+        "city",
+        "old-town"
+      ]
+    },
+    {
+      "id": "valletta",
+      "kind": "city",
+      "name": {
+        "en": "Valletta"
+      },
+      "countryCodes": [
+        "MT"
+      ],
+      "continent": "europe",
+      "center": [
+        14.512,
+        35.899
+      ],
+      "tags": [
+        "city",
+        "old-town"
+      ]
+    },
+    {
+      "id": "san-francisco",
+      "kind": "city",
+      "name": {
+        "en": "San Francisco"
+      },
+      "countryCodes": [
+        "US"
+      ],
+      "continent": "north-america",
+      "center": [
+        -122.419,
+        37.775
+      ],
+      "tags": [
+        "city",
+        "coast"
+      ],
+      "regionHints": [
+        "norcal",
+        "californie"
+      ]
+    },
+    {
+      "id": "vancouver",
+      "kind": "city",
+      "name": {
+        "en": "Vancouver"
+      },
+      "countryCodes": [
+        "CA"
+      ],
+      "continent": "north-america",
+      "center": [
+        -123.121,
+        49.283
+      ],
+      "tags": [
+        "city",
+        "parks"
+      ],
+      "regionHints": [
+        "british-columbia",
+        "colombiebritannique",
+        "canada-west"
+      ]
+    },
+    {
+      "id": "mexico-city",
+      "kind": "city",
+      "name": {
+        "en": "Mexico City"
+      },
+      "countryCodes": [
+        "MX"
+      ],
+      "continent": "north-america",
+      "center": [
+        -99.133,
+        19.433
+      ],
+      "tags": [
+        "city",
+        "old-town"
+      ]
+    },
+    {
+      "id": "rio-de-janeiro",
+      "kind": "city",
+      "name": {
+        "en": "Rio de Janeiro"
+      },
+      "countryCodes": [
+        "BR"
+      ],
+      "continent": "south-america",
+      "center": [
+        -43.2,
+        -22.95
+      ],
+      "tags": [
+        "city",
+        "coast"
+      ],
+      "regionHints": [
+        "sudeste",
+        "bresil-sud"
+      ]
+    },
+    {
+      "id": "kyoto",
+      "kind": "city",
+      "name": {
+        "en": "Kyoto"
+      },
+      "countryCodes": [
+        "JP"
+      ],
+      "continent": "asia",
+      "center": [
+        135.768,
+        35.011
+      ],
+      "tags": [
+        "city",
+        "old-town",
+        "non-latin-labels"
+      ],
+      "regionHints": [
+        "kansai"
+      ]
+    },
+    {
+      "id": "sydney",
+      "kind": "city",
+      "name": {
+        "en": "Sydney"
+      },
+      "countryCodes": [
+        "AU"
+      ],
+      "continent": "oceania",
+      "center": [
+        151.209,
+        -33.868
+      ],
+      "tags": [
+        "city",
+        "coast"
+      ]
+    },
+    {
+      "id": "hangzhou-west-lake",
+      "kind": "city",
+      "name": {
+        "en": "Hangzhou – West Lake"
+      },
+      "countryCodes": [
+        "CN"
+      ],
+      "continent": "asia",
+      "center": [
+        120.14,
+        30.25
+      ],
+      "tags": [
+        "city",
+        "lakes",
+        "non-latin-labels"
+      ],
+      "regionHints": [
+        "zhejiang"
+      ]
+    },
+    {
+      "id": "shanghai",
+      "kind": "city",
+      "name": {
+        "en": "Shanghai"
+      },
+      "countryCodes": [
+        "CN"
+      ],
+      "continent": "asia",
+      "center": [
+        121.49,
+        31.235
+      ],
+      "tags": [
+        "city",
+        "non-latin-labels"
+      ],
+      "regionHints": [
+        "shanghai"
+      ]
+    },
+    {
+      "id": "minsk",
+      "kind": "city",
+      "name": {
+        "en": "Minsk"
+      },
+      "countryCodes": [
+        "BY"
+      ],
+      "continent": "europe",
+      "center": [
+        27.561,
+        53.902
+      ],
+      "tags": [
+        "city",
+        "non-latin-labels"
+      ]
+    },
+    {
+      "id": "nice",
+      "kind": "city",
+      "name": {
+        "en": "Nice"
+      },
+      "countryCodes": [
+        "FR"
+      ],
+      "continent": "europe",
+      "center": [
+        7.262,
+        43.7
+      ],
+      "tags": [
+        "city",
+        "coast"
+      ],
+      "regionHints": [
+        "provence-alpes-cote-d-azur",
+        "southeast",
+        "alpes"
+      ]
+    },
+    {
+      "id": "cesky-krumlov",
+      "kind": "city",
+      "name": {
+        "en": "Český Krumlov"
+      },
+      "countryCodes": [
+        "CZ"
+      ],
+      "continent": "europe",
+      "center": [
+        14.315,
+        48.811
+      ],
+      "tags": [
+        "city",
+        "old-town"
+      ]
     }
   ]
 }

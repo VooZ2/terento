@@ -43,7 +43,7 @@ Wybierz mapę z katalogu albo dodaj własny zgodny plik .img. Terento zajmie si�
 
 1. Wybierz z katalogu
 
-Wybierz region z katalogu jednego z czterech dostawców map.
+Wybierz dostawcę i region z katalogu.
 
 2. Dodaj własną mapę
 

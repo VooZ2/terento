@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any, Iterable
 
 from ..bbbike_geography import COUNTRY_CODES as _GEOFABRIK_COUNTRY_CODES
+from ..provider_catalog import acquisition_withheld
 from .areas import PreviewArea
 
 
@@ -153,6 +154,11 @@ def candidates_for(
         if package.get("availability") not in {"AVAILABLE", None}:
             continue
         if package.get("downloads_disabled"):
+            continue
+        # The product acquisition policy (Crimea and every RU region) applies
+        # to preview downloads as well.
+        if acquisition_withheld(package["provider_id"], package["provider_region_id"],
+                                package.get("country_codes"), package.get("region"), package.get("availability")):
             continue
         codes = package_country_codes(package)
         if "RU" in codes or not codes & set(area.country_codes):

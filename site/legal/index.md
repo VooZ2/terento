@@ -11,7 +11,7 @@ Terento is a free, open-source macOS app for installing and managing third-party
 
 Terento is an independent project published by a private individual. Meet the maker on the [About page](https://terento.app/about/). Contact: [hello@terento.app](mailto:hello@terento.app).
 
-The app is for Apple Silicon Macs. The web installer is a beta and needs Google Chrome, Microsoft Edge, Opera or Brave on a Mac or Linux computer. Compatibility is evaluated for each exact watch model and variant. See [Compatibility](https://terento.app/compatibility/) before using it. Donations are optional and do not unlock features, maps or provider access.
+The app is for Apple Silicon Macs. The web installer needs Google Chrome, Microsoft Edge, Opera or Brave on a Mac or Linux computer; on Linux it is still being tested. Compatibility is evaluated for each exact watch model and variant. See [Compatibility](https://terento.app/compatibility/) before using it. Donations are optional and do not unlock features, maps or provider access.
 
 ## Software and third-party licences
 
@@ -51,7 +51,7 @@ Terento ist eine kostenlose, quelloffene macOS-App zum Installieren und Verwalte
 
 Terento ist ein unabhängiges Projekt einer Privatperson. Mehr über den Entwickler erfährst du unter [Über uns](https://terento.app/de/about/). Kontakt: [hello@terento.app](mailto:hello@terento.app).
 
-Die App ist für Macs mit Apple Silicon. Der Web-Installer ist eine Beta und braucht Google Chrome, Microsoft Edge, Opera oder Brave auf einem Mac oder Linux-Computer. Die Kompatibilität wird für jedes genaue Uhrenmodell und jede Variante geprüft. Sieh vor der Nutzung unter [Kompatibilität](https://terento.app/de/compatibility/) nach. Spenden sind freiwillig und schalten keine Funktionen, Karten oder Anbieter frei.
+Die App ist für Macs mit Apple Silicon. Der Web-Installer braucht Google Chrome, Microsoft Edge, Opera oder Brave auf einem Mac oder Linux-Computer; unter Linux wird er noch getestet. Die Kompatibilität wird für jedes genaue Uhrenmodell und jede Variante geprüft. Sieh vor der Nutzung unter [Kompatibilität](https://terento.app/de/compatibility/) nach. Spenden sind freiwillig und schalten keine Funktionen, Karten oder Anbieter frei.
 
 ## Software und Drittanbieter-Lizenzen
 
@@ -91,7 +91,7 @@ Terento est une application macOS gratuite et open source pour installer et gér
 
 Terento est un projet indépendant publié par un particulier. Découvrez son créateur sur la page [À propos](https://terento.app/fr/about/). Contact : [hello@terento.app](mailto:hello@terento.app).
 
-L’application est destinée aux Mac avec Apple Silicon. L’installateur web est une bêta et nécessite Google Chrome, Microsoft Edge, Opera ou Brave sur un Mac ou un ordinateur Linux. La compatibilité est évaluée pour chaque modèle et variante de montre. Consultez la [compatibilité](https://terento.app/fr/compatibility/) avant utilisation. Les dons sont facultatifs et ne débloquent aucune fonction, carte ou fournisseur.
+L’application est destinée aux Mac avec Apple Silicon. L’installateur web nécessite Google Chrome, Microsoft Edge, Opera ou Brave sur un Mac ou un ordinateur Linux ; sous Linux, il est encore en test. La compatibilité est évaluée pour chaque modèle et variante de montre. Consultez la [compatibilité](https://terento.app/fr/compatibility/) avant utilisation. Les dons sont facultatifs et ne débloquent aucune fonction, carte ou fournisseur.
 
 ## Licences du logiciel et des composants tiers
 
@@ -131,7 +131,7 @@ Terento to bezpłatna aplikacja macOS o otwartym kodzie do instalowania i zarzą
 
 Terento to niezależny projekt publikowany przez osobę prywatną. Poznaj twórcę na stronie [O projekcie](https://terento.app/pl/about/). Kontakt: [hello@terento.app](mailto:hello@terento.app).
 
-Aplikacja jest przeznaczona dla komputerów Mac z Apple Silicon. Instalator webowy jest wersją beta i wymaga Google Chrome, Microsoft Edge, Opery lub Brave na Macu lub komputerze z Linuksem. Zgodność oceniamy dla każdego konkretnego modelu i wariantu zegarka. Przed użyciem sprawdź [zgodność](https://terento.app/pl/compatibility/). Wsparcie finansowe jest dobrowolne i nie odblokowuje funkcji, map ani dostawców.
+Aplikacja jest przeznaczona dla komputerów Mac z Apple Silicon. Instalator webowy wymaga Google Chrome, Microsoft Edge, Opery lub Brave na Macu lub komputerze z Linuksem; na Linuksie jest jeszcze testowany. Zgodność oceniamy dla każdego konkretnego modelu i wariantu zegarka. Przed użyciem sprawdź [zgodność](https://terento.app/pl/compatibility/). Wsparcie finansowe jest dobrowolne i nie odblokowuje funkcji, map ani dostawców.
 
 ## Licencje oprogramowania i komponentów
 
@@ -171,7 +171,7 @@ Terento je bezplatná aplikace macOS s otevřeným zdrojovým kódem pro instala
 
 Terento je nezávislý projekt vydávaný soukromou osobou. Tvůrce najdete na stránce [O projektu](https://terento.app/cs/about/). Kontakt: [hello@terento.app](mailto:hello@terento.app).
 
-Aplikace je určena pro Macy s Apple Silicon. Webový instalátor je beta a vyžaduje Google Chrome, Microsoft Edge, Operu nebo Brave na Macu nebo počítači s Linuxem. Kompatibilitu hodnotíme pro každý přesný model a variantu hodinek. Před použitím ověřte [kompatibilitu](https://terento.app/cs/compatibility/). Příspěvky jsou dobrovolné a neodemykají funkce, mapy ani poskytovatele.
+Aplikace je určena pro Macy s Apple Silicon. Webový instalátor vyžaduje Google Chrome, Microsoft Edge, Operu nebo Brave na Macu nebo počítači s Linuxem; na Linuxu se ještě testuje. Kompatibilitu hodnotíme pro každý přesný model a variantu hodinek. Před použitím ověřte [kompatibilitu](https://terento.app/cs/compatibility/). Příspěvky jsou dobrovolné a neodemykají funkce, mapy ani poskytovatele.
 
 ## Licence softwaru a dalších součástí
 
@@ -211,7 +211,7 @@ Terento è un’app macOS gratuita e open source per installare e gestire mappe 
 
 Terento è un progetto indipendente pubblicato da un privato. Scopri l’autore nella pagina [Informazioni](https://terento.app/it/about/). Contatto: [hello@terento.app](mailto:hello@terento.app).
 
-L’app è per Mac con Apple Silicon. L’installer web è una beta e richiede Google Chrome, Microsoft Edge, Opera o Brave su un Mac o un computer Linux. La compatibilità viene valutata per ogni modello e variante esatta di orologio. Controlla la [compatibilità](https://terento.app/it/compatibility/) prima dell’uso. Le donazioni sono facoltative e non sbloccano funzioni, mappe o fornitori.
+L’app è per Mac con Apple Silicon. L’installer web richiede Google Chrome, Microsoft Edge, Opera o Brave su un Mac o un computer Linux; su Linux è ancora in fase di test. La compatibilità viene valutata per ogni modello e variante esatta di orologio. Controlla la [compatibilità](https://terento.app/it/compatibility/) prima dell’uso. Le donazioni sono facoltative e non sbloccano funzioni, mappe o fornitori.
 
 ## Licenze del software e dei componenti
 

@@ -82,7 +82,8 @@ for (const locale of locales) {
   assert.match(source, /1–2 minutes?|1–2 Minuten|1 à 2 minutes|1–2 minuty|1–2 minuti/);
   assert.match(source, /Choose from the catalog|Aus dem Katalog wählen|Choisir dans le catalogue|Wybierz z katalogu|Vybrat z katalogu|Scegli dal catalogo/);
   assert.match(source, /\.img/ , locale + ": local map import guidance");
-  assert.match(source, /four map providers|vier Kartenanbieter|quatre fournisseurs de cartes|czterech dostawców map|čtyř poskytovatelů map|quattro provider di mappe/ , locale + ": active provider catalog guidance");
+  assert.match(source, /Choose a provider and a region from the catalog|Wähle einen Anbieter und eine Region aus dem Katalog|Choisissez un fournisseur et une région dans le catalogue|Wybierz dostawcę i region z katalogu|Vyberte poskytovatele a oblast z katalogu|Scegli un provider e una regione dal catalogo/ , locale + ": active provider catalog guidance");
+  assert.doesNotMatch(source, /four map providers|vier Kartenanbieter|quatre fournisseurs|czterech dostawców|čtyř poskytovatelů|quattro provider/ , locale + ": no fixed provider count");
   assert.doesNotMatch(source, /free storage|freier Speicher|espace libre|wolnego miejsca|volného místa|spazio libero|Not enough storage|Nicht genügend Speicher|Espace de stockage insuffisant|Za mało miejsca|Nedostatek úložiště|Spazio insufficiente/i, locale + ": no storage copy");
   assert.match(source, /map-selected-1600\.avif\?v=20260912-app-screens-v2[^\n]*width="2358" height="1575"/);
   assert.match(source, /maps-done-1600\.avif\?v=20260912-app-screens-v2[^\n]*width="2358" height="1575"/);
@@ -169,7 +170,7 @@ for (const locale of locales) {
     assert.ok(primary && footer, relative + ": static shell navs");
     const hrefs = (fragment) => [...fragment.matchAll(/<a[^>]*href="([^"]+)"/g)].map((match) => match[1]);
     assert.deepEqual(hrefs(primary).slice(0, 5), [rootPath + "compatibility/", rootPath + "map-styles/", rootPath + slug, rootPath + "about/", rootPath + "download/"], relative + ": primary nav");
-    assert.deepEqual(hrefs(footer), [rootPath + "#faq", rootPath + "guides/troubleshooting/", "https://lab.terento.app/install/" + (locale === "en" ? "" : "?lang=" + locale), "/legal/", "/privacy/"], relative + ": footer nav");
+    assert.deepEqual(hrefs(footer), [rootPath + "#faq", rootPath + "guides/troubleshooting/", rootPath + "install/", "/legal/", "/privacy/"], relative + ": footer nav");
     assert.match(source, /Support Terento/);
     const languageOptions = source.match(/<div class="language-options">([\s\S]*?)<\/div>/)?.[1];
     assert.ok(languageOptions, relative + ": language options");
@@ -286,7 +287,7 @@ for (const pageName of ["legal", "privacy", "home", "guide"]) {
     assert.equal(nodes.get("troubleshooting").href, prefix + "guides/troubleshooting/");
     assert.equal(aria.attributes["aria-label"], translations[locale].primary);
     assert.equal(home.href, prefix);
-    assert.equal(installer.search, locale === "en" ? "" : "?lang=" + locale);
+    assert.equal(installer.href, prefix + "install/");
     assert.equal(code.textContent, locale.toUpperCase());
     assert.equal(name.textContent, translations[locale].name);
     menu.events.click();

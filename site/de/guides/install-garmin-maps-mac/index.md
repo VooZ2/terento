@@ -43,7 +43,7 @@ Wähle eine Karte aus dem Katalog oder lade deine eigene kompatible .img-Datei h
 
 1. Aus dem Katalog wählen
 
-Wähle eine Region aus dem Katalog eines der vier Kartenanbieter.
+Wähle einen Anbieter und eine Region aus dem Katalog.
 
 2. Eigene Karte hochladen
 

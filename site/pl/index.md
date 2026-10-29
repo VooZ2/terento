@@ -9,7 +9,7 @@ Projekt open source
 
 Instaluj, aktualizuj i zarządzaj mapami innych firm z natywnej aplikacji macOS — bez ręcznego przesyłania plików.
 
-[Pobierz](https://terento.app/pl/download/) [Sprawdź kompatybilność](https://terento.app/pl/compatibility/)
+[Pobierz](https://terento.app/pl/download/) [Sprawdź kompatybilność](https://terento.app/pl/compatibility/) [Albo zainstaluj z przeglądarki](https://terento.app/pl/install/)
 
 Terento pokazuje postęp instalacji map społecznościowych w macOS
 
@@ -44,6 +44,18 @@ Terento pokazuje dostawców i regiony map innych firm na macOS
 Sprawdź, co jest zainstalowane, aktualizuj mapy, gdy dostępne są nowsze wydania, i usuwaj mapy innych firm zarządzane przez Terento. Oryginalne mapy Garmin pozostają chronione.
 
 Terento pokazuje zainstalowane mapy innych firm pogrupowane według dostawcy
+
+Instalator webowy
+
+## Bez aplikacji? Instaluj z przeglądarki.
+
+Podłącz zegarek Garmin kablem USB, wybierz mapy i zainstaluj je prosto z Chrome, Edge, Opery lub Brave. Później tak samo je zaktualizujesz lub usuniesz.
+
+Działa na Macu oraz, jeszcze w fazie testów, na Linuksie. Jeszcze nie na Windowsie, telefonach ani tabletach.
+
+Mac · Linux (w testach)Chrome, Edge, Opera, BraveKabel USB do transmisji danych
+
+[Otwórz instalator webowy](https://terento.app/pl/install/)
 
 Dostępne mapy
 
@@ -118,6 +130,10 @@ Co zrobić, jeśli instalacja się nie powiedzie?
 Na ekranie nieudanej instalacji wybierz „Report issue”. Terento otwiera GitHuba z już wypełnionym raportem. Sprawdź go przed publikacją: zgłoszenia na GitHubie są publiczne. Jeśli potrzebujesz pomocy e-mailem, podaj model zegarka, region mapy i opisz, co się stało. [Przeczytaj poradnik rozwiązywania problemów.](https://terento.app/pl/guides/troubleshooting/)
 
 [Otwórz zgłoszenie](https://github.com/VooZ2/terento/issues/new/choose) [Napisz do pomocy](mailto:hello@terento.app?subject=Terento%20installation%20issue)
+
+Czy mogę zainstalować mapy bez instalowania aplikacji?
+
+Tak. [Instalator webowy](https://terento.app/pl/install/) instaluje, aktualizuje i usuwa mapy z katalogu w Chrome, Edge, Operze lub Brave na Macu oraz na Linuksie, gdzie jest jeszcze testowany. Nie działa jeszcze na Windowsie, telefonach ani tabletach i nie dodaje własnych map .img.
 
 Zacznij już dziś
 

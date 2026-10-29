@@ -43,7 +43,7 @@ Scegli una mappa dal catalogo oppure aggiungi il tuo file .img compatibile. Tere
 
 1. Scegli dal catalogo
 
-Scegli una regione dal catalogo di uno dei quattro provider di mappe.
+Scegli un provider e una regione dal catalogo.
 
 2. Aggiungi la tua mappa
 

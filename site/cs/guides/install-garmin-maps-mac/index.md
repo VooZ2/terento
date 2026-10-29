@@ -43,7 +43,7 @@ Vyberte mapu z katalogu nebo přidejte vlastní kompatibilní soubor .img. Teren
 
 1. Vybrat z katalogu
 
-Vyberte oblast z katalogu jednoho ze čtyř poskytovatelů map.
+Vyberte poskytovatele a oblast z katalogu.
 
 2. Přidat vlastní mapu
 

@@ -53,6 +53,17 @@ function testHelpers() {
   assert.ok(data.matches({name: "Krkonoše", routeName: null, countryCodes: ["CZ"], tags: []}, "krkonose"));
   assert.ok(!data.matches({name: "Zermatt", routeName: null, countryCodes: ["CH"], tags: []}, "fuji"));
 
+  // A border place is listed under each of its countries (Tatras under Slovakia and Poland).
+  const names = {SK: "Slovakia", PL: "Poland", CZ: "Czechia"};
+  const grouped = data.groupByCountry([
+    {id: "high-tatras", countryCodes: ["SK", "PL"]},
+    {id: "krkonose", countryCodes: ["CZ", "PL"]},
+    {id: "bieszczady", countryCodes: ["PL"]},
+  ], (code) => names[code]);
+  assert.deepEqual(Object.fromEntries(Object.entries(grouped).map(([name, items]) => [name, items.map((item) => item.id)])),
+    {Slovakia: ["high-tatras"], Poland: ["high-tatras", "krkonose", "bieszczady"], Czechia: ["krkonose"]});
+  assert.deepEqual(Object.keys(data.groupByCountry([{id: "x", countryCodes: ["XX", "YY"]}], () => "Same")), ["Same"]);
+
   const state = {area: "zermatt", a: "opentopomap", b: "bbbike", mode: "swipe"};
   assert.deepEqual(data.parseHash(data.serializeHash(state)), {area: "zermatt", style: "opentopomap", compare: "bbbike", mode: "swipe"});
   assert.equal(data.serializeHash({...state, mode: "single"}), "#area=zermatt&style=opentopomap");
@@ -66,6 +77,11 @@ function testHelpers() {
   assert.equal(data.layerStatus(manifest, "zermatt", "maprando"), "PENDING");
   assert.equal(data.layerStatus(null, "zermatt", "opentopomap"), "PENDING");
   assert.equal(data.coveredCount(manifest, "zermatt", ["opentopomap", "bbbike", "maprando"]), 2);
+  // A place joins the list once one style is drawn; without a manifest every place is offered.
+  assert.ok(data.hasPreview(manifest, "zermatt"));
+  assert.ok(data.hasPreview(null, "bieszczady-polonina-wetlinska"));
+  assert.ok(!data.hasPreview(manifest, "bieszczady-polonina-wetlinska"));
+  assert.ok(!data.hasPreview({areas: [{id: "x", layers: [{style: "opentopomap", status: "PENDING"}, {style: "bbbike", status: "NOT_COVERED"}]}]}, "x"));
   assert.equal(data.tileUrl(manifest, "zermatt", "opentopomap"), "https://api.terento.app/assets/previews/20261006T010000Z/zermatt/opentopomap/{z}/{x}/{y}.webp");
   assert.equal(data.tileUrl({tileUrlTemplate: "https://example.com/{area}/{style}/{z}/{x}/{y}.webp"}, "zermatt", "opentopomap"), null);
 
@@ -167,6 +183,11 @@ function testController() {
   // Side by side is the default on every screen; a shared link still chooses its own view.
   assert.match(controller, /mode: fromHash\.mode \|\| "split"/);
   assert.doesNotMatch(controller, /max-width/, "narrow screens do not force another view");
+  // By country lists a border place under every country it covers, not only the first.
+  assert.match(controller, /D\.groupByCountry\(inContinent, countryName\)/);
+  assert.doesNotMatch(controller, /countryCodes\[0\]/);
+  // Places without a drawn style stay out of the list; the selected place (a shared link) stays.
+  assert.match(controller, /item\.id === state\.area \|\| D\.hasPreview\(manifest, item\.id\)/);
   // Optional styles (OSMapaPL) are listed only when a fetched manifest lists them, on first load and on every recheck.
   const listedLine = controller.split("\n").find((line) => line.includes("const listed = "));
   assert.match(listedLine, /!style\.optional \|\| manifestStyleIds\(manifest\)\.includes\(style\.id\)/);

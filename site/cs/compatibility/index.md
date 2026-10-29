@@ -19,7 +19,7 @@ Tento seznam vychází ze skutečných úspěšných instalací Terento sdílen�
 
 Výsledky instalací sdílejí s Terento uživatelé; nejde o certifikaci Garmin.
 
-Aktuální verze zahrnuje čtyři poskytovatele map. Tato informace o produktu je oddělená od výsledků zařízení uvedených zde.
+Aktuální verze zahrnuje všechny poskytovatele map v katalogu. Tato informace o produktu je oddělená od výsledků zařízení uvedených zde.
 
 36 modelů
 

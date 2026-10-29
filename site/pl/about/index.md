@@ -17,7 +17,7 @@ Dla Maców z Apple Silicon. Strona zgodności pokazuje dokładne modele i warian
 
 ## Mapy w jednym miejscu
 
-- Wybieraj i instaluj mapy jednego z czterech dostawców map.
+- Wybieraj i instaluj mapy dowolnego dostawcy z katalogu.
 
 - Dodaj własną zgodną mapę (.img); własne mapy nie mają automatycznych aktualizacji.
 

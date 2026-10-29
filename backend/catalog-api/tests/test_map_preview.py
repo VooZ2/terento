@@ -126,6 +126,7 @@ class PackageChoiceTests(unittest.TestCase):
             snapshot_row("off", downloads_disabled=True),
             {**snapshot_row("withheld"), "availability": "WITHHELD"},
             snapshot_row("ru", codes=("RU", "IT")),
+            snapshot_row("crimea", region="CRIMEA", codes=("UA", "IT")),
             {**snapshot_row("broken"), "artifact_validation_status": "FAILED"},
         ]
         self.assertEqual(candidates_for(area(), STYLE_BY_ID["bbbike"], packages_from_snapshot(rows)), [])

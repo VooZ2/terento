@@ -17,7 +17,7 @@ Pro Macy s Apple Silicon. Stránka Kompatibilita zobrazuje konkrétní modely a 
 
 ## Mapy na jednom místě
 
-- Vyberte a nainstalujte mapy od jednoho ze čtyř poskytovatelů map.
+- Vyberte a nainstalujte mapy od kteréhokoli poskytovatele v katalogu.
 
 - Přidejte vlastní kompatibilní mapu (.img); vlastní mapy nemají automatické aktualizace.
 

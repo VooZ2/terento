@@ -6,7 +6,7 @@ Terento est une application macOS gratuite et open source pour installer et gér
 
 Terento est un projet indépendant publié par un particulier. Découvrez son créateur sur la page [À propos](/fr/about/). Contact : [hello@terento.app](mailto:hello@terento.app).
 
-L’application est destinée aux Mac avec Apple Silicon. L’installateur web est une bêta et nécessite Google Chrome, Microsoft Edge, Opera ou Brave sur un Mac ou un ordinateur Linux. La compatibilité est évaluée pour chaque modèle et variante de montre. Consultez la [compatibilité](/fr/compatibility/) avant utilisation. Les dons sont facultatifs et ne débloquent aucune fonction, carte ou fournisseur.
+L’application est destinée aux Mac avec Apple Silicon. L’installateur web nécessite Google Chrome, Microsoft Edge, Opera ou Brave sur un Mac ou un ordinateur Linux ; sous Linux, il est encore en test. La compatibilité est évaluée pour chaque modèle et variante de montre. Consultez la [compatibilité](/fr/compatibility/) avant utilisation. Les dons sont facultatifs et ne débloquent aucune fonction, carte ou fournisseur.
 
 ## Licences du logiciel et des composants tiers
 
