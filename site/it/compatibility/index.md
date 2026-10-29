@@ -11,7 +11,7 @@ Terento è progettato per gli smartwatch Garmin con supporto alle mappe. Qui sot
 
 Se il tuo modello non è nell’elenco, non significa che non sia supportato — potrebbe semplicemente non esserci ancora un’installazione riuscita condivisa per quel modello e quella variante esatti.
 
-**36** modelli con installazioni riuscite**323** installazioni riusciteUltima installazione riuscita 29 ottobre 2026
+**39** modelli con installazioni riuscite**333** installazioni riusciteUltima installazione riuscita 29 ottobre 2026
 
 Come funziona questo elenco
 
@@ -21,7 +21,7 @@ I risultati delle installazioni sono condivisi con Terento dagli utenti; non cos
 
 La versione attuale include tutti i provider di mappe del catalogo. Questa informazione sul prodotto è distinta dai risultati dei dispositivi mostrati qui.
 
-36 modelli
+39 modelli
 
 fēnix
 
@@ -29,11 +29,11 @@ fēnix
 
 47 mm, AMOLED
 
-53 installazioni riuscite
+56 installazioni riuscite
 
-App 53
+App 56
 
-Ultima installazione riuscita 26 ottobre 2026
+Ultima installazione riuscita 29 ottobre 2026
 
 Forerunner
 
@@ -313,6 +313,18 @@ Ultima installazione riuscita 23 settembre 2026
 
 fēnix
 
+### fēnix 5 Plus
+
+Historical
+
+3 installazioni riuscite
+
+App 3
+
+Ultima installazione riuscita 29 ottobre 2026
+
+fēnix
+
 ### fēnix 9 Pro
 
 51 mm, MIP, Solar, inReach
@@ -406,6 +418,30 @@ fēnix
 App 2
 
 Ultima installazione riuscita 19 ottobre 2026
+
+fēnix
+
+### fēnix 9
+
+43 mm, AMOLED
+
+2 installazioni riuscite
+
+App 2
+
+Ultima installazione riuscita 29 ottobre 2026
+
+Venu
+
+### Venu X1
+
+AMOLED
+
+2 installazioni riuscite
+
+App 2
+
+Ultima installazione riuscita 29 ottobre 2026
 
 fēnix
 
