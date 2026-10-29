@@ -8,12 +8,14 @@ Správce údajů: soukromá osoba. Přečtěte si [O Terento](/cs/about/) nebo n
 
 ## Diagnostika aplikace
 
-Dva proudy jsou standardně zapnuté pro zlepšení spolehlivosti a kompatibility. Během instalace není volba sdílení. Každý proud vypnete v **Terento → Diagnostics** bez omezení aplikace. Zastaví se další sdílení a smaže jeho neodeslaná fronta. Odeslané zprávy nelze smazat v aplikaci; žádosti ohledně soukromí zašlete na kontakt výše.
+V aplikaci stažené z terento.app jsou dva proudy standardně zapnuté pro zlepšení spolehlivosti a kompatibility. Během instalace není volba sdílení. Každý proud vypnete v **Terento → Diagnostics** bez omezení aplikace. Zastaví se další sdílení a smaže jeho neodeslaná fronta. Odeslané zprávy nelze smazat v aplikaci; žádosti ohledně soukromí zašlete na kontakt výše.
 
-- **Kompatibilita:** model a firmware hodinek, verze aplikace a macOS, poskytovatel/mapy, výsledek instalace a omezené technické údaje o chybách.
+- **Kompatibilita:** model a firmware hodinek, verze aplikace a macOS, poskytovatel/mapy, výsledek instalace a omezené technické údaje o chybách, a také krátké zprávy o průběhu připojení hodinek, kontroly modelu a načtení katalogu map, seskupené náhodným kódem vytvořeným při každém spuštění aplikace.
 - **Použití map:** poskytovatel, mapa/oblast, výsledek stažení či instalace, čas, build a náhodná ID operací/událostí. Vlastní importy `.img` jsou z tohoto proudu vyloučeny.
 
 Zprávy neobsahují Garmin Unit IDs, hodnoty sériových čísel, účty, místní cesty, mapy ani surové protokoly. Jednotlivé zprávy jsou soukromé; zveřejňují se jen ověřené souhrnné výsledky kompatibility. Základem jsou oprávněné zájmy na spolehlivosti a pokrytí zařízení podle čl. 6 odst. 1 písm. f GDPR.
+
+**Verze z Mac App Store.** Oba proudy jsou vypnuté, dokud se nerozhodnete sdílet. Po první úspěšné instalaci mapy se Terento jednou zeptá, zda chcete sdílet výsledky instalace s Terento; políčko není zaškrtnuté. Když ho zaškrtnete, zapnou se oba proudy a sdílí se i tato instalace. Volbu můžete kdykoli změnit v **Terento → Diagnostics**. U této verze je základem váš souhlas podle čl. 6 odst. 1 písm. a GDPR; jeho odvolání zastaví další sdílení a neovlivní to, co již bylo odesláno. Zprávy z této verze mají ve verzi aplikace označení App Store.
 
 ## Webový instalátor
 
@@ -35,7 +37,7 @@ Některá data zůstávají ve vašem prohlížeči, ne na našem serveru: kter�
 
 ## Připojení webu a aplikace
 
-Požadavky na web, webový instalátor, API, katalog a aktualizace mohou poskytovatelům hostingu a zabezpečení zpřístupnit IP adresu a metadata. V aplikaci se mapy stahují přímo od Freizeitkarte, OpenTopoMap, MapRando, BBBike či OSMapaPL; pro tato připojení platí jejich pravidla soukromí. Kontrola při spuštění načítá informace o vydání, nikoli aplikaci.
+Požadavky na web, webový instalátor, API, katalog a aktualizace mohou poskytovatelům hostingu a zabezpečení zpřístupnit IP adresu a metadata. V aplikaci se mapy stahují přímo od Freizeitkarte, OpenTopoMap, MapRando, BBBike či OSMapaPL; pro tato připojení platí jejich pravidla soukromí. Kontrola při spuštění načítá informace o vydání, nikoli aplikaci. Verze z Mac App Store nekontroluje aktualizace; aktualizace dodává Apple. Stahování, aktualizace a hodnocení v App Store zpracovává Apple podle svých [zásad ochrany soukromí](https://www.apple.com/legal/privacy/). Apple poskytuje Terento statistiky stahování a jen pokud jste souhlasili se sdílením analytických dat s vývojáři aplikací, také zprávy o pádech a statistiky používání.
 
 Připojení poskytují obsah, požadované funkce a ochranu před zneužitím. Bezpečnostní zpracování se opírá o oprávněné zájmy podle čl. 6 odst. 1 písm. f GDPR.
 

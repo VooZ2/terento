@@ -8,12 +8,14 @@ Data controller: private individual. Read [About Terento](/about/) or contact [p
 
 ## App diagnostics
 
-Two diagnostic streams are enabled by default to improve installation reliability and compatibility. There is no sharing choice during installation. Turn either stream off in **Terento → Diagnostics** without limiting the app. This stops future sharing and clears that stream’s unsent queue; uploaded reports cannot be deleted from the app. Privacy-rights requests can be sent to the contact above.
+In the app downloaded from terento.app, two diagnostic streams are enabled by default to improve installation reliability and compatibility. There is no sharing choice during installation. Turn either stream off in **Terento → Diagnostics** without limiting the app. This stops future sharing and clears that stream’s unsent queue; uploaded reports cannot be deleted from the app. Privacy-rights requests can be sent to the contact above.
 
-- **Compatibility:** watch model and firmware, app and macOS versions, selected provider/maps, installation result and limited technical error information.
+- **Compatibility:** watch model and firmware, app and macOS versions, selected provider/maps, installation result and limited technical error information, plus short notes on how connecting the watch, checking its model and loading the map catalog went, grouped by a random code created at each app launch.
 - **Map usage:** provider, map/region, download or installation outcome, time, app build and random operation/event IDs. Custom `.img` imports are excluded from this stream.
 
 Reports exclude Garmin Unit IDs, serial-number values, account details, local paths, map files and raw logs. Individual reports are private; only reviewed aggregate compatibility results are published. The basis is legitimate interests in improving reliability and device coverage, under GDPR Article 6(1)(f).
+
+**Mac App Store version.** Both streams are off until you choose to share. After your first successful map installation, Terento asks once whether to share install results with Terento; the box is not ticked. If you tick it, both streams are turned on and that installation is shared too. You can change this at any time in **Terento → Diagnostics**. For this version the basis is your consent, under GDPR Article 6(1)(a); withdrawing it stops future sharing and does not affect what was already sent. Its reports carry an App Store label in the app version.
 
 ## Web installer
 
@@ -35,7 +37,7 @@ Some data stays in your browser, not on our server: which maps the web installer
 
 ## Website and app connections
 
-Website, web installer, API, catalog and app-update requests may expose your IP address and request metadata to hosting and security providers. In the app, catalog maps download directly from Freizeitkarte, OpenTopoMap, MapRando, BBBike or OSMapaPL, whose privacy practices apply to those connections. The app’s launch update check retrieves release metadata, not an app download.
+Website, web installer, API, catalog and app-update requests may expose your IP address and request metadata to hosting and security providers. In the app, catalog maps download directly from Freizeitkarte, OpenTopoMap, MapRando, BBBike or OSMapaPL, whose privacy practices apply to those connections. The app’s launch update check retrieves release metadata, not an app download. The Mac App Store version has no update check; Apple delivers its updates. Apple handles App Store downloads, updates and ratings under [Apple’s privacy policy](https://www.apple.com/legal/privacy/). Apple gives Terento download statistics and, only if you agreed to share analytics with app developers, crash reports and usage statistics.
 
 These connections serve content, provide requested app functions and protect against abuse. Security processing relies on legitimate interests under GDPR Article 6(1)(f).
 
@@ -75,4 +77,4 @@ Compatibility reports may also include a sanitized MTP model label, USB VID/PID,
 
 Reports may additionally include the original XML model description (up to 160 characters) and model product code (up to 64 ASCII letters, digits or hyphens). These identify a product model, not an individual watch. Whole XML documents, Unit IDs and serial numbers are excluded. Model-code mappings and any administrator corrections are kept separately from the original report.
 
-Updated: 26 October 2026.
+Updated: 29 October 2026.
