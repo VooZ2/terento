@@ -440,7 +440,8 @@
             "terento_inventory",
             "terento_file_prefix",
             "terento_file_range",
-            "terento_map_write"
+            "terento_map_write",
+            "terento_map_verify"
           ]
         },
         "componentKind": {
@@ -518,6 +519,36 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 16384
+            },
+            "affectedFolder": {
+              "enum": [
+                "Activity",
+                "Apps",
+                "Courses",
+                "Debug",
+                "Device",
+                "ErrLogs",
+                "Goals",
+                "Locations",
+                "Map",
+                "Metrics",
+                "Monitor",
+                "NewFiles",
+                "Records",
+                "RemoteSW",
+                "Schedules",
+                "Settings",
+                "Sleep",
+                "Sports",
+                "Text",
+                "TLG",
+                "Totals",
+                "Workouts",
+                "map-file",
+                "garmin-root",
+                "garmin-other",
+                "outside-garmin"
+              ]
             },
             "targetPresent": {
               "type": [
@@ -659,6 +690,24 @@
                     "enum": [
                       null,
                       false
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "required": [
+                  "affectedFolder"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "protectionReason": {
+                    "enum": [
+                      "non-target-object-added",
+                      "preexisting-object-removed",
+                      "preexisting-object-changed"
                     ]
                   }
                 }

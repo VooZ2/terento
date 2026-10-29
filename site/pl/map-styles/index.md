@@ -7,7 +7,7 @@ Style map
 
 # Porównaj darmowe mapy Garmin przed instalacją
 
-Zobacz, jak pięć darmowych stylów map przedstawia to samo miejsce. Wybierz popularny obszar, szlak lub miasto i porównaj poziomice, szlaki, ulice oraz opisy.
+Zobacz, jak darmowe style map przedstawiają to samo miejsce. Wybierz popularny obszar, szlak lub miasto i porównaj poziomice, szlaki, ulice oraz opisy.
 
 Miejsce
 
@@ -15,7 +15,7 @@ Miejsce
 
 Styl lewej mapy Styl prawej mapy
 
-O pięciu stylach map
+O stylach map
 
 ### Freizeitkarte
 
@@ -43,14 +43,6 @@ Do odkrywania mniejszych szlaków pieszo.
 
 Niektóre opisy na mapie są po francusku.
 
-### BBBike
-
-Do odkrywania ulic, dróg rowerowych i ich okolic.
-
-- Odrębne oznaczenia dróg, dróg rowerowych i ścieżek pieszych
-- Budynki, parki i lasy ułatwiające orientację
-- Mapy regionów aktualizowane co tydzień
-
 ### BBBike (Ontrail)
 
 Na piesze i rowerowe wycieczki, gdy liczy się miejsce.
@@ -58,5 +50,15 @@ Na piesze i rowerowe wycieczki, gdy liczy się miejsce.
 - Kompaktowe mapy oszczędzające pamięć urządzenia
 - Uwzględnione mniejsze drogi i ścieżki
 - Nawigacja po drogach i ścieżkach zaznaczonych na mapie
+
+### BBBike (OpenTopoMap)
+
+Na piesze i rowerowe wycieczki w znanym stylu OpenTopoMap, także tam, gdzie brakuje innych map.
+
+- Styl OpenTopoMap: szlaki, ścieżki i pokrycie terenu
+- Mapy regionów aktualizowane co tydzień
+- Także dla krajów, których nie obejmuje tu żadna inna mapa
+
+Ta mapa nie ma poziomic.
 
 Podglądy są zbliżone, ale nie dokładne: zegarek sam rysuje mapę, więc kolory i szczegóły mogą się różnić w zależności od modelu i ustawień mapy.

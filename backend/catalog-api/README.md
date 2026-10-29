@@ -156,6 +156,11 @@ runtime dependencies.
 - `GET /internal/operations/report-context` exposes bounded provider catalog
   freshness and release-change metadata to the weekly workflow under the same
   independent bearer secret. It is not a public catalog endpoint.
+- `GET /internal/attention` gives a read-only operator agent the Dashboard
+  Needs attention work (open installation and update problems, open support
+  reports, failed Health checks) as sanitised JSON. It requires a bearer token
+  whose SHA-256 digest is configured as `ADMIN_READ_TOKEN_SHA256` and grants no
+  Admin page or write ([contract](docs/api.md#get-internalattention)).
 - `GET /maps/catalog.json` returns an additive provider-neutral `schemaVersion: 2`
   projection while retaining catalog version 1 fields for existing macOS
   clients. The response includes `ETag`, `Last-Modified`, and cache headers and
@@ -602,8 +607,9 @@ legacy compatibility branches and the OTM package-count guard remain in use.
 ## BBBike provider
 
 BBBike is active in the v4 projection with BBBike and BBBike (Ontrail) as distinct
-map types under one provider. Lifecycle IDs include type; geographic IDs remain
-shared for statistics. Same-region opposite types conflict. See the
+map types under one provider; v5 adds BBBike (OpenTopoMap) (`opentopo-latin1`).
+Lifecycle IDs include type; geographic IDs remain shared for statistics. Any two
+types of the same region conflict because they share Garmin tile numbers. See the
 [API contract](docs/api.md) and [historical source review](../../history/2026-09-12-bbbike-local-contract.md).
 Provider package counts are live metadata, not hardcoded compatibility claims.
 
@@ -626,7 +632,10 @@ size prefers rows that state that size over a same-name row with no size),
 every reported model label matches its name (since version 5 also through a
 reviewed generation-label alias, `GENERATION_LABEL_BASE_MODEL_ALIASES`, unless a
 real catalog row carries the alias name), and no pending mapping of a reported code points outside the
-candidate set. A reported code alone, or a client `canonicalDeviceId` alone,
+candidate set. Since version 6 a reviewed ambiguous name
+(`AMBIGUOUS_REPORTED_BASE_MODELS`: reported `epix` is the original epix or
+epix (Gen 2)) matches every generation it lists while a real catalog row
+carries the name, so the name alone never assigns one of them. A reported code alone, or a client `canonicalDeviceId` alone,
 never assigns. Only approved mappings are positive evidence. Pending
 alternative targets prevent a partially reviewed shared code from appearing
 unique. Shared mappings only prove a property when all targets agree. Two or
@@ -671,7 +680,19 @@ python -m terento_catalog.identity_registry audit
 
 Imports/enrichment default to dry-run. `--apply` stages identifier candidates
 as PENDING, or enriches existing exact product URLs from `<product-id>.html`;
-it never reassigns installations. Identifier approval is a separate admin
+it never reassigns installations. A source name links the catalog rows of its
+model name (trademark signs ignored, the reviewed `epix Pro` generation alias
+applied) that also fit what the name states: a size, AMOLED or MicroLED,
+Solar or Dual Power (MIP rows only), No Wi-Fi. Each product name of a code is
+checked on its own ("Instinct Crossover" next to "Instinct Crossover Dual
+Power"); bare tags such as "AMOLED" or "Solar" apply to every name of the code.
+A name that states no Solar or screen skips the rows another code names only
+Solar or only that screen, when the model also has other rows, and a stated
+size skips the unsized legacy row when a row of that size exists. libmtp lists
+of full product names ("Fenix 7X/tactix 7/Enduro 2") are split. A link that is
+already stored, in any state, is never added again from a newer snapshot or a
+changed product page; link writers hold one transaction lock, so concurrent
+runs cannot add it twice. Identifier approval is a separate admin
 review requiring evidence and reason. Source SHA-256/revision and review
 history remain in the registry. If the original XML field actually contains a
 `010-…` SKU, its check uses the retail registry kind; `006-B…` observations use

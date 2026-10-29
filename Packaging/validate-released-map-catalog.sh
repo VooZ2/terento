@@ -8,7 +8,7 @@ python3 - "$repo_root/contracts/released-catalog-clients.json" > "$work_dir/clie
 import json,re,sys
 for row in json.load(open(sys.argv[1])):
     assert re.fullmatch(r'[0-9a-f]{40}',row['commit'])
-    assert row['route'] in {'catalog.json','catalog-v3.json','catalog-v4.json'}
+    assert row['route'] in {'catalog.json','catalog-v3.json','catalog-v4.json','catalog-v5.json'}
     assert re.fullmatch(r'v[0-9A-Za-z.-]+',row['tag'])
     print(row['commit'],row['route'],row['tag'])
 PYCLIENT

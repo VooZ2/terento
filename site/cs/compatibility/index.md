@@ -11,7 +11,7 @@ Terento je navrženo pro hodinky Garmin s podporou map. Níže jsou uvedeny konk
 
 Pokud zde svůj model nevidíte, neznamená to, že není podporován — pro daný model a variantu zatím možná nebyla sdílena žádná úspěšná instalace.
 
-**32** modely s úspěšnými instalacemi**257** úspěšných instalacíPoslední úspěšná instalace 18. října 2026
+**36** modely s úspěšnými instalacemi**323** úspěšných instalacíPoslední úspěšná instalace 29. října 2026
 
 Jak tento seznam funguje
 
@@ -21,7 +21,7 @@ Výsledky instalací sdílejí s Terento uživatelé; nejde o certifikaci Garmin
 
 Aktuální verze zahrnuje čtyři poskytovatele map. Tato informace o produktu je oddělená od výsledků zařízení uvedených zde.
 
-32 modelů
+36 modelů
 
 fēnix
 
@@ -29,11 +29,11 @@ fēnix
 
 47 mm, AMOLED
 
-49 úspěšných instalací
+53 úspěšných instalací
 
-App 49
+App 53
 
-Poslední úspěšná instalace 18. října 2026
+Poslední úspěšná instalace 26. října 2026
 
 Forerunner
 
@@ -41,11 +41,11 @@ Forerunner
 
 Historical
 
-20 úspěšných instalací
+31 úspěšných instalací
 
-App 18 Web 2
+App 29 Web 2
 
-Poslední úspěšná instalace 16. října 2026
+Poslední úspěšná instalace 22. října 2026
 
 Forerunner
 
@@ -53,11 +53,11 @@ Forerunner
 
 AMOLED
 
-20 úspěšných instalací
+26 úspěšných instalací
 
-App 20
+App 26
 
-Poslední úspěšná instalace 10. října 2026
+Poslední úspěšná instalace 27. října 2026
 
 fēnix
 
@@ -65,11 +65,11 @@ fēnix
 
 51 mm, AMOLED
 
-18 úspěšných instalací
+19 úspěšných instalací
 
-App 18
+App 19
 
-Poslední úspěšná instalace 15. října 2026
+Poslední úspěšná instalace 22. října 2026
 
 epix
 
@@ -77,11 +77,23 @@ epix
 
 51 mm, AMOLED
 
-13 úspěšných instalací
+18 úspěšných instalací
 
-App 12 Web 1
+App 17 Web 1
 
-Poslední úspěšná instalace 16. října 2026
+Poslední úspěšná instalace 26. října 2026
+
+fēnix
+
+### fēnix 7X Pro
+
+Solar, Historical
+
+18 úspěšných instalací
+
+App 13 Web 5
+
+Poslední úspěšná instalace 26. října 2026
 
 fēnix
 
@@ -121,15 +133,51 @@ Poslední úspěšná instalace 17. října 2026
 
 fēnix
 
+### fēnix 8
+
+47 mm, MIP, Solar
+
+11 úspěšných instalací
+
+App 11
+
+Poslední úspěšná instalace 20. října 2026
+
+fēnix
+
 ### fēnix 9 Pro
 
 47 mm, AMOLED
+
+10 úspěšných instalací
+
+App 10
+
+Poslední úspěšná instalace 22. října 2026
+
+fēnix
+
+### fēnix 8 Pro
+
+51 mm, AMOLED, inReach
 
 9 úspěšných instalací
 
 App 9
 
-Poslední úspěšná instalace 13. října 2026
+Poslední úspěšná instalace 23. října 2026
+
+fēnix
+
+### fēnix 8
+
+51 mm, AMOLED
+
+9 úspěšných instalací
+
+App 8 Web 1
+
+Poslední úspěšná instalace 23. října 2026
 
 epix
 
@@ -145,27 +193,39 @@ Poslední úspěšná instalace 14. října 2026
 
 fēnix
 
-### fēnix 7X Pro
+### fēnix 7X
 
-Solar, Historical
+51 mm, Solar
 
-8 úspěšných instalací
+7 úspěšných instalací
 
-App 7 Web 1
+App 7
 
-Poslední úspěšná instalace 13. října 2026
+Poslední úspěšná instalace 23. října 2026
 
 fēnix
 
-### fēnix 8
+### fēnix 6 Pro
 
-51 mm, AMOLED
+47 mm, MIP, Historical
 
-8 úspěšných instalací
+6 úspěšných instalací
 
-App 7 Web 1
+App 3 Web 3
 
-Poslední úspěšná instalace 18. října 2026
+Poslední úspěšná instalace 26. října 2026
+
+fēnix
+
+### fēnix 7 Pro
+
+Solar, Historical
+
+6 úspěšných instalací
+
+App 6
+
+Poslední úspěšná instalace 29. října 2026
 
 fēnix
 
@@ -181,30 +241,6 @@ Poslední úspěšná instalace 12. října 2026
 
 fēnix
 
-### fēnix 8 Pro
-
-51 mm, AMOLED, inReach
-
-6 úspěšných instalací
-
-App 6
-
-Poslední úspěšná instalace 16. září 2026
-
-fēnix
-
-### fēnix 8
-
-47 mm, MIP, Solar
-
-6 úspěšných instalací
-
-App 6
-
-Poslední úspěšná instalace 10. října 2026
-
-fēnix
-
 ### fēnix 9 Pro
 
 47 mm, AMOLED, inReach
@@ -217,27 +253,27 @@ Poslední úspěšná instalace 29. září 2026
 
 fēnix
 
-### fēnix 7 Pro
+### fēnix 8 Pro
 
-Solar, Historical
-
-5 úspěšných instalací
-
-App 5
-
-Poslední úspěšná instalace 8. října 2026
-
-fēnix
-
-### fēnix 7X
-
-51 mm, Solar
+47 mm, AMOLED, inReach
 
 5 úspěšných instalací
 
 App 5
 
-Poslední úspěšná instalace 11. října 2026
+Poslední úspěšná instalace 21. října 2026
+
+epix
+
+### epix (Gen 2)
+
+47 mm
+
+4 úspěšných instalací
+
+Web 4
+
+Poslední úspěšná instalace 19. října 2026
 
 fēnix
 
@@ -274,30 +310,6 @@ fēnix
 App 4
 
 Poslední úspěšná instalace 23. září 2026
-
-fēnix
-
-### fēnix 7X Pro
-
-Solar, (no Wi-Fi)
-
-3 úspěšných instalací
-
-App 3
-
-Poslední úspěšná instalace 17. října 2026
-
-fēnix
-
-### fēnix 8 Pro
-
-47 mm, AMOLED, inReach
-
-3 úspěšných instalací
-
-App 3
-
-Poslední úspěšná instalace 3. října 2026
 
 fēnix
 
@@ -353,11 +365,47 @@ Enduro
 
 MIP, Solar
 
-1 úspěšná instalace
+2 úspěšných instalací
 
-App 1
+App 2
 
-Poslední úspěšná instalace 16. října 2026
+Poslední úspěšná instalace 23. října 2026
+
+fēnix
+
+### fēnix 6X Pro
+
+51 mm, MIP, Historical
+
+2 úspěšných instalací
+
+App 2
+
+Poslední úspěšná instalace 24. října 2026
+
+fēnix
+
+### fēnix 6X
+
+51 mm
+
+2 úspěšných instalací
+
+App 2
+
+Poslední úspěšná instalace 20. října 2026
+
+fēnix
+
+### fēnix 9 Pro
+
+51 mm, MIP, Solar
+
+2 úspěšných instalací
+
+App 2
+
+Poslední úspěšná instalace 19. října 2026
 
 fēnix
 

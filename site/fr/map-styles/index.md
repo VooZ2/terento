@@ -7,7 +7,7 @@ Styles de carte
 
 # Comparez les cartes Garmin gratuites avant de les installer
 
-Voyez comment cinq styles de carte gratuits représentent le même lieu. Choisissez une zone, un sentier ou une ville populaire, puis comparez courbes de niveau, sentiers, rues et libellés.
+Voyez comment des styles de carte gratuits représentent le même lieu. Choisissez une zone, un sentier ou une ville populaire, puis comparez courbes de niveau, sentiers, rues et libellés.
 
 Lieu
 
@@ -15,7 +15,7 @@ Lieu
 
 Style de la carte de gauche Style de la carte de droite
 
-À propos des cinq styles de carte
+À propos des styles de carte
 
 ### Freizeitkarte
 
@@ -43,14 +43,6 @@ Pour explorer les petits sentiers à pied.
 
 Certains libellés de la carte sont en français.
 
-### BBBike
-
-Pour explorer les rues, les pistes cyclables et leurs environs.
-
-- Styles distincts pour routes, pistes cyclables et chemins piétons
-- Bâtiments, parcs et forêts pour se repérer
-- Cartes régionales actualisées chaque semaine
-
 ### BBBike (Ontrail)
 
 Pour marcher et pédaler en économisant le stockage.
@@ -58,5 +50,15 @@ Pour marcher et pédaler en économisant le stockage.
 - Des cartes compactes qui économisent de l’espace
 - Petites routes et chemins inclus
 - Navigation le long des routes et chemins cartographiés
+
+### BBBike (OpenTopoMap)
+
+Pour la randonnée et le vélo dans le style OpenTopoMap, même là où les autres cartes manquent.
+
+- Style OpenTopoMap : sentiers, chemins et occupation du sol
+- Cartes régionales actualisées chaque semaine
+- Aussi pour des pays qu’aucune autre carte ne couvre ici
+
+Cette carte n’a pas de courbes de niveau.
 
 Les aperçus sont proches, mais pas exacts : votre montre dessine elle-même la carte, les couleurs et le niveau de détail peuvent donc varier selon le modèle et ses réglages de carte.

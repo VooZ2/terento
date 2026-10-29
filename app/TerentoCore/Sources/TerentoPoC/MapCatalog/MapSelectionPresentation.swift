@@ -34,6 +34,13 @@ enum MapSelectionPresentationModel: Sendable {
                    && other.package.mapType != item.package.mapType
                    && (selectedIDs.contains(other.id) || other.comparison.installedMap != nil)
            }) { return false }
+        if !selectedIDs.contains(item.id), MapIdentity.normalizeProvider(item.package.providerId) == "osmapa",
+           let style = OSMapaProviderAdapter.region(item.package.providerRegionId)?.style,
+           items.contains(where: { other in
+               other.id != item.id && MapIdentity.normalizeProvider(other.package.providerId) == "osmapa"
+                   && OSMapaProviderAdapter.region(other.package.providerRegionId)?.style == style
+                   && (selectedIDs.contains(other.id) || other.comparison.installedMap != nil)
+           }) { return false }
 
         let selectedProviderIDs = Set(
             items
@@ -105,10 +112,10 @@ enum MapSelectionPresentationModel: Sendable {
 
     /// Returns the maps that belong in the Install catalogue.
     ///
-    /// Normal browsing is intentionally limited to new-install candidates.
-    /// A non-empty search may also reveal an installed catalog match so the
-    /// user can understand why that region is not available to install here;
-    /// the row remains non-selectable and lifecycle actions stay in Manage.
+    /// Installed catalog maps stay in the list as non-selectable
+    /// "Already installed" rows (owner decision 2026-10-27), so a map that
+    /// blocks another row is visible next to it. Lifecycle actions stay in
+    /// Manage.
     static func available(
         _ items: [MapSelectionItem],
         query: String
@@ -422,7 +429,6 @@ struct MapCatalogPresentationIndex: Sendable {
         return rows.compactMap { row in
             guard (providerID.isEmpty || row.provider == provider),
                   (geography == .all || row.groups.contains(geography)),
-                  (!terms.isEmpty || row.item.comparison.installedMap == nil),
                   terms.allSatisfy({ row.text.contains($0) }) else { return nil }
             return row.item
         }

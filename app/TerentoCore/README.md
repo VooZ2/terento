@@ -86,7 +86,12 @@ failures) keeps the selection, rereads the watch and reuses them instead of
 downloading again. Availability is rechecked and the coordinator revalidates
 identity, version, size and SHA-256 before any write. When that pre-write
 reread finds the watch on USB but cannot open its file-transfer session (the
-snapshot result detection classifies as busy), the failure says the watch may be
+snapshot result detection classifies as busy), it first retries that read-only
+snapshot every 2 s, at most 6 times, as detection does, and counts the retries in
+the failure context. Every map and contour of an installation rereads the watch
+before its own write, and each of those reads has its own 6 retries, so a watch
+still busy after an earlier map's write does not stop the rest; cancelling ends
+the wait. If the session is still busy, the failure says the watch may be
 in use by another app, asks to quit Garmin Express and similar apps and links the
 guide's busy-watch section; it names no running app after one failed open,
 says no map was written only when no earlier map or contour of the same
@@ -123,8 +128,18 @@ processing, not a second executable Install action. Authorization, device
 identity and pre-write safety checks still apply to the continuation.
 
 Freizeitkarte, OpenTopoMap, MapRando and BBBike use the shared lifecycle.
-BBBike and BBBike (Ontrail) are separate map types from one provider; opposite
-same-region types conflict and cannot be installed together. OpenTopoMap
+BBBike, BBBike (Ontrail) and BBBike (OpenTopoMap) are separate map types from
+one provider. All types of one region share Garmin tile numbers, so any two
+same-region types conflict and cannot be installed together; the copy names the
+installed type when Terento owns it. OSMapaPL has four
+map types (Podstawowa, Ogonki, Light and standalone Warstwice contour lines),
+each for Poland and Poland with border areas. Both coverages of one type share
+one Garmin map ID, so they are never installed together; any other OSMapaPL
+map of that type, an unreadable map file or another map with the same ID stops
+the install, and nothing is removed automatically. The download must be the
+single `gmapsupp.img` named by the catalog proof; size, CRC-32, header title,
+release date and the MDR and MPS map IDs are checked on the Mac before
+writing. OpenTopoMap
 contours are optional source-validated components, not a Debug-only feature.
 Compatible local IMG imports have no automatic provider update path.
 
@@ -331,7 +346,8 @@ code fix. No new release or API deployment is implied. See
 
 ## Catalog and privacy contracts
 
-The current app uses `/maps/catalog-v4.json`. Legacy v2 and v3 routes retain
+The current app uses `/maps/catalog-v5.json` (1.1.0 and later; 1.0.1 used
+`/maps/catalog-v4.json`). Legacy v2, v3 and v4 routes retain
 provider sets understood by older clients. The full bundled fallback is a
 native decoder projection; it must not be silently rewritten into an API schema.
 See [shared contracts](../../contracts/README.md).
@@ -408,7 +424,10 @@ a download start without a received outcome is not proof of a failed download.
   again with the same id. Saved failures keep their structured fields in
   `failure-report.json` beside `failure-report.md`, so the Diagnostics and Help
   menu entry points send the full report; without one only `macOSVersion` and a
-  chosen category are sent. `-local` builds are marked by `releaseLabel`. The
+  chosen category are sent. A failed read of the watch's maps ("Couldn't read your maps") saves
+  a `CONNECTION` report with the watch, `MAP_SCAN_FAILED`, the native code and
+  the detection class; a map catalog that could not load saves none, and a
+  refresh after an operation keeps that operation's report. `-local` builds are marked by `releaseLabel`. The
   API must be deployed before an app that sends reports is released.
 - **Help links.** `Errors/TroubleshootingHelp.swift` is the only mapping from
   connection outcomes, authorization verdicts, catalog/acquisition errors,
@@ -818,6 +837,11 @@ FIT files in `/GARMIN/Monitor`, and descendant folders of `/GARMIN/TLG/PER`, bas
 on the captured no-write controls. Positive map classification or explicit target
 scope overrides those cases. There is no blanket FIT/XML rule. Unknown companion
 formats remain protected rather than assuming a complete Garmin format catalog.
+Plain non-map files under `/GARMIN/Debug` (the watch's own logs) stay protected,
+but a size change of an existing one is not a difference: watches rewrote such a
+log during long transfers. Adding or removing a file there, folder changes, and
+changes in any other folder still fail; the same rule applies to the pre-write
+check, post-write check, and the map update replacement check.
 Global changes outside protected/operation scope are observations, not proof that
 Terento mutated them. Metadata equality does not prove unchanged same-size bytes.
 

@@ -35,7 +35,7 @@ Einige Daten bleiben in deinem Browser, nicht auf unserem Server: welche Karten 
 
 ## Verbindungen von Website und App
 
-Bei Website-, Web-Installer-, API-, Katalog- und Update-Anfragen können Hosting- und Sicherheitsanbieter deine IP-Adresse und Anfrage-Metadaten erhalten. In der App werden Katalogkarten direkt von Freizeitkarte, OpenTopoMap, MapRando oder BBBike geladen; deren Datenschutzregeln gelten für diese Verbindungen. Die Update-Prüfung beim App-Start lädt Veröffentlichungsdaten, nicht die App selbst.
+Bei Website-, Web-Installer-, API-, Katalog- und Update-Anfragen können Hosting- und Sicherheitsanbieter deine IP-Adresse und Anfrage-Metadaten erhalten. In der App werden Katalogkarten direkt von Freizeitkarte, OpenTopoMap, MapRando, BBBike oder OSMapaPL geladen; deren Datenschutzregeln gelten für diese Verbindungen. Die Update-Prüfung beim App-Start lädt Veröffentlichungsdaten, nicht die App selbst.
 
 Diese Verbindungen liefern Inhalte, ermöglichen angeforderte Funktionen und schützen vor Missbrauch. Die Sicherheitsverarbeitung beruht auf berechtigten Interessen nach Art. 6 Abs. 1 lit. f DSGVO.
 
@@ -75,4 +75,4 @@ Kompatibilitätsberichte können außerdem eine bereinigte MTP-Modellbezeichnung
 
 Berichte können zusätzlich die ursprüngliche XML-Modellbeschreibung (bis zu 160 Zeichen) und den Modellproduktcode (bis zu 64 ASCII-Buchstaben, Ziffern oder Bindestrichen) enthalten. Diese beschreiben ein Produktmodell, keine einzelne Uhr. Vollständige XML-Dokumente, Unit IDs und Seriennummern sind ausgeschlossen. Modellcode-Zuordnungen und administrative Korrekturen werden getrennt vom ursprünglichen Bericht gespeichert.
 
-Aktualisiert: 17. Oktober 2026.
+Aktualisiert: 26. Oktober 2026.

@@ -589,7 +589,7 @@ def update_diagnostics_page(data: dict[str, Any], user: dict[str, Any], csrf_tok
                 ('Previous map confirmed preserved', _preservation_fact(payload.get('oldMapPreserved'), row.get('outcome')))))
             content += _diagnostic_outcome_sections(_escape(reason), _escape(action), safety)
             provider = row.get('provider')
-            if payload.get('failureCode') in {'UPDATE_FAILED_ACQUISITION', 'UPDATE_FAILED_SOURCE_VALIDATION'} and payload.get('failureStage') != 'preflight' and provider in {'freizeitkarte', 'opentopomap', 'maprando', 'bbbike'}:
+            if payload.get('failureCode') in {'UPDATE_FAILED_ACQUISITION', 'UPDATE_FAILED_SOURCE_VALIDATION'} and payload.get('failureStage') != 'preflight' and provider in {'freizeitkarte', 'opentopomap', 'maprando', 'bbbike', 'osmapa'}:
                 content += f"<p class='update-provider-action'><a class='secondary-button' href='/admin/providers/{provider}'>Review provider packages</a></p>"
             if _uuid(row.get('event_id')):
                 content += _update_review_controls(row, csrf_token, '/admin/update-diagnostics?' + urlencode({'diagnosticId': str(row['event_id'])}))

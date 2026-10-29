@@ -7,7 +7,7 @@ Map styles
 
 # Compare free Garmin maps before you install
 
-See how five free map styles draw the same place. Pick a popular area, trail or city, then compare contour lines, trails, streets and labels.
+See how free map styles draw the same place. Pick a popular area, trail or city, then compare contour lines, trails, streets and labels.
 
 Place
 
@@ -15,7 +15,7 @@ Place
 
 Left map style Right map style
 
-About the five map styles
+About the map styles
 
 ### Freizeitkarte
 
@@ -43,14 +43,6 @@ For exploring smaller trails on foot.
 
 Some map labels are in French.
 
-### BBBike
-
-For exploring streets, cycle paths, and their surroundings.
-
-- Distinct styling for roads, cycle paths, and footpaths
-- Buildings, parks, and woodland for context
-- Regional maps updated weekly
-
 ### BBBike (Ontrail)
 
 For walks and bike rides when storage matters.
@@ -58,5 +50,15 @@ For walks and bike rides when storage matters.
 - Compact maps that save device space
 - Smaller roads and paths included
 - Supports navigation along mapped roads and paths
+
+### BBBike (OpenTopoMap)
+
+For hiking and cycling in the familiar OpenTopoMap look, also where other maps are missing.
+
+- OpenTopoMap look: trails, paths and land cover
+- Regional maps updated weekly
+- Also for countries no other map here covers
+
+This map has no contour lines.
 
 Previews are close, not exact: your watch draws the map itself, so colours and detail can differ with the watch model and its map settings.

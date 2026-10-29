@@ -210,7 +210,7 @@ struct Stage42ArtifactValidator: MapInstallationArtifactValidator, Sendable {
             throw Stage42ArtifactValidationError.sourceSizeMismatch
         }
 
-        if packageProvider == "bbbike" {
+        if packageProvider == "bbbike" || packageProvider == "osmapa" {
             let source = try MapSourceValidator().validate(fileURL: artifact.localIMGURL, expectedPackage: package)
             guard source.sha256 == artifact.sha256 else { throw Stage42ArtifactValidationError.sourceHashMismatch }
         }
@@ -467,6 +467,8 @@ struct MapInstallationCoordinator: Sendable {
                 profile: request.profile,
                 identity: request.identity,
                 deviceFiles: request.beforeDeviceFiles,
+                installedMaps: request.installedMaps,
+                inspectedFiles: request.inspectedFiles,
                 installationAuthorization: request.installationAuthorization
             )
         } catch let error as Stage42TargetPolicyError {
@@ -1233,9 +1235,13 @@ struct MapInstallationCoordinator: Sendable {
         let afterKeys = Set(afterGroups.keys)
         let added = pairable ? afterKeys.subtracting(beforeKeys).count : nil
         let removed = pairable ? beforeKeys.subtracting(afterKeys).count : nil
-        let changed = pairable ? beforeKeys.intersection(afterKeys).filter {
-            comparable(beforeGroups[$0]![0]) != comparable(afterGroups[$0]![0])
-        }.count : nil
+        // A rewritten watch log file is not a protection difference.
+        let changedKeys = pairable ? beforeKeys.intersection(afterKeys).filter {
+            !(ProtectedMapInventory.isWatchLogFile(beforeGroups[$0]![0])
+                && ProtectedMapInventory.isWatchLogFile(afterGroups[$0]![0]))
+                && comparable(beforeGroups[$0]![0]) != comparable(afterGroups[$0]![0])
+        } : []
+        let changed = pairable ? changedKeys.count : nil
         let reason: InstallationProtectionContext.Reason
         if prewrite && !candidates.isEmpty { reason = .targetPresentBeforeWrite }
         else if targetValidation {
@@ -1250,6 +1256,16 @@ struct MapInstallationCoordinator: Sendable {
         else if (added ?? 0) > 0 { reason = .nonTargetObjectAdded }
         else { reason = .inventoryAmbiguous }
         let compared = !targetValidation && !(prewrite && !candidates.isEmpty)
+        // The first object (in path order) of the set that decided the reason.
+        let deciding: [DeviceFile]? = switch reason {
+        case .preexistingObjectChanged: changedKeys.compactMap { beforeGroups[$0]?.first }
+        case .preexistingObjectRemoved: beforeKeys.subtracting(afterKeys).compactMap { beforeGroups[$0]?.first }
+        case .nonTargetObjectAdded: afterKeys.subtracting(beforeKeys).compactMap { afterGroups[$0]?.first }
+        default: nil
+        }
+        let affectedFolder = deciding
+            .flatMap(InstallationProtectionContext.AffectedFolder.decidingObject(in:))
+            .map(InstallationProtectionContext.AffectedFolder.init(file:))
         return InstallationFailureContext(
             boundary: prewrite ? .prewriteProtection : (targetValidation ? .targetValidation : .postwriteProtection),
             classificationSource: .derived, devicePresence: .unknown,
@@ -1260,6 +1276,7 @@ struct MapInstallationCoordinator: Sendable {
                 beforeObjectCount: bounded(before.count), afterObjectCount: bounded(after.count),
                 addedObjectCount: added.flatMap(bounded), removedObjectCount: removed.flatMap(bounded),
                 changedObjectCount: changed.flatMap(bounded),
+                affectedFolder: affectedFolder,
                 targetPresent: !candidates.isEmpty, targetUnique: candidates.count == 1,
                 targetKindMatches: target.map { !$0.isFolder },
                 targetFilenameMatches: target.map { $0.filename == targetFilename },
@@ -1511,8 +1528,8 @@ struct MapInstallationCoordinator: Sendable {
         }
         recordToleratedDuplicates(after, event: "postwrite_inventory_duplicates")
         recordGlobalChanges(before: before, after: after, boundary: "postwrite")
-        let beforeComparable = baseline.protected
-        let afterComparable = Set(current.protected.filter { $0.path != targetPath })
+        let beforeComparable = ProtectedMapInventory.comparable(baseline.protected)
+        let afterComparable = ProtectedMapInventory.comparable(current.protected.filter { $0.path != targetPath })
         let targets = after.filter { $0.path == targetPath }
         let roots = before.filter { $0.path == "/GARMIN" && $0.isFolder }
         let targetUnchanged = roots.count == 1 && targets.count == 1 && targets.allSatisfy {
@@ -1551,7 +1568,7 @@ struct MapInstallationCoordinator: Sendable {
         }
         recordToleratedDuplicates(live, event: "prewrite_inventory_duplicates")
         recordGlobalChanges(before: before, after: live, boundary: "prewrite")
-        return baseline.protected == current.protected
+        return baseline.matches(current)
     }
 
     /// Local counts only. Firmware churn is an observation, not an attribution.
@@ -1891,5 +1908,24 @@ private extension MapInstallationDiagnostics {
             originalFailureContext: originalFailureContext,
             inventoryMetrics: inventoryMetrics
         )
+    }
+}
+
+extension InstallationProtectionContext.AffectedFolder {
+    private static let buckets: Set<Self> = [.mapFile, .garminRoot, .garminOther, .outsideGarmin]
+
+    /// The first object in path order; the storage ID only breaks a tie.
+    static func decidingObject(in files: [DeviceFile]) -> DeviceFile? {
+        files.min { ($0.path, $0.storageID) < ($1.path, $1.storageID) }
+    }
+
+    init(file: DeviceFile) {
+        if ProtectedMapInventory.isMapFile(file) { self = .mapFile; return }
+        let parts = file.path.split(separator: "/", omittingEmptySubsequences: true)
+        guard parts.first?.lowercased() == "garmin" else { self = .outsideGarmin; return }
+        if parts.count == 1 || (parts.count == 2 && !file.isFolder) { self = .garminRoot; return }
+        let folder = parts[1].lowercased()
+        let named = Self.allCases.first { !Self.buckets.contains($0) && $0.rawValue.lowercased() == folder }
+        self = named ?? .garminOther
     }
 }

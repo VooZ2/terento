@@ -89,6 +89,47 @@ class IdentityAssessmentTests(unittest.TestCase):
         # The alias is exact: another model name never reaches the epix Pro rows.
         self.assertEqual(assess_identity(dict(rawMTPModel='epix - 47mm'), rows, [])['candidates'], [])
 
+    def test_ambiguous_epix_name_keeps_both_generations_until_a_code_decides(self):
+        # Production 2026-10-19: an epix (Gen 2) reports "EPIX", the same name as
+        # the original epix, so the name alone never picks a generation.
+        gen1 = dict(id='epix-gen-1', model='epix', case_size_mm=None, screen_technology=None)
+        gen2 = dict(id='epix-gen-2-47', model='epix (Gen 2)', case_size_mm=47, screen_technology=None)
+        quatix = dict(id='quatix-7', model='quatix 7', case_size_mm=47, screen_technology=None)
+        rows = [gen1, gen2, quatix]
+        event = dict(rawMTPModel='EPIX', model='EPIX', garminModelDescription='EPIX',
+                     garminModelPartNumber='006-B3943-00', usbVendorID=0x091E, usbProductID=0x4F67)
+        result = assess_identity(event, rows, [])
+        self.assertEqual([c['deviceId'] for c in result['candidates']], ['epix-gen-1', 'epix-gen-2-47'])
+        self.assertTrue(all(c['checks'][0]['observedState'] == 'MATCH' for c in result['candidates']))
+        self.assertEqual((result['state'], result['canonicalDeviceId']), ('UNRESOLVED', None))
+        self.assertEqual(result['candidates'][1]['checks'][0]['evidence'][0],
+                         {'source': 'rawMTPModel (reviewed ambiguous name)', 'value': 'epix gen 2'})
+        # Pending links decide nothing.
+        def link(kind, value, device_id, status):
+            return dict(kind=kind, value=value, device_model_id=device_id, status=status,
+                        source_url='https://example.org/evidence', source_version='1')
+        pending = [link('XML_PART_NUMBER', '006-B3943-00', 'epix-gen-2-47', 'PENDING'),
+                   link('XML_PART_NUMBER', '006-B3943-00', 'quatix-7', 'PENDING'),
+                   link('USB', '091e:4f67', 'epix-gen-2-47', 'PENDING')]
+        self.assertIsNone(assess_identity(event, rows, pending)['canonicalDeviceId'])
+        # Reviewed codes exclude the original epix; the Gen 2 row is the single match.
+        approved = [dict(m, status='APPROVED') for m in pending]
+        result = assess_identity(event, rows, approved)
+        self.assertEqual((result['canonicalDeviceId'], result['resolution']), ('epix-gen-2-47', 'SINGLE_MATCH'))
+        # An original epix with its own reviewed code resolves to the original row.
+        original = dict(rawMTPModel='EPIX', garminModelPartNumber='006-B1988-00')
+        result = assess_identity(original, rows, [link('XML_PART_NUMBER', '006-B1988-00', 'epix-gen-1', 'APPROVED')])
+        self.assertEqual((result['canonicalDeviceId'], result['resolution']), ('epix-gen-1', 'SINGLE_MATCH'))
+        # Without a real "epix" row nothing is added: the name never reaches Gen 2 alone.
+        self.assertEqual(assess_identity(dict(rawMTPModel='EPIX'), [gen2], [])['candidates'], [])
+        # Explicit generation names stay exact.
+        self.assertEqual([c['deviceId'] for c in assess_identity(dict(rawMTPModel='epix (Gen 2)'), rows, [])['candidates']],
+                         ['epix-gen-2-47'])
+        # Assigning either generation to an "EPIX" report is no model contradiction.
+        self.assertEqual(selected_identity_conflicts(dict(rawMTPModel='EPIX'), gen2), [])
+        self.assertEqual(selected_identity_conflicts(dict(rawMTPModel='EPIX'), gen1), [])
+        self.assertEqual([c['field'] for c in selected_identity_conflicts(dict(rawMTPModel='EPIX'), quatix)], ['model'])
+
     def test_code_without_reported_model_name_stays_unresolved(self):
         event = dict(self.event, model=None, rawMTPModel=None)
         result = assess_identity(event, [self.device], self.mappings)
@@ -232,6 +273,88 @@ class IdentityAssessmentTests(unittest.TestCase):
         rows = prepare_mappings('garmin', json.dumps([{'name': name, 'partNumber': '006-B4631-00'}]), [self.device, other])
         self.assertEqual([r['device_model_id'] for r in rows], [self.device['id']])
         self.assertEqual(rows[0]['source_names'], [name])
+
+    @staticmethod
+    def _import(kind, entries, devices):
+        import json
+        from terento_catalog.identity_registry import prepare_mappings
+        content = json.dumps(entries) if kind == 'garmin' else ''.join(
+            f'  {{ "Garmin", 0x091e, "{name}", {pid}, DEVICE_FLAGS_ANDROID_BUGS }},\n' for name, pid in entries)
+        return sorted((r['value'], r['device_model_id']) for r in prepare_mappings(kind, content, devices))
+
+    def test_import_stated_screen_or_solar_variant_names_only_that_variant(self):
+        # Garmin's device list, 2026-10-19: one code per screen/power variant.
+        devices = [dict(id='amoled-47', model='fēnix 8', case_size_mm=47, screen_technology='AMOLED', solar=None),
+                   dict(id='solar-47', model='fēnix 8', case_size_mm=47, screen_technology='MIP', solar=True),
+                   dict(id='dual-power-47', model='fēnix 8 Dual Power', case_size_mm=47, screen_technology='MIP', solar=None)]
+        rows = self._import('garmin', [
+            {'partNumber': '006-B4532-00', 'name': 'fēnix® 8 Solar (47mm)', 'additionalNames': ['fēnix® 8 Dual Power (47mm)']},
+            {'partNumber': '006-B4536-00', 'name': 'fēnix® 8 AMOLED (47mm/51mm)', 'additionalNames': []}], devices)
+        self.assertEqual(rows, [('006-B4532-00', 'dual-power-47'), ('006-B4532-00', 'solar-47'), ('006-B4536-00', 'amoled-47')])
+        usb = self._import('usb', [('Fenix 8 AMOLED', '0x51b8'), ('Fenix 8 Solar Sapphire', '0x51b5')], devices)
+        self.assertEqual(usb, [('091e:51b5', 'solar-47'), ('091e:51b8', 'amoled-47')])
+
+    def test_import_code_without_solar_skips_rows_another_code_names_solar(self):
+        devices = [dict(id='pro-47', model='fēnix 9 Pro', case_size_mm=47, screen_technology='AMOLED', solar=None),
+                   dict(id='pro-47-solar', model='fēnix 9 Pro', case_size_mm=47, screen_technology='MIP', solar=True)]
+        rows = self._import('garmin', [
+            {'partNumber': '006-B4953-00', 'name': 'fenix® 9 Pro - 47 mm', 'additionalNames': ['fenix® 9 Pro - inReach 47 mm']},
+            {'partNumber': '006-B4955-00', 'name': 'fenix® 9 Pro - Solar 47 mm', 'additionalNames': []}], devices)
+        self.assertEqual(rows, [('006-B4953-00', 'pro-47'), ('006-B4955-00', 'pro-47-solar')])
+        # One code for a model and its Solar Edition keeps both rows open.
+        shared = [dict(id='7x-pro', model='fēnix 7X Pro', variant='Historical', case_size_mm=None, solar=None),
+                  dict(id='7x-pro-no-wifi', model='fēnix 7X Pro', variant='Solar (no Wi-Fi)', case_size_mm=None, solar=None)]
+        rows = self._import('garmin', [
+            {'partNumber': '006-B4376-00', 'name': 'fēnix® 7X Pro', 'additionalNames': ['fēnix® 7X Pro– Sapphire Solar Edition']},
+            {'partNumber': '006-B4596-00', 'name': 'fēnix® 7X Pro No Wi-Fi', 'additionalNames': []}], shared)
+        self.assertEqual(rows, [('006-B4376-00', '7x-pro'), ('006-B4596-00', '7x-pro-no-wifi')])
+
+    def test_import_checks_each_product_name_of_a_code_and_applies_bare_tags(self):
+        # Garmin's device list, 2026-10-19: one code names a model and its Dual
+        # Power variant; another code names the AMOLED variant only.
+        devices = [dict(id='crossover', model='Instinct Crossover', screen_technology='MIP', solar=False),
+                   dict(id='crossover-solar', model='Instinct Crossover Solar', screen_technology='MIP', solar=True),
+                   dict(id='crossover-amoled', model='Instinct Crossover AMOLED', screen_technology='AMOLED', solar=None)]
+        rows = self._import('garmin', [
+            {'partNumber': '006-B4155-00', 'name': 'Instinct® Crossover', 'additionalNames': ['Instinct® Crossover Dual Power']},
+            {'partNumber': '006-B4678-00', 'name': 'Instinct® Crossover AMOLED', 'additionalNames': []}], devices)
+        self.assertEqual(rows, [('006-B4155-00', 'crossover'), ('006-B4155-00', 'crossover-solar'),
+                                ('006-B4678-00', 'crossover-amoled')])
+        # "tactix 8 – 51 mm" with the tag "AMOLED" is the AMOLED 51 mm row.
+        tactix = [dict(id='51-amoled', model='tactix 8', case_size_mm=51, screen_technology='AMOLED', solar=None),
+                  dict(id='51-solar', model='tactix 8', case_size_mm=51, screen_technology='MIP', solar=True)]
+        rows = self._import('garmin', [
+            {'partNumber': '006-B4775-00', 'name': 'tactix® 8 – 47 mm, AMOLED', 'additionalNames': ['tactix® 8 – 51 mm', 'AMOLED']},
+            {'partNumber': '006-B4776-00', 'name': 'tactix® 8 – 51 mm, Solar', 'additionalNames': ['tactix® 8 – 51 mm', 'Solar', 'Elite']}], tactix)
+        self.assertEqual(rows, [('006-B4775-00', '51-amoled'), ('006-B4776-00', '51-solar')])
+        # A model sold only as Solar keeps its row for a plain name.
+        quatix = [dict(id='quatix-7x-solar', model='quatix 7X Solar', screen_technology='MIP', solar=True)]
+        rows = self._import('garmin', [
+            {'partNumber': '006-B3907-00', 'name': 'fēnix® 7X', 'additionalNames': ['quatix® 7X – Solar Edition']},
+            {'partNumber': '006-B3910-00', 'name': 'fēnix® 7X', 'additionalNames': ['quatix® 7X']}], quatix)
+        self.assertEqual(rows, [('006-B3907-00', 'quatix-7x-solar'), ('006-B3910-00', 'quatix-7x-solar')])
+
+    def test_import_reads_trademark_names_generation_alias_and_stated_sizes(self):
+        devices = [dict(id='enduro-2', model='Enduro 2', case_size_mm=None),
+                   dict(id='epix-pro', model='epix Pro (Gen 2)', variant='Historical', case_size_mm=None),
+                   dict(id='epix-pro-47', model='epix Pro (Gen 2)', case_size_mm=47, screen_technology='AMOLED'),
+                   dict(id='quatix-7-pro', model='quatix 7 Pro', case_size_mm=None)]
+        rows = self._import('garmin', [
+            {'partNumber': '006-B4341-00', 'name': 'Enduro™ 2', 'additionalNames': []},
+            {'partNumber': '006-B4313-00', 'name': 'epix™ Pro (47mm)', 'additionalNames': ['quatix® 7 Pro']}], devices)
+        # The unsized legacy row is left to the stated 47 mm row.
+        self.assertEqual(rows, [('006-B4313-00', 'epix-pro-47'), ('006-B4313-00', 'quatix-7-pro'), ('006-B4341-00', 'enduro-2')])
+
+    def test_import_splits_libmtp_product_lists_only_into_full_names(self):
+        devices = [dict(id='fenix-7x', model='fēnix 7X', case_size_mm=51), dict(id='enduro-2', model='Enduro 2'),
+                   dict(id='fenix-7', model='fēnix 7', case_size_mm=47), dict(id='fenix-5', model='fēnix 5')]
+        rows = self._import('usb', [('Fenix 7X/tactix 7/quatix 7X Solar/Enduro 2', '0x4f43'), ('Fenix 5/5S/5X Plus', '0x4b54')], devices)
+        self.assertEqual(rows, [('091e:4f43', 'enduro-2'), ('091e:4f43', 'fenix-7x')])
+
+    def test_trademark_signs_do_not_join_the_model_name(self):
+        from terento_catalog.identity_assessment import model_label
+        self.assertEqual(model_label('epix™ Pro (51mm)'), 'epix pro')
+        self.assertEqual(model_label('Enduro™ 2'), model_label('Enduro 2'))
 
     def test_admin_keeps_repeated_sources_actionable_with_one_technical_disclosure(self):
         from terento_catalog.admin import _identity_mapping_markup

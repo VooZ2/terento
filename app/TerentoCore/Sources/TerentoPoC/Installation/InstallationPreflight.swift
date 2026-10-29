@@ -152,6 +152,12 @@ struct InstallationPreflightEngine: Sendable {
                 comparisonStatus: comparison.status, status: .blockedMapTypeConflict,
                 installTarget: profile.targetDirectory, reason: BBBikeProviderAdapter.typeConflictMessage(for: selectedMap, installedMaps: installedMaps, inspectedFiles: inspectedFiles))
         }
+        if let conflict = OSMapaProviderAdapter.installedConflict(for: selectedMap, installedMaps: installedMaps, inspectedFiles: inspectedFiles) {
+            return blocked(selectedMap: selectedMap, installedMatch: installedMatch, ownership: ownership,
+                comparisonStatus: comparison.status, status: .blockedMapTypeConflict,
+                installTarget: profile.targetDirectory,
+                reason: OSMapaProviderAdapter.installedConflictMessage(for: selectedMap, conflict: conflict))
+        }
         let proposedFilename: String
         do {
             proposedFilename = try TerentoManagedFilenameGenerator().filename(
@@ -372,8 +378,12 @@ extension BBBikeProviderAdapter {
         let unverifiedFile = inspectedFiles.contains { file in
             conflicts(package, filename: file.filename) && !owned.contains { $0.sourceFile == file }
         }
-        return !owned.isEmpty && matches.allSatisfy { $0.managementState == .managedByTerento } && !unverifiedFile
-            ? installedTypeConflictMessage(for: package)
-            : unverifiedTypeConflictMessage(for: package)
+        let otherType = matches.lazy.compactMap { conflictingType(package, provider: $0.provider, region: $0.region) }.first
+            ?? inspectedFiles.lazy.compactMap { conflictingType(package, filename: $0.filename) }.first
+        if let installedType = otherType, !owned.isEmpty,
+           matches.allSatisfy({ $0.managementState == .managedByTerento }), !unverifiedFile {
+            return installedTypeConflictMessage(for: package, installedType: installedType)
+        }
+        return unverifiedTypeConflictMessage(for: package, otherType: otherType)
     }
 }

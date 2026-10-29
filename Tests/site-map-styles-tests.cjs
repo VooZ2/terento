@@ -89,7 +89,18 @@ function testPages() {
     assert.equal(page.areas.length, contract.areas.length, `${locale}: every contract area is offered`);
     assert.deepEqual(page.areas.map((area) => area.id), contract.areas.map((area) => area.id));
     assert.ok(page.areas.some((area) => area.id === "dolomites-tre-cime"), `${locale}: default area exists`);
-    assert.equal(page.styles.length, 5);
+    // BBBike no longer publishes its classic style for regular regions, so the
+    // page compares its Ontrail and OpenTopoMap styles and opens on one that has previews.
+    assert.deepEqual(page.styles.filter((style) => !style.optional).map((style) => style.id),
+      ["freizeitkarte", "opentopomap", "maprando", "bbbike-ontrail", "bbbike-opentopo"], `${locale}: public styles are always listed`);
+    assert.deepEqual(page.styles.filter((style) => style.optional).map((style) => style.id),
+      ["osmapa-podstawowa", "osmapa-ogonki", "osmapa-light"], `${locale}: OSMapaPL styles wait for the manifest`);
+    assert.ok(page.styles.every((style) => style.name && style.summary), `${locale}: every style has a name and summary`);
+    assert.ok(!/\b[0-9]\b/.test(page.copy.styles_of.replace(/\{\w+\}/g, "")) && page.copy.styles_of.includes("{total}"), `${locale}: style count follows the listed styles`);
+    const defaults = read(path.join(root, "site/map-styles/map-styles.js")).match(/a: styleIds\.includes\(fromHash\.style\) \? fromHash\.style : "([^"]+)",\s*b: styleIds\.includes\(fromHash\.compare\) \? fromHash\.compare : "([^"]+)"/);
+    assert.ok(defaults, "default styles found");
+    const always = page.styles.filter((style) => !style.optional);
+    assert.ok(always.some((style) => style.id === defaults[1]) && always.some((style) => style.id === defaults[2]), `${locale}: default styles are always on the page`);
 
     const h1 = source.match(/<h1 id="map-styles-title">([^<]+)<\/h1>/);
     assert.ok(h1 && h1[1].trim() && !h1[1].trim().endsWith("."), `${locale}: H1 is present without a trailing full stop`);
@@ -120,7 +131,11 @@ function testPages() {
     const cards = homeCards(locale);
     assert.ok(cards.length >= 4, `${locale}: home provider cards found`);
     const about = [...source.matchAll(/<article class="map-styles-about-card" data-style-card="([^"]+)">([\s\S]*?)<\/article>/g)];
-    assert.equal(about.length, 5, `${locale}: five style descriptions`);
+    assert.equal(about.length, 5, `${locale}: five always-shown style descriptions`);
+    const optional = [...source.matchAll(/<article class="map-styles-about-card" data-style-card="([^"]+)" data-style-ids="([^"]+)" hidden>([\s\S]*?)<\/article>/g)];
+    assert.deepEqual(optional.map((item) => [item[1], item[2]]), [["osmapa", "osmapa-podstawowa osmapa-ogonki osmapa-light"]],
+      `${locale}: the OSMapaPL description starts hidden`);
+    about.push(...optional.map((item) => [item[0], item[1], item[3]]));
     for (const [, styleId, body] of about) {
       const name = decode(body.match(/<h3>([^<]+)/)[1].trim());
       const summary = decode(body.match(/<p class="map-styles-about-summary">([^<]+)<\/p>/)[1]);
@@ -152,6 +167,14 @@ function testController() {
   // Side by side is the default on every screen; a shared link still chooses its own view.
   assert.match(controller, /mode: fromHash\.mode \|\| "split"/);
   assert.doesNotMatch(controller, /max-width/, "narrow screens do not force another view");
+  // Optional styles (OSMapaPL) are listed only when a fetched manifest lists them, on first load and on every recheck.
+  const listedLine = controller.split("\n").find((line) => line.includes("const listed = "));
+  assert.match(listedLine, /!style\.optional \|\| manifestStyleIds\(manifest\)\.includes\(style\.id\)/);
+  assert.doesNotMatch(listedLine, /fromHash/, "a shared link cannot list an optional style before the manifest");
+  assert.equal((controller.match(/updateStyles\(\);/g) || []).length, 3, "both manifest loads refresh the style list");
+  assert.match(controller, /if \(first\) openLinkedStyles\(\);/, "a shared link opens its style once the manifest confirms it");
+  assert.match(controller, /latest\.release === manifest\.release\s*&& manifestStyleIds\(latest\)\.join\(" "\) === manifestStyleIds\(manifest\)\.join\(" "\)\) return;/,
+    "a recheck applies style list changes within the same release");
 }
 
 testHelpers();

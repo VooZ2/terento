@@ -22,17 +22,50 @@ HOME = runpy.run_path(str(ROOT / "scripts/normalize-home-ia.py"))
 SHELL = runpy.run_path(str(ROOT / "scripts/normalize-public-shell.py"))
 PROVIDER_COPY = HOME["PROVIDER_CARD_COPY"]
 MAPRANDO_NOTES = HOME["MAPRANDO_LANGUAGE_NOTES"]
+STYLE_NOTES = {"maprando": MAPRANDO_NOTES, "bbbike-opentopo": HOME["BBBIKE_OPENTOPO_NOTES"]}
 LEAFLET_VERSION = "1.9.4"
-SCRIPT_VERSION = "20261007-map-styles-v8"
+SCRIPT_VERSION = "20261026-map-styles-v11"
 MANIFEST_URL = "https://api.terento.app/maps/previews/manifest.json"
-STYLE_IDS = ("freizeitkarte", "opentopomap", "maprando", "bbbike", "bbbike-ontrail")
+# BBBike stopped publishing its classic "bbbike" Garmin style for regular
+# regions in October 2026, so its Ontrail and OpenTopoMap styles are compared.
+STYLE_IDS = ("freizeitkarte", "opentopomap", "maprando", "bbbike-ontrail", "bbbike-opentopo")
+# Optional styles appear only while the preview manifest lists them, which the
+# API does once their provider is offered and its previews are switched on.
+OPTIONAL_STYLES = {
+    "osmapa": {
+        "osmapa-podstawowa": ("OSMapaPL Podstawowa", {
+            "en": "Labels without Polish letters.",
+            "de": "Beschriftungen ohne polnische Sonderzeichen.",
+            "fr": "Libellés sans lettres polonaises.",
+            "pl": "Opisy bez polskich znaków.",
+            "cs": "Popisky bez polských znaků.",
+            "it": "Etichette senza lettere polacche.",
+        }),
+        "osmapa-ogonki": ("OSMapaPL Ogonki", {
+            "en": "Labels with Polish letters.",
+            "de": "Beschriftungen mit polnischen Sonderzeichen.",
+            "fr": "Libellés avec les lettres polonaises.",
+            "pl": "Opisy z polskimi znakami.",
+            "cs": "Popisky s polskými znaky.",
+            "it": "Etichette con le lettere polacche.",
+        }),
+        "osmapa-light": ("OSMapaPL Light", {
+            "en": "A lighter map that uses less storage.",
+            "de": "Eine leichtere Karte, die weniger Speicher braucht.",
+            "fr": "Une carte plus légère qui prend moins de place.",
+            "pl": "Lżejsza mapa, która zajmuje mniej miejsca.",
+            "cs": "Lehčí mapa, která zabere méně místa.",
+            "it": "Una mappa più leggera che occupa meno spazio.",
+        }),
+    },
+}
 
 COPY: dict[str, dict[str, object]] = {
     "en": {
         "skip": "Skip to content",
         "eyebrow": "Map styles",
         "h1": "Compare free Garmin maps before you install",
-        "lead": "See how five free map styles draw the same place. Pick a popular area, trail or city, then compare contour lines, trails, streets and labels.",
+        "lead": "See how free map styles draw the same place. Pick a popular area, trail or city, then compare contour lines, trails, streets and labels.",
         "region": "Map style comparison",
         "kind": {"place": "Place", "route": "Trail", "city": "City"},
         "tabs": {"places": "Places", "routes": "Trails", "cities": "Cities", "country": "By country"},
@@ -46,7 +79,7 @@ COPY: dict[str, dict[str, object]] = {
         "count": {"place": {"one": "{n} place", "other": "{n} places"}, "route": {"one": "{n} trail", "other": "{n} trails"}, "city": {"one": "{n} city", "other": "{n} cities"}},
         "no_match": "No places match “{q}”. Try a country name, such as Italy or Nepal.",
         "best": "Best for comparing",
-        "styles_of": "{n} of 5 styles",
+        "styles_of": "{n} of {total} styles",
         "styles_short": "styles",
         "view": "View",
         "modes": {"single": "One map", "split": "Side by side", "swipe": "Swipe"},
@@ -72,7 +105,7 @@ COPY: dict[str, dict[str, object]] = {
         "divider": "Divider position",
         "map_label": "Map preview. Drag or use the arrow keys to move, plus and minus to zoom.",
         "showing": "Showing {style} for {place}",
-        "about": "About the five map styles",
+        "about": "About the map styles",
         "about_note": "Previews are close, not exact: your watch draws the map itself, so colours and detail can differ with the watch model and its map settings.",
         "noscript": "Turn on JavaScript to compare the map styles on the map.",
         "continents": {"europe": "Europe", "north-america": "North America", "south-america": "South America", "africa": "Africa", "asia": "Asia", "oceania": "Oceania"},
@@ -82,7 +115,7 @@ COPY: dict[str, dict[str, object]] = {
         "skip": "Zum Inhalt springen",
         "eyebrow": "Kartenstile",
         "h1": "Kostenlose Garmin-Karten vor der Installation vergleichen",
-        "lead": "Sieh, wie fünf kostenlose Kartenstile denselben Ort darstellen. Wähle ein beliebtes Gebiet, einen Weg oder eine Stadt und vergleiche Höhenlinien, Wege, Straßen und Beschriftungen.",
+        "lead": "Sieh, wie kostenlose Kartenstile denselben Ort darstellen. Wähle ein beliebtes Gebiet, einen Weg oder eine Stadt und vergleiche Höhenlinien, Wege, Straßen und Beschriftungen.",
         "region": "Vergleich der Kartenstile",
         "kind": {"place": "Ort", "route": "Weg", "city": "Stadt"},
         "tabs": {"places": "Orte", "routes": "Wege", "cities": "Städte", "country": "Nach Land"},
@@ -96,7 +129,7 @@ COPY: dict[str, dict[str, object]] = {
         "count": {"place": {"one": "{n} Ort", "other": "{n} Orte"}, "route": {"one": "{n} Weg", "other": "{n} Wege"}, "city": {"one": "{n} Stadt", "other": "{n} Städte"}},
         "no_match": "Keine Orte passen zu „{q}“. Versuche einen Ländernamen wie Italien oder Nepal.",
         "best": "Am besten zum Vergleichen",
-        "styles_of": "{n} von 5 Stilen",
+        "styles_of": "{n} von {total} Stilen",
         "styles_short": "Stile",
         "view": "Ansicht",
         "modes": {"single": "Eine Karte", "split": "Nebeneinander", "swipe": "Schieberegler"},
@@ -122,7 +155,7 @@ COPY: dict[str, dict[str, object]] = {
         "divider": "Position der Trennlinie",
         "map_label": "Kartenvorschau. Ziehen oder Pfeiltasten zum Bewegen, Plus und Minus zum Zoomen.",
         "showing": "{style} für {place} wird angezeigt",
-        "about": "Über die fünf Kartenstile",
+        "about": "Über die Kartenstile",
         "about_note": "Vorschauen sind nah dran, aber nicht exakt: Deine Uhr zeichnet die Karte selbst, daher können Farben und Details je nach Modell und Karteneinstellungen abweichen.",
         "noscript": "Aktiviere JavaScript, um die Kartenstile auf der Karte zu vergleichen.",
         "continents": {"europe": "Europa", "north-america": "Nordamerika", "south-america": "Südamerika", "africa": "Afrika", "asia": "Asien", "oceania": "Ozeanien"},
@@ -132,7 +165,7 @@ COPY: dict[str, dict[str, object]] = {
         "skip": "Aller au contenu",
         "eyebrow": "Styles de carte",
         "h1": "Comparez les cartes Garmin gratuites avant de les installer",
-        "lead": "Voyez comment cinq styles de carte gratuits représentent le même lieu. Choisissez une zone, un sentier ou une ville populaire, puis comparez courbes de niveau, sentiers, rues et libellés.",
+        "lead": "Voyez comment des styles de carte gratuits représentent le même lieu. Choisissez une zone, un sentier ou une ville populaire, puis comparez courbes de niveau, sentiers, rues et libellés.",
         "region": "Comparaison des styles de carte",
         "kind": {"place": "Lieu", "route": "Sentier", "city": "Ville"},
         "tabs": {"places": "Lieux", "routes": "Sentiers", "cities": "Villes", "country": "Par pays"},
@@ -146,7 +179,7 @@ COPY: dict[str, dict[str, object]] = {
         "count": {"place": {"one": "{n} lieu", "other": "{n} lieux"}, "route": {"one": "{n} sentier", "other": "{n} sentiers"}, "city": {"one": "{n} ville", "other": "{n} villes"}},
         "no_match": "Aucun lieu ne correspond à « {q} ». Essayez un nom de pays, comme Italie ou Népal.",
         "best": "Idéal pour comparer",
-        "styles_of": "{n} styles sur 5",
+        "styles_of": "{n} styles sur {total}",
         "styles_short": "styles",
         "view": "Affichage",
         "modes": {"single": "Une carte", "split": "Côte à côte", "swipe": "Curseur"},
@@ -172,7 +205,7 @@ COPY: dict[str, dict[str, object]] = {
         "divider": "Position du séparateur",
         "map_label": "Aperçu de carte. Faites glisser ou utilisez les flèches pour vous déplacer, plus et moins pour zoomer.",
         "showing": "Affichage de {style} pour {place}",
-        "about": "À propos des cinq styles de carte",
+        "about": "À propos des styles de carte",
         "about_note": "Les aperçus sont proches, mais pas exacts : votre montre dessine elle-même la carte, les couleurs et le niveau de détail peuvent donc varier selon le modèle et ses réglages de carte.",
         "noscript": "Activez JavaScript pour comparer les styles sur la carte.",
         "continents": {"europe": "Europe", "north-america": "Amérique du Nord", "south-america": "Amérique du Sud", "africa": "Afrique", "asia": "Asie", "oceania": "Océanie"},
@@ -182,7 +215,7 @@ COPY: dict[str, dict[str, object]] = {
         "skip": "Przejdź do treści",
         "eyebrow": "Style map",
         "h1": "Porównaj darmowe mapy Garmin przed instalacją",
-        "lead": "Zobacz, jak pięć darmowych stylów map przedstawia to samo miejsce. Wybierz popularny obszar, szlak lub miasto i porównaj poziomice, szlaki, ulice oraz opisy.",
+        "lead": "Zobacz, jak darmowe style map przedstawiają to samo miejsce. Wybierz popularny obszar, szlak lub miasto i porównaj poziomice, szlaki, ulice oraz opisy.",
         "region": "Porównanie stylów map",
         "kind": {"place": "Miejsce", "route": "Szlak", "city": "Miasto"},
         "tabs": {"places": "Miejsca", "routes": "Szlaki", "cities": "Miasta", "country": "Według kraju"},
@@ -196,7 +229,7 @@ COPY: dict[str, dict[str, object]] = {
         "count": {"place": {"one": "{n} miejsce", "few": "{n} miejsca", "many": "{n} miejsc", "other": "{n} miejsca"}, "route": {"one": "{n} szlak", "few": "{n} szlaki", "many": "{n} szlaków", "other": "{n} szlaku"}, "city": {"one": "{n} miasto", "few": "{n} miasta", "many": "{n} miast", "other": "{n} miasta"}},
         "no_match": "Brak miejsc pasujących do „{q}”. Spróbuj nazwy kraju, np. Włochy lub Nepal.",
         "best": "Najlepsze do porównania",
-        "styles_of": "{n} z 5 stylów",
+        "styles_of": "{n} z {total} stylów",
         "styles_short": "stylów",
         "view": "Widok",
         "modes": {"single": "Jedna mapa", "split": "Obok siebie", "swipe": "Suwak"},
@@ -222,7 +255,7 @@ COPY: dict[str, dict[str, object]] = {
         "divider": "Położenie separatora",
         "map_label": "Podgląd mapy. Przeciągnij lub użyj strzałek, aby przesuwać, plus i minus, aby zmieniać powiększenie.",
         "showing": "Wyświetlono {style} dla miejsca {place}",
-        "about": "O pięciu stylach map",
+        "about": "O stylach map",
         "about_note": "Podglądy są zbliżone, ale nie dokładne: zegarek sam rysuje mapę, więc kolory i szczegóły mogą się różnić w zależności od modelu i ustawień mapy.",
         "noscript": "Włącz JavaScript, aby porównać style na mapie.",
         "continents": {"europe": "Europa", "north-america": "Ameryka Północna", "south-america": "Ameryka Południowa", "africa": "Afryka", "asia": "Azja", "oceania": "Oceania"},
@@ -232,7 +265,7 @@ COPY: dict[str, dict[str, object]] = {
         "skip": "Přejít k obsahu",
         "eyebrow": "Styly map",
         "h1": "Porovnejte bezplatné mapy Garmin před instalací",
-        "lead": "Podívejte se, jak pět bezplatných stylů map zobrazuje stejné místo. Vyberte oblíbenou oblast, stezku nebo město a porovnejte vrstevnice, stezky, ulice a popisky.",
+        "lead": "Podívejte se, jak bezplatné styly map zobrazují stejné místo. Vyberte oblíbenou oblast, stezku nebo město a porovnejte vrstevnice, stezky, ulice a popisky.",
         "region": "Porovnání stylů map",
         "kind": {"place": "Místo", "route": "Stezka", "city": "Město"},
         "tabs": {"places": "Místa", "routes": "Stezky", "cities": "Města", "country": "Podle země"},
@@ -246,7 +279,7 @@ COPY: dict[str, dict[str, object]] = {
         "count": {"place": {"one": "{n} místo", "few": "{n} místa", "many": "{n} místa", "other": "{n} míst"}, "route": {"one": "{n} stezka", "few": "{n} stezky", "many": "{n} stezky", "other": "{n} stezek"}, "city": {"one": "{n} město", "few": "{n} města", "many": "{n} města", "other": "{n} měst"}},
         "no_match": "Hledání „{q}“ neodpovídá žádné místo. Zkuste název země, například Itálie nebo Nepál.",
         "best": "Nejlepší k porovnání",
-        "styles_of": "{n} z 5 stylů",
+        "styles_of": "{n}/{total} stylů",
         "styles_short": "stylů",
         "view": "Zobrazení",
         "modes": {"single": "Jedna mapa", "split": "Vedle sebe", "swipe": "Posuvník"},
@@ -272,7 +305,7 @@ COPY: dict[str, dict[str, object]] = {
         "divider": "Poloha dělicí čáry",
         "map_label": "Náhled mapy. Posouvejte tažením nebo šipkami, přibližujte plusem a minusem.",
         "showing": "Zobrazeno {style} pro {place}",
-        "about": "O pěti stylech map",
+        "about": "O stylech map",
         "about_note": "Náhledy jsou blízké, ale ne přesné: hodinky kreslí mapu samy, takže barvy a podrobnosti se mohou lišit podle modelu a nastavení mapy.",
         "noscript": "Zapněte JavaScript a porovnejte styly na mapě.",
         "continents": {"europe": "Evropa", "north-america": "Severní Amerika", "south-america": "Jižní Amerika", "africa": "Afrika", "asia": "Asie", "oceania": "Oceánie"},
@@ -282,7 +315,7 @@ COPY: dict[str, dict[str, object]] = {
         "skip": "Vai al contenuto",
         "eyebrow": "Stili di mappa",
         "h1": "Confronta le mappe Garmin gratuite prima di installarle",
-        "lead": "Guarda come cinque stili di mappa gratuiti disegnano lo stesso luogo. Scegli una zona, un sentiero o una città popolare, poi confronta curve di livello, sentieri, strade ed etichette.",
+        "lead": "Guarda come diversi stili di mappa gratuiti disegnano lo stesso luogo. Scegli una zona, un sentiero o una città popolare, poi confronta curve di livello, sentieri, strade ed etichette.",
         "region": "Confronto degli stili di mappa",
         "kind": {"place": "Luogo", "route": "Sentiero", "city": "Città"},
         "tabs": {"places": "Luoghi", "routes": "Sentieri", "cities": "Città", "country": "Per paese"},
@@ -296,7 +329,7 @@ COPY: dict[str, dict[str, object]] = {
         "count": {"place": {"one": "{n} luogo", "other": "{n} luoghi"}, "route": {"one": "{n} sentiero", "other": "{n} sentieri"}, "city": {"one": "{n} città", "other": "{n} città"}},
         "no_match": "Nessun luogo corrisponde a “{q}”. Prova con il nome di un paese, come Italia o Nepal.",
         "best": "Ideali per il confronto",
-        "styles_of": "{n} stili su 5",
+        "styles_of": "{n} stili su {total}",
         "styles_short": "stili",
         "view": "Vista",
         "modes": {"single": "Una mappa", "split": "Affiancate", "swipe": "Cursore"},
@@ -322,7 +355,7 @@ COPY: dict[str, dict[str, object]] = {
         "divider": "Posizione del divisore",
         "map_label": "Anteprima della mappa. Trascina o usa le frecce per spostarti, più e meno per lo zoom.",
         "showing": "Visualizzazione di {style} per {place}",
-        "about": "Informazioni sui cinque stili di mappa",
+        "about": "Informazioni sugli stili di mappa",
         "about_note": "Le anteprime sono vicine, ma non identiche: l’orologio disegna la mappa da sé, quindi colori e dettagli possono variare in base al modello e alle impostazioni della mappa.",
         "noscript": "Attiva JavaScript per confrontare gli stili sulla mappa.",
         "continents": {"europe": "Europa", "north-america": "Nord America", "south-america": "Sud America", "africa": "Africa", "asia": "Asia", "oceania": "Oceania"},
@@ -368,8 +401,22 @@ def style_copy(locale: str) -> list[dict[str, object]]:
             "name": provider["name"],
             "summary": provider["summary"],
             "benefits": list(provider["benefits"]),
-            "note": MAPRANDO_NOTES[locale] if style_id == "maprando" else None,
+            "note": STYLE_NOTES[style_id][locale] if style_id in STYLE_NOTES else None,
         })
+    for provider_id, provider_styles in OPTIONAL_STYLES.items():
+        provider = PROVIDER_COPY[locale][provider_id]
+        for style_id, (name, summaries) in provider_styles.items():
+            styles.append({
+                "id": style_id,
+                "name": name,
+                "summary": summaries[locale],
+                "optional": True,
+                "card": provider_id,
+                "card_name": provider["name"],
+                "card_summary": provider["summary"],
+                "benefits": list(provider["benefits"]),
+                "note": None,
+            })
     return styles
 
 
@@ -379,7 +426,11 @@ def area_name(area: dict, locale: str) -> str:
 
 def about_markup(locale: str, copy: dict[str, object], styles: list[dict[str, object]]) -> str:
     cards = []
+    optional: dict[str, list[dict[str, object]]] = {}
     for style in styles:
+        if style.get("optional"):
+            optional.setdefault(str(style["card"]), []).append(style)
+            continue
         benefits = "".join(f"<li>{esc(item)}</li>" for item in style["benefits"])
         note = (
             f'<p class="map-styles-about-language">{icon("info")}<span>{esc(style["note"])}</span></p>'
@@ -390,6 +441,18 @@ def about_markup(locale: str, copy: dict[str, object], styles: list[dict[str, ob
             f'<h3>{esc(style["name"])}</h3>'
             f'<p class="map-styles-about-summary">{esc(style["summary"])}</p>'
             f'<ul>{benefits}</ul>{note}'
+            "</article>"
+        )
+    # One hidden card per optional provider; the page shows it once any of its styles is listed.
+    for card_id, members in optional.items():
+        first = members[0]
+        benefits = "".join(f"<li>{esc(item)}</li>" for item in first["benefits"])
+        ids = " ".join(str(style["id"]) for style in members)
+        cards.append(
+            f'<article class="map-styles-about-card" data-style-card="{esc(card_id)}" data-style-ids="{esc(ids)}" hidden>'
+            f'<h3>{esc(first["card_name"])}</h3>'
+            f'<p class="map-styles-about-summary">{esc(first["card_summary"])}</p>'
+            f'<ul>{benefits}</ul>'
             "</article>"
         )
     return "".join(cards)
@@ -415,7 +478,10 @@ def page_data(locale: str, copy: dict[str, object], styles: list[dict[str, objec
             }
             for area in AREAS["areas"]
         ],
-        "styles": [{key: style[key] for key in ("id", "name", "summary")} for style in styles],
+        "styles": [
+            {key: style[key] for key in ("id", "name", "summary", "optional") if key in style}
+            for style in styles
+        ],
         "copy": {key: value for key, value in copy.items() if key not in {"h1", "lead", "eyebrow", "skip", "noscript", "about", "about_note"}},
     }
     return json.dumps(document, ensure_ascii=False, separators=(",", ":")).replace("<", "\\u003c")

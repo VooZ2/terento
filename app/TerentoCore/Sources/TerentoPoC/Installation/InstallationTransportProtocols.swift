@@ -70,6 +70,7 @@ struct InstallationFailureContext: Codable, Equatable, Sendable {
         case terentoFilePrefix = "terento_file_prefix"
         case terentoFileRange = "terento_file_range"
         case terentoMapWrite = "terento_map_write"
+        case terentoMapVerify = "terento_map_verify"
     }
     enum ComponentKind: String, Codable, Sendable {
         case main = "main"
@@ -150,6 +151,15 @@ extension InstallationFailureContext {
              componentKind: componentKind ?? self.componentKind, protection: protection)
     }
 
+    /// The same facts with the number of retries made before this failure.
+    func retried(_ count: UInt8) -> Self {
+        Self(boundary: boundary, classificationSource: classificationSource, devicePresence: devicePresence,
+             lastSuccessfulBoundary: lastSuccessfulBoundary, operation: operation, executionMode: executionMode,
+             resultKind: resultKind, nativeCategory: nativeCategory, nativeCodeNamespace: nativeCodeNamespace,
+             nativeResultCode: nativeResultCode, retryCount: count, componentKind: componentKind,
+             protection: protection)
+    }
+
     /// `terento_mtp_read_snapshot_diagnostic` -5: exactly one Garmin is on
     /// USB, but its file-transfer session could not be opened (usually another
     /// app holds the watch). Detection reports the same code as busy.
@@ -174,6 +184,22 @@ struct InstallationProtectionContext: Codable, Equatable, Sendable {
         case targetFilenameMismatch = "target-filename-mismatch"
         case targetSizeMismatch = "target-size-mismatch"
     }
+    /// Where the first protected non-target object that decided an
+    /// added/removed/changed reason lives: a standard `/GARMIN` folder name,
+    /// a map file, or a coarse bucket. Never a path or filename. The
+    /// classifier lives in MapInstallationCoordinator.swift.
+    enum AffectedFolder: String, Codable, Sendable, CaseIterable {
+        case activity = "Activity", apps = "Apps", courses = "Courses", debug = "Debug"
+        case device = "Device", errLogs = "ErrLogs", goals = "Goals", locations = "Locations"
+        case map = "Map", metrics = "Metrics", monitor = "Monitor", newFiles = "NewFiles"
+        case records = "Records", remoteSW = "RemoteSW", schedules = "Schedules"
+        case settings = "Settings", sleep = "Sleep", sports = "Sports", text = "Text"
+        case tlg = "TLG", totals = "Totals", workouts = "Workouts"
+        case mapFile = "map-file"
+        case garminRoot = "garmin-root"
+        case garminOther = "garmin-other"
+        case outsideGarmin = "outside-garmin"
+    }
 
     let protectionBoundary: Boundary
     let protectionReason: Reason
@@ -183,6 +209,7 @@ struct InstallationProtectionContext: Codable, Equatable, Sendable {
     let addedObjectCount: Int?
     let removedObjectCount: Int?
     let changedObjectCount: Int?
+    let affectedFolder: AffectedFolder?
     let targetPresent: Bool?
     let targetUnique: Bool?
     let targetKindMatches: Bool?
@@ -200,6 +227,7 @@ struct InstallationProtectionContext: Codable, Equatable, Sendable {
         addedObjectCount: Int? = nil,
         removedObjectCount: Int? = nil,
         changedObjectCount: Int? = nil,
+        affectedFolder: AffectedFolder? = nil,
         targetPresent: Bool? = nil,
         targetUnique: Bool? = nil,
         targetKindMatches: Bool? = nil,
@@ -216,6 +244,7 @@ struct InstallationProtectionContext: Codable, Equatable, Sendable {
         self.addedObjectCount = addedObjectCount
         self.removedObjectCount = removedObjectCount
         self.changedObjectCount = changedObjectCount
+        self.affectedFolder = affectedFolder
         self.targetPresent = targetPresent
         self.targetUnique = targetUnique
         self.targetKindMatches = targetKindMatches

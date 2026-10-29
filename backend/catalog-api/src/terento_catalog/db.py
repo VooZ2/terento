@@ -1373,11 +1373,14 @@ class Database:
             exclude_statistics=True, catalog=catalog,
         )
 
-    def _compatibility_operation_details(self, diagnostic_status: str, limit: int | None, *, device_id: str = "", identity: str | list[str] = "", exclude_statistics: bool = False, issue_only: bool = False, catalog: tuple[list[dict[str, Any]], list[dict[str, Any]]] | None = None) -> list[dict[str, Any]]:
+    def _compatibility_operation_details(self, diagnostic_status: str, limit: int | None, *, device_id: str = "", identity: str | list[str] = "", exclude_statistics: bool = False, issue_only: bool = False, operation_keys: list[str] | None = None, catalog: tuple[list[dict[str, Any]], list[dict[str, Any]]] | None = None) -> list[dict[str, Any]]:
         limit_clause = "LIMIT %s" if limit is not None else ""
         identity_clause = ""
         scope_values = []
-        if device_id:
+        if operation_keys is not None:
+            identity_clause = " AND COALESCE(operation_id::text, 'legacy:' || event_id::text) = ANY(%s)"
+            scope_values = [operation_keys]
+        elif device_id:
             identity_clause = " AND canonical_device_model_id = %s"
             scope_values = [device_id]
         elif identity:
@@ -1507,6 +1510,7 @@ class Database:
                 dm.canonical_model,
                 dm.screen_technology, dm.solar, dm.inreach,
                 dm.model AS catalog_model,
+                dm.variant AS catalog_variant,
                 dm.source_image_url,
                 asset.asset_type,
                 asset.status AS asset_status,
@@ -1691,6 +1695,25 @@ class Database:
             for row in rows if row.get("identity_key")
         }
         return {"total": sum(by_identity.values()), "byIdentity": by_identity}
+
+    def open_installation_problem_details(self) -> list[dict[str, Any]]:
+        """Active result rows of every open installation problem operation.
+
+        The operations are exactly those ``installation_problem_counts``
+        counts; each keeps all its active results, as the Admin dialog does.
+        """
+        query = """
+            WITH """ + INSTALLATION_PROBLEM_OPERATIONS_CTE + """
+            SELECT operation_key FROM operation_reviews
+            WHERE has_failure AND NOT has_github_issue
+        """
+        with self.connection() as connection:
+            keys = [str(row["operation_key"]) for row in connection.execute(query).fetchall()]
+        if not keys:
+            return []
+        return self._compatibility_operation_details(
+            "ACTIVE", None, exclude_statistics=True, operation_keys=keys,
+        )
 
     def missing_diagnostic_failures(self, *, limit: int = 50, offset: int = 0) -> dict[str, Any]:
         """Every active install failure without a matching device report (newest first).
@@ -2786,9 +2809,15 @@ class Database:
                 specification_checked_at=now(), specification_evidence=specification_evidence || %s::jsonb,
                 updated_at=now() WHERE id=%s""",
                 (values.get("screen_technology"), values.get("solar"), values.get("inreach"), source, json.dumps(evidence), device_id))
+        # A changed product page (new version) adds no second link for an SKU
+        # the model already has; the first link keeps its review decision.
+        # Link writers take one lock so two runs cannot both pass NOT EXISTS.
+        if skus:
+            connection.execute("SELECT pg_advisory_xact_lock(hashtext('device_identity_mapping'))")
         for sku in skus:
             connection.execute("""INSERT INTO device_identity_mapping (kind,value,device_model_id,source_url,source_version)
-                VALUES ('RETAIL_SKU',%s,%s,%s,%s) ON CONFLICT DO NOTHING""", (sku, device_id, source, version))
+                SELECT 'RETAIL_SKU',%s,%s,%s,%s WHERE NOT EXISTS (SELECT 1 FROM device_identity_mapping m
+                WHERE m.kind='RETAIL_SKU' AND m.value=%s AND m.device_model_id=%s)""", (sku, device_id, source, version, sku, device_id))
 
     def identity_assignment_audit(self) -> dict:
         from .identity_registry import build_assignment_audit
@@ -3241,11 +3270,29 @@ class Database:
                 artifact.validation_status AS artifact_validation_status,
                 artifact.source_updated_at AS artifact_source_updated_at,
                 artifact.install_payload_path AS artifact_install_payload_path,
-                artifact.source_proof AS artifact_source_proof
+                artifact.source_proof AS artifact_source_proof,
+                changes.changed_at AS provider_changed_at
             FROM map_provider AS p
             LEFT JOIN map_package AS package ON package.provider_id = p.id
                 AND package.availability <> 'RETIRED'
             LEFT JOIN map_artifact AS artifact ON artifact.package_id = package.id
+            -- Per-provider latest change: a closed projection's updatedAt,
+            -- Last-Modified and ETag never move for a provider outside it.
+            LEFT JOIN (
+                SELECT provider_id, MAX(changed_at) AS changed_at
+                FROM (
+                    SELECT id AS provider_id, updated_at AS changed_at FROM map_provider
+                    UNION ALL
+                    SELECT provider_id, updated_at FROM map_package
+                    UNION ALL
+                    SELECT owner.provider_id, item.updated_at
+                    FROM map_artifact AS item
+                    JOIN map_package AS owner ON owner.id = item.package_id
+                    UNION ALL
+                    SELECT provider_id, checked_at FROM provider_health_check
+                ) AS provider_changes
+                GROUP BY provider_id
+            ) AS changes ON changes.provider_id = p.id
             LEFT JOIN LATERAL (
                 SELECT ph.status, ph.checked_at, ph.download_status
                 FROM provider_health_check AS ph
@@ -3836,7 +3883,7 @@ class Database:
                         (definition.id, artifact.source_url),
                     )
 
-            if definition.id in {"opentopomap", "maprando", "bbbike"}:
+            if definition.id in {"opentopomap", "maprando", "bbbike", "osmapa"}:
                 # A complete provider snapshot retires only that provider's stale
                 # package/artifact metadata. It never touches map binaries or
                 # another provider's records.
@@ -4392,6 +4439,26 @@ class Database:
             ).fetchone() or {}
         return int(row.get("n") or 0)
 
+    def open_support_report_details(self, limit: int = 50) -> list[dict[str, Any]]:
+        """Open public reports with their stored report body, newest receipt first."""
+        with self.connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT reference, received_at, created_at, app_build, release_label, category,
+                       operation_id, linked_github_issue, user_message, report
+                FROM support_report
+                WHERE status = 'OPEN' AND is_local_test IS FALSE
+                ORDER BY received_at DESC, id
+                LIMIT %s
+                """,
+                (max(1, min(int(limit), 200)),),
+            ).fetchall()
+        details = [dict(row) for row in rows]
+        for detail in details:
+            if isinstance(detail.get("report"), str):
+                detail["report"] = json.loads(detail["report"])
+        return details
+
     def support_reports(
         self, *, status: str = "OPEN", limit: int = 50, offset: int = 0, local: bool = False,
     ) -> dict[str, Any]:
@@ -4825,36 +4892,55 @@ class Database:
         """Resolve the catalog model of web connections and map results that
         have none yet, with the same identity assessment as app reports. The
         scheduler runs it at start and after each cycle, so rows received
-        before a catalog or USB mapping change resolve later. Rows resolved
-        from a learned USB code are checked again: once the code names
-        several models they lose the model. A row with any administrator
-        decision (Identity review) keeps that decision."""
-        with self.connection() as connection:
-            rows = list(connection.execute(
-                """
-                SELECT event_id, model, usb_vendor_id, usb_product_id FROM web_installer_event
-                WHERE (canonical_device_model_id IS NULL OR identity_resolution = 'USB_LEARNED')
-                  AND NOT EXISTS (SELECT 1 FROM web_installer_identity_audit a WHERE a.event_id = web_installer_event.event_id)
-                  AND is_test IS NOT TRUE
-                  AND stage IN ('CONNECT', 'MAP_RESULT')
-                  AND (model IS NOT NULL OR usb_product_id IS NOT NULL)
-                ORDER BY received_at LIMIT %s FOR UPDATE SKIP LOCKED
-                """, (limit,),
-            ).fetchall())
-            summary = {"pending": len(rows), "resolved": 0}
-            if not rows:
+        before a catalog or USB mapping change resolve later. Automatic
+        resolutions (exact, single match, learned USB code) are checked again
+        under the current rules: a row whose model the rules no longer give,
+        such as a learned code that now names several models, loses or
+        changes it. Every eligible row is checked on each call, ``limit``
+        rows per transaction in event id order; a row locked by a concurrent
+        write waits for the next call. A row with any administrator decision
+        (Identity review) keeps that decision."""
+        summary = {"pending": 0, "resolved": 0, "rechecked": 0, "changed": 0}
+        after = None
+        while True:
+            with self.connection() as connection:
+                rows = list(connection.execute(
+                    f"""
+                    SELECT event_id, model, usb_vendor_id, usb_product_id,
+                           canonical_device_model_id, identity_resolution
+                    FROM web_installer_event
+                    WHERE (canonical_device_model_id IS NULL
+                           OR identity_resolution IN ('EXACT', 'SINGLE_MATCH', 'USB_LEARNED'))
+                      AND NOT EXISTS (SELECT 1 FROM web_installer_identity_audit a WHERE a.event_id = web_installer_event.event_id)
+                      AND is_test IS NOT TRUE
+                      AND stage IN ('CONNECT', 'MAP_RESULT')
+                      AND (model IS NOT NULL OR usb_product_id IS NOT NULL)
+                      {"AND event_id > %s" if after is not None else ""}
+                    ORDER BY event_id LIMIT %s FOR UPDATE SKIP LOCKED
+                    """, (*(() if after is None else (after,)), limit),
+                ).fetchall())
+                if not rows:
+                    return summary
+                after = rows[-1]["event_id"]
+                devices = list(connection.execute(IDENTITY_DEVICE_QUERY).fetchall())
+                mappings = list(connection.execute(IDENTITY_MAPPING_QUERY).fetchall())
+                usb_models = usb_code_models(mappings, list(connection.execute(LEARNED_USB_QUERY).fetchall()))
+                for row in rows:
+                    unresolved = row["canonical_device_model_id"] is None
+                    summary["pending" if unresolved else "rechecked"] += 1
+                    device_id, resolution = web_installer_identity(row, devices, mappings, usb_models)
+                    if (device_id, resolution) == (row["canonical_device_model_id"], row["identity_resolution"]):
+                        continue
+                    connection.execute(
+                        "UPDATE web_installer_event SET canonical_device_model_id = %s, identity_resolution = %s "
+                        "WHERE event_id = %s", (device_id, resolution, row["event_id"]),
+                    )
+                    if unresolved:
+                        summary["resolved"] += device_id is not None
+                    else:
+                        summary["changed"] += 1
+            if len(rows) < limit:
                 return summary
-            devices = list(connection.execute(IDENTITY_DEVICE_QUERY).fetchall())
-            mappings = list(connection.execute(IDENTITY_MAPPING_QUERY).fetchall())
-            usb_models = usb_code_models(mappings, list(connection.execute(LEARNED_USB_QUERY).fetchall()))
-            for row in rows:
-                device_id, resolution = web_installer_identity(row, devices, mappings, usb_models)
-                connection.execute(
-                    "UPDATE web_installer_event SET canonical_device_model_id = %s, identity_resolution = %s "
-                    "WHERE event_id = %s", (device_id, resolution, row["event_id"]),
-                )
-                summary["resolved"] += device_id is not None
-        return summary
 
     @staticmethod
     def _web_installer_map_filter(filters: dict[str, Any], alias: str, time_column: str) -> tuple[str, list[Any]]:

@@ -140,6 +140,19 @@ enum DeviceDetectionErrorClass: Equatable, Sendable {
     case transient
 }
 
+extension DeviceDetectionErrorClass {
+    /// The `errorCategory` a map-scan support report states for this class.
+    var mapScanReportCategory: String {
+        switch self {
+        case .notYetEnumerated: return "watch_not_visible"
+        case .multipleDevices: return "multiple_watches"
+        case .busy: return "watch_busy"
+        case .stoppedResponding: return "watch_stopped_responding"
+        case .transient: return "read_failed"
+        }
+    }
+}
+
 /// Pure detection state machine. It owns the phase, the connection clock and
 /// the per-attempt counters, but performs no device I/O. Times are monotonic
 /// seconds supplied by the caller.

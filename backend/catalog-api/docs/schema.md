@@ -550,6 +550,15 @@ The map statistics read model uses geographical identity for grouping and a
 separate `map_type` for type attribution. The compatibility provider constraint
 adds BBBike independently of its PAUSED activation state.
 
+Migration087: registers OSMapaPL (`osmapa`) as `PAUSED` without changing an
+existing row, requires an OSMapaPL `map_type` in `podstawowa`, `ogonki`,
+`light`, `warstwice` with a non-null geographical key, and adds `osmapa` to the
+compatibility provider constraint. Additive; no existing row changes.
+
+Migration088: widens `bbbike_map_type_check` to also allow `opentopo-latin1`
+(BBBike OpenTopoMap style). Additive; no existing row changes. Catalog v3/v4
+projections exclude that type (see `docs/api.md`).
+
 ### Migration049: component acquisition evidence
 
 `map_download_event` adds nullable paired `acquisition_id` UUID and
@@ -741,3 +750,38 @@ column with a closed CHECK, allowed only on `DOWNLOAD_FAILED`
 ([`map-event.schema.json`](../../../contracts/map-event.schema.json)). The
 previous revision never writes or reads it; clients through 1.0.0 send no
 reason, which stays NULL.
+
+### Migration084: epix (Gen 2) identity codes
+
+Data only and rollback-compatible: three PENDING `device_identity_mapping`
+rows link XML part numbers 006-B3943-00 and 006-B3944-00 (Garmin's device list:
+"epix (Gen 2)") and USB 091e:4f67 (libmtp: "EPIX 2") to `garmin-epix-gen-2-47`.
+Migration 048 linked the part numbers only to quatix 7. An administrator
+reviews the links in Admin; a PENDING USB link already counts as a model the
+code names for web installs (`WEB_INSTALLER_STATISTICS_CONTRACT.md`). No
+report, assignment, permission or statistic is changed by the migration.
+
+### Migration085: epix (Gen 2) photograph
+
+Media only and rollback-compatible: fills the missing `source_image_url` of the
+historical `garmin-epix-gen-2-47` row with Garmin's official epix (Gen 2)
+Standard Edition 47 mm product photograph (checked 2026-10-19), recorded in
+`specification_evidence.source_image` like migrations 051–053. Identity,
+specifications and approvals are unchanged.
+
+
+### Migration086: model source review
+
+Data only and rollback-compatible. Undecided `device_identity_mapping` rows
+without review history are deleted when the same kind, code and model already
+has a decided or older row (a newer source snapshot or changed product page had
+added them; the unique key includes `source_version`). It then records
+source-backed decisions, checked 2026-10-19 against Garmin's device list and
+libmtp (the source versions of migration 084). Every link the corrected import
+makes from those versions is added when missing, only for existing catalog
+models, so no import run is needed. 54 links the source names directly are
+approved and 41 earlier import links whose source names a different variant or
+size are rejected; the other added links stay PENDING. Only PENDING rows change; each change gets
+a `device_identity_mapping_audit` row with no administrator. Administrator
+decisions, reports, assignments, permissions and statistics are unchanged;
+identity assessment reads the reviewed links on its next pass.

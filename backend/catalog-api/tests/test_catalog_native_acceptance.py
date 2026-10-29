@@ -29,8 +29,21 @@ class MirrorSanityTests(unittest.TestCase):
         artifact = catalog["providers"][0]["maps"][0]["artifacts"][0]
         artifact.update(validationStatus="UNAVAILABLE", validationState="unavailable")
         self.assertTrue(any("must not carry sourceProof" in reason for reason in catalog_rejections(catalog)))
+        for malformed in ({"etag": True}, {}, "proof"):
+            artifact["sourceProof"] = malformed
+            self.assertTrue(any("must not carry sourceProof" in reason for reason in catalog_rejections(catalog)))
         artifact.pop("sourceProof")
         self.assertEqual(catalog_rejections(catalog), [])
+
+    def test_integral_float_sizes_match_swift_decoding(self):
+        catalog = deepcopy(FIXTURE)
+        proof = catalog["providers"][0]["maps"][0]["artifacts"][0]["sourceProof"]
+        proof["installSizeBytes"] = float(proof["installSizeBytes"])
+        self.assertEqual(catalog_rejections(catalog), [])
+        proof["installSizeBytes"] += 0.5
+        self.assertTrue(catalog_rejections(catalog))
+        proof["installSizeBytes"] = True
+        self.assertTrue(catalog_rejections(catalog))
 
 
 class PublishedCatalogGateTests(PGliteTestCase):
@@ -82,6 +95,31 @@ class PublishedCatalogGateTests(PGliteTestCase):
         catalog = self.catalog()
         self.assertEqual(sum(len(p["maps"]) for p in catalog["providers"]), 3)
         self.assertEqual(catalog_rejections(catalog), [])
+
+    def test_opentopo_type_is_stored_but_never_published_to_released_clients(self):
+        # This build is also the rollback target once the collector stores opentopo rows.
+        package = deepcopy(BBBIKE_MAPS[0])
+        old, new = package["mapType"], "opentopo-latin1"
+        swap = lambda value: value.replace(old, new).replace(old.upper(), new.upper())
+        package.update(id=swap(package["id"]), region=swap(package["region"]),
+                       canonicalRegionId=swap(package["canonicalRegionId"]), mapType=new)
+        artifact = package["artifacts"][0]
+        artifact.update(id=swap(artifact["id"]), sourceURL=swap(artifact["sourceURL"]))
+        artifact["sourceProof"] = {**artifact["sourceProof"], "mapType": new,
+                                   "sourceURL": artifact["sourceURL"],
+                                   "payloadPath": swap(artifact["sourceProof"]["payloadPath"]),
+                                   "sourceIdentity": swap(artifact["sourceProof"]["sourceIdentity"])}
+        self.insert_bbbike(package)
+        v4 = self.catalog()
+        self.assertNotIn(package["id"], {m["id"] for p in v4["providers"] for m in p["maps"]})
+        self.assertEqual(catalog_rejections(v4), [])
+        service = CatalogService(self.db)
+        for method in (service.catalog_response, service.catalog_v3_response):
+            older = json.loads(method()[0])
+            self.assertNotIn(new, {m.get("mapType") for p in older["providers"] for m in p["maps"]})
+        v5 = json.loads(service.catalog_v5_response()[0])
+        self.assertEqual(self.bbbike_package(v5, package["id"])["mapType"], new)
+        self.assertEqual(catalog_rejections(v5), [])
 
     def test_failed_bbbike_recheck_is_published_without_proof(self):
         failed_id = BBBIKE_MAPS[0]["id"]

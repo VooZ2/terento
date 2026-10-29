@@ -37,7 +37,12 @@ ALLOWED_SOURCES: dict[str, tuple[set[str], re.Pattern[str]]] = {
     ),
     "bbbike": (
         {"data.bbbike.org"},
-        re.compile(r"/osm/garmin/region/[a-z0-9/_-]+\.osm\.garmin-(?:bbbike|ontrail)-latin1\.zip"),
+        re.compile(r"/osm/garmin/region/[a-z0-9/_-]+\.osm\.garmin-(?:bbbike|ontrail|opentopo)-latin1\.zip"),
+    ),
+    # Main styles only; WARSTWICE contour lines are not a preview style.
+    "osmapa": (
+        {"osmapa-garmin.las.org.pl"},
+        re.compile(r"/products/OSMapaPL(?:ext)?-(?:PODSTAWOWA|OGONKI|LIGHT)-20[0-9]{6}V[0-9]+\.[0-9]+_IMG\.zip"),
     ),
 }
 

@@ -9,6 +9,7 @@ Python, Swift and JavaScript do not load JSON Schema validators.
 | `map-catalog.schema.json` | `GET /maps/catalog.json` | `schemaVersion: 2`, legacy `catalogVersion: 1` |
 | `map-catalog.schema.json` | `GET /maps/catalog-v3.json` | same body versions; Freizeitkarte, OpenTopoMap, MapRando |
 | `map-catalog.schema.json` | `GET /maps/catalog-v4.json` | same body versions; adds BBBike and its two map types |
+| `map-catalog.schema.json` | `GET /maps/catalog-v5.json` | same body versions; adds OSMapaPL (`osmapa`), its four map types and `conflictGroup`; for 1.1.0 and later |
 | `device-catalog.schema.json` | `GET /devices/catalog.json` | independent `catalogVersion: 2` |
 | `installation-policy.schema.json` | `GET /devices/installation-policy.json` | public-read `schemaVersion: 3`, capability-derived native write policy |
 | `compatibility-event.schema.json` | `POST /compatibility/events` request body | accepted versions 1–4; current emitter uses 4 |
@@ -54,7 +55,10 @@ including across Garmin product families. Separately, the server applies a
 reviewed table of exact, whole-name generation-label aliases (for example,
 reported `epix pro` → `epix pro gen 2`). For each alias, the policy contains
 copies of the target rows, so the result still comes from those rows'
-capability; see `INSTALLATION_AUTHORIZATION.md`.
+capability. A second reviewed table lists exact names that several catalog
+generations report (reported `epix`: the original epix and epix (Gen 2)); the
+policy then also copies the other generation's rows under that name, so every
+generation is a candidate; see `INSTALLATION_AUTHORIZATION.md`.
 
 Fetch fresh policy before acquisition/extraction and at the final write
 boundary. Safe Update refreshes at operation start and immediately before its
@@ -94,7 +98,7 @@ are operator work, never statistics.
 
 ## Responses and client compatibility
 
-The current 1.0.1 client, like 1.0.0, rc.1, rc.2 and rc.3, requests `/maps/catalog-v4.json`. The legacy route
+The current 1.1.0 client requests `/maps/catalog-v5.json`; 1.0.1, 1.0.0, rc.1, rc.2 and rc.3 request `/maps/catalog-v4.json`. The legacy route
 retains Freizeitkarte and OpenTopoMap; v3 additionally exposes MapRando.
 Older clients (beta.18 and earlier) can reject a complete snapshot containing
 an unknown installable provider, so these projections must remain separate.
@@ -107,9 +111,16 @@ package make the whole catalog incompatible, which the client reports as
 "update Terento" rather than a connection problem. Acquisition re-validates only
 the package being acquired against the current catalog. Release and deploy gates
 still require every published package to pass the strict client validator. v4 additionally exposes
-BBBike with `bbbike-latin1` and `ontrail-latin1` map types. Catalog body versions
+BBBike with `bbbike-latin1` and `ontrail-latin1` map types. v5 additionally exposes
+OSMapaPL (`osmapa`) for clients from 1.1.0: map types `podstawowa`, `ogonki`, `light` and
+`warstwice` (contour lines as a standalone package), each for Poland and Poland with border areas,
+and `conflictGroup`: two packages of one group share a Garmin family ID and tiles and must not be
+on one device; the client blocks and never deletes automatically. v5 also adds the BBBike
+`opentopo-latin1` map type (BBBike OpenTopoMap style); all BBBike types of one region share tiles,
+so at most one type per region may be on a device. Released 1.0.x clients never
+receive `osmapa` or `opentopo-latin1`. Catalog body versions
 remain unchanged. Source activation and exact-model evidence are separate.
-MapRando/BBBike versions may include an optional day; legacy provider versions
+MapRando/BBBike/OSMapaPL versions may include an optional day; legacy provider versions
 retain their existing meanings.
 
 `released-catalog-clients.json` pins a published source revision for each route.
@@ -211,7 +222,7 @@ Optional context fields have these controlled values:
 | `executionMode` | `in_process`, `worker` |
 | `resultKind` | `native_error`, `timeout`, `cancelled`, `process_launch_error`, `process_exit`, `request_io_error`, `response_io_error`, `decode_error`, `invalid_response`, `app_error`, `protection_failed` |
 | `nativeCategory` | `detection`, `session_open`, `storage_read`, `inventory_read`, `object_read`, `allocation`, `invalid_argument`, `unspecified` |
-| `nativeCodeNamespace` | `terento_snapshot`, `terento_inventory`, `terento_file_prefix`, `terento_file_range`, `terento_map_write` |
+| `nativeCodeNamespace` | `terento_snapshot`, `terento_inventory`, `terento_file_prefix`, `terento_file_range`, `terento_map_write`, `terento_map_verify` |
 | `nativeResultCode` | Signed 32-bit integer; present if and only if `nativeCodeNamespace` is present |
 | `retryCount` | Integer 0–255; operation retries, not diagnostic upload attempts |
 | `componentKind` | `main`, `contours`, matching the artifact component kind |
@@ -219,7 +230,10 @@ Optional context fields have these controlled values:
 Booleans are not integers. Native codes describe the named Terento boundary
 (`terento_map_write` is the result of the native map write call, for example
 -4 when no single watch session could be opened and -7 when the transfer
-itself failed);
+itself failed; `terento_map_verify` is the result of the native sampled
+read-back after the write, for example -8 when the fresh watch session could
+not be opened, -9 when a sample could not be read and -11 when the sampled
+bytes differ from the validated source);
 no libmtp namespace or invented libmtp result code is accepted. Optional
 `protection` is a nested closed object requiring `protectionBoundary`
 (`pre-write` or `post-write`) and `protectionReason`, one of:
@@ -236,6 +250,20 @@ server change does not implement or validate that comparator. Optional
 Before/after counts cover all observed entries; deltas cover non-target objects.
 Omit deltas when inventories cannot be paired. Never clamp an observed count
 to fit the bound.
+
+Optional `affectedFolder` (apps newer than 1.0.1) is allowed only with
+`non-target-object-added`, `preexisting-object-removed` or
+`preexisting-object-changed`. It names where the first object (in path order)
+of the set that decided the reason lives, as one closed value: a standard
+`/GARMIN` folder name in Garmin spelling (`Activity`, `Apps`, `Courses`,
+`Debug`, `Device`, `ErrLogs`, `Goals`, `Locations`, `Map`, `Metrics`,
+`Monitor`, `NewFiles`, `Records`, `RemoteSW`, `Schedules`, `Settings`, `Sleep`,
+`Sports`, `Text`, `TLG`, `Totals`, `Workouts`), `map-file` (any `.img`, `.gma`,
+`.unl` or `.sid` file), `garmin-root` (an object directly in `/GARMIN`),
+`garmin-other` (any other `/GARMIN` folder) or `outside-garmin`. Folder names
+are matched case-insensitively; a path, filename or unlisted name is never
+sent. It is a diagnostic observation only and never tolerates or authorizes a
+change.
 
 Optional `targetPresent`, `targetUnique`, `targetKindMatches`,
 `targetFilenameMatches`, `targetSizeMatches`, `targetPathMatches` and

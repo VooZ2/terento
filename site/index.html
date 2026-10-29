@@ -42,7 +42,7 @@
     <link rel="manifest" href="/manifest.webmanifest">
     <script defer src="/language.js?v=20260926-static-shell-v1"></script>
     <script defer src="/privacy-consent.js?v=20260905-campaign-url-only-v1"></script>
-    <script defer src="/provider-list.js?v=20261006-map-styles-link-v1"></script>
+    <script defer src="/provider-list.js?v=20261026-osmapa-v1"></script>
     <script defer src="/home-features.js?v=20260904-home-workflow-tabs"></script>
     <script type="application/ld+json">
       {
@@ -66,10 +66,10 @@
             "applicationCategory": "UtilitiesApplication",
             "operatingSystem": "macOS 13 or later on Apple Silicon",
             "description": "Install and manage third-party maps on Garmin smartwatches with map support using Terento, a free macOS app for Apple Silicon.",
-            "softwareVersion": "1.0.1",
+            "softwareVersion": "1.1.0",
             "softwareRequirements": "Apple Silicon Mac required.",
-            "downloadUrl": "https://github.com/VooZ2/terento/releases/download/v1.0.1-build45/Terento-1.0.1-macOS-arm64.dmg",
-            "releaseNotes": "https://github.com/VooZ2/terento/releases/tag/v1.0.1-build45",
+            "downloadUrl": "https://github.com/VooZ2/terento/releases/download/v1.1.0-build46/Terento-1.1.0-macOS-arm64.dmg",
+            "releaseNotes": "https://github.com/VooZ2/terento/releases/tag/v1.1.0-build46",
             "offers": {
               "@type": "Offer",
               "price": "0",
@@ -333,6 +333,23 @@
               </div>
               <p class="provider-summary">For walks and bike rides when storage matters.</p>
               <ul class="provider-benefits"><li>Compact maps that save device space</li><li>Smaller roads and paths included</li><li>Supports navigation along mapped roads and paths</li></ul>
+            </article>
+<article class="provider-card" data-provider-card="bbbike" data-provider-type="opentopo-latin1" hidden>
+              <div class="provider-card-header">
+                <h3>BBBike (OpenTopoMap)</h3>
+                <p class="provider-count" data-provider-count data-count-template="{count} map packages" hidden></p>
+              </div>
+              <p class="provider-summary">For hiking and cycling in the familiar OpenTopoMap look, also where other maps are missing.</p>
+              <ul class="provider-benefits"><li>OpenTopoMap look: trails, paths and land cover</li><li>Regional maps updated weekly</li><li>Also for countries no other map here covers</li></ul>
+              <p class="provider-language-note"><span aria-hidden="true">ⓘ</span><span>This map has no contour lines.</span></p>
+            </article>
+<article class="provider-card" data-provider-card="osmapa" hidden>
+              <div class="provider-card-header">
+                <h3>OSMapaPL</h3>
+                <p class="provider-count" data-provider-count data-count-template="{count} map packages" hidden></p>
+              </div>
+              <p class="provider-summary">For trips across Poland, on foot or by bike.</p>
+              <ul class="provider-benefits"><li>Detailed map of Poland, also with border areas</li><li>Three styles: with Polish letters, without them, or a lighter, smaller map</li><li>Contour lines as a separate package</li></ul>
             </article>
           </div>
           <p class="provider-compare"><a class="text-link" href="/map-styles/" data-umami-event="maps-link-click" data-umami-event-location="home-providers">Compare map styles live<span aria-hidden="true"> →</span></a></p>

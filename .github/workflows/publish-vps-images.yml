@@ -45,7 +45,7 @@ jobs:
           [[ -z "$(git status --porcelain=v1 --untracked-files=all)" ]]
           git show --check --oneline "$GITHUB_SHA"
           [[ "$GITHUB_REF" == "refs/heads/main" ]]
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: '3.12'
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1

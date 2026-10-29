@@ -8,6 +8,7 @@ from unittest import mock
 from pglite_support import PGliteTestCase
 from terento_catalog import installation_policy as policy_module
 from terento_catalog.installation_policy import (
+    AMBIGUOUS_REPORTED_BASE_MODELS,
     GENERATION_LABEL_BASE_MODEL_ALIASES,
     build_installation_policy,
     installation_base_model,
@@ -432,6 +433,76 @@ class GenerationLabelAliasTests(unittest.TestCase):
         self.assertFalse(app_policy_valid(duplicated, strict=False))
 
 
+EPIX_GEN_1 = catalog_row("garmin-epix-gen-1", "epix", "epix", "Gen 1", None, screen=None)
+
+
+class AmbiguousReportedNameTests(unittest.TestCase):
+    def test_ambiguous_table_is_exact_reviewed_and_normalized(self):
+        self.assertEqual(AMBIGUOUS_REPORTED_BASE_MODELS, {"epix": ("epix gen 2",)})
+        for name, targets in AMBIGUOUS_REPORTED_BASE_MODELS.items():
+            self.assertEqual(installation_base_model(name), name)
+            self.assertEqual(app_base_model_from(name.upper()), name)
+            self.assertNotIn(name, GENERATION_LABEL_BASE_MODEL_ALIASES)
+            for target in targets:
+                self.assertEqual(installation_base_model(target), target)
+                self.assertNotEqual(name, target)
+
+    def test_reported_epix_weighs_the_original_and_gen_2_rows(self):
+        rows = [*EPIX_ROWS, EPIX_GEN_1]
+        policy = build_installation_policy(rows, WHEN)
+        epix = {d["id"]: d for d in policy["devices"] if d["baseModel"] == "epix"}
+        self.assertEqual(set(epix), {"garmin-epix-gen-1", "garmin-epix-gen-2-47@alias-epix"})
+        real = next(d for d in policy["devices"] if d["id"] == "garmin-epix-gen-2-47")
+        self.assertEqual({k: v for k, v in epix["garmin-epix-gen-2-47@alias-epix"].items() if k not in ("id", "baseModel")},
+                         {k: v for k, v in real.items() if k not in ("id", "baseModel")})
+        for strict in (True, False):
+            with self.subTest(strict=strict):
+                self.assertEqual(app_resolve(policy, garmin("EPIX"), strict=strict),
+                                 ("APPROVED", ["garmin-epix-gen-1", "garmin-epix-gen-2-47@alias-epix"]))
+                # A reported size the original row does not state keeps it in play.
+                self.assertEqual(app_resolve(policy, garmin("EPIX 47mm"), strict=strict),
+                                 ("APPROVED", ["garmin-epix-gen-1", "garmin-epix-gen-2-47@alias-epix"]))
+                self.assertEqual(app_resolve(policy, garmin("epix (Gen 2)"), strict=strict),
+                                 ("APPROVED", ["garmin-epix-gen-2-47"]))
+        document = json.loads(serialize_installation_policy(policy))
+        self.assertTrue(app_policy_valid(document, strict=True))
+        self.assertTrue(app_policy_valid(document, strict=False))
+
+    def test_any_generation_without_maps_yes_leaves_reported_epix_pending(self):
+        for gen1 in (dict(EPIX_GEN_1, map_capable=None), dict(EPIX_GEN_1, map_capable=False)):
+            policy = build_installation_policy([*EPIX_ROWS, gen1], WHEN)
+            with self.subTest(gen1=gen1["map_capable"]):
+                self.assertEqual(app_resolve(policy, garmin("EPIX"))[0], "PENDING")
+        gen2 = [dict(row, map_capable=False) if row["device_id"] == "garmin-epix-gen-2-47" else row for row in EPIX_ROWS]
+        self.assertEqual(app_resolve(build_installation_policy([*gen2, EPIX_GEN_1], WHEN), garmin("EPIX"))[0], "PENDING")
+
+    def test_an_inactive_generation_never_lets_a_mirror_approve(self):
+        # Shipped clients drop inactive rows before weighing candidates, so a
+        # withdrawn generation must not leave the other one deciding alone.
+        gen2 = "garmin-epix-gen-2-47"
+        inactive_gen2 = [dict(row, active=False) if row["device_id"] == gen2 else row for row in EPIX_ROWS]
+        for label, rows, expected in (
+                ("gen 1 inactive", [*EPIX_ROWS, dict(EPIX_GEN_1, active=False)], "OUT_OF_SCOPE"),
+                ("gen 2 inactive", [*inactive_gen2, EPIX_GEN_1], "APPROVED"),
+                ("both inactive", [*inactive_gen2, dict(EPIX_GEN_1, active=False)], "OUT_OF_SCOPE")):
+            with self.subTest(label):
+                policy = build_installation_policy(rows, WHEN)
+                self.assertNotIn(gen2 + "@alias-epix", {d["id"] for d in policy["devices"]})
+                for strict in (True, False):
+                    # Exactly the decision without the table: the "epix" row's own.
+                    self.assertEqual(app_resolve(policy, garmin("EPIX"), strict=strict)[0], expected)
+
+    def test_no_mirror_without_a_real_row_of_the_ambiguous_name(self):
+        policy = build_installation_policy(EPIX_ROWS, WHEN)
+        self.assertNotIn("epix", {d["baseModel"] for d in policy["devices"]})
+        self.assertEqual(app_resolve(policy, garmin("EPIX")), ("PENDING", []))
+
+    def test_mirror_id_collision_fails_closed(self):
+        rows = [*EPIX_ROWS, EPIX_GEN_1, catalog_row("garmin-epix-gen-2-47@alias-epix", "Other", "other", "", None)]
+        with self.assertRaises(ValueError):
+            build_installation_policy(rows, WHEN)
+
+
 class MigratedCatalogAliasTests(PGliteTestCase):
     def test_migrated_catalog_policy_approves_reported_epix_pro(self):
         rows, updated_at = self.db.installation_policy_snapshot()
@@ -443,12 +514,15 @@ class MigratedCatalogAliasTests(PGliteTestCase):
         self.assertEqual(real, {"garmin-epix-pro-gen-2", "garmin-epix-pro-gen-2-42",
                                 "garmin-epix-pro-gen-2-47", "garmin-epix-pro-gen-2-51"})
         self.assertEqual(alias, {f"{i}@alias-epix-pro" for i in real})
-        self.assertEqual(len(document["devices"]), len(rows) + len(real))
+        # Plus one mirror of the epix (Gen 2) row under the ambiguous name "epix".
+        self.assertEqual(len(document["devices"]), len(rows) + len(real) + 1)
         self.assertEqual(app_resolve(document, garmin("epix Pro 51mm")),
                          ("APPROVED", ["garmin-epix-pro-gen-2-51@alias-epix-pro", "garmin-epix-pro-gen-2@alias-epix-pro"]))
         # Plain "epix" is a real catalog row since migration 075 (the original
-        # epix), not an alias; both epix generations are maps-capable.
-        self.assertEqual(app_resolve(document, garmin("epix")), ("APPROVED", ["garmin-epix-gen-1"]))
+        # epix), and epix (Gen 2) reports the same name: both generations are
+        # candidates, and both are maps-capable.
+        self.assertEqual(app_resolve(document, garmin("epix")),
+                         ("APPROVED", ["garmin-epix-gen-1", "garmin-epix-gen-2-47@alias-epix"]))
         self.assertNotIn("epix", GENERATION_LABEL_BASE_MODEL_ALIASES)
 
 

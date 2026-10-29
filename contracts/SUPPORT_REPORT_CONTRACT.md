@@ -29,6 +29,20 @@ containing a local path marker (`/Users/`, `file://`, `/private/`,
 `/Volumes/`, `\Users\`) or control characters. Reports are used only to
 diagnose the reported problem.
 
+## Report sources in the app
+
+A failed installation, update or removal saves its report with the matching
+category. A failed read of a connected watch's maps ("Couldn't read your maps")
+saves a `CONNECTION` report with no `operationId` or `operation`: stage
+`Map scan`, the watch, `errorCodes` `MAP_SCAN_FAILED` plus the native
+`namespace:code` when known, the detection class as `errorCategory` and the
+structured `failureContext` when the read carried one; it writes nothing, so no
+write or cleanup facts are sent. A map catalog that could not load is not a
+watch failure and saves no report. A scan that refreshes the watch after an
+operation keeps that operation's saved report. "Send report to Terento" from
+the Help menu offers the latest saved report; without one it sends `OTHER`
+with only `macOSVersion` and the user's description.
+
 ## Request: `POST /support/reports`
 
 JSON (`Content-Type: application/json`), at most 64 KiB, schema
@@ -119,7 +133,11 @@ is authenticated, CSRF-protected and audited and never changes the received
 report. A report with an `operationId` links to the public installation or
 update diagnostics of the same operation when they exist. Local test reports
 appear only under Tools → Test data. Presentation rules are owned by
-`backend/catalog-api/docs/admin-behavior-contract.md`.
+`backend/catalog-api/docs/admin-behavior-contract.md`. Open public reports are
+also readable, with every text value passed through the issue-report
+sanitiser, through the token-protected read-only `GET /internal/attention`
+(`backend/catalog-api/docs/api.md`) so an operator agent can diagnose them;
+that read never changes a report.
 
 ## Population boundary
 

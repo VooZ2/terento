@@ -42,7 +42,7 @@
     <link rel="manifest" href="/manifest.webmanifest">
     <script defer src="/language.js?v=20260926-static-shell-v1"></script>
     <script defer src="/privacy-consent.js?v=20260905-campaign-url-only-v1"></script>
-    <script defer src="/provider-list.js?v=20261006-map-styles-link-v1"></script>
+    <script defer src="/provider-list.js?v=20261026-osmapa-v1"></script>
     <script defer src="/home-features.js?v=20260904-home-workflow-tabs"></script>
     <script type="application/ld+json">
       {
@@ -66,10 +66,10 @@
             "applicationCategory": "UtilitiesApplication",
             "operatingSystem": "macOS 13 ou version ultérieure sur Apple Silicon",
             "description": "Installez et gérez des cartes tierces sur les montres Garmin prenant en charge les cartes avec Terento, l’app macOS gratuite pour Apple Silicon.",
-            "softwareVersion": "1.0.1",
+            "softwareVersion": "1.1.0",
             "softwareRequirements": "Mac Apple Silicon. Les Mac Intel ne sont pas pris en charge.",
-            "downloadUrl": "https://github.com/VooZ2/terento/releases/download/v1.0.1-build45/Terento-1.0.1-macOS-arm64.dmg",
-            "releaseNotes": "https://github.com/VooZ2/terento/releases/tag/v1.0.1-build45",
+            "downloadUrl": "https://github.com/VooZ2/terento/releases/download/v1.1.0-build46/Terento-1.1.0-macOS-arm64.dmg",
+            "releaseNotes": "https://github.com/VooZ2/terento/releases/tag/v1.1.0-build46",
             "offers": {
               "@type": "Offer",
               "price": "0",
@@ -332,6 +332,23 @@
               </div>
               <p class="provider-summary">Pour marcher et pédaler en économisant le stockage.</p>
               <ul class="provider-benefits"><li>Des cartes compactes qui économisent de l’espace</li><li>Petites routes et chemins inclus</li><li>Navigation le long des routes et chemins cartographiés</li></ul>
+            </article>
+<article class="provider-card" data-provider-card="bbbike" data-provider-type="opentopo-latin1" hidden>
+              <div class="provider-card-header">
+                <h3>BBBike (OpenTopoMap)</h3>
+                <p class="provider-count" data-provider-count data-count-template="{count} paquets de cartes" hidden></p>
+              </div>
+              <p class="provider-summary">Pour la randonnée et le vélo dans le style OpenTopoMap, même là où les autres cartes manquent.</p>
+              <ul class="provider-benefits"><li>Style OpenTopoMap : sentiers, chemins et occupation du sol</li><li>Cartes régionales actualisées chaque semaine</li><li>Aussi pour des pays qu’aucune autre carte ne couvre ici</li></ul>
+              <p class="provider-language-note"><span aria-hidden="true">ⓘ</span><span>Cette carte n’a pas de courbes de niveau.</span></p>
+            </article>
+<article class="provider-card" data-provider-card="osmapa" hidden>
+              <div class="provider-card-header">
+                <h3>OSMapaPL</h3>
+                <p class="provider-count" data-provider-count data-count-template="{count} paquets de cartes" hidden></p>
+              </div>
+              <p class="provider-summary">Pour parcourir la Pologne à pied ou à vélo.</p>
+              <ul class="provider-benefits"><li>Carte détaillée de la Pologne, aussi avec les zones frontalières</li><li>Trois styles : avec les lettres polonaises, sans elles, ou une carte plus légère et plus petite</li><li>Courbes de niveau dans un paquet séparé</li></ul>
             </article>
           </div>
           <p class="provider-compare"><a class="text-link" href="/fr/map-styles/" data-umami-event="maps-link-click" data-umami-event-location="home-providers">Comparer les styles en direct<span aria-hidden="true"> →</span></a></p>

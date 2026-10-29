@@ -15,8 +15,8 @@ architecture, safety, documentation, and delivery.
   current status source. A missing public result does not prove another Garmin
   model is unsupported.
 - Active providers are Freizeitkarte, OpenTopoMap, MapRando and BBBike through
-  the shared lifecycle. BBBike and BBBike (Ontrail) are two map types of one
-  provider. Source-validated OpenTopoMap contours are an optional public add-on.
+  the shared lifecycle. BBBike, BBBike (Ontrail) and BBBike (OpenTopoMap) are three
+  map types of one provider; any two of the same region conflict. Source-validated OpenTopoMap contours are an optional public add-on.
   Registration and successful tests do not grant broad device compatibility.
 - Do not change app runtime code, resources, screenshots, Xcode packaging,
   release metadata, or version numbers as incidental cleanup. Functional

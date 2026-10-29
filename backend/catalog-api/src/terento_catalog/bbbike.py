@@ -1,6 +1,6 @@
 """Ready BBBike Garmin latin1 regions; bounded original-source metadata only.
 
-One provider, two independent map types. No city extract service, Russia tree,
+One provider, three independent map types. No city extract service, Russia tree,
 other Garmin style, binary mirroring, or archive script execution.
 """
 from __future__ import annotations
@@ -28,7 +28,9 @@ ROOT = "https://data.bbbike.org/osm/region/"
 ARTIFACT_ROOT = "https://data.bbbike.org/osm/garmin/region/"
 EXAMPLE_ROOT = "https://data.bbbike.org/osm/garmin/example/"
 EXAMPLE_REGIONS = frozenset({"asia/cambodia", "asia/jordan", "europe/luxembourg"})
-MAP_TYPES = ("bbbike-latin1", "ontrail-latin1")
+MAP_TYPES = ("bbbike-latin1", "ontrail-latin1", "opentopo-latin1")
+# Released 1.0.0/1.0.1 clients (catalog v3/v4) know only these BBBike map types.
+LEGACY_MAP_TYPES = ("bbbike-latin1", "ontrail-latin1")
 MAX_INDEX_BYTES = 1024 * 1024
 MAX_DIRECTORIES = 4096
 MAX_DEPTH = 8
@@ -55,7 +57,7 @@ def source_url(value: str, *, artifact: bool = False) -> str:
         raise ProviderCollectionError("BBBike source has unreviewed URL components")
     suffix = value[len(root):]
     if artifact:
-        match = re.fullmatch(r"(.+)/([^/]+)\.osm\.garmin-(bbbike-latin1|ontrail-latin1)\.zip", suffix)
+        match = re.fullmatch(r"(.+)/([^/]+)\.osm\.garmin-(" + "|".join(MAP_TYPES) + r")\.zip", suffix)
         if not match or match[1].split('/')[-1] != match[2]:
             raise ProviderCollectionError("BBBike source filename does not match region/style")
         region_path(match[1])

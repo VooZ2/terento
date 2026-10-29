@@ -83,6 +83,7 @@
     "app/TerentoCore/Tests/run-native-shared-api-contract-tests.sh",
     "app/TerentoCore/Tests/run-native-bbbike-tests.sh",
     "app/TerentoCore/Tests/run-native-bbbike-archive-safety-tests.sh",
+    "app/TerentoCore/Tests/run-native-osmapa-tests.sh",
     "app/TerentoCore/Tests/run-native-device-binding-profile-tests.sh",
     "app/TerentoCore/Tests/run-native-protected-map-inventory-tests.sh",
     "app/TerentoCore/Tests/run-native-mutation-ledger-tests.sh",

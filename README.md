@@ -156,8 +156,8 @@ are outside the current public scope.
 
 ## Download and release status
 
-The latest public release is **1.0.1 (build 45)**, a fix release for Terento
-1.0.0. Download the notarized macOS app below; no additional software is
+The latest public release is **1.1.0 (build 46)**, which adds OSMapaPL maps of
+Poland and the BBBike (OpenTopoMap) style. Download the notarized macOS app below; no additional software is
 required.
 
 **[Download Terento](https://terento.app/download/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_download)**
@@ -184,11 +184,16 @@ Some watches may need to be reconnected if detection or map listing stalls.
 The current catalog includes main-map packages from
 [Freizeitkarte](https://www.freizeitkarte-osm.de/),
 [OpenTopoMap](https://garmin.opentopomap.org/),
-[MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), and
-[BBBike](https://garmin.bbbike.org), based on OpenStreetMap data.
-BBBike offers two map choices: BBBike and the smaller BBBike (Ontrail)
-packages for hiking and cycling. In the Mac app, maps download directly from
-their providers.
+[MapRando](https://ravenfeld.gitlab.io/open-garmin-map/),
+[BBBike](https://garmin.bbbike.org), and
+[OSMapaPL](https://osmapa-garmin.las.org.pl/), based on OpenStreetMap data.
+BBBike offers the smaller BBBike (Ontrail) packages for hiking and cycling and
+BBBike (OpenTopoMap) packages in the OpenTopoMap look, without contour lines.
+Only one BBBike map type can be installed for the same region.
+OSMapaPL covers Poland, alone or with border areas, in the Podstawowa, Ogonki
+and Light styles plus contour lines; only one area of the same style can be on
+the watch at a time.
+In the Mac app, maps download directly from their providers.
 
 - Install several regions together by choosing maps from the same provider.
 - Some MapRando map labels are in French.

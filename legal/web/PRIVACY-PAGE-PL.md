@@ -35,7 +35,7 @@ Część danych zostaje w Twojej przeglądarce, nie na naszym serwerze: które m
 
 ## Połączenia witryny i aplikacji
 
-Żądania do witryny, instalatora webowego, API, katalogu i aktualizacji mogą ujawniać adres IP i metadane dostawcom hostingu i zabezpieczeń. W aplikacji mapy są pobierane bezpośrednio z Freizeitkarte, OpenTopoMap, MapRando lub BBBike; do tych połączeń mają zastosowanie ich zasady prywatności. Kontrola aktualizacji przy uruchomieniu pobiera informacje o wydaniu, nie aplikację.
+Żądania do witryny, instalatora webowego, API, katalogu i aktualizacji mogą ujawniać adres IP i metadane dostawcom hostingu i zabezpieczeń. W aplikacji mapy są pobierane bezpośrednio z Freizeitkarte, OpenTopoMap, MapRando, BBBike lub OSMapaPL; do tych połączeń mają zastosowanie ich zasady prywatności. Kontrola aktualizacji przy uruchomieniu pobiera informacje o wydaniu, nie aplikację.
 
 Połączenia dostarczają treści i żądane funkcje oraz chronią przed nadużyciami. Przetwarzanie dla bezpieczeństwa opiera się na uzasadnionym interesie zgodnie z art. 6 ust. 1 lit. f RODO.
 
@@ -75,4 +75,4 @@ Zgodność może obejmować oczyszczoną nazwę modelu MTP, USB VID/PID, transpo
 
 Raporty mogą dodatkowo zawierać oryginalny opis modelu z XML (do 160 znaków) i kod produktu modelu (do 64 liter ASCII, cyfr lub łączników). Dane te określają model produktu, a nie pojedynczy zegarek. Pełne dokumenty XML, Unit ID i numery seryjne są wykluczone. Powiązania kodów modeli i poprawki administratora są przechowywane oddzielnie od oryginalnego raportu.
 
-Aktualizacja: 17 października 2026 r.
+Aktualizacja: 26 października 2026 r.

@@ -23,6 +23,20 @@ GENERATION_LABEL_BASE_MODEL_ALIASES: dict[str, str] = {
     "epix pro": "epix pro gen 2",
 }
 
+# Reviewed, exact whole names that more than one catalog generation reports:
+# a watch that reports the left-hand base model may be the real catalog rows
+# of that name or any right-hand base model, so every one of them stays a
+# candidate. Each entry needs repository evidence that both generations report
+# the name. Applied only while real catalog rows carry the reported name, so
+# no generation is ever silently dropped. Owned by
+# contracts/INSTALLATION_AUTHORIZATION.md.
+AMBIGUOUS_REPORTED_BASE_MODELS: dict[str, tuple[str, ...]] = {
+    # The original epix and epix (Gen 2) both report "EPIX": 2026-10-13 and
+    # 2026-10-19 reports with raw MTP "EPIX" carry XML part 006-B3943-00 and
+    # USB 091e:4f67, which Garmin's device list and libmtp name epix (Gen 2).
+    "epix": ("epix gen 2",),
+}
+
 # Shipped clients reject a policy with duplicate ids, so alias rows need their
 # own id. Clients only validate ids (non-empty, unique); they never match on,
 # store, log or report a policy row id. Catalog ids are [a-z0-9-] slugs, so the
@@ -125,7 +139,7 @@ def build_installation_policy(
             }
         )
 
-    devices.extend(_generation_label_alias_rows(devices))
+    devices.extend(_generation_label_alias_rows(devices) + _ambiguous_name_rows(devices))
     devices.sort(key=lambda item: item["id"])
     return {
         "schemaVersion": INSTALLATION_POLICY_SCHEMA_VERSION,
@@ -159,6 +173,37 @@ def _generation_label_alias_rows(devices: list[dict[str, Any]]) -> list[dict[str
                 raise ValueError("installation policy alias id collides with a catalog id")
             aliases.append(dict(device, id=alias_id, baseModel=alias))
     return aliases
+
+
+def _ambiguous_name_rows(devices: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Mirror every row of each other generation under an ambiguous name.
+
+    The real rows of the reported name stay, so the shipped resolver weighs
+    every generation: all Maps=Yes approve, anything mixed or NULL is
+    ``PENDING``. Without real rows of the reported name nothing is added.
+    Shipped clients drop inactive rows before weighing, so a withdrawn row
+    would stop counting while a mirror approved; when any row of the name
+    or a listed generation is inactive nothing is mirrored and the name's
+    own rows decide, as without the table.
+    """
+    real_ids = {device["id"] for device in devices}
+    real_base_models = {device["baseModel"] for device in devices}
+    mirrored: list[dict[str, Any]] = []
+    for name, targets in sorted(AMBIGUOUS_REPORTED_BASE_MODELS.items()):
+        if name not in real_base_models:
+            continue
+        group = [device for device in devices if device["baseModel"] == name or device["baseModel"] in targets]
+        if not all(device["active"] for device in group):
+            continue
+        suffix = ALIAS_ROW_ID_SEPARATOR + name.replace(" ", "-")
+        for device in devices:
+            if device["baseModel"] not in targets:
+                continue
+            mirror_id = device["id"] + suffix
+            if mirror_id in real_ids:
+                raise ValueError("installation policy alias id collides with a catalog id")
+            mirrored.append(dict(device, id=mirror_id, baseModel=name))
+    return mirrored
 
 
 def serialize_installation_policy(policy: dict[str, Any]) -> bytes:

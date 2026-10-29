@@ -313,7 +313,7 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
         }
 
         guard result == 0 else {
-            throw Self.mapError(
+            throw Self.verifyError(
                 result: result,
                 message: errorMessage(from: errorBuffer)
             )
@@ -496,6 +496,28 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
                 boundary: .write, classificationSource: .native, devicePresence: .unknown,
                 operation: .write, executionMode: .inProcess, resultKind: .nativeError,
                 nativeCodeNamespace: .terentoMapWrite, nativeResultCode: result
+            )
+        )
+    }
+
+    /// A generic sampled read-back failure keeps the native result for
+    /// diagnostics (`terento_map_verify`), e.g. -8 when the fresh watch session
+    /// did not open, -9 when a sample could not be read and -11 when sampled
+    /// bytes differ from the validated source. Specific results keep their cases.
+    static func verifyError(
+        result: Int32,
+        message: String
+    ) -> InstallationTransportError {
+        let mapped = mapError(result: result, message: message)
+        guard case .operationFailed(let readable, let createdID) = mapped else { return mapped }
+        return .contextual(
+            failure: .operationFailed,
+            message: readable,
+            createdItemID: createdID,
+            context: InstallationFailureContext(
+                boundary: .readback, classificationSource: .native, devicePresence: .unknown,
+                operation: .readback, executionMode: MTPFinishingWorker.isWorker ? .worker : .inProcess,
+                resultKind: .nativeError, nativeCodeNamespace: .terentoMapVerify, nativeResultCode: result
             )
         )
     }

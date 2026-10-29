@@ -608,7 +608,9 @@ website does not need to join the retail device catalog. Historical evidence
 rows can therefore appear even when Garmin no longer lists that model in its
 current retail category. The response contains exact identity, evidence
 counts, `evidenceStatus`, family/variant display metadata, and an `image`
-object. `image` follows controlled Terento asset → allowlisted Garmin
+object. `model` is the resolved catalog row's name (`model · variant`); only a
+row without a catalog model uses the reviewed display name, because a review is
+keyed by the reported identity, which two generations can share (`EPIX`). `image` follows controlled Terento asset → allowlisted Garmin
 `garmin-source` URL → the neutral Terento `fallback` image at
 `https://terento.app/assets/generic-garmin-watch.png` (with a cache-busting
 version query in emitted URLs). The fallback is
@@ -1264,7 +1266,11 @@ copies every field except `baseModel`, which becomes the alias, and `id`, which
 becomes `<catalog id>@alias-<alias>`. Released clients require unique ids and use
 them for nothing else. Therefore the policy has more `devices` entries than the
 audit query has catalog rows: one extra entry per aliased target row. The
-schema, key sets and `policyVersion` are unchanged. The owning rule is in
+schema, key sets and `policyVersion` are unchanged. The reviewed
+`AMBIGUOUS_REPORTED_BASE_MODELS` table adds rows the same way: while a real
+`epix` row exists, every `epix gen 2` row is copied as
+`<catalog id>@alias-epix` with `baseModel: "epix"`, because the original epix
+and epix (Gen 2) both report `EPIX`. The owning rule is in
 [`INSTALLATION_AUTHORIZATION.md`](../../../contracts/INSTALLATION_AUTHORIZATION.md).
 
 The local policy implementation sends `Cache-Control: no-store` and returns
@@ -1342,6 +1348,58 @@ The response contains only provider ID/name, normalized health, latest release,
 last successful collection, last detected release change, and an actionable
 reason. It contains no credentials, user/device identifiers, raw logs, or map
 binaries and is returned with `Cache-Control: no-store`.
+
+## `GET /internal/attention`
+
+Read-only Needs attention projection for an operator agent (for example a
+scheduled Claude session) so open work is triaged without an Admin login.
+Requests require `Authorization: Bearer` with a token whose lowercase SHA-256
+hex digest is configured as `ADMIN_READ_TOKEN_SHA256`; the server never holds
+the token itself. Without a configured digest, or with any other token, the
+route answers `401 {"error":"unauthorized"}`. At most 12 requests per client
+per minute are counted before authorization (`429` above that). The token
+grants no Admin page, form, CSRF token or write; it is independent of the
+Admin login, `OPERATIONS_INGEST_SECRET` and `WEB_INSTALLER_INGEST_SECRET`.
+Rotating or removing the digest and redeploying revokes it.
+
+`schemaVersion: 1` returns `generatedAt` and five sections. A section whose
+read fails is `{"available": false}`, never a shorter list:
+
+- `counts`: the Dashboard Needs attention counts (`installationIssues`,
+  `githubIssuesInProgress`, `identityPending`, `readyToPublish`,
+  `missingDiagnostics`, `supportReports`).
+- `installationProblems`: `total` and up to 50 newest `items`, one per open
+  installation problem operation (the `installationIssues` population and
+  unit). Each item has `operationKey`, `occurredAt`, catalog `model`/`variant`
+  or the reported identity, `canonicalDeviceModelId`, `reason`, `appVersion`,
+  `adminUrl`, and the sanitised `issueTitle`/`issueBody` that Admin prepares
+  for a GitHub issue.
+- `updateProblems`: `total` (the Update reports Open tile: failed, active) and
+  up to 50 newest `items` with `diagnosticId`, identity, `appVersion`,
+  `linkedGithubIssue`, `adminUrl` and the sanitised update issue report.
+- `supportReports`: `total` open public reports and up to 50 newest `items`
+  with `reference`, `receivedAt`, `category`, `appVersion`, `operationId`,
+  `linkedGithubIssue`, `adminUrl`, the stored allowlisted `report` and the
+  user's description.
+- `systemChecks`: Health checks whose status is `FAILED` or `WARNING`
+  (including provider catalogs) with `check`, `status`, `group`, `reason`,
+  `action`, `actionUrl` and `lastChecked`.
+
+Every text value inside the sections, at any depth (including support report
+bodies, descriptions and Health reasons and actions), passes through the
+issue-report sanitiser, which redacts email addresses, serial/Unit/device IDs,
+secrets, tokens and local paths. The only exceptions are `issueTitle` and
+`issueBody` (already the sanitised reports Admin prepares), `adminUrl` and
+`actionUrl` (links the server builds) and the top-level server timestamp
+`generatedAt`. The
+Open update total comes from its own count; if that count fails, the section
+is unavailable.
+
+The response is `Cache-Control: no-store` and `noindex`. It contains no
+serial number, Unit ID, account, local path, raw log, manifest, map content,
+client IP or Admin user data. Reading it changes no diagnostic, report,
+statistic or audit state; resolving, linking and handling stay authenticated
+Admin actions.
 
 ## Optional contour metadata and admin projections
 
@@ -1433,12 +1491,20 @@ provider; activation is a separately reviewed operation.
 remains exactly FZK/OTM/MapRando. The additive catalog body retains schemaVersion2.
 Provider registration is not a public compatibility claim or activation.
 
-BBBike packages expose `mapType` (`bbbike-latin1` or `ontrail-latin1`) and
+BBBike packages expose `mapType` (`bbbike-latin1`, `ontrail-latin1` or, in v5
+only, `opentopo-latin1`) and
 `geographicRegionId`. `region` and `canonicalRegionId` are the existing native
 lifecycle identity slot and include source path plus type; for example
 `EUROPE-LITHUANIA-BBBIKE-LATIN1`. `providerRegionId` is `europe/lithuania`, and
 both variants share geographic identity `LITHUANIA`. The package name is the
-reviewed geographic display name. Two types remain one statistics provider.
+reviewed geographic display name. All types remain one statistics provider.
+
+`opentopo-latin1` (BBBike OpenTopoMap style, no contour lines) is published
+only in `/maps/catalog-v5.json`; `catalog.json`, v3 and v4 keep exactly the
+`bbbike-latin1` and `ontrail-latin1` packages that released 1.0.x clients know.
+All BBBike types of one source region share Garmin tile numbers, so at most one
+type per region may be on a device; the client blocks the second type instead
+of replacing or deleting it.
 
 Main artifacts include bounded original-source `sourceProof`: source URL,
 strong ETag, Last-Modified, exact ZIP/IMG lengths, payload path, README source
@@ -1470,6 +1536,53 @@ Map statistics resolve the stored package to its geographic identity and expose
 `map_type`; diagnostics fallback without a variant identity does not guess a
 package or type. Candidate package IDs must be seeded in the receiving DB before
 owner testing, because unknown map IDs cannot link to package geography.
+
+### OSMapaPL v5 projection
+
+`/maps/catalog-v5.json` is the v4 provider set plus `osmapa` (OSMapaPL,
+https://osmapa-garmin.las.org.pl). `catalog.json`, v3 and v4 never contain
+`osmapa`; released 1.0.x clients request v4. Migration 087 registers the
+provider `PAUSED`, so every v5 OSMapaPL package carries
+`downloadBlockReason=PROVIDER_PAUSED` until activation.
+
+Eight packages: `osmapa-<pl|plext>-<podstawowa|ogonki|light|warstwice>`.
+`mapType` is the style, `geographicRegionId` is `POLAND` or
+`POLAND-WITH-BORDER-AREAS`, `region`/`canonicalRegionId` is the variant
+lifecycle identity (for example `PLEXT-OGONKI`), `country` is `PL`.
+WARSTWICE (20 m contour lines) is a standalone main package, not a contour
+component. `conflictGroup` (`osmapa-<style>`) names packages that share one
+Garmin family ID and tile numbers (PL and PLext of one style): at most one may
+be on a device, and the client blocks instead of replacing or deleting.
+
+Collection is one index GET plus two ranged GETs per package (64 KiB ZIP tail
+and head); no HEAD, no full download, no MPS read. A transport error without an
+HTTP status (for example a connection reset) is retried once per request; an
+HTTP status is never retried. Only the newest exact
+`/products/OSMapaPL(ext)?-<STYLE>-YYYYMMDDV<n.n>_IMG.zip` link per package is
+accepted, without redirects; a missing or ambiguous package fails the whole
+collection. Each response must be HTTP 206 with a `Content-Range` whose start
+and end equal the requested range,
+strong ETag and Last-Modified equal on both ranges. The ZIP must hold exactly
+one unencrypted deflated `gmapsupp.img` below 4 GiB; its first 4 KiB must be an
+unencrypted Garmin IMG whose stitched description (`0x49` plus `0x65`) equals
+the filename coverage and style, whose creation date equals the filename date,
+and whose only MDR index name equals the style family ID (4, 5, 6, 12).
+`sourceProof` records URL, ETag, Last-Modified, ZIP and IMG sizes, CRC32,
+coverage, style, family ID, title, source version, date and a revision. The
+source publishes no checksum: native acquisition validates the whole payload
+and its MPS family ID before any write.
+
+HTTP 403, 429 or 5xx on the index or any range closes the source gate: the run
+fails and the previous snapshot stays. A package that fails validation is not
+offered; if it was known before, it stays listed `UNAVAILABLE` without proof.
+Compatibility events accept `osmapa`.
+
+Each closed projection computes `updatedAt`, `Last-Modified` and the ETag from
+the change times of its own providers only, so registering, collecting or
+checking `osmapa` (or any provider outside a projection) never changes
+`catalog.json`, v3 or v4. Since this change, v1 and v3 no longer count MapRando
+(v1) or BBBike changes, so their `updatedAt` may move earlier once; their
+provider content is unchanged.
 
 ### Acquisition lifecycle extension
 

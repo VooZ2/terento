@@ -233,33 +233,39 @@ for (const [locale, expected] of locales) {
   assert.match(providerSection, new RegExp(`<p class="eyebrow">${expected.providerEyebrow.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/p>`));
   assert.match(providerSection, new RegExp(`<h2 id="providers-title">${expected.providerTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/h2>`));
   assert.match(providerSection, new RegExp(`<p class="provider-copy">${expected.providerCopy.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/p>`));
-  assert.equal((providerSection.match(/<article class="provider-card"/g) || []).length, 5, `${locale}: five map types from four providers`);
+  assert.equal((providerSection.match(/<article class="provider-card"/g) || []).length, 7, `${locale}: seven map cards from five providers`);
+  const osmapa = providerSection.match(/<article class="provider-card" data-provider-card="osmapa" hidden>[\s\S]*?<\/article>/)?.[0];
+  assert.ok(osmapa, `${locale}: OSMapaPL stays hidden until the catalog lists it as active`);
+  assert.ok(osmapa.includes("<h3>OSMapaPL</h3>"));
+  assert.match(osmapa, /data-provider-count[^>]* hidden><\/p>/);
   const maprando = providerSection.match(/<article class="provider-card" data-provider-card="maprando">[\s\S]*?<\/article>/)?.[0];
   assert.ok(maprando, `${locale}: MapRando card`);
   assert.match(maprando, /class="provider-language-note"><span aria-hidden="true">ⓘ<\/span><span>[^<]+<\/span><\/p>/);
   assert.match(maprando, /data-provider-count[^>]* hidden><\/p>/);
   assert.match(maprando, /OpenStreetMap/);
-  for (const [type, name] of [['bbbike-latin1', 'BBBike'], ['ontrail-latin1', 'BBBike (Ontrail)']]) {
+  for (const [type, name] of [['bbbike-latin1', 'BBBike'], ['ontrail-latin1', 'BBBike (Ontrail)'], ['opentopo-latin1', 'BBBike (OpenTopoMap)']]) {
     const card = providerSection.match(new RegExp(`<article class="provider-card" data-provider-card="bbbike" data-provider-type="${type}" hidden>[\\s\\S]*?<\\/article>`))?.[0];
     assert.ok(card, `${locale}: ${name} stays hidden until its type is available`);
     assert.ok(card.includes(`<h3>${name}</h3>`));
     assert.doesNotMatch(card, /provider-addon/);
   }
+  const openTopo = providerSection.match(/<article class="provider-card" data-provider-card="bbbike" data-provider-type="opentopo-latin1" hidden>[\s\S]*?<\/article>/)?.[0];
+  assert.match(openTopo, /class="provider-language-note"><span aria-hidden="true">ⓘ<\/span><span>[^<]+<\/span><\/p>/, `${locale}: BBBike (OpenTopoMap) says it has no contour lines`);
   const otm = providerSection.match(/<article class="provider-card" data-provider-card="opentopomap">[\s\S]*?<\/article>/)?.[0];
   assert.ok(otm, `${locale}: OpenTopoMap card`);
   assert.match(otm, /<details class="provider-addon" data-provider-addon="contours">\s*<summary class="provider-addon-toggle">/);
   assert.doesNotMatch(otm, /<details[^>]*\bopen(?:\s|=|>)/);
   assert.match(otm, /<summary[^>]*>[\s\S]*provider-card-badge[\s\S]*provider-addon-title[\s\S]*<\/summary>\s*<p class="provider-addon-copy">/);
   assert.doesNotMatch(providerSection, /data-provider-card="opentopomap-contours"|type="checkbox"|role="switch"/);
-  assert.equal((providerSection.match(/class="provider-benefits"/g) || []).length, 5);
-  assert.equal((providerSection.match(/<li>/g) || []).length, 15);
+  assert.equal((providerSection.match(/class="provider-benefits"/g) || []).length, 7);
+  assert.equal((providerSection.match(/<li>/g) || []).length, 21);
   for (const list of providerSection.matchAll(/<ul class="provider-benefits">([\s\S]*?)<\/ul>/g)) {
     assert.equal((list[1].match(/<li>/g) || []).length, 3, `${locale}: exactly three benefits per map`);
   }
-  assert.equal((providerSection.match(/class="provider-summary"/g) || []).length, 5);
+  assert.equal((providerSection.match(/class="provider-summary"/g) || []).length, 7);
   assert.doesNotMatch(providerSection, /data-provider-previous|data-provider-next/);
   assert.match(providerSection, new RegExp(`<p class="provider-compare"><a class="text-link" href="${locale === "en" ? "" : `/${locale}`}/map-styles/"`));
-  assert.match(page, /provider-list\.js\?v=20261006-map-styles-link-v1/);
+  assert.match(page, /provider-list\.js\?v=20261026-osmapa-v1/);
   assert.match(providerSection, /data-count-template="[^"]*\{count\}[^"]*"/);
   assert.match(providerSection, /63/);
   assert.match(providerSection, /177/);

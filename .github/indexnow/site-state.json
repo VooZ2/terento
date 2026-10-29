@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "status": "published",
   "published": {
-    "commit": "e6b9826af889b7f54d2d4a7350e80835469ba78e",
+    "commit": "d86060e77c57c4aa2b09763a2ddbb173f8f1a529",
     "pages": [
       {
         "path": "/",
@@ -10,8 +10,8 @@
         "file": "site/index.html",
         "locale": "en",
         "indexable": true,
-        "fingerprint": "58b37d7547f2ce5af270785bba7a83f4d585b8792aeac1dda5440c1047ad2f07",
-        "lastmod": "2026-10-17"
+        "fingerprint": "3f393e4bc92b821f5af1a785141138c7ea8f900a06cb41b4d16c41e733dc016d",
+        "lastmod": "2026-10-27"
       },
       {
         "path": "/about/",
@@ -28,8 +28,8 @@
         "file": "site/compatibility/index.html",
         "locale": "en",
         "indexable": true,
-        "fingerprint": "7c5b903b32a16d1e2d1068eb798968dd60952ded38691c39960ef971df0b69ea",
-        "lastmod": "2026-10-18"
+        "fingerprint": "c7a4824dd623f93a6dfa1fa9e6d3d5d919594d52dcf7e2a0413f19178cf61b36",
+        "lastmod": "2026-10-29"
       },
       {
         "path": "/cs/",
@@ -37,8 +37,8 @@
         "file": "site/cs/index.html",
         "locale": "cs",
         "indexable": true,
-        "fingerprint": "0f0a0a36b5217780d5fcdcb79e196e1297ae1fe4b641400d775ee4e8d92047bf",
-        "lastmod": "2026-10-17"
+        "fingerprint": "354ccb1bcaee1c658f308f7ffbad31bae7a4b05821f3dca9a7b5d7f120af2137",
+        "lastmod": "2026-10-27"
       },
       {
         "path": "/cs/about/",
@@ -55,8 +55,8 @@
         "file": "site/cs/compatibility/index.html",
         "locale": "cs",
         "indexable": true,
-        "fingerprint": "b4e9e3f0b474df0011a4dd62567a3d15b146d7a18efaf65734933262f063d19a",
-        "lastmod": "2026-10-18"
+        "fingerprint": "efeab314f65408d4e7f5196de50a93d30a475d0ca157f0e3ce62c8b619c9f94b",
+        "lastmod": "2026-10-29"
       },
       {
         "path": "/cs/download/",
@@ -64,8 +64,8 @@
         "file": "site/cs/download/index.html",
         "locale": "cs",
         "indexable": true,
-        "fingerprint": "4a05f46ec1cc088612e48fb39a6f6d5a95f3e964ff362edea564e2954746c97f",
-        "lastmod": "2026-10-17"
+        "fingerprint": "59505055a0f87cccab865a63f3428bee638d6ee78ad39c76e6ff85710f22da20",
+        "lastmod": "2026-10-27"
       },
       {
         "path": "/cs/guides/install-garmin-maps-mac/",
@@ -73,8 +73,8 @@
         "file": "site/cs/guides/install-garmin-maps-mac/index.html",
         "locale": "cs",
         "indexable": true,
-        "fingerprint": "6cb68cc64ed251ef1bc18b50a8296b8036d397fe6675005b13245b7991688139",
-        "lastmod": "2026-10-17"
+        "fingerprint": "a496fe83963542dd83e900f665a0ebadff57bb701d699f9cd2f11c90f3e2b1f6",
+        "lastmod": "2026-10-27"
       },
       {
         "path": "/cs/guides/troubleshooting/",
@@ -91,8 +91,8 @@
         "file": "site/cs/map-styles/index.html",
         "locale": "cs",
         "indexable": true,
-        "fingerprint": "826c1d89b9efe42025167fafbcbaef0698ff8269e207623086b1b3d691c34efa",
-        "lastmod": "2026-10-15"
+        "fingerprint": "55fabb13ae22d0bc3949a3e10c02a9894af298aec4c7758c77a8c68ae4d46ba7",
+        "lastmod": "2026-10-26"
       },
       {
         "path": "/de/",
@@ -100,8 +100,8 @@
         "file": "site/de/index.html",
         "locale": "de",
         "indexable": true,
-        "fingerprint": "4210430a67754f7d62b4959cc716b6e4df220001f254418117aacbbaf03d42dd",
-        "lastmod": "2026-10-17"
+        "fingerprint": "b05358735374f5f42b4f5807f85f93d329f9d58448b1acae38a47fa76499fd94",
+        "lastmod": "2026-10-27"
       },
       {
         "path": "/de/about/",
@@ -118,8 +118,8 @@
         "file": "site/de/compatibility/index.html",
         "locale": "de",
         "indexable": true,
-        "fingerprint": "cfa004a10d9876bad1d6e9e0368d01bed1b4bb0809da0a0bb4df5fcc4a8234fd",
-        "lastmod": "2026-10-18"
+        "fingerprint": "4992e33bf9f9c7d9710f65aaff7a767d6e9176ab37b63ce5e977c332f686e116",
+        "lastmod": "2026-10-29"
       },
       {
         "path": "/de/download/",
@@ -127,8 +127,8 @@
         "file": "site/de/download/index.html",
         "locale": "de",
         "indexable": true,
-        "fingerprint": "0ef5aa534fc156edfe159b935dfeabbbceb3f4475968fff8d84105c3c11ff251",
-        "lastmod": "2026-10-17"
+        "fingerprint": "d8f362101e1386d7f6ab2b3b5672317b525d39be1e4cbf665aa28d3ca974ad80",
+        "lastmod": "2026-10-27"
       },
       {
         "path": "/de/guides/install-garmin-maps-mac/",
@@ -136,8 +136,8 @@
         "file": "site/de/guides/install-garmin-maps-mac/index.html",
         "locale": "de",
         "indexable": true,
-        "fingerprint": "10e09e3ac504549ef983e25b5f499e74485d7090ee4694b0133c5c0f611aad90",
-        "lastmod": "2026-10-17"
+        "fingerprint": "af32ecb29d709c131858ab3181d41bf0db1c2a233d785f94e5dd3ca8649a33e6",
+        "lastmod": "2026-10-27"
       },
       {
         "path": "/de/guides/troubleshooting/",
@@ -154,8 +154,8 @@
         "file": "site/de/map-styles/index.html",
         "locale": "de",
         "indexable": true,
-        "fingerprint": "70fec96511ea489c3b1b76a0a6b394bbd1853e0a79a3533df0abe87ea1c270f9",
-        "lastmod": "2026-10-15"
+        "fingerprint": "8ce04c0e051d9deab3b9a295a5a1e0eadbbcaefcf4af6ae985f73e519c82952d",
+        "lastmod": "2026-10-26"
       },
       {
         "path": "/download/",
@@ -163,8 +163,8 @@
         "file": "site/download/index.html",
         "locale": "en",
         "indexable": true,
-        "fingerprint": "f8c780d50d593108fd70c88cbfded7c9e82ceeede2cbea1bfacea72626f78551",
-        "lastmod": "2026-10-17"
+        "fingerprint": "f3369862e8eaf21e3298bdd4d79d3a045fa921b5efb45bc86db676dfee505ea9",
+        "lastmod": "2026-10-27"
       },
       {
         "path": "/fr/",
@@ -172,8 +172,8 @@
         "file": "site/fr/index.html",
         "locale": "fr",
         "indexable": true,
-        "fingerprint": "449482d2c1c90c63c9a34d19fed9d7bc834c3e7f6f97934549a377058c557195",
-        "lastmod": "2026-10-17"
+        "fingerprint": "5dafd847aceda35058770c3c27b3a3316b9bb3f35067ab58cab783dc6684ec02",
+        "lastmod": "2026-10-27"
       },
       {
         "path": "/fr/about/",
@@ -190,8 +190,8 @@
         "file": "site/fr/compatibility/index.html",
         "locale": "fr",
         "indexable": true,
-        "fingerprint": "6fdf132a76b5a7f0a3e185a082f8852b98a2646c451166ddf31efb9958c2f19e",
-        "lastmod": "2026-10-18"
+        "fingerprint": "87076ddc1950a4bc67907f134ccf03ac0b06f63b400f89b474fc74d305c315ab",
+        "lastmod": "2026-10-29"
       },
       {
         "path": "/fr/download/",
@@ -199,8 +199,8 @@
         "file": "site/fr/download/index.html",
         "locale": "fr",
         "indexable": true,
-        "fingerprint": "be941bda360094e3beeffc83538f7086cba95bd9ed59bdb2380921ded1c3e221",
-        "lastmod": "2026-10-17"
+        "fingerprint": "dd16e577593292b5b3ae2665cd3cf9e5b2d08bba69046cab2567f6b6bfd115af",
+        "lastmod": "2026-10-27"
       },
       {
         "path": "/fr/guides/install-garmin-maps-mac/",
@@ -208,8 +208,8 @@
         "file": "site/fr/guides/install-garmin-maps-mac/index.html",
         "locale": "fr",
         "indexable": true,
-        "fingerprint": "53556c8f41290f986c538987fa0eb22f576b849139c9c03349c48b263388b84f",
-        "lastmod": "2026-10-17"
+        "fingerprint": "e6c70ec506684172a5408b49ffbd890c29e39c9d3e84f3878ae3344139916c3d",
+        "lastmod": "2026-10-27"
       },
       {
         "path": "/fr/guides/troubleshooting/",
@@ -226,8 +226,8 @@
         "file": "site/fr/map-styles/index.html",
         "locale": "fr",
         "indexable": true,
-        "fingerprint": "aa1a9ecde4d9b1d41d9f8cd4f91ea7807e80ee595daaaa5dbd3fa7ce79575aa6",
-        "lastmod": "2026-10-15"
+        "fingerprint": "a6c523c8078fe9ceb2e65ac94c4c2595856e758c5b7afffec90edfce91954540",
+        "lastmod": "2026-10-26"
       },
       {
         "path": "/guides/install-garmin-maps-mac/",
@@ -235,8 +235,8 @@
         "file": "site/guides/install-garmin-maps-mac/index.html",
         "locale": "en",
         "indexable": true,
-        "fingerprint": "d708e1eff0919a4f78d06988a0bc6e3c29ac9e2308f3c2d17a9cb43eb5e6d8f4",
-        "lastmod": "2026-10-17"
+        "fingerprint": "d6cd6ea956066a5a6cc7ee48523e76c0ee6c672b1acf4883d14365461e6f0a7a",
+        "lastmod": "2026-10-27"
       },
       {
         "path": "/guides/troubleshooting/",
@@ -253,8 +253,8 @@
         "file": "site/it/index.html",
         "locale": "it",
         "indexable": true,
-        "fingerprint": "0ece0d783c4dd32ba32707477bd174da5445df42279c89a0f31cd3ba3b6c1891",
-        "lastmod": "2026-10-17"
+        "fingerprint": "bbab6e2b129b74e30efddfec8be8f86030a1867067e5455e062c3eb14918eb2e",
+        "lastmod": "2026-10-27"
       },
       {
         "path": "/it/about/",
@@ -271,8 +271,8 @@
         "file": "site/it/compatibility/index.html",
         "locale": "it",
         "indexable": true,
-        "fingerprint": "9f0a51ffd611a5542c5b1afb080114d4388eaa134ed734cdeebabdd162b32dc4",
-        "lastmod": "2026-10-18"
+        "fingerprint": "d131b41f4fff5b248d8cf7fef3c9279a8caef13092800cb9eb82b3bde792d640",
+        "lastmod": "2026-10-29"
       },
       {
         "path": "/it/download/",
@@ -280,8 +280,8 @@
         "file": "site/it/download/index.html",
         "locale": "it",
         "indexable": true,
-        "fingerprint": "ea06f0d9e6aa04daa307c0854b68939ec1238a673d796bc5567855a3b3ef8b77",
-        "lastmod": "2026-10-17"
+        "fingerprint": "f36337a30aa5c9d25aad911cf2b4981bbff92b146f1bc6966987bf3e245094a3",
+        "lastmod": "2026-10-27"
       },
       {
         "path": "/it/guides/install-garmin-maps-mac/",
@@ -289,8 +289,8 @@
         "file": "site/it/guides/install-garmin-maps-mac/index.html",
         "locale": "it",
         "indexable": true,
-        "fingerprint": "8a9551880585dbe20ca575270fe7cd3aecb4a391401478e4897b285dc3bf5463",
-        "lastmod": "2026-10-17"
+        "fingerprint": "8b0a76fd3a8a509760e593e5a4ec5d7c06c7cd9a93c660ec5ac3af1506eb45ff",
+        "lastmod": "2026-10-27"
       },
       {
         "path": "/it/guides/troubleshooting/",
@@ -307,8 +307,8 @@
         "file": "site/it/map-styles/index.html",
         "locale": "it",
         "indexable": true,
-        "fingerprint": "4cddc7499960f906a5c09aa4b1663865a52dca321eee508e7f7d3c19a8cf386f",
-        "lastmod": "2026-10-15"
+        "fingerprint": "4b0b93bfb66a307538d1e484c0ad743afdfee4ed61b590ab25e5f842970d2e51",
+        "lastmod": "2026-10-26"
       },
       {
         "path": "/legal/",
@@ -316,8 +316,8 @@
         "file": "site/legal/index.html",
         "locale": "en",
         "indexable": false,
-        "fingerprint": "ef31054ed0aa81dca3bb4ad653ed30b0a457f04fd8aba55b2ee671b1cd1cb736",
-        "lastmod": "2026-10-15"
+        "fingerprint": "534e44495ae6ffaa90fd7b60e4b5a0ca99b895a4b64d8377f0ddb1d409844b8e",
+        "lastmod": "2026-10-26"
       },
       {
         "path": "/map-styles/",
@@ -325,8 +325,8 @@
         "file": "site/map-styles/index.html",
         "locale": "en",
         "indexable": true,
-        "fingerprint": "a87bc88a950ca39ab28963346e47982d6a894b75dbb7988311469dd526d34aa4",
-        "lastmod": "2026-10-15"
+        "fingerprint": "7a2f1eccda70159311debe7dadd2b47a8b363a00f30d7dade63d1cea0272a20d",
+        "lastmod": "2026-10-26"
       },
       {
         "path": "/pl/",
@@ -334,8 +334,8 @@
         "file": "site/pl/index.html",
         "locale": "pl",
         "indexable": true,
-        "fingerprint": "75973f476edc26a27c50ea32019c474f7db5a2f5151cf09938b61c27304ab730",
-        "lastmod": "2026-10-17"
+        "fingerprint": "f03623ddc4d6465ee5849e7ee8e013e2227635fc53fee893731852c770900de5",
+        "lastmod": "2026-10-27"
       },
       {
         "path": "/pl/about/",
@@ -352,8 +352,8 @@
         "file": "site/pl/compatibility/index.html",
         "locale": "pl",
         "indexable": true,
-        "fingerprint": "6b40b0ad193e2e340f32665d1f12f61e1d796874a2ab547552dbdaa53e4b95bd",
-        "lastmod": "2026-10-18"
+        "fingerprint": "593221292eca9101b606bd1885f201a46f7d2f56e89bfc224d72c6c83bc52cc3",
+        "lastmod": "2026-10-29"
       },
       {
         "path": "/pl/download/",
@@ -361,8 +361,8 @@
         "file": "site/pl/download/index.html",
         "locale": "pl",
         "indexable": true,
-        "fingerprint": "a95382fae208838c54040012956f0a53ae6c1c8720b3542d7e4c5a947409a307",
-        "lastmod": "2026-10-17"
+        "fingerprint": "bda662fa6e04a135a6b649aa8a1e7dba4f25197cbc9ffc0aae9bf066c75e9c9b",
+        "lastmod": "2026-10-27"
       },
       {
         "path": "/pl/guides/install-garmin-maps-mac/",
@@ -370,8 +370,8 @@
         "file": "site/pl/guides/install-garmin-maps-mac/index.html",
         "locale": "pl",
         "indexable": true,
-        "fingerprint": "3a97490f3ec0b8ef2b7c1109eb242bbd116e001060b1e4c4ab81f7f8d827afd3",
-        "lastmod": "2026-10-17"
+        "fingerprint": "d2f341f9f3a1d036e823e17bd04e04b9a858879d0020b3f84ae74422723b203f",
+        "lastmod": "2026-10-27"
       },
       {
         "path": "/pl/guides/troubleshooting/",
@@ -388,8 +388,8 @@
         "file": "site/pl/map-styles/index.html",
         "locale": "pl",
         "indexable": true,
-        "fingerprint": "d10a0130914bbf28b0a489807d943a0db188409cea7f2114e89013412f56de79",
-        "lastmod": "2026-10-15"
+        "fingerprint": "afa6f0a4921a351f62c9bb4d869f03b3feb49742b0366c61d7c19890fee3379f",
+        "lastmod": "2026-10-26"
       },
       {
         "path": "/privacy/",
@@ -397,8 +397,8 @@
         "file": "site/privacy/index.html",
         "locale": "en",
         "indexable": false,
-        "fingerprint": "24d6f1cd4c6ce7781c36082a9857ea98d17f69c1040b56246a5c67b90b196720",
-        "lastmod": "2026-10-17"
+        "fingerprint": "d6fec65d9cbfe0d8f35e24673043f2198c8899fb3c6cdc0edf94813a7dac407d",
+        "lastmod": "2026-10-26"
       }
     ]
   },
@@ -3457,21 +3457,897 @@
         "fingerprint": "6b40b0ad193e2e340f32665d1f12f61e1d796874a2ab547552dbdaa53e4b95bd",
         "status": 200,
         "acceptedAt": "2026-10-18T20:29:42Z"
+      },
+      {
+        "url": "https://terento.app/compatibility/",
+        "fingerprint": "10790becfa016e8ef759fe06f7edbaadb6a29859a281d9703e77e5742caf24f3",
+        "status": 200,
+        "acceptedAt": "2026-10-19T22:17:50Z"
+      },
+      {
+        "url": "https://terento.app/cs/compatibility/",
+        "fingerprint": "4ae3577c95f1a6595f8beb515215cd1aab8afbf733cb7eb8e1e088727b792ddb",
+        "status": 200,
+        "acceptedAt": "2026-10-19T22:17:50Z"
+      },
+      {
+        "url": "https://terento.app/de/compatibility/",
+        "fingerprint": "3154486f9be8d21b9f8f4a07cf0dd7507abe336fdb365f7b0b475c1699cc6924",
+        "status": 200,
+        "acceptedAt": "2026-10-19T22:17:50Z"
+      },
+      {
+        "url": "https://terento.app/fr/compatibility/",
+        "fingerprint": "b6589043d7209afbdd280ace17e405ce62794b8486f8c7f455bc61668f14a76a",
+        "status": 200,
+        "acceptedAt": "2026-10-19T22:17:50Z"
+      },
+      {
+        "url": "https://terento.app/it/compatibility/",
+        "fingerprint": "329cfe2e8d1449519cb77d06022315e96e32ecd594c152064e8bc9db195ed330",
+        "status": 200,
+        "acceptedAt": "2026-10-19T22:17:50Z"
+      },
+      {
+        "url": "https://terento.app/pl/compatibility/",
+        "fingerprint": "4ebcdc9c09800404e26a2f4d1af0afd43238cf2dd0c6932952b4ec669271a24a",
+        "status": 200,
+        "acceptedAt": "2026-10-19T22:17:50Z"
+      },
+      {
+        "url": "https://terento.app/compatibility/",
+        "fingerprint": "4da558b4ccd95362bea954d8c1867fcefadad85da930888aa01aa93d08d99433",
+        "status": 200,
+        "acceptedAt": "2026-10-20T11:21:13Z"
+      },
+      {
+        "url": "https://terento.app/cs/compatibility/",
+        "fingerprint": "3f19167e0bcd7b3b808adef6749d059e57da8dce9ee1884c3404549c5b7bc487",
+        "status": 200,
+        "acceptedAt": "2026-10-20T11:21:13Z"
+      },
+      {
+        "url": "https://terento.app/de/compatibility/",
+        "fingerprint": "df8d8c8d379c14e5e882a9a3c449941cfdd15252d68062d50bd1868429796f40",
+        "status": 200,
+        "acceptedAt": "2026-10-20T11:21:13Z"
+      },
+      {
+        "url": "https://terento.app/fr/compatibility/",
+        "fingerprint": "98ba4d132eaefd67e6102e572c76160c066fca53c9b5171c4339884f8390d17d",
+        "status": 200,
+        "acceptedAt": "2026-10-20T11:21:13Z"
+      },
+      {
+        "url": "https://terento.app/it/compatibility/",
+        "fingerprint": "57ded987a0da45c433d1b4b845a7f10585454dd6d1172e4a05603e19d5a8e2c5",
+        "status": 200,
+        "acceptedAt": "2026-10-20T11:21:13Z"
+      },
+      {
+        "url": "https://terento.app/pl/compatibility/",
+        "fingerprint": "dc00b5036718727abd26366f0c24c465bd85b12976db583db4d3f592c976e588",
+        "status": 200,
+        "acceptedAt": "2026-10-20T11:21:13Z"
+      },
+      {
+        "url": "https://terento.app/compatibility/",
+        "fingerprint": "1d5e95d75c08a3501f75091ac40d282f1fb1bab905439713cf35db4417aa9319",
+        "status": 200,
+        "acceptedAt": "2026-10-20T16:45:43Z"
+      },
+      {
+        "url": "https://terento.app/cs/compatibility/",
+        "fingerprint": "904a7b1cd2bddf3a9d41d3f00afc5ee60b9ed516e9e1220ef9523a8f6307dcac",
+        "status": 200,
+        "acceptedAt": "2026-10-20T16:45:43Z"
+      },
+      {
+        "url": "https://terento.app/de/compatibility/",
+        "fingerprint": "af17852216c1cb9ddce77e57bad1f87613c6af2a4b13a6bfcd613a20f3bf5315",
+        "status": 200,
+        "acceptedAt": "2026-10-20T16:45:43Z"
+      },
+      {
+        "url": "https://terento.app/fr/compatibility/",
+        "fingerprint": "5946a2d064a8c85ebe76aa97fae4a614182c925a5dcab9b4d10c77181bb25f65",
+        "status": 200,
+        "acceptedAt": "2026-10-20T16:45:43Z"
+      },
+      {
+        "url": "https://terento.app/it/compatibility/",
+        "fingerprint": "73b9dfeeeb81b8fbb1dc01bcb2982bde335a918cd4627a0e6f4b6971f6f7233a",
+        "status": 200,
+        "acceptedAt": "2026-10-20T16:45:43Z"
+      },
+      {
+        "url": "https://terento.app/pl/compatibility/",
+        "fingerprint": "60c37a6160afd11f6940647687d5d0ddb4eefdfbec9990ab17efadb9b8593c89",
+        "status": 200,
+        "acceptedAt": "2026-10-20T16:45:43Z"
+      },
+      {
+        "url": "https://terento.app/compatibility/",
+        "fingerprint": "fb91cee9a4a7a7665cd538f19851198104692625a3d263564187a59110b0f0bc",
+        "status": 200,
+        "acceptedAt": "2026-10-20T21:32:29Z"
+      },
+      {
+        "url": "https://terento.app/cs/compatibility/",
+        "fingerprint": "cd5b9ceeb40670815bb59efc3bd96c83084774787ffdf57d5d86154b0e5b31af",
+        "status": 200,
+        "acceptedAt": "2026-10-20T21:32:29Z"
+      },
+      {
+        "url": "https://terento.app/de/compatibility/",
+        "fingerprint": "8c3e1f2a8916e19351e43591037fb8649a9876a075898342a1a0da1a58a91e7b",
+        "status": 200,
+        "acceptedAt": "2026-10-20T21:32:29Z"
+      },
+      {
+        "url": "https://terento.app/fr/compatibility/",
+        "fingerprint": "52fe8eec1e523871ccc1d34d758c0aa2f78b3b4640d9202fb6402e9e871b7f15",
+        "status": 200,
+        "acceptedAt": "2026-10-20T21:32:29Z"
+      },
+      {
+        "url": "https://terento.app/it/compatibility/",
+        "fingerprint": "973d34577e7f256ff8d3a71be24cb20b3e828ddb6132a0c88630ec913e53fc2c",
+        "status": 200,
+        "acceptedAt": "2026-10-20T21:32:29Z"
+      },
+      {
+        "url": "https://terento.app/pl/compatibility/",
+        "fingerprint": "d0869304b351a9a3d30ad27589c7cc9d3e46374189f58bbe01799ef245943216",
+        "status": 200,
+        "acceptedAt": "2026-10-20T21:32:29Z"
+      },
+      {
+        "url": "https://terento.app/compatibility/",
+        "fingerprint": "4f5c0dbba7c2fa26ac282c449a7ad6ec130cbf1797c1792bb63cd79dce702d4c",
+        "status": 200,
+        "acceptedAt": "2026-10-21T11:37:25Z"
+      },
+      {
+        "url": "https://terento.app/cs/compatibility/",
+        "fingerprint": "d4dc3c8c09a8320c314b44d368af2624b067cfa09c145fd9aa01e643b34f5073",
+        "status": 200,
+        "acceptedAt": "2026-10-21T11:37:25Z"
+      },
+      {
+        "url": "https://terento.app/de/compatibility/",
+        "fingerprint": "1bb836429fc7b58df67e24e531c8d30620844c37f133baffefb091212a69af29",
+        "status": 200,
+        "acceptedAt": "2026-10-21T11:37:25Z"
+      },
+      {
+        "url": "https://terento.app/fr/compatibility/",
+        "fingerprint": "6d0c162b58f6066fcb855ee8ef1a08f4b56b2fe3ca9b9b0eb0acab7e61bce1ec",
+        "status": 200,
+        "acceptedAt": "2026-10-21T11:37:25Z"
+      },
+      {
+        "url": "https://terento.app/it/compatibility/",
+        "fingerprint": "f73ae97031b9103387782e4935547c0676acec2bdbe4070f312d7285975a4281",
+        "status": 200,
+        "acceptedAt": "2026-10-21T11:37:25Z"
+      },
+      {
+        "url": "https://terento.app/pl/compatibility/",
+        "fingerprint": "35e1de2a5312f56c9fb667811cf9410844a1c07dec2707430dc996ff9553dbef",
+        "status": 200,
+        "acceptedAt": "2026-10-21T11:37:25Z"
+      },
+      {
+        "url": "https://terento.app/compatibility/",
+        "fingerprint": "6d3af6d49c7b5c009a3c490c368a5231b8a8b6bd9c8a837313a90796419e1fed",
+        "status": 200,
+        "acceptedAt": "2026-10-21T17:05:03Z"
+      },
+      {
+        "url": "https://terento.app/cs/compatibility/",
+        "fingerprint": "32851b2cd1a27dae1002a7ed41ddd6e700266b0f498967ab9e469d21276f5e6f",
+        "status": 200,
+        "acceptedAt": "2026-10-21T17:05:03Z"
+      },
+      {
+        "url": "https://terento.app/de/compatibility/",
+        "fingerprint": "512affe7eae34f0f5c525500d1c8d736c228e3b29b316513ef1011587377acb3",
+        "status": 200,
+        "acceptedAt": "2026-10-21T17:05:03Z"
+      },
+      {
+        "url": "https://terento.app/fr/compatibility/",
+        "fingerprint": "aa27224f35b946c7870bbaadc203b94aea7270fd8d840330931e732ed9992303",
+        "status": 200,
+        "acceptedAt": "2026-10-21T17:05:03Z"
+      },
+      {
+        "url": "https://terento.app/it/compatibility/",
+        "fingerprint": "ef4246aa96d20303706a88a8a46bf61451a9a658039288a3801a92e8247bc019",
+        "status": 200,
+        "acceptedAt": "2026-10-21T17:05:03Z"
+      },
+      {
+        "url": "https://terento.app/pl/compatibility/",
+        "fingerprint": "19ff9523a36f81ec6a6b3f27a930b9a3cefd8b692307859c9cecd19d734d6cf2",
+        "status": 200,
+        "acceptedAt": "2026-10-21T17:05:03Z"
+      },
+      {
+        "url": "https://terento.app/compatibility/",
+        "fingerprint": "daa7068a47a3ab1ab9473c3b29cf16cccea014f921f8a742db6622574a8ed38a",
+        "status": 200,
+        "acceptedAt": "2026-10-22T11:38:08Z"
+      },
+      {
+        "url": "https://terento.app/cs/compatibility/",
+        "fingerprint": "05d33a0574b5ead29d6f12ab43356b5e6d99175f0c0bc868ade3aee44ca644c5",
+        "status": 200,
+        "acceptedAt": "2026-10-22T11:38:08Z"
+      },
+      {
+        "url": "https://terento.app/de/compatibility/",
+        "fingerprint": "39b35a69968f5526cbf453835b5b4c5d25b06defea63718276cf3562e97f0cfe",
+        "status": 200,
+        "acceptedAt": "2026-10-22T11:38:08Z"
+      },
+      {
+        "url": "https://terento.app/fr/compatibility/",
+        "fingerprint": "8b03c2f1c48266edf5ac39d742bdd602e550283a11a02d1763ffc3198cba7b35",
+        "status": 200,
+        "acceptedAt": "2026-10-22T11:38:08Z"
+      },
+      {
+        "url": "https://terento.app/it/compatibility/",
+        "fingerprint": "4e1a5f8d5fcfc3afc5d2bcdf66f60720c1d85a5e037e0d5e6a93b1800b7e4512",
+        "status": 200,
+        "acceptedAt": "2026-10-22T11:38:08Z"
+      },
+      {
+        "url": "https://terento.app/pl/compatibility/",
+        "fingerprint": "01edc21ac949f5741121220e08ad6bb1e4a04b1659e73118f5926b8613877b59",
+        "status": 200,
+        "acceptedAt": "2026-10-22T11:38:08Z"
+      },
+      {
+        "url": "https://terento.app/compatibility/",
+        "fingerprint": "fad197ad65b3bf49d74f1068ba406441b435573aea984f3a3b3c357be749cb20",
+        "status": 200,
+        "acceptedAt": "2026-10-23T11:26:47Z"
+      },
+      {
+        "url": "https://terento.app/cs/compatibility/",
+        "fingerprint": "5afb7c1c796f8f81a1d2c6ebab4de73ed5e213fffc0c880766937ab95229ce27",
+        "status": 200,
+        "acceptedAt": "2026-10-23T11:26:47Z"
+      },
+      {
+        "url": "https://terento.app/de/compatibility/",
+        "fingerprint": "fe479f26331d44e4e46f3808b26c40e76efb610b5788ec94b3db36dfa4b04efc",
+        "status": 200,
+        "acceptedAt": "2026-10-23T11:26:47Z"
+      },
+      {
+        "url": "https://terento.app/fr/compatibility/",
+        "fingerprint": "f99a686dfed6744a02764243157d478825afd837dd889dc7800f985718eed265",
+        "status": 200,
+        "acceptedAt": "2026-10-23T11:26:47Z"
+      },
+      {
+        "url": "https://terento.app/it/compatibility/",
+        "fingerprint": "f457d4b12693e48e8b9233d874370c70b96a26e5c52dc01f9847a2df57fc8904",
+        "status": 200,
+        "acceptedAt": "2026-10-23T11:26:47Z"
+      },
+      {
+        "url": "https://terento.app/pl/compatibility/",
+        "fingerprint": "b10bc5f1c9be6ac7259510673253e17c76264aa8c056a02f871f89d85182e782",
+        "status": 200,
+        "acceptedAt": "2026-10-23T11:26:47Z"
+      },
+      {
+        "url": "https://terento.app/compatibility/",
+        "fingerprint": "b580cd7a39d6de5830aab7ebd049c23af96298e3a2a7c4b46b632fc89ca255d5",
+        "status": 200,
+        "acceptedAt": "2026-10-23T21:20:06Z"
+      },
+      {
+        "url": "https://terento.app/cs/compatibility/",
+        "fingerprint": "68d76c61cf32241d21eda88a1b2a010764222bd0bef3f20144b3c816070dbf64",
+        "status": 200,
+        "acceptedAt": "2026-10-23T21:20:06Z"
+      },
+      {
+        "url": "https://terento.app/de/compatibility/",
+        "fingerprint": "076b701a8fad850485ede6e6793791d0ea928931f10843cdc012bf2de378c3ce",
+        "status": 200,
+        "acceptedAt": "2026-10-23T21:20:06Z"
+      },
+      {
+        "url": "https://terento.app/fr/compatibility/",
+        "fingerprint": "59ce2379552fc4b50104ac54edd714bfc8a057c6a7c984d91a73a8b67249b1ca",
+        "status": 200,
+        "acceptedAt": "2026-10-23T21:20:06Z"
+      },
+      {
+        "url": "https://terento.app/it/compatibility/",
+        "fingerprint": "0a5565b447f00f52a5e03642af80aaad4958044577dfca8ea766bb75095fb377",
+        "status": 200,
+        "acceptedAt": "2026-10-23T21:20:06Z"
+      },
+      {
+        "url": "https://terento.app/pl/compatibility/",
+        "fingerprint": "a365240ae62c137c980f1a2d2aa51fb0e86e13b99d23579a9a25f3ceb0b9fde4",
+        "status": 200,
+        "acceptedAt": "2026-10-23T21:20:06Z"
+      },
+      {
+        "url": "https://terento.app/compatibility/",
+        "fingerprint": "f38fe6c96b6c040ee331c54e5b74aed83ac5bdd18fdf01e9b487c2d3a0799a0f",
+        "status": 200,
+        "acceptedAt": "2026-10-24T04:13:15Z"
+      },
+      {
+        "url": "https://terento.app/cs/compatibility/",
+        "fingerprint": "565b720878524e9392c36e58b132d35932da6844973d9f00f3b9b2e3f5655789",
+        "status": 200,
+        "acceptedAt": "2026-10-24T04:13:15Z"
+      },
+      {
+        "url": "https://terento.app/de/compatibility/",
+        "fingerprint": "859fe08f00321e06b3a894fc61073fdc46e763de10d2430ec887b8e07e6231e9",
+        "status": 200,
+        "acceptedAt": "2026-10-24T04:13:15Z"
+      },
+      {
+        "url": "https://terento.app/fr/compatibility/",
+        "fingerprint": "ed4995bfbc00ac95334b34b1a559241979d0c7c20b8a0b1ff265f3778012d9a0",
+        "status": 200,
+        "acceptedAt": "2026-10-24T04:13:15Z"
+      },
+      {
+        "url": "https://terento.app/it/compatibility/",
+        "fingerprint": "aea0a914b77d60ba2311df80c0efa13593268c4003097ae80d49ecbdbebc24ac",
+        "status": 200,
+        "acceptedAt": "2026-10-24T04:13:15Z"
+      },
+      {
+        "url": "https://terento.app/pl/compatibility/",
+        "fingerprint": "ea7097d8547a8188356a9489f90c058658759d205c85afecba1936309f7e82a3",
+        "status": 200,
+        "acceptedAt": "2026-10-24T04:13:15Z"
+      },
+      {
+        "url": "https://terento.app/compatibility/",
+        "fingerprint": "dba4966ba516f36dce9893d5d910ecc20a2e02cfafac5f2e8c357361a1055211",
+        "status": 200,
+        "acceptedAt": "2026-10-24T10:46:00Z"
+      },
+      {
+        "url": "https://terento.app/cs/compatibility/",
+        "fingerprint": "8fb83b225a38504bc5f9471c592aff6e94187c582a80f58c9b97cd76f72d4736",
+        "status": 200,
+        "acceptedAt": "2026-10-24T10:46:00Z"
+      },
+      {
+        "url": "https://terento.app/de/compatibility/",
+        "fingerprint": "985017961bb470889f1ea72d3e18085a4cdf7e43745057bca100754d29a6733e",
+        "status": 200,
+        "acceptedAt": "2026-10-24T10:46:00Z"
+      },
+      {
+        "url": "https://terento.app/fr/compatibility/",
+        "fingerprint": "b9348f83b73596059a2f6a763bc4c34e07440136a641e0bf2dd78c41dc7c31c5",
+        "status": 200,
+        "acceptedAt": "2026-10-24T10:46:00Z"
+      },
+      {
+        "url": "https://terento.app/it/compatibility/",
+        "fingerprint": "16609529147eaa0697be5febc2622651534248b56b17610b3ba9a332ef3f5fea",
+        "status": 200,
+        "acceptedAt": "2026-10-24T10:46:00Z"
+      },
+      {
+        "url": "https://terento.app/pl/compatibility/",
+        "fingerprint": "7a86f5df66d655f05b75bb67fb2a00fad134a7e468cc934c89873ccff329d696",
+        "status": 200,
+        "acceptedAt": "2026-10-24T10:46:00Z"
+      },
+      {
+        "url": "https://terento.app/compatibility/",
+        "fingerprint": "2b9e59678b25b84a2e9177a911211ae1120027a230c5379addeb02914eccfe48",
+        "status": 200,
+        "acceptedAt": "2026-10-25T04:15:32Z"
+      },
+      {
+        "url": "https://terento.app/cs/compatibility/",
+        "fingerprint": "bd979ab23b0abfd56a5249f3271a8743ea4365b9eb012cc5423dfc139a1f1903",
+        "status": 200,
+        "acceptedAt": "2026-10-25T04:15:32Z"
+      },
+      {
+        "url": "https://terento.app/de/compatibility/",
+        "fingerprint": "609971177ba713a9768dee7dfc8f05bb317ff861ec2bef5de9044319b7fcd99f",
+        "status": 200,
+        "acceptedAt": "2026-10-25T04:15:32Z"
+      },
+      {
+        "url": "https://terento.app/fr/compatibility/",
+        "fingerprint": "af191c58640844662871bbfa5496908a42d8152142447a28d0842cd5a1609fea",
+        "status": 200,
+        "acceptedAt": "2026-10-25T04:15:32Z"
+      },
+      {
+        "url": "https://terento.app/it/compatibility/",
+        "fingerprint": "f8bc247e4cbee468714f643b7ceb69ed504b5681f7993c55028e8ba60c88bf09",
+        "status": 200,
+        "acceptedAt": "2026-10-25T04:15:32Z"
+      },
+      {
+        "url": "https://terento.app/pl/compatibility/",
+        "fingerprint": "084a6945f41320a12fe1069cbc7c982697078554eea1bc8396d6db8bdece532a",
+        "status": 200,
+        "acceptedAt": "2026-10-25T04:15:32Z"
+      },
+      {
+        "url": "https://terento.app/compatibility/",
+        "fingerprint": "5a1d1c554cdf657ad76a0b98595df8b196d2a4aaed659d437c575b2470d36885",
+        "status": 200,
+        "acceptedAt": "2026-10-26T04:20:01Z"
+      },
+      {
+        "url": "https://terento.app/cs/compatibility/",
+        "fingerprint": "ae15c09a166f68bb8513d4005aaa7a8ad16a3e1dc8d25df7e86f7ca0f927c270",
+        "status": 200,
+        "acceptedAt": "2026-10-26T04:20:01Z"
+      },
+      {
+        "url": "https://terento.app/de/compatibility/",
+        "fingerprint": "d035d39f7857a010fe82895b48c0e615d2c3d7952b4ebf9cee3c557fe058865e",
+        "status": 200,
+        "acceptedAt": "2026-10-26T04:20:01Z"
+      },
+      {
+        "url": "https://terento.app/fr/compatibility/",
+        "fingerprint": "caccd453d3aebdf4acf9869ba7f89b6efc9b73120d5f682803dd7d434ca981a9",
+        "status": 200,
+        "acceptedAt": "2026-10-26T04:20:01Z"
+      },
+      {
+        "url": "https://terento.app/it/compatibility/",
+        "fingerprint": "4eb97d571c6754a78ec5236ff41baa2aa7abd09ff8e9d914b5f2237fe39e8df5",
+        "status": 200,
+        "acceptedAt": "2026-10-26T04:20:01Z"
+      },
+      {
+        "url": "https://terento.app/pl/compatibility/",
+        "fingerprint": "f9230af1bef0aec17290a752a9551141770a42db12e3bf4c8bb742637c72c3ca",
+        "status": 200,
+        "acceptedAt": "2026-10-26T04:20:01Z"
+      },
+      {
+        "url": "https://terento.app/compatibility/",
+        "fingerprint": "9999180f912a4d7ce34ac127584687e93e6104f366d547bbbdd0a6ea01feb402",
+        "status": 200,
+        "acceptedAt": "2026-10-26T12:48:55Z"
+      },
+      {
+        "url": "https://terento.app/cs/compatibility/",
+        "fingerprint": "939aff79d86d3dfa9bc3c8af8b7e8e31826724d64b804048e52f7d5cb34c8cca",
+        "status": 200,
+        "acceptedAt": "2026-10-26T12:48:55Z"
+      },
+      {
+        "url": "https://terento.app/de/compatibility/",
+        "fingerprint": "853fac68bef1b631f8ee8163d9f02e61f6d8c761562ac66e79e5411fabeaa019",
+        "status": 200,
+        "acceptedAt": "2026-10-26T12:48:55Z"
+      },
+      {
+        "url": "https://terento.app/fr/compatibility/",
+        "fingerprint": "23b0b8788e84ebf7c7c44cee404ba0eb6d447927c0b8fc06ab1c76aca4a7d81d",
+        "status": 200,
+        "acceptedAt": "2026-10-26T12:48:55Z"
+      },
+      {
+        "url": "https://terento.app/it/compatibility/",
+        "fingerprint": "f027774aba052ef92c3a9165e6fb1a3aa9528c0f29fb0796371c2ea216f4e9a1",
+        "status": 200,
+        "acceptedAt": "2026-10-26T12:48:55Z"
+      },
+      {
+        "url": "https://terento.app/pl/compatibility/",
+        "fingerprint": "d0934a6088a5975b86269d1547e44caeafa5cdab5605ba2a10c6cc1576cf15c4",
+        "status": 200,
+        "acceptedAt": "2026-10-26T12:48:55Z"
+      },
+      {
+        "url": "https://terento.app/cs/map-styles/",
+        "fingerprint": "c65127f1567b5faf046987a51967ce8c0743b206733343cb436c7fb542a27677",
+        "status": 200,
+        "acceptedAt": "2026-10-26T14:23:31Z"
+      },
+      {
+        "url": "https://terento.app/de/map-styles/",
+        "fingerprint": "33e3383d867894a2ae1cca25870a1b76dc957d0b3f2c61158988622dc252c389",
+        "status": 200,
+        "acceptedAt": "2026-10-26T14:23:31Z"
+      },
+      {
+        "url": "https://terento.app/fr/map-styles/",
+        "fingerprint": "a30d4e9cc9f6078e9a005db8a95961a36cb7f2f97ca06b90696772aab1eb8732",
+        "status": 200,
+        "acceptedAt": "2026-10-26T14:23:31Z"
+      },
+      {
+        "url": "https://terento.app/it/map-styles/",
+        "fingerprint": "8c87eec693828eb8a229e7e99d4f1c93004699e3fbfb0d0b08571602b69a5506",
+        "status": 200,
+        "acceptedAt": "2026-10-26T14:23:31Z"
+      },
+      {
+        "url": "https://terento.app/map-styles/",
+        "fingerprint": "c7e25951e9781f277839b0dfb8ab67b626b6735787f354d80c929d50aba63c72",
+        "status": 200,
+        "acceptedAt": "2026-10-26T14:23:31Z"
+      },
+      {
+        "url": "https://terento.app/pl/map-styles/",
+        "fingerprint": "ee1abfd72a8a8a84ae872488692301bd6791ebb3bfa2fcb42d44e89448604b9e",
+        "status": 200,
+        "acceptedAt": "2026-10-26T14:23:31Z"
+      },
+      {
+        "url": "https://terento.app/",
+        "fingerprint": "1db024ae01f750c8563f6925e3015e185350fbf862e334e2b2e52e569cfaa3ce",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/compatibility/",
+        "fingerprint": "7481b7bdcdcbc1f5846b41adba7c9e7a38e944ef703d33bed8aa850140cd4866",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/cs/",
+        "fingerprint": "ed794c5248872a02222ea89e2aba58a21594e874df072e858653a4df279d03b7",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/cs/compatibility/",
+        "fingerprint": "954c2532b973543ac26178e357426d88cae644e1438768a066b40f07f5627bfa",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/cs/map-styles/",
+        "fingerprint": "f4751fd326767b1de0ad8677589e3792483a573ff2103b30352a8fd9a42f2d71",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/de/",
+        "fingerprint": "c5a3f168dde6886d644a6e1697990caca6a8acdacab38ae9a7201cf8c020a46c",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/de/compatibility/",
+        "fingerprint": "a5575d21d1f7325cf20fb82a467eef83b61d1fce1cb54376c9b93d14749812ca",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/de/map-styles/",
+        "fingerprint": "8c1c72ef427ead80df11ed7cd2e14353b9134cb646dadee3566db48e25ae298c",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/fr/",
+        "fingerprint": "167d8a6dfbe51d03bbcb340dd4f538ef3d2585ef5e47b99dca3696790a25a0c0",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/fr/compatibility/",
+        "fingerprint": "b1dda6b3be345057a1d2cdcaff71b36cd83f6c2d6eccdd40e61d748c3584c4af",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/fr/map-styles/",
+        "fingerprint": "5d7a54f78b017061b8a7bd261f1767805e20ee425a512360e2baede18bfcbf98",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/it/",
+        "fingerprint": "053d2eaab6d6ba588467070ac1d92249fd8875fea44b84d02babd23292344624",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/it/compatibility/",
+        "fingerprint": "c3570e865108425b8650aba7a0e02bb23b187fde39a95aca5becd5357c265388",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/it/map-styles/",
+        "fingerprint": "af08847ceccb67ff16efd20bfd56f34ac49cf655098dfee8f2ff4f8f7e8cf4c1",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/legal/",
+        "fingerprint": "534e44495ae6ffaa90fd7b60e4b5a0ca99b895a4b64d8377f0ddb1d409844b8e",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/map-styles/",
+        "fingerprint": "46dd58f142df8aaa1e6c0df0492cb0b94c3d115efe21499b0daab42abe84e85b",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/pl/",
+        "fingerprint": "c88ae6b76f82aa4b6fc5fda00beace123475e806b6fff33c9110463c835a639c",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/pl/compatibility/",
+        "fingerprint": "957eba8bffc652b802b6a90941d6eb1a73a7f81f4d0c78920e6ce3da1a256612",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/pl/map-styles/",
+        "fingerprint": "7fc5ca1e4272db2a9f090ab8f9d186c657e4f7880cd193d5d04dfbffee1768c6",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/privacy/",
+        "fingerprint": "d6fec65d9cbfe0d8f35e24673043f2198c8899fb3c6cdc0edf94813a7dac407d",
+        "status": 200,
+        "acceptedAt": "2026-10-26T22:37:04Z"
+      },
+      {
+        "url": "https://terento.app/",
+        "fingerprint": "3f393e4bc92b821f5af1a785141138c7ea8f900a06cb41b4d16c41e733dc016d",
+        "status": 200,
+        "acceptedAt": "2026-10-27T13:32:11Z"
+      },
+      {
+        "url": "https://terento.app/cs/",
+        "fingerprint": "354ccb1bcaee1c658f308f7ffbad31bae7a4b05821f3dca9a7b5d7f120af2137",
+        "status": 200,
+        "acceptedAt": "2026-10-27T13:32:11Z"
+      },
+      {
+        "url": "https://terento.app/cs/download/",
+        "fingerprint": "59505055a0f87cccab865a63f3428bee638d6ee78ad39c76e6ff85710f22da20",
+        "status": 200,
+        "acceptedAt": "2026-10-27T13:32:11Z"
+      },
+      {
+        "url": "https://terento.app/cs/guides/install-garmin-maps-mac/",
+        "fingerprint": "a496fe83963542dd83e900f665a0ebadff57bb701d699f9cd2f11c90f3e2b1f6",
+        "status": 200,
+        "acceptedAt": "2026-10-27T13:32:11Z"
+      },
+      {
+        "url": "https://terento.app/cs/map-styles/",
+        "fingerprint": "55fabb13ae22d0bc3949a3e10c02a9894af298aec4c7758c77a8c68ae4d46ba7",
+        "status": 200,
+        "acceptedAt": "2026-10-27T13:32:11Z"
+      },
+      {
+        "url": "https://terento.app/de/",
+        "fingerprint": "b05358735374f5f42b4f5807f85f93d329f9d58448b1acae38a47fa76499fd94",
+        "status": 200,
+        "acceptedAt": "2026-10-27T13:32:11Z"
+      },
+      {
+        "url": "https://terento.app/de/download/",
+        "fingerprint": "d8f362101e1386d7f6ab2b3b5672317b525d39be1e4cbf665aa28d3ca974ad80",
+        "status": 200,
+        "acceptedAt": "2026-10-27T13:32:11Z"
+      },
+      {
+        "url": "https://terento.app/de/guides/install-garmin-maps-mac/",
+        "fingerprint": "af32ecb29d709c131858ab3181d41bf0db1c2a233d785f94e5dd3ca8649a33e6",
+        "status": 200,
+        "acceptedAt": "2026-10-27T13:32:11Z"
+      },
+      {
+        "url": "https://terento.app/de/map-styles/",
+        "fingerprint": "8ce04c0e051d9deab3b9a295a5a1e0eadbbcaefcf4af6ae985f73e519c82952d",
+        "status": 200,
+        "acceptedAt": "2026-10-27T13:32:11Z"
+      },
+      {
+        "url": "https://terento.app/download/",
+        "fingerprint": "f3369862e8eaf21e3298bdd4d79d3a045fa921b5efb45bc86db676dfee505ea9",
+        "status": 200,
+        "acceptedAt": "2026-10-27T13:32:11Z"
+      },
+      {
+        "url": "https://terento.app/fr/",
+        "fingerprint": "5dafd847aceda35058770c3c27b3a3316b9bb3f35067ab58cab783dc6684ec02",
+        "status": 200,
+        "acceptedAt": "2026-10-27T13:32:11Z"
+      },
+      {
+        "url": "https://terento.app/fr/download/",
+        "fingerprint": "dd16e577593292b5b3ae2665cd3cf9e5b2d08bba69046cab2567f6b6bfd115af",
+        "status": 200,
+        "acceptedAt": "2026-10-27T13:32:11Z"
+      },
+      {
+        "url": "https://terento.app/fr/guides/install-garmin-maps-mac/",
+        "fingerprint": "e6c70ec506684172a5408b49ffbd890c29e39c9d3e84f3878ae3344139916c3d",
+        "status": 200,
+        "acceptedAt": "2026-10-27T13:32:11Z"
+      },
+      {
+        "url": "https://terento.app/fr/map-styles/",
+        "fingerprint": "a6c523c8078fe9ceb2e65ac94c4c2595856e758c5b7afffec90edfce91954540",
+        "status": 200,
+        "acceptedAt": "2026-10-27T13:32:11Z"
+      },
+      {
+        "url": "https://terento.app/guides/install-garmin-maps-mac/",
+        "fingerprint": "d6cd6ea956066a5a6cc7ee48523e76c0ee6c672b1acf4883d14365461e6f0a7a",
+        "status": 200,
+        "acceptedAt": "2026-10-27T13:32:11Z"
+      },
+      {
+        "url": "https://terento.app/it/",
+        "fingerprint": "bbab6e2b129b74e30efddfec8be8f86030a1867067e5455e062c3eb14918eb2e",
+        "status": 200,
+        "acceptedAt": "2026-10-27T13:32:11Z"
+      },
+      {
+        "url": "https://terento.app/it/download/",
+        "fingerprint": "f36337a30aa5c9d25aad911cf2b4981bbff92b146f1bc6966987bf3e245094a3",
+        "status": 200,
+        "acceptedAt": "2026-10-27T13:32:11Z"
+      },
+      {
+        "url": "https://terento.app/it/guides/install-garmin-maps-mac/",
+        "fingerprint": "8b0a76fd3a8a509760e593e5a4ec5d7c06c7cd9a93c660ec5ac3af1506eb45ff",
+        "status": 200,
+        "acceptedAt": "2026-10-27T13:32:11Z"
+      },
+      {
+        "url": "https://terento.app/it/map-styles/",
+        "fingerprint": "4b0b93bfb66a307538d1e484c0ad743afdfee4ed61b590ab25e5f842970d2e51",
+        "status": 200,
+        "acceptedAt": "2026-10-27T13:32:11Z"
+      },
+      {
+        "url": "https://terento.app/map-styles/",
+        "fingerprint": "7a2f1eccda70159311debe7dadd2b47a8b363a00f30d7dade63d1cea0272a20d",
+        "status": 200,
+        "acceptedAt": "2026-10-27T13:32:11Z"
+      },
+      {
+        "url": "https://terento.app/pl/",
+        "fingerprint": "f03623ddc4d6465ee5849e7ee8e013e2227635fc53fee893731852c770900de5",
+        "status": 200,
+        "acceptedAt": "2026-10-27T13:32:11Z"
+      },
+      {
+        "url": "https://terento.app/pl/download/",
+        "fingerprint": "bda662fa6e04a135a6b649aa8a1e7dba4f25197cbc9ffc0aae9bf066c75e9c9b",
+        "status": 200,
+        "acceptedAt": "2026-10-27T13:32:11Z"
+      },
+      {
+        "url": "https://terento.app/pl/guides/install-garmin-maps-mac/",
+        "fingerprint": "d2f341f9f3a1d036e823e17bd04e04b9a858879d0020b3f84ae74422723b203f",
+        "status": 200,
+        "acceptedAt": "2026-10-27T13:32:11Z"
+      },
+      {
+        "url": "https://terento.app/pl/map-styles/",
+        "fingerprint": "afa6f0a4921a351f62c9bb4d869f03b3feb49742b0366c61d7c19890fee3379f",
+        "status": 200,
+        "acceptedAt": "2026-10-27T13:32:11Z"
+      },
+      {
+        "url": "https://terento.app/compatibility/",
+        "fingerprint": "f7a9f80e111b9f2e39b646139883294900c58477d5fa12faccc2810573fdd334",
+        "status": 200,
+        "acceptedAt": "2026-10-27T22:06:16Z"
+      },
+      {
+        "url": "https://terento.app/cs/compatibility/",
+        "fingerprint": "c088f80eed6851ad43883b84aefa2f5b809045c2edb295043a6982245d087209",
+        "status": 200,
+        "acceptedAt": "2026-10-27T22:06:16Z"
+      },
+      {
+        "url": "https://terento.app/de/compatibility/",
+        "fingerprint": "b268fa5e5f8b58f2ed5381ebc50e51958eb7b5a24cf4405ab6c08b0441716011",
+        "status": 200,
+        "acceptedAt": "2026-10-27T22:06:16Z"
+      },
+      {
+        "url": "https://terento.app/fr/compatibility/",
+        "fingerprint": "7f4209851693bc8c3d808270240954c4cafda6e9ef96a68cc89c3d27f3c26e52",
+        "status": 200,
+        "acceptedAt": "2026-10-27T22:06:16Z"
+      },
+      {
+        "url": "https://terento.app/it/compatibility/",
+        "fingerprint": "759e87032193899223152d623262db6b2f3a15af42bf0b2e13322a962916bda3",
+        "status": 200,
+        "acceptedAt": "2026-10-27T22:06:16Z"
+      },
+      {
+        "url": "https://terento.app/pl/compatibility/",
+        "fingerprint": "c7cc0fff05a51be5871d9be93d1e2fd173e491fec6a0300fabc8fb7ea18db794",
+        "status": 200,
+        "acceptedAt": "2026-10-27T22:06:16Z"
+      },
+      {
+        "url": "https://terento.app/compatibility/",
+        "fingerprint": "c7a4824dd623f93a6dfa1fa9e6d3d5d919594d52dcf7e2a0413f19178cf61b36",
+        "status": 200,
+        "acceptedAt": "2026-10-29T12:47:44Z"
+      },
+      {
+        "url": "https://terento.app/cs/compatibility/",
+        "fingerprint": "efeab314f65408d4e7f5196de50a93d30a475d0ca157f0e3ce62c8b619c9f94b",
+        "status": 200,
+        "acceptedAt": "2026-10-29T12:47:44Z"
+      },
+      {
+        "url": "https://terento.app/de/compatibility/",
+        "fingerprint": "4992e33bf9f9c7d9710f65aaff7a767d6e9176ab37b63ce5e977c332f686e116",
+        "status": 200,
+        "acceptedAt": "2026-10-29T12:47:44Z"
+      },
+      {
+        "url": "https://terento.app/fr/compatibility/",
+        "fingerprint": "87076ddc1950a4bc67907f134ccf03ac0b06f63b400f89b474fc74d305c315ab",
+        "status": 200,
+        "acceptedAt": "2026-10-29T12:47:44Z"
+      },
+      {
+        "url": "https://terento.app/it/compatibility/",
+        "fingerprint": "d131b41f4fff5b248d8cf7fef3c9279a8caef13092800cb9eb82b3bde792d640",
+        "status": 200,
+        "acceptedAt": "2026-10-29T12:47:44Z"
+      },
+      {
+        "url": "https://terento.app/pl/compatibility/",
+        "fingerprint": "593221292eca9101b606bd1885f201a46f7d2f56e89bfc224d72c6c83bc52cc3",
+        "status": 200,
+        "acceptedAt": "2026-10-29T12:47:44Z"
       }
     ],
     "pending": [],
-    "lastSubmissionAt": "2026-10-18T20:29:42Z",
-    "lastSuccessfulSubmissionAt": "2026-10-18T20:29:42Z",
+    "lastSubmissionAt": "2026-10-29T12:47:43Z",
+    "lastSuccessfulSubmissionAt": "2026-10-29T12:47:43Z",
     "lastResult": "submitted",
     "lastErrorCode": null
   },
   "lastRun": {
-    "at": "2026-10-18T20:29:42Z",
+    "at": "2026-10-29T12:47:44Z",
     "status": "accepted",
     "bootstrap": false,
     "planned": 6,
     "accepted": 6,
     "pending": 0,
-    "previousAccepted": 503
+    "previousAccepted": 649
   }
 }

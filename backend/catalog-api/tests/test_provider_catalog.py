@@ -430,7 +430,7 @@ class ProviderCatalogTests(unittest.TestCase):
             / "terento_catalog"
             / "db.py"
         ).read_text(encoding="utf-8")
-        self.assertIn('if definition.id in {"opentopomap", "maprando", "bbbike"}:', source)
+        self.assertIn('if definition.id in {"opentopomap", "maprando", "bbbike", "osmapa"}:', source)
         self.assertIn("DELETE FROM map_artifact", source)
         self.assertIn("availability = 'RETIRED'", source)
         self.assertIn("A complete provider snapshot retires only that provider", source)

@@ -11,7 +11,7 @@ Terento è progettato per gli smartwatch Garmin con supporto alle mappe. Qui sot
 
 Se il tuo modello non è nell’elenco, non significa che non sia supportato — potrebbe semplicemente non esserci ancora un’installazione riuscita condivisa per quel modello e quella variante esatti.
 
-**32** modelli con installazioni riuscite**257** installazioni riusciteUltima installazione riuscita 18 ottobre 2026
+**36** modelli con installazioni riuscite**323** installazioni riusciteUltima installazione riuscita 29 ottobre 2026
 
 Come funziona questo elenco
 
@@ -21,7 +21,7 @@ I risultati delle installazioni sono condivisi con Terento dagli utenti; non cos
 
 La versione attuale include quattro provider di mappe. Questa informazione sul prodotto è distinta dai risultati dei dispositivi mostrati qui.
 
-32 modelli
+36 modelli
 
 fēnix
 
@@ -29,11 +29,11 @@ fēnix
 
 47 mm, AMOLED
 
-49 installazioni riuscite
+53 installazioni riuscite
 
-App 49
+App 53
 
-Ultima installazione riuscita 18 ottobre 2026
+Ultima installazione riuscita 26 ottobre 2026
 
 Forerunner
 
@@ -41,11 +41,11 @@ Forerunner
 
 Historical
 
-20 installazioni riuscite
+31 installazioni riuscite
 
-App 18 Web 2
+App 29 Web 2
 
-Ultima installazione riuscita 16 ottobre 2026
+Ultima installazione riuscita 22 ottobre 2026
 
 Forerunner
 
@@ -53,11 +53,11 @@ Forerunner
 
 AMOLED
 
-20 installazioni riuscite
+26 installazioni riuscite
 
-App 20
+App 26
 
-Ultima installazione riuscita 10 ottobre 2026
+Ultima installazione riuscita 27 ottobre 2026
 
 fēnix
 
@@ -65,11 +65,11 @@ fēnix
 
 51 mm, AMOLED
 
-18 installazioni riuscite
+19 installazioni riuscite
 
-App 18
+App 19
 
-Ultima installazione riuscita 15 ottobre 2026
+Ultima installazione riuscita 22 ottobre 2026
 
 epix
 
@@ -77,11 +77,23 @@ epix
 
 51 mm, AMOLED
 
-13 installazioni riuscite
+18 installazioni riuscite
 
-App 12 Web 1
+App 17 Web 1
 
-Ultima installazione riuscita 16 ottobre 2026
+Ultima installazione riuscita 26 ottobre 2026
+
+fēnix
+
+### fēnix 7X Pro
+
+Solar, Historical
+
+18 installazioni riuscite
+
+App 13 Web 5
+
+Ultima installazione riuscita 26 ottobre 2026
 
 fēnix
 
@@ -121,15 +133,51 @@ Ultima installazione riuscita 17 ottobre 2026
 
 fēnix
 
+### fēnix 8
+
+47 mm, MIP, Solar
+
+11 installazioni riuscite
+
+App 11
+
+Ultima installazione riuscita 20 ottobre 2026
+
+fēnix
+
 ### fēnix 9 Pro
 
 47 mm, AMOLED
+
+10 installazioni riuscite
+
+App 10
+
+Ultima installazione riuscita 22 ottobre 2026
+
+fēnix
+
+### fēnix 8 Pro
+
+51 mm, AMOLED, inReach
 
 9 installazioni riuscite
 
 App 9
 
-Ultima installazione riuscita 13 ottobre 2026
+Ultima installazione riuscita 23 ottobre 2026
+
+fēnix
+
+### fēnix 8
+
+51 mm, AMOLED
+
+9 installazioni riuscite
+
+App 8 Web 1
+
+Ultima installazione riuscita 23 ottobre 2026
 
 epix
 
@@ -145,27 +193,39 @@ Ultima installazione riuscita 14 ottobre 2026
 
 fēnix
 
-### fēnix 7X Pro
+### fēnix 7X
 
-Solar, Historical
+51 mm, Solar
 
-8 installazioni riuscite
+7 installazioni riuscite
 
-App 7 Web 1
+App 7
 
-Ultima installazione riuscita 13 ottobre 2026
+Ultima installazione riuscita 23 ottobre 2026
 
 fēnix
 
-### fēnix 8
+### fēnix 6 Pro
 
-51 mm, AMOLED
+47 mm, MIP, Historical
 
-8 installazioni riuscite
+6 installazioni riuscite
 
-App 7 Web 1
+App 3 Web 3
 
-Ultima installazione riuscita 18 ottobre 2026
+Ultima installazione riuscita 26 ottobre 2026
+
+fēnix
+
+### fēnix 7 Pro
+
+Solar, Historical
+
+6 installazioni riuscite
+
+App 6
+
+Ultima installazione riuscita 29 ottobre 2026
 
 fēnix
 
@@ -181,30 +241,6 @@ Ultima installazione riuscita 12 ottobre 2026
 
 fēnix
 
-### fēnix 8 Pro
-
-51 mm, AMOLED, inReach
-
-6 installazioni riuscite
-
-App 6
-
-Ultima installazione riuscita 16 settembre 2026
-
-fēnix
-
-### fēnix 8
-
-47 mm, MIP, Solar
-
-6 installazioni riuscite
-
-App 6
-
-Ultima installazione riuscita 10 ottobre 2026
-
-fēnix
-
 ### fēnix 9 Pro
 
 47 mm, AMOLED, inReach
@@ -217,27 +253,27 @@ Ultima installazione riuscita 29 settembre 2026
 
 fēnix
 
-### fēnix 7 Pro
+### fēnix 8 Pro
 
-Solar, Historical
-
-5 installazioni riuscite
-
-App 5
-
-Ultima installazione riuscita 8 ottobre 2026
-
-fēnix
-
-### fēnix 7X
-
-51 mm, Solar
+47 mm, AMOLED, inReach
 
 5 installazioni riuscite
 
 App 5
 
-Ultima installazione riuscita 11 ottobre 2026
+Ultima installazione riuscita 21 ottobre 2026
+
+epix
+
+### epix (Gen 2)
+
+47 mm
+
+4 installazioni riuscite
+
+Web 4
+
+Ultima installazione riuscita 19 ottobre 2026
 
 fēnix
 
@@ -274,30 +310,6 @@ fēnix
 App 4
 
 Ultima installazione riuscita 23 settembre 2026
-
-fēnix
-
-### fēnix 7X Pro
-
-Solar, (no Wi-Fi)
-
-3 installazioni riuscite
-
-App 3
-
-Ultima installazione riuscita 17 ottobre 2026
-
-fēnix
-
-### fēnix 8 Pro
-
-47 mm, AMOLED, inReach
-
-3 installazioni riuscite
-
-App 3
-
-Ultima installazione riuscita 3 ottobre 2026
 
 fēnix
 
@@ -353,11 +365,47 @@ Enduro
 
 MIP, Solar
 
-1 installazione riuscita
+2 installazioni riuscite
 
-App 1
+App 2
 
-Ultima installazione riuscita 16 ottobre 2026
+Ultima installazione riuscita 23 ottobre 2026
+
+fēnix
+
+### fēnix 6X Pro
+
+51 mm, MIP, Historical
+
+2 installazioni riuscite
+
+App 2
+
+Ultima installazione riuscita 24 ottobre 2026
+
+fēnix
+
+### fēnix 6X
+
+51 mm
+
+2 installazioni riuscite
+
+App 2
+
+Ultima installazione riuscita 20 ottobre 2026
+
+fēnix
+
+### fēnix 9 Pro
+
+51 mm, MIP, Solar
+
+2 installazioni riuscite
+
+App 2
+
+Ultima installazione riuscita 19 ottobre 2026
 
 fēnix
 

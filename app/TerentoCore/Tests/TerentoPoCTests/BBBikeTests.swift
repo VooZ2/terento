@@ -73,9 +73,11 @@ private struct PrefixReader: DeviceFileReader {
             check(TerentoManagedFilenameGenerator().isValid(filename), "variant filename grammar")
             let other = andorra.first { $0.id != package.id }!
             let selectedTitle = BBBikeMapType(rawValue: package.mapType!)!.title
-            let installedTitle = BBBikeMapType(rawValue: other.mapType!)!.title
-            check(BBBikeProviderAdapter.installedTypeConflictMessage(for: package) ==
-                "To install “\(selectedTitle) - Andorra”, first remove “\(installedTitle) - Andorra” in Manage maps. BBBike and BBBike (Ontrail) cannot be installed together for the same region.",
+            let installedType = BBBikeMapType(rawValue: other.mapType!)!
+            check(BBBikeProviderAdapter.conflictingType(package, provider: other.providerId, region: other.canonicalRegionId) == installedType,
+                "conflict resolves the exact installed variant")
+            check(BBBikeProviderAdapter.installedTypeConflictMessage(for: package, installedType: installedType) ==
+                "To install “\(selectedTitle) - Andorra”, first remove “\(installedType.title) - Andorra” in Manage maps. Only one BBBike map type can be installed for the same region.",
                 "conflict copy names exact selected and installed variants in both directions")
             for provider in ["maprando", "opentopomap", "freizeitkarte"] {
                 check(!BBBikeProviderAdapter.conflicts(package, provider: provider, region: other.canonicalRegionId),
@@ -85,6 +87,37 @@ private struct PrefixReader: DeviceFileReader {
         }
         check(BBBikeProviderAdapter.selectionConflicts(andorra), "same-region type pair rejected in domain batch policy")
         check(!BBBikeProviderAdapter.selectionConflicts([andorra[0], catalog.packages.first { $0.providerRegionId == "europe/alps" }!]), "different BBBike regions retain ordinary batch behavior")
+        // Third type: BBBike (OpenTopoMap) shares the region's tile numbers with the other two.
+        let openTopoRegion = BBBikeProviderAdapter.regionToken(path: "europe/andorra", type: BBBikeMapType.opentopo.rawValue)
+        check(openTopoRegion == "EUROPE-ANDORRA-OPENTOPO-LATIN1" && BBBikeMapType(regionToken: openTopoRegion) == .opentopo
+            && BBBikeMapType.opentopo.style == "opentopo" && BBBikeMapType.opentopo.filterID == "bbbikeopentopo"
+            && BBBikeMapType.ontrail.filterID == "bbbikeontrail", "OpenTopoMap type identity")
+        check(MapProviderDisplay.filterID(providerID: "bbbike", regionID: openTopoRegion) == "bbbikeopentopo"
+            && MapProviderDisplay.title(providerID: "bbbike", regionID: openTopoRegion, fallback: "BBBike") == "BBBike (OpenTopoMap)"
+            && MapProviderDisplay.sourceProviderID(filterID: "bbbikeopentopo") == "bbbike", "third display filter keeps one provider")
+        let openTopoName = try TerentoManagedFilenameGenerator().filename(providerId: "bbbike", regionId: openTopoRegion)
+        for package in andorra {
+            let selectedTitle = BBBikeMapType(rawValue: package.mapType!)!.title
+            check(BBBikeProviderAdapter.conflictingType(package, provider: "bbbike", region: openTopoRegion) == .opentopo
+                && BBBikeProviderAdapter.conflictingType(package, filename: openTopoName) == .opentopo,
+                "installed OpenTopoMap blocks \(selectedTitle) of the same region")
+            check(BBBikeProviderAdapter.installedTypeConflictMessage(for: package, installedType: .opentopo) ==
+                "To install “\(selectedTitle) - Andorra”, first remove “BBBike (OpenTopoMap) - Andorra” in Manage maps. Only one BBBike map type can be installed for the same region.",
+                "OpenTopoMap conflict copy names the installed variant")
+            check(BBBikeProviderAdapter.unverifiedTypeConflictMessage(for: package) ==
+                "Another BBBike map of Andorra needs review before installing “\(selectedTitle) - Andorra”. Terento has not confirmed ownership of the conflicting file.",
+                "unknown conflicting variant is not guessed")
+        }
+        check(!BBBikeProviderAdapter.conflicts(andorra[0], provider: "bbbike",
+            region: BBBikeProviderAdapter.regionToken(path: "europe/alps", type: BBBikeMapType.opentopo.rawValue)),
+            "OpenTopoMap of another region does not conflict")
+        check(BBBikeProviderAdapter.isReviewedSourcePath("/osm/garmin/region/europe/andorra/andorra.osm.garmin-opentopo-latin1.zip",
+            sourceRegion: "europe/andorra", type: BBBikeMapType.opentopo.rawValue), "reviewed OpenTopoMap source path")
+        try ReviewedProviderURLPolicy.bbbike.validate(URL(string: "https://data.bbbike.org/osm/garmin/region/europe/andorra/andorra.osm.garmin-opentopo-latin1.zip")!)
+        do {
+            try ReviewedProviderURLPolicy.bbbike.validate(URL(string: "https://data.bbbike.org/osm/garmin/region/europe/andorra/andorra.osm.garmin-osm-latin1.zip")!)
+            fatalError("FAIL: unreviewed BBBike style accepted")
+        } catch MapAcquisitionError.untrustedSourceURL(_) { print("PASS: only reviewed BBBike styles are acquired") }
         let manifest = TerentoManifestEntry(deviceKey: "test", devicePath: "/GARMIN/test.img", filename: "test.img",
             providerId: "freizeitkarte", regionId: "LTU", version: MapVersion(year: 2026, month: 9)!,
             sizeBytes: 132, sha256: String(repeating: "a", count: 64), installedAt: Date(timeIntervalSince1970: 0))
@@ -97,6 +130,13 @@ private struct PrefixReader: DeviceFileReader {
             providers: catalog.providers, regions: catalog.regions, packages: [unavailable])
         check(MapCatalogClientCompatibilityValidator().isCompatible(disabledCatalog) && !unavailable.hasUsableMainArtifact,
             "metadata-only unavailable source does not poison valid catalog or become installable")
+        for proof in [#"{"etag":true}"#, "{}", #""proof""#] {
+            let json = #"{"id":"unavailable","kind":"main","required":true,"validationState":"unavailable","sourceURL":"https://data.bbbike.org/osm/garmin/example/alias.zip","sourceProof":"# + proof + "}"
+            let artifact = try JSONDecoder().decode(MapArtifact.self, from: Data(json.utf8))
+            let package = andorra[0].withArtifacts([artifact])
+            check(artifact.carriesSourceProof && !MapCatalogClientCompatibilityValidator().isPackageCompatible(package),
+                "unavailable BBBike package with malformed proof \(proof) is rejected, not read as proof-free")
+        }
         let oldCatalogURL = defaultFixture.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Sources/TerentoPoC/Resources/Maps/catalog.json")
         let oldCatalog = try MapCatalogDocumentDecoder().decode(Data(contentsOf: oldCatalogURL))
@@ -225,7 +265,7 @@ private struct PrefixReader: DeviceFileReader {
                     metadataStatus: .parsed, managementState: .managedByTerento)
                 let ownedPreflight = InstallationPreflightEngine().evaluate(identity: identity, selectedMap: package, comparison: comparison,
                     installedMaps: [ownedSibling], inspectedFiles: [ownedSibling.sourceFile], availableStorage: 16 << 30, profile: profile)
-                check(!ownedPreflight.isReady && ownedPreflight.userNote == BBBikeProviderAdapter.installedTypeConflictMessage(for: package),
+                check(!ownedPreflight.isReady && ownedPreflight.userNote == BBBikeProviderAdapter.installedTypeConflictMessage(for: package, installedType: BBBikeMapType(rawValue: sibling.mapType!)!),
                     "proven owned sibling preserves exact named Manage removal instruction")
                 let rows = MapSelectionPlanner().items(comparisons: [comparison], preflightStatuses: [comparison.id: preflight.status],
                     recommendedRegionID: nil, preflightReasons: [comparison.id: preflight.reason])

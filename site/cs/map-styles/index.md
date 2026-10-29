@@ -7,7 +7,7 @@ Styly map
 
 # Porovnejte bezplatné mapy Garmin před instalací
 
-Podívejte se, jak pět bezplatných stylů map zobrazuje stejné místo. Vyberte oblíbenou oblast, stezku nebo město a porovnejte vrstevnice, stezky, ulice a popisky.
+Podívejte se, jak bezplatné styly map zobrazují stejné místo. Vyberte oblíbenou oblast, stezku nebo město a porovnejte vrstevnice, stezky, ulice a popisky.
 
 Místo
 
@@ -15,7 +15,7 @@ Místo
 
 Styl levé mapy Styl pravé mapy
 
-O pěti stylech map
+O stylech map
 
 ### Freizeitkarte
 
@@ -43,14 +43,6 @@ Pro pěší objevování menších stezek.
 
 Některé popisky mapy jsou ve francouzštině.
 
-### BBBike
-
-Pro objevování ulic, cyklostezek a jejich okolí.
-
-- Odlišné zobrazení silnic, cyklostezek a pěšin
-- Budovy, parky a lesy pro orientaci
-- Regionální mapy aktualizované každý týden
-
 ### BBBike (Ontrail)
 
 Na pěší a cyklistické výlety, když záleží na místě.
@@ -58,5 +50,15 @@ Na pěší a cyklistické výlety, když záleží na místě.
 - Kompaktní mapy šetří úložiště zařízení
 - Zahrnuty i menší silnice a cesty
 - Navigace po zmapovaných silnicích a cestách
+
+### BBBike (OpenTopoMap)
+
+Na pěší a cyklistické výlety ve známém stylu OpenTopoMap, i tam, kde jiné mapy chybí.
+
+- Styl OpenTopoMap: stezky, cesty a pokryv krajiny
+- Regionální mapy aktualizované každý týden
+- Také pro země, které tu žádná jiná mapa nepokrývá
+
+Tato mapa nemá vrstevnice.
 
 Náhledy jsou blízké, ale ne přesné: hodinky kreslí mapu samy, takže barvy a podrobnosti se mohou lišit podle modelu a nastavení mapy.

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 import logging
@@ -22,6 +23,7 @@ from urllib.parse import parse_qs, quote, unquote, urlsplit
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from .admin_attention import attention_report
 from .admin_revisions import statistics_revisions
 from .admin import (
     ADMIN_STYLES,
@@ -149,6 +151,8 @@ SUPPORT_REPORT_DAILY_LIMIT = 30
 PUBLIC_ROWS_MAX_LIMIT = 500
 SUPPORT_REPORT_DAILY_WINDOW_SECONDS = 86_400
 RATE_LIMIT_WINDOW_SECONDS = 60
+# Read-only operator agent reads (GET /internal/attention), counted before auth.
+ATTENTION_RATE_LIMIT = 12
 # Socket timeout for one blocking read or write. A stalled or slow-loris client
 # cannot pin a server thread indefinitely; large bodies and responses still
 # progress as long as each chunk arrives within this interval.
@@ -249,6 +253,7 @@ class CatalogService:
         public_compatibility_stats_enabled: bool = False,
         operations_ingest_secret: str | None = None,
         web_installer_ingest_secret: str | None = None,
+        admin_read_token_sha256: str | None = None,
         opentopomap_contour_mode: str = "off",
         opentopomap_contour_allowlist: tuple[str, ...] = (),
         public_base_url: str = "https://api.terento.app",
@@ -270,6 +275,7 @@ class CatalogService:
         self.public_compatibility_stats_enabled = public_compatibility_stats_enabled
         self.operations_ingest_secret = operations_ingest_secret
         self.web_installer_ingest_secret = web_installer_ingest_secret
+        self.admin_read_token_sha256 = admin_read_token_sha256
         self.opentopomap_contour_mode = opentopomap_contour_mode
         self.opentopomap_contour_allowlist = frozenset(opentopomap_contour_allowlist)
 
@@ -342,7 +348,9 @@ class CatalogService:
             })
         return {"schemaVersion": 1, "providers": providers}
 
-    def catalog_response(self, *, include_maprando: bool = False, include_bbbike: bool = False) -> tuple[bytes, str, datetime]:
+    def catalog_response(self, *, include_maprando: bool = False, include_bbbike: bool = False,
+                         include_osmapa: bool = False,
+                         include_bbbike_opentopo: bool = False) -> tuple[bytes, str, datetime]:
         rows, updated_at = self.database.catalog_snapshot()
         # Every released projection is a closed provider set. A new DB provider
         # must never leak into a client that rejects unknown identities.
@@ -351,7 +359,22 @@ class CatalogService:
             allowed.add("maprando")
         if include_bbbike:
             allowed.add("bbbike")
+        if include_osmapa:
+            allowed.add("osmapa")
         rows = [row for row in rows if row["provider_id"] in allowed]
+        if not include_bbbike_opentopo:
+            # Released v3/v4 clients know only the first two BBBike map types.
+            from .bbbike import LEGACY_MAP_TYPES
+            rows = [row for row in rows
+                    if row["provider_id"] != "bbbike" or not row.get("package_id")
+                    or row.get("map_type") in LEGACY_MAP_TYPES]
+        if any("provider_changed_at" in row for row in rows):
+            # updatedAt (and so Last-Modified and ETag) covers only this
+            # projection's providers, never one it does not publish.
+            changes = [row["provider_changed_at"] for row in rows if row.get("provider_changed_at")]
+            updated_at = max(changes, default=datetime(1970, 1, 1, tzinfo=timezone.utc))
+            if updated_at.tzinfo is None:
+                updated_at = updated_at.replace(tzinfo=timezone.utc)
         body = serialize_catalog(
             build_catalog(
                 rows,
@@ -367,6 +390,10 @@ class CatalogService:
 
     def catalog_v4_response(self) -> tuple[bytes, str, datetime]:
         return self.catalog_response(include_maprando=True, include_bbbike=True)
+
+    def catalog_v5_response(self) -> tuple[bytes, str, datetime]:
+        return self.catalog_response(include_maprando=True, include_bbbike=True, include_osmapa=True,
+                                     include_bbbike_opentopo=True)
 
     def device_catalog_response(self) -> tuple[bytes, str, datetime]:
         rows, updated_at = self.database.device_catalog_snapshot()
@@ -523,6 +550,9 @@ class CatalogService:
         elif provider_id == "bbbike":
             from .bbbike import BBBikeProviderAdapter
             adapter = BBBikeProviderAdapter()
+        elif provider_id == "osmapa":
+            from .osmapa import OSMapaProviderAdapter
+            adapter = OSMapaProviderAdapter()
         elif provider_id == "maprando":
             from .maprando import MapRandoProviderAdapter
             adapter = MapRandoProviderAdapter()
@@ -1033,6 +1063,7 @@ class CatalogService:
             scores=db.scores(),
             release=release,
             public_base_url=self.public_base_url,
+            enabled_providers=enabled,
         )
         body = json.dumps(document, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
         self._preview_manifest_cache = (time.monotonic(), body, generation)
@@ -1448,6 +1479,19 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
         def _operations_authorized(self) -> bool:
             return self._bearer_matches(service.operations_ingest_secret)
 
+        def _admin_read_authorized(self) -> bool:
+            # Only the token's SHA-256 digest is configured on the server.
+            authorization = self.headers.get("Authorization", "")
+            supplied = authorization.removeprefix("Bearer ") if authorization.startswith("Bearer ") else ""
+            return bool(
+                service.admin_read_token_sha256
+                and 32 <= len(supplied) <= 512
+                and hmac.compare_digest(
+                    hashlib.sha256(supplied.encode()).hexdigest().encode(),
+                    service.admin_read_token_sha256.encode(),
+                )
+            )
+
         def _bearer_matches(self, configured_secret: str | None) -> bool:
             authorization = self.headers.get("Authorization", "")
             supplied_secret = authorization.removeprefix("Bearer ") if authorization.startswith("Bearer ") else ""
@@ -1456,6 +1500,17 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 and supplied_secret
                 and hmac.compare_digest(supplied_secret.encode(), configured_secret.encode())
             )
+
+        def _handle_attention(self, *, send_body: bool) -> None:
+            client = (f"attention:{self._client_ip()}", ATTENTION_RATE_LIMIT, RATE_LIMIT_WINDOW_SECONDS)
+            if self._rate_limited(client, record=True):
+                self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=send_body, cache_control="no-store", noindex=True)
+                return
+            if not self._admin_read_authorized():
+                self._send_json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"}, send_body=send_body, cache_control="no-store", noindex=True)
+                return
+            LOGGER.info("attention read served")
+            self._send_json(HTTPStatus.OK, attention_report(service), send_body=send_body, cache_control="no-store", noindex=True)
 
         def _handle_map_event(self) -> None:
             raw = self._intake_body(
@@ -1507,6 +1562,9 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
 
         def _handle_request(self, *, send_body: bool) -> None:
             request_path = urlsplit(self.path).path
+            if request_path == "/internal/attention":
+                self._handle_attention(send_body=send_body)
+                return
             if request_path == "/internal/operations/report-context":
                 if not self._operations_authorized():
                     self._send_json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"}, send_body=send_body, cache_control="no-store", noindex=True)
@@ -1522,8 +1580,9 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if request_path == "/health":
                 self._handle_health(send_body=send_body)
                 return
-            if request_path in {"/maps/catalog.json", "/maps/catalog-v3.json", "/maps/catalog-v4.json"}:
+            if request_path in {"/maps/catalog.json", "/maps/catalog-v3.json", "/maps/catalog-v4.json", "/maps/catalog-v5.json"}:
                 self._handle_catalog(
+                    service.catalog_v5_response if request_path == "/maps/catalog-v5.json" else
                     service.catalog_v4_response if request_path == "/maps/catalog-v4.json" else
                     service.catalog_v3_response if request_path == "/maps/catalog-v3.json" else service.catalog_response,
                     send_body=send_body,
@@ -2976,8 +3035,14 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                         image = {"url": source_image_url, "origin": "garmin-source", "status": "SOURCE"}
                 if image is None:
                     image = generic_fallback_image()
+                # The catalog row names a resolved model. A review display name
+                # is keyed by the reported identity, which two generations can
+                # share ("EPIX"), so it may name the other generation.
+                catalog_model = str(row.get("catalog_model") or "").strip()
+                catalog_variant = str(row.get("catalog_variant") or "").strip()
+                catalog_label = f"{catalog_model} · {catalog_variant}" if catalog_model and catalog_variant else catalog_model
                 models.append({
-                    "model": row.get("model") or row.get("evidence_model"),
+                    "model": catalog_label or row.get("model") or row.get("evidence_model"),
                     "canonicalModel": row.get("canonical_model") or row.get("evidence_model"),
                     "family": row.get("family") or "other",
                     "familyName": row.get("family_name") or row.get("family") or "Other",

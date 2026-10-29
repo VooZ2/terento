@@ -349,6 +349,9 @@ struct MapSelectionPlanner: Sendable {
         if BBBikeProviderAdapter.selectionConflicts(selectedItems.map(\.package)) {
             status = .blocked
             reason = BBBikeProviderAdapter.coexistenceReason
+        } else if let osmapaReason = OSMapaProviderAdapter.selectionConflictReason(selectedItems.map(\.package)) {
+            status = .blocked
+            reason = osmapaReason
         } else if hasInvalidOptionalSelection {
             status = .blocked
             reason = "One selected map component is no longer available. Refresh the catalog and try again."

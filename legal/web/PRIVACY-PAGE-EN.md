@@ -35,7 +35,7 @@ Some data stays in your browser, not on our server: which maps the web installer
 
 ## Website and app connections
 
-Website, web installer, API, catalog and app-update requests may expose your IP address and request metadata to hosting and security providers. In the app, catalog maps download directly from Freizeitkarte, OpenTopoMap, MapRando or BBBike, whose privacy practices apply to those connections. The app’s launch update check retrieves release metadata, not an app download.
+Website, web installer, API, catalog and app-update requests may expose your IP address and request metadata to hosting and security providers. In the app, catalog maps download directly from Freizeitkarte, OpenTopoMap, MapRando, BBBike or OSMapaPL, whose privacy practices apply to those connections. The app’s launch update check retrieves release metadata, not an app download.
 
 These connections serve content, provide requested app functions and protect against abuse. Security processing relies on legitimate interests under GDPR Article 6(1)(f).
 
@@ -75,4 +75,4 @@ Compatibility reports may also include a sanitized MTP model label, USB VID/PID,
 
 Reports may additionally include the original XML model description (up to 160 characters) and model product code (up to 64 ASCII letters, digits or hyphens). These identify a product model, not an individual watch. Whole XML documents, Unit IDs and serial numbers are excluded. Model-code mappings and any administrator corrections are kept separately from the original report.
 
-Updated: 17 October 2026.
+Updated: 26 October 2026.

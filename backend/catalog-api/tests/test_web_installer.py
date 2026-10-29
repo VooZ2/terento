@@ -771,7 +771,8 @@ class WebInstallerEndToEndTests(PGliteTestCase):
 
         # A row stored before the fix resolves on the scheduler's next pass, once.
         self.sql("UPDATE web_installer_event SET canonical_device_model_id = NULL, identity_resolution = NULL")
-        self.assertEqual(self.db.resolve_web_installer_identities(), {"pending": 2, "resolved": 1})
+        self.assertEqual(self.db.resolve_web_installer_identities(),
+                         {"pending": 2, "resolved": 1, "rechecked": 0, "changed": 0})
         self.db.resolve_web_installer_identities()
         self.assertEqual(stats()[0], after)
 
@@ -802,6 +803,55 @@ class WebInstallerEndToEndTests(PGliteTestCase):
             self.assertIn("Washington – United States · BBBike", row)
         self.assertIn("Not enough space on the watch · Writing to the watch", rows[1])
         self.assertNotIn("Download stopped", page)
+
+    def test_reported_epix_names_both_generations_so_only_the_usb_code_decides(self):
+        # Production 2026-10-19: an epix (Gen 2) on the web installer reported
+        # "epix" with USB 091e:4f67 and was counted on the original epix row.
+        gen1, gen2 = "garmin-epix-gen-1", "garmin-epix-gen-2-47"
+        hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        base = dict(stage="MAP_RESULT", operation="install", outcome="SUCCEEDED", writeStarted=True,
+                    provider="maprando", packageId="maprando-hebei", model="epix", firmware="2718",
+                    osFamily="macOS", usbVendorId=0x091E, usbProductId=0x4F67, occurredAt=hour_ago)
+        coded = event(**base)
+        self.assertEqual(self.forward(coded), 201)
+        self.assertEqual(self.forward(event(**{k: v for k, v in base.items() if not k.startswith("usb")})), 201)
+
+        def resolved():
+            return {r["usb_product_id"]: (r["id"], r["resolution"]) for r in self.sql(
+                "SELECT usb_product_id, canonical_device_model_id AS id, identity_resolution AS resolution "
+                "FROM web_installer_event")}
+
+        # The name keeps both generations open; the libmtp code (migration 084) names Gen 2 only.
+        self.assertEqual(resolved(), {0x4F67: (gen2, "USB_LEARNED"), None: (None, "UNRESOLVED")})
+        # A row counted on the original epix before the fix moves on the next pass.
+        self.sql("UPDATE web_installer_event SET canonical_device_model_id = %s, identity_resolution = 'SINGLE_MATCH'",
+                 (gen1,))
+        self.assertEqual(self.db.resolve_web_installer_identities(),
+                         {"pending": 0, "resolved": 0, "rechecked": 2, "changed": 2})
+        self.assertEqual(resolved(), {0x4F67: (gen2, "USB_LEARNED"), None: (None, "UNRESOLVED")})
+        # Every row is checked on each call, whatever the batch size: an
+        # unchanged first batch never hides later rows.
+        self.sql("UPDATE web_installer_event SET canonical_device_model_id = %s, identity_resolution = 'SINGLE_MATCH'",
+                 (gen1,))
+        self.assertEqual(self.db.resolve_web_installer_identities(limit=1),
+                         {"pending": 0, "resolved": 0, "rechecked": 2, "changed": 2})
+        self.assertEqual(self.db.resolve_web_installer_identities(limit=1),
+                         {"pending": 1, "resolved": 0, "rechecked": 1, "changed": 0})
+        self.assertEqual(resolved(), {0x4F67: (gen2, "USB_LEARNED"), None: (None, "UNRESOLVED")})
+        # An app report of the same code confirmed as the original epix makes the
+        # code name two models, so the web install waits for review.
+        app = validate_compatibility_event(encode(compatibility_event(
+            id=str(uuid4()), timestamp="2026-10-13T20:27:00Z", model="EPIX", family="epix", usbProductID=0x4F67)))
+        self.assertTrue(self.db.insert_compatibility_event(app))
+        self.sql("UPDATE compatibility_evidence_event SET canonical_device_model_id = %s, "
+                 "identity_resolution_state = 'RESOLVED' WHERE event_id = %s", (gen1, app["id"]))
+        self.db.resolve_web_installer_identities()
+        self.assertEqual(resolved()[0x4F67], (None, "UNRESOLVED"))
+        # Reassigned to Gen 2, the code names one model again.
+        self.sql("UPDATE compatibility_evidence_event SET canonical_device_model_id = %s WHERE event_id = %s",
+                 (gen2, app["id"]))
+        self.db.resolve_web_installer_identities()
+        self.assertEqual(resolved()[0x4F67], (gen2, "USB_LEARNED"))
 
     def test_a_usb_code_learned_from_a_confirmed_watch_resolves_web_installs_only_while_it_names_one_model(self):
         # Production 2026-10-13: "fenix 7x pro" names two catalog rows (Wi-Fi and

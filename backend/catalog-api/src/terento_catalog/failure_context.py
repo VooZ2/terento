@@ -14,13 +14,22 @@ CONTEXT_ENUMS = {
     'executionMode': ('in_process', 'worker'),
     'resultKind': ('native_error', 'timeout', 'cancelled', 'process_launch_error', 'process_exit', 'request_io_error', 'response_io_error', 'decode_error', 'invalid_response', 'app_error', 'protection_failed'),
     'nativeCategory': ('detection', 'session_open', 'storage_read', 'inventory_read', 'object_read', 'allocation', 'invalid_argument', 'unspecified'),
-    'nativeCodeNamespace': ('terento_snapshot', 'terento_inventory', 'terento_file_prefix', 'terento_file_range', 'terento_map_write'),
+    'nativeCodeNamespace': ('terento_snapshot', 'terento_inventory', 'terento_file_prefix', 'terento_file_range', 'terento_map_write', 'terento_map_verify'),
     'componentKind': ('main', 'contours'),
 }
 PROTECTION_ENUMS = {
     'protectionBoundary': ('pre-write', 'post-write'),
     'protectionReason': ('target-present-before-write', 'non-target-object-added', 'preexisting-object-removed', 'preexisting-object-changed', 'inventory-ambiguous', 'target-missing', 'target-duplicate', 'target-invalid', 'target-filename-mismatch', 'target-size-mismatch'),
 }
+# protection.affectedFolder: the coarse location of the object that decided an
+# added/removed/changed reason. Standard /GARMIN folder names or buckets only.
+AFFECTED_FOLDERS = (
+    'Activity', 'Apps', 'Courses', 'Debug', 'Device', 'ErrLogs', 'Goals', 'Locations',
+    'Map', 'Metrics', 'Monitor', 'NewFiles', 'Records', 'RemoteSW', 'Schedules',
+    'Settings', 'Sleep', 'Sports', 'Text', 'TLG', 'Totals', 'Workouts',
+    'map-file', 'garmin-root', 'garmin-other', 'outside-garmin',
+)
+DELTA_REASONS = ('non-target-object-added', 'preexisting-object-removed', 'preexisting-object-changed')
 COUNT_FIELDS = ('beforeObjectCount', 'afterObjectCount', 'addedObjectCount', 'removedObjectCount', 'changedObjectCount')
 TARGET_FIELDS = ('targetPresent', 'targetUnique', 'targetKindMatches', 'targetFilenameMatches', 'targetSizeMatches', 'targetPathMatches', 'targetItemIDMatches')
 BOUNDARY_STAGES = {
@@ -55,7 +64,7 @@ def validate_context(context: Any) -> None:
     if 'protection' not in context:
         return
     protection = context['protection']
-    allowed = set(PROTECTION_ENUMS) | set(COUNT_FIELDS) | set(TARGET_FIELDS) | {'stableIdentityComparisonVersion'}
+    allowed = set(PROTECTION_ENUMS) | set(COUNT_FIELDS) | set(TARGET_FIELDS) | {'stableIdentityComparisonVersion', 'affectedFolder'}
     if not isinstance(protection, dict) or set(protection) - allowed:
         raise ValueError('invalid_protection_fields')
     if not set(PROTECTION_ENUMS) <= set(protection):
@@ -69,6 +78,11 @@ def validate_context(context: Any) -> None:
     for key in TARGET_FIELDS:
         if key in protection and protection[key] is not None and type(protection[key]) is not bool:
             raise ValueError('invalid_protection_target')
+    if 'affectedFolder' in protection and (
+        protection['affectedFolder'] not in AFFECTED_FOLDERS
+        or protection['protectionReason'] not in DELTA_REASONS
+    ):
+        raise ValueError('invalid_affected_folder')
     if 'stableIdentityComparisonVersion' in protection and not _integer(protection['stableIdentityComparisonVersion'], 1, 2):
         raise ValueError('invalid_comparison_version')
     expected = {'prewrite_protection': 'pre-write', 'postwrite_protection': 'post-write', 'target_validation': 'post-write'}.get(context['boundary'])
