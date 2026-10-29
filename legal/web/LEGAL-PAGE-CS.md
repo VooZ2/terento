@@ -6,7 +6,7 @@ Terento je bezplatná aplikace macOS s otevřeným zdrojovým kódem pro instala
 
 Terento je nezávislý projekt vydávaný soukromou osobou. Tvůrce najdete na stránce [O projektu](/cs/about/). Kontakt: [hello@terento.app](mailto:hello@terento.app).
 
-Aplikace je určena pro Macy s Apple Silicon. Webový instalátor je beta a vyžaduje Google Chrome, Microsoft Edge, Operu nebo Brave na Macu nebo počítači s Linuxem. Kompatibilitu hodnotíme pro každý přesný model a variantu hodinek. Před použitím ověřte [kompatibilitu](/cs/compatibility/). Příspěvky jsou dobrovolné a neodemykají funkce, mapy ani poskytovatele.
+Aplikace je určena pro Macy s Apple Silicon. Webový instalátor vyžaduje Google Chrome, Microsoft Edge, Operu nebo Brave na Macu nebo počítači s Linuxem; na Linuxu se ještě testuje. Kompatibilitu hodnotíme pro každý přesný model a variantu hodinek. Před použitím ověřte [kompatibilitu](/cs/compatibility/). Příspěvky jsou dobrovolné a neodemykají funkce, mapy ani poskytovatele.
 
 ## Licence softwaru a dalších součástí
 

@@ -2750,6 +2750,10 @@ details p {
   margin: 22px 0 0;
 }
 
+.web-installer-action {
+  margin: 28px 0 0;
+}
+
 .guide-facts span,
 .download-badges li {
   padding: 7px 11px;

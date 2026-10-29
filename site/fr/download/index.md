@@ -27,7 +27,7 @@ Avant l’installation
 - macOS 13 ou version ultérieure
 - Mac Apple Silicon
 - Montre Garmin compatible avec les cartes
-[Lire le guide d’installation sur Mac](https://terento.app/fr/guides/install-garmin-maps-mac/)
+[Lire le guide d’installation sur Mac](https://terento.app/fr/guides/install-garmin-maps-mac/) [Pas de Mac Apple Silicon ? Utilisez l’installateur web](https://terento.app/fr/install/)
 
 ## État de la version
 

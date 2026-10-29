@@ -9,7 +9,7 @@ Open-Source-Projekt
 
 Installiere, aktualisiere und verwalte Drittanbieter-Karten mit einer nativen macOS-App — ohne manuelle Dateiübertragungen.
 
-[Herunterladen](https://terento.app/de/download/) [Kompatibilität prüfen](https://terento.app/de/compatibility/)
+[Herunterladen](https://terento.app/de/download/) [Kompatibilität prüfen](https://terento.app/de/compatibility/) [Oder direkt aus dem Browser installieren](https://terento.app/de/install/)
 
 Terento zeigt den Installationsfortschritt von Community-Karten unter macOS
 
@@ -44,6 +44,18 @@ Terento zeigt Drittanbieter-Kartenanbieter und Regionen auf macOS
 Sieh, was installiert ist, aktualisiere Karten, wenn neuere Versionen verfügbar sind, und entferne von Terento verwaltete Drittanbieter-Karten. Originale Garmin-Karten bleiben geschützt.
 
 Terento zeigt installierte Drittanbieter-Karten nach Anbieter gruppiert
+
+Web-Installer
+
+## Keine App? Installiere aus dem Browser.
+
+Verbinde deine Garmin-Uhr per USB-Kabel, wähle Karten und installiere sie direkt aus Chrome, Edge, Opera oder Brave. Später aktualisierst oder entfernst du sie genauso.
+
+Funktioniert auf dem Mac und, noch im Test, unter Linux. Noch nicht unter Windows, auf Smartphones oder Tablets.
+
+Mac · Linux (im Test)Chrome, Edge, Opera, BraveUSB-Datenkabel
+
+[Web-Installer öffnen](https://terento.app/de/install/)
 
 Verfügbare Karten
 
@@ -118,6 +130,10 @@ Was soll ich tun, wenn die Installation fehlschlägt?
 Wähle nach einer fehlgeschlagenen Installation „Report issue“. Terento öffnet GitHub mit einem bereits ausgefüllten Bericht. Prüfe ihn vor dem Veröffentlichen: GitHub-Issues sind öffentlich. Für Hilfe per E-Mail nenne dein Uhrenmodell, die Kartenregion und den Fehler. [Lies die Fehlerbehebung.](https://terento.app/de/guides/troubleshooting/)
 
 [Issue öffnen](https://github.com/VooZ2/terento/issues/new/choose) [Support per E-Mail](mailto:hello@terento.app?subject=Terento%20installation%20issue)
+
+Kann ich Karten installieren, ohne die App zu installieren?
+
+Ja. Der [Web-Installer](https://terento.app/de/install/) installiert, aktualisiert und entfernt Karten aus dem Katalog in Chrome, Edge, Opera oder Brave auf dem Mac und unter Linux, wo er noch getestet wird. Unter Windows, auf Smartphones und Tablets funktioniert er noch nicht, und eigene .img-Karten kann er nicht hinzufügen.
 
 Heute loslegen
 

@@ -9,7 +9,7 @@ Progetto open source
 
 Installa, aggiorna e gestisci mappe di terze parti da un’app macOS nativa — senza trasferimenti manuali di file.
 
-[Scarica](https://terento.app/it/download/) [Verifica la compatibilità](https://terento.app/it/compatibility/)
+[Scarica](https://terento.app/it/download/) [Verifica la compatibilità](https://terento.app/it/compatibility/) [Oppure installa dal browser](https://terento.app/it/install/)
 
 Terento mostra l’avanzamento dell’installazione di mappe della comunità su macOS
 
@@ -44,6 +44,18 @@ Terento mostra provider e regioni di mappe di terze parti su macOS
 Visualizza le mappe installate, aggiornatele quando è disponibile una versione più recente e rimuovi le mappe di terze parti gestite da Terento. Le mappe Garmin originali restano protette.
 
 Terento mostra le mappe di terze parti installate raggruppate per provider
+
+Installer web
+
+## Niente app? Installa dal browser.
+
+Collega il tuo Garmin con un cavo USB, scegli le mappe e installale direttamente da Chrome, Edge, Opera o Brave. In seguito le aggiorni o le rimuovi allo stesso modo.
+
+Funziona su Mac e, ancora in fase di test, su Linux. Non ancora su Windows, telefoni o tablet.
+
+Mac · Linux (in test)Chrome, Edge, Opera, BraveCavo USB dati
+
+[Apri l’installer web](https://terento.app/it/install/)
 
 Mappe disponibili
 
@@ -118,6 +130,10 @@ Cosa devo fare se l’installazione non riesce?
 Nella schermata di installazione non riuscita, scegli “Report issue”. Terento apre GitHub con il rapporto già compilato. Controllalo prima di pubblicarlo: le issue su GitHub sono pubbliche. Per assistenza via e-mail, indica il modello dell’orologio, la regione della mappa e cosa è successo. [Leggi la guida alla risoluzione dei problemi.](https://terento.app/it/guides/troubleshooting/)
 
 [Apri una issue](https://github.com/VooZ2/terento/issues/new/choose) [Scrivi all’assistenza](mailto:hello@terento.app?subject=Terento%20installation%20issue)
+
+Posso installare le mappe senza installare l’app?
+
+Sì. L’ [installer web](https://terento.app/it/install/) installa, aggiorna e rimuove le mappe del catalogo da Chrome, Edge, Opera o Brave su Mac e su Linux, dove è ancora in fase di test. Non funziona ancora su Windows, telefoni o tablet e non può aggiungere mappe .img personali.
 
 Inizia oggi
 

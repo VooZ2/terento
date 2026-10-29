@@ -267,6 +267,7 @@ FAQ_ANSWER_KEYS = (
     "update_answer",
     "connection_answer",
     "failure_answer",
+    "web_installer_answer",
 )
 
 

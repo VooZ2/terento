@@ -10,18 +10,18 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SHELL_VERSION = "20261010-web-installer-shell-v1"
+SHELL_VERSION = "20261029-web-installer-public-v1"
 PROVIDER_SCRIPT_VERSION = "20261026-osmapa-v1"
-STYLE_VERSION = "20261011-install-sources-v1"
+STYLE_VERSION = "20261029-web-installer-v1"
 IMAGE_VERSION = "20260912-app-screens-v2"
 LANGUAGE_VERSION = "20260926-static-shell-v1"
 COMPATIBILITY_LOCALES_VERSION = "20261011-compatibility-install-sources-v1"
 COMPATIBILITY_VERSION = "20261011-compatibility-install-sources-v1"
 UMAMI_SCRIPT_VERSION = "20260905-campaign-url-only-v1"
 PAGE_LANGUAGE_VERSION = "20261015-shared-page-language-v3"
-# Footer Web installer link (lab host until the terento.app/install/ launch).
-# Localized pages add ?lang=; site-shell.js sets it on Legal/Privacy after a language switch.
-WEB_INSTALLER_URL = "https://lab.terento.app/install/"
+# Footer Web installer link: the public installer (launch 2026-10-29) on the
+# site's language paths; site-shell.js follows a language switch on Legal/Privacy.
+WEB_INSTALLER_URL = "/install/"
 LOCALES = {
     "en": {"flag": "🇬🇧", "name": "English", "home": "Terento home", "primary": "Primary navigation", "menu": "Menu", "close": "Close menu", "about": "About", "styles": "Maps", "compatibility": "Compatibility", "guide": "Guide", "faq": "FAQ", "troubleshooting": "Troubleshooting", "download": "Download", "language": "Choose language", "footer": "Footer navigation", "status": "Open-source project", "legal": "Legal", "privacy": "Privacy", "support": "Support Terento", "web_installer": "Web installer"},
     "de": {"flag": "🇩🇪", "name": "Deutsch", "home": "Terento Startseite", "primary": "Hauptnavigation", "menu": "Menü", "close": "Menü schließen", "about": "Über uns", "styles": "Karten", "compatibility": "Kompatibilität", "guide": "Anleitung", "faq": "FAQ", "troubleshooting": "Fehlerbehebung", "download": "Download", "language": "Sprache wählen", "footer": "Footer-Navigation", "status": "Open-Source-Projekt", "legal": "Rechtliches", "privacy": "Datenschutz", "support": "Support Terento", "web_installer": "Web-Installer"},
@@ -58,7 +58,7 @@ def language_links(locale: str, route: str, location: str, in_page: bool = False
 def shell(locale: str, route: str, page: str) -> tuple[str, str]:
     copy = LOCALES[locale]
     root = localized_root(locale)
-    web_installer = WEB_INSTALLER_URL if locale == "en" else f"{WEB_INSTALLER_URL}?lang={locale}"
+    web_installer = WEB_INSTALLER_URL if locale == "en" else f"/{locale}{WEB_INSTALLER_URL}"
     compatibility = route_for(locale, "compatibility/")
     download = route_for(locale, "download/")
     guide = route_for(locale, "guides/install-garmin-maps-mac/")

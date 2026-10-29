@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="pl" data-language="pl">
   <head>
-    <script defer src="/site-shell.js?v=20261010-web-installer-shell-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20261011-install-sources-v1">
+    <script defer src="/site-shell.js?v=20261029-web-installer-public-v1"></script>
+    <link rel="stylesheet" href="/styles.css?v=20261029-web-installer-v1">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
@@ -144,6 +144,14 @@
                   "@type": "Answer",
                   "text": "Na ekranie nieudanej instalacji wybierz „Report issue”. Terento otwiera GitHuba z już wypełnionym raportem. Sprawdź go przed publikacją: zgłoszenia na GitHubie są publiczne. Jeśli potrzebujesz pomocy e-mailem, podaj model zegarka, region mapy i opisz, co się stało. Przeczytaj poradnik rozwiązywania problemów."
                 }
+              },
+              {
+                "@type": "Question",
+                "name": "Czy mogę zainstalować mapy bez instalowania aplikacji?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Tak. Instalator webowy instaluje, aktualizuje i usuwa mapy z katalogu w Chrome, Edge, Operze lub Brave na Macu oraz na Linuksie, gdzie jest jeszcze testowany. Nie działa jeszcze na Windowsie, telefonach ani tabletach i nie dodaje własnych map .img."
+                }
               }
             ]
           }
@@ -191,7 +199,7 @@
             <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>Projekt open source</p>
             <h1 id="hero-title">Instaluj mapy na zegarkach Garmin — po prostu</h1>
             <p class="hero-lede">Instaluj, aktualizuj i zarządzaj mapami innych firm z natywnej aplikacji macOS — bez ręcznego przesyłania plików.</p>
-            <div class="hero-actions"><a class="download-action hero-download-action" href="/pl/download/" data-umami-event="download-cta-click" data-umami-event-location="home-hero">Pobierz <span aria-hidden="true">→</span></a><a class="text-link hero-compatibility-link" href="/pl/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="home-hero">Sprawdź kompatybilność <span aria-hidden="true">→</span></a></div>
+            <div class="hero-actions"><a class="download-action hero-download-action" href="/pl/download/" data-umami-event="download-cta-click" data-umami-event-location="home-hero">Pobierz <span aria-hidden="true">→</span></a><a class="text-link hero-compatibility-link" href="/pl/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="home-hero">Sprawdź kompatybilność <span aria-hidden="true">→</span></a><a class="text-link hero-web-installer-link" href="/pl/install/" data-umami-event="web-installer-link-click" data-umami-event-location="home-hero">Albo zainstaluj z przeglądarki<span aria-hidden="true">→</span></a></div>
           </div>
 
           <div class="hero-visual">
@@ -281,6 +289,19 @@
         </div></div>
       </section>
         </div>
+        </div>
+      </section>
+      <section class="web-installer section" id="web-installer" aria-labelledby="web-installer-title">
+        <div class="shell">
+          <div class="section-heading">
+            <p class="eyebrow">Instalator webowy</p><h2 id="web-installer-title">Bez aplikacji? Instaluj z przeglądarki.</h2>
+          </div>
+          <div class="problem-statement">
+            <p>Podłącz zegarek Garmin kablem USB, wybierz mapy i zainstaluj je prosto z Chrome, Edge, Opery lub Brave. Później tak samo je zaktualizujesz lub usuniesz.</p>
+            <p>Działa na Macu oraz, jeszcze w fazie testów, na Linuksie. Jeszcze nie na Windowsie, telefonach ani tabletach.</p>
+          </div>
+          <p class="guide-facts web-installer-facts"><span>Mac · Linux (w testach)</span><span>Chrome, Edge, Opera, Brave</span><span>Kabel USB do transmisji danych</span></p>
+          <p class="web-installer-action"><a class="text-link" href="/pl/install/" data-umami-event="web-installer-link-click" data-umami-event-location="home-section">Otwórz instalator webowy<span aria-hidden="true">→</span></a></p>
         </div>
       </section>
       <section class="provider-section section" id="providers" aria-labelledby="providers-title">
@@ -389,6 +410,10 @@
                 <a class="text-link" href="mailto:hello&#64;terento.app?subject=Terento%20installation%20issue" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="email">Napisz do pomocy <span aria-hidden="true">→</span></a>
               </div>
             </details>
+            <details>
+              <summary>Czy mogę zainstalować mapy bez instalowania aplikacji?</summary>
+              <p>Tak. <a href="/pl/install/" data-umami-event="web-installer-link-click" data-umami-event-location="home-faq">Instalator webowy</a> instaluje, aktualizuje i usuwa mapy z katalogu w Chrome, Edge, Operze lub Brave na Macu oraz na Linuksie, gdzie jest jeszcze testowany. Nie działa jeszcze na Windowsie, telefonach ani tabletach i nie dodaje własnych map .img.</p>
+            </details>
             </div>
         </div>
       </section>
@@ -416,7 +441,7 @@
         </div>
         <nav class="footer-nav" data-shell-aria="footer" aria-label="Nawigacja w stopce">
           <a href="/pl/#faq" data-shell-copy="faq" data-shell-route="faq" data-umami-event="faq-link-click" data-umami-event-location="footer-nav">FAQ</a><a href="/pl/guides/troubleshooting/" data-shell-copy="troubleshooting" data-shell-route="troubleshooting" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Rozwiązywanie problemów</a>
-          <a data-shell-copy="web_installer" href="https://lab.terento.app/install/?lang=pl" data-umami-event="web-installer-link-click" data-umami-event-location="footer-nav">Instalator webowy</a>
+          <a data-shell-copy="web_installer" href="/pl/install/" data-umami-event="web-installer-link-click" data-umami-event-location="footer-nav">Instalator webowy</a>
           <a data-shell-copy="legal" href="/legal/" data-umami-event="legal-link-click" data-umami-event-location="footer-nav">Informacje prawne</a>
           <a data-shell-copy="privacy" href="/privacy/" data-umami-event="privacy-link-click" data-umami-event-location="footer-nav">Prywatność</a>
         </nav>

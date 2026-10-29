@@ -9,7 +9,7 @@ Open-source projekt
 
 Instalujte, aktualizujte a spravujte mapy třetích stran z nativní aplikace pro macOS — bez ručních přenosů souborů.
 
-[Stáhnout](https://terento.app/cs/download/) [Ověřit kompatibilitu](https://terento.app/cs/compatibility/)
+[Stáhnout](https://terento.app/cs/download/) [Ověřit kompatibilitu](https://terento.app/cs/compatibility/) [Nebo instalujte z prohlížeče](https://terento.app/cs/install/)
 
 Terento zobrazuje průběh instalace komunitních map v macOS
 
@@ -44,6 +44,18 @@ Terento zobrazuje poskytovatele a oblasti map třetích stran v macOS
 Prohlédněte si nainstalované mapy, aktualizujte je, když je k dispozici novější vydání, a odstraňte mapy třetích stran spravované aplikací Terento. Původní mapy Garmin zůstávají chráněné.
 
 Terento zobrazuje nainstalované mapy třetích stran seskupené podle poskytovatele
+
+Webový instalátor
+
+## Bez aplikace? Instalujte z prohlížeče.
+
+Připojte hodinky Garmin kabelem USB, vyberte mapy a nainstalujte je přímo z Chrome, Edge, Opery nebo Brave. Později je stejně aktualizujete nebo odeberete.
+
+Funguje na Macu a, zatím ve zkušebním provozu, na Linuxu. Zatím ne ve Windows, na telefonech ani tabletech.
+
+Mac · Linux (v testu)Chrome, Edge, Opera, BraveDatový kabel USB
+
+[Otevřít webový instalátor](https://terento.app/cs/install/)
 
 Dostupné mapy
 
@@ -118,6 +130,10 @@ Co mám dělat, když instalace selže?
 Na obrazovce neúspěšné instalace zvolte „Report issue“. Terento otevře GitHub s již vyplněnou zprávou. Před zveřejněním ji zkontrolujte: hlášení na GitHubu jsou veřejná. Pro pomoc e-mailem uveďte model hodinek, oblast mapy a popis problému. [Přečtěte si průvodce řešením potíží.](https://terento.app/cs/guides/troubleshooting/)
 
 [Otevřít issue](https://github.com/VooZ2/terento/issues/new/choose) [Napsat podpoře](mailto:hello@terento.app?subject=Terento%20installation%20issue)
+
+Mohu instalovat mapy bez instalace aplikace?
+
+Ano. [Webový instalátor](https://terento.app/cs/install/) instaluje, aktualizuje a odebírá mapy z katalogu v Chrome, Edge, Opeře nebo Brave na Macu a na Linuxu, kde se ještě testuje. Zatím nefunguje ve Windows, na telefonech ani tabletech a nepřidá vlastní mapy .img.
 
 Začněte ještě dnes
 

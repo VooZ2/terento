@@ -28,7 +28,7 @@ Before you install
 - macOS 13 or later
 - Apple Silicon Mac
 - Garmin smartwatch with map support
-[Read the Mac installation guide](https://terento.app/guides/install-garmin-maps-mac/)
+[Read the Mac installation guide](https://terento.app/guides/install-garmin-maps-mac/) [No Apple Silicon Mac? Use the web installer](https://terento.app/install/)
 
 ## Release status
 
