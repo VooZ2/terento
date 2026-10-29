@@ -848,15 +848,15 @@ def _diagnostic_result(value: Any) -> str:
     labels = {
         "SUCCEEDED": ("success", "Successful"),
         "FAILED": ("danger", "Failed"),
-        # A pre-write result is not a failed attempt (ADM-13). The pill says
-        # "Blocked" so it fits table cells (owner decision 2026-10-06); its
-        # title keeps the full term.
-        "NOT_STARTED": ("warning", "Blocked"),
+        # A pre-write result is not a failed attempt (ADM-13). It says "Not
+        # started", not "Blocked": nothing was refused, the watch link, a
+        # download or an earlier map stopped it (owner decision 2026-10-29).
+        "NOT_STARTED": ("warning", "Not started"),
         "INCOMPLETE": ("warning", "Incomplete"),
         "BLOCKED": ("warning", "Blocked"),
     }
     kind, label = labels.get(raw, ("unknown", raw.title() if raw else "—"))
-    title = "Blocked before writing" if raw == "NOT_STARTED" else None
+    title = "Nothing was written" if raw == "NOT_STARTED" else None
     return _status_pill(kind, label, value=raw or "UNKNOWN", title=title)
 
 
@@ -1184,14 +1184,14 @@ _MAP_ACTIVITY_STATES = {
     "DOWNLOAD_CANCELLED": ("Download cancelled", "unknown", "neutral"),
     "DOWNLOAD_INTERRUPTED": ("Download interrupted", "unknown", "warning"),
     # One vocabulary with the charts and tiles (Successful / Failed /
-    # Blocked before writing).
+    # Not started).
     "DOWNLOAD_SUCCEEDED": ("Download successful", "succeeded", "success"),
     "DOWNLOAD_FAILED": ("Download failed", "failed", "error"),
     "INSTALL_SUCCEEDED": ("Install successful", "succeeded", "success"),
     "INSTALL_FAILED": ("Install failed", "failed", "error"),
     "MAP_UPDATE_SUCCEEDED": ("Update successful", "succeeded", "success"),
     "MAP_UPDATE_FAILED": ("Update failed", "failed", "error"),
-    "MAP_UPDATE_NOT_STARTED": ("Update blocked before writing", "unknown", "warning"),
+    "MAP_UPDATE_NOT_STARTED": ("Update not started", "unknown", "warning"),
 }
 
 
@@ -6088,7 +6088,7 @@ def _operation_result(results: list[dict[str, Any]]) -> str:
     if len(classifications) != 1:
         return "UNKNOWN"
     classification = next(iter(classifications))
-    # A pre-write (writeStarted=false) result is "Blocked before writing", never
+    # A pre-write (writeStarted=false) result is "Not started", never
     # a failed installation attempt, for preflight and download stages alike
     # (ADM-13). It can still be an open problem that needs review.
     return {
@@ -6158,7 +6158,7 @@ def _operation_map_label(results: list[dict[str, Any]]) -> str:
 
 def _diagnostic_heading(outcome: Any, *, update: bool = False) -> str:
     operation = 'Map update' if update else 'Installation'
-    suffix = {'FAILED': 'failed', 'SUCCEEDED': 'succeeded', 'NOT_STARTED': 'blocked before writing',
+    suffix = {'FAILED': 'failed', 'SUCCEEDED': 'succeeded', 'NOT_STARTED': 'not started',
               'BLOCKED': 'blocked', 'INCOMPLETE': 'incomplete'}.get(str(outcome or '').upper(), 'result unknown')
     return operation + ' ' + suffix
 
@@ -6887,7 +6887,7 @@ def device_detail_page(
             )
             error_markup = error_state + f"<small>{html.escape(_diagnostic_error_reason(results, resolved=resolved))}</small>"
         elif result == "NOT_STARTED":
-            # A Blocked row always has a cause; the failed earlier map of a
+            # A Not started row always has a cause; the failed earlier map of a
             # batch can be missing here (a pre-install download failure or
             # an unreported result), so name it instead of "No error".
             reason = ("Earlier map failed" if any(
@@ -7002,7 +7002,7 @@ def device_detail_page(
     history_section = "<section class='diagnostics-detail-section model-page-section compact-empty-state' id='installations' aria-labelledby='installation-history-title'><h2 id='installation-history-title'>Installation history</h2><p class='empty'>No installation history for this device.</p></section>" if not rows_markup else f"""
         <section class='diagnostics-detail-section model-page-section' id='installations' aria-labelledby='installation-history-title'>
           <div class='section-heading'><div><h2 id='installation-history-title'>Installation history</h2></div></div>
-          <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'><div class='quick-filter-group' role='group' aria-label='Quick history filters'><button type='button' class='quick-filter active' data-history-filter='all' aria-pressed='true'>All</button><button type='button' class='quick-filter' data-history-filter='failed' aria-pressed='false'>Failed</button><button type='button' class='quick-filter' data-history-filter='open' aria-pressed='false'>Open problems</button><button type='button' class='quick-filter' data-history-filter='blocked' aria-pressed='false' title='Blocked before writing'>Blocked</button><button type='button' class='quick-filter' data-history-filter='succeeded' aria-pressed='false'>Successful</button></div><details class='admin-disclosure filter-disclosure history-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter' data-admin-dropdown><option value='all'>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='blocked'>Blocked</option><option value='open'>Open problems</option><option value='resolved-errors'>Resolved errors</option></select></label></div></details><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear diagnostic filters' hidden>Clear</button></form>
+          <form class='filter-bar diagnostic-filter-bar' id='diagnostic-filters'><div class='quick-filter-group' role='group' aria-label='Quick history filters'><button type='button' class='quick-filter active' data-history-filter='all' aria-pressed='true'>All</button><button type='button' class='quick-filter' data-history-filter='failed' aria-pressed='false'>Failed</button><button type='button' class='quick-filter' data-history-filter='open' aria-pressed='false'>Open problems</button><button type='button' class='quick-filter' data-history-filter='blocked' aria-pressed='false'>Not started</button><button type='button' class='quick-filter' data-history-filter='succeeded' aria-pressed='false'>Successful</button></div><details class='admin-disclosure filter-disclosure history-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Filter installation history</span><select id='diagnostic-state-filter' data-admin-dropdown><option value='all'>All</option><option value='succeeded'>Successful</option><option value='failed'>Failed</option><option value='blocked'>Not started</option><option value='open'>Open problems</option><option value='resolved-errors'>Resolved errors</option></select></label></div></details><button type='button' class='secondary-button filter-clear' data-filter-clear aria-label='Clear diagnostic filters' hidden>Clear</button></form>
           <p class='results-count' id='diagnostic-results-count' aria-live='polite'></p>
           <div class='table-wrap diagnostic-list-wrap'><table class='diagnostic-list-table model-history-table mobile-record-table'><caption class='sr-only'>Installation history for this exact model and variant</caption><thead><tr><th scope='col' class='column-date'>Date</th><th scope='col'>Map</th><th scope='col' class='column-status'>Result</th><th scope='col'>Error</th><th scope='col'>GitHub issue</th><th scope='col'>App version</th><th scope='col' class='column-status'>Action</th></tr></thead><tbody id='diagnostic-rows'>{history_rows}</tbody></table></div>
           {history_pagination}

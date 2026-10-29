@@ -24,13 +24,13 @@ ambiguous or conflicting evidence is shown explicitly. The list is titled
 `Update reports`, is reached from Tools → Update reports (the Tools menu and
 that item are marked active on it; Maps carries no Update reports link) and has
 no link to itself. It follows the Installations layout (owner decision
-2026-10-06): one summary card with plain Reports, Successful, Failed, Blocked
+2026-10-06): one summary card with plain Reports, Successful, Failed, Not started
 and Open numbers and no scope chips (the heading carries `All time` as page
 meta), counted as raw update report rows of the diagnostic stream and
 independent of the outcome filter and pagination, so it is never presented as
 the Maps update total. Failed and Open are red only when positive; a positive
 Open links to the open failed reports. Below the card, with no wrapping card or
-title, the quick-filter bar (All, Failed, Blocked, Successful; server-side links
+title, the quick-filter bar (All, Failed, Not started, Successful; server-side links
 styled exactly like the Installations quick filters, `aria-current` on the
 active one, Clear only while a filter is active) sits directly above the table
 at the shared filter-to-table gap. The table (Date, Map, Result, GitHub issue,
@@ -736,7 +736,7 @@ history use the right column.
 Update history uses the Installation history layout: its `Update history` title
 sits outside the card in the same section heading, with no scope chip, followed
 by the same quick-filter bar in the Installation history order (All, Failed,
-Blocked, Successful; Clear when a filter is active) and the same diagnostic
+Not started, Successful; Clear when a filter is active) and the same diagnostic
 list table (Date, Map, Result, GitHub issue, App
 version, Inspect). Its filters and pages stay server-side (`updateOutcome`,
 `updateOffset`), so the filters are links; the active one carries
@@ -746,10 +746,12 @@ column only when a listed row has a linked issue; narrower layouts use the same
 labelled record cards as Installation history. An empty Update history shows
 the same compact empty state as Installation history and omits filters, table
 and pagination; a filter with no matches keeps the filter bar and says so.
-A pre-write result (`writeStarted=false`) shows a `Blocked` status pill (its title
-says `Blocked before writing`; quick filters also read `Blocked`, counts keep
-the full term), is not in the Failed filter, has its own Blocked filter, and
-stays an
+A pre-write result (`writeStarted=false`) shows a `Not started` status pill
+(title `Nothing was written`; quick filters, tiles and counts also read `Not
+started`; owner decision 2026-10-29 replaced `Blocked`, which read as a refusal
+although these results come from a lost watch link, a failed download or an
+earlier failed map), is not in the Failed filter, has its own Not started
+filter, and stays an
 open problem when the canonical predicate says so. Its Error cell always names
 the cause, never `No error`: a map not started because an earlier map of the
 same operation failed reads `Earlier map failed`, even when that earlier
@@ -866,7 +868,7 @@ rank; an independently selectable contours package whose component is main does.
 Unknown or zero counts cannot create ranking entries or advance their dates.
 
 When retained update diagnostics establish a terminal prewrite outcome, Activity
-shows “Update blocked before writing”, its reason and a link to the report. This
+shows “Update not started”, its reason and a link to the report. This
 is separate from failed writes and never increments Update failed. A completed
 acquisition remains a completed acquisition even if the later update stops.
 
@@ -988,12 +990,12 @@ physical-watch identifier is collected.
 The model detail adds a separate Updates card and Update history, scoped to all
 retained nonlocal reports for that exact identity. The Installs and Updates
 cards share one design (same classes, label and value sizes), carry no `All
-time` chip, and show plain Successful, Failed and Blocked before writing counts
+time` chip, and show plain Successful, Failed and Not started counts
 without links (owner decision 2026-10-06); the Update history outcome filters
 open the matching records. The Administration card has two separated sections,
 Install policy (Install policy and Public compatibility as label/value rows) and
 Support metadata (Support status and Save), with no optional note fields.
-Blocked results stay in
+Not started results stay in
 history and outside the attempt denominator. Summary totals are independent of
 history pagination and diagnostic resolution. Conflicting logical reports remain
 visible with an ambiguity notice and are excluded from completed counts.

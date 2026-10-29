@@ -222,7 +222,7 @@ class UpdateDiagnosticsHTTPTests(unittest.TestCase):
         self.assertEqual(data['totals'], totals)
         page = update_diagnostics_page(data, {'username': 'operator'}, 'csrf').decode()
         self.assertIn('<h1>Update reports</h1>', page)
-        for label, value in (('Reports', '52'), ('Successful', '44'), ('Failed', '5'), ('Blocked', '3'), ('Open', '2')):
+        for label, value in (('Reports', '52'), ('Successful', '44'), ('Failed', '5'), ('Not started', '3'), ('Open', '2')):
             self.assertIn(f"<span class='admin-metric-label'>{label}", page)
             self.assertIn(f">{value}</strong>", page)
         # One Installations-style summary card, plain numbers, no scope chips and
@@ -253,7 +253,7 @@ class UpdateDiagnosticsHTTPTests(unittest.TestCase):
         self.assertIn("<nav class='filter-bar diagnostic-filter-bar update-report-filters' aria-label='Filter update reports'>"
                       "<div class='quick-filter-group'><a class='quick-filter active' href='/admin/update-diagnostics' aria-current='page'>All</a>", main)
         labels = [part.split('>', 1)[1].split('<', 1)[0] for part in main.split("<a class='quick-filter")[1:]]
-        self.assertEqual(labels, ['All', 'Failed', 'Blocked', 'Successful'])
+        self.assertEqual(labels, ['All', 'Failed', 'Not started', 'Successful'])
         self.assertEqual(main.count("aria-current='page'"), 1)
         self.assertIn("</nav><div class='table-wrap update-report-table-wrap'>", main)
         self.assertNotIn('filter-clear', main)
