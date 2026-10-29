@@ -95,18 +95,34 @@ struct DiagnosticsView: View {
                         .toggleStyle(.checkbox)
                         .tint(TerentoColors.interactive)
 
+                        #if TERENTO_APP_STORE
+                        // App Store builds share only after an opt-in.
+                        Text("Both diagnostics streams are off until you turn them on here or choose Share install results with Terento after an installation. Turning either option off stops future sharing and clears its unsent local queue. Custom IMG installations are sent only as compatibility diagnostics, never as map usage diagnostics.")
+                            .font(.terentoUI(size: 12, weight: .regular))
+                            .foregroundStyle(TerentoColors.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.top, 4)
+                        #else
                         Text("Both diagnostics streams are enabled by default. Turning either option off stops future sharing and clears its unsent local queue. Custom IMG installations are sent only as compatibility diagnostics, never as map usage diagnostics.")
                             .font(.terentoUI(size: 12, weight: .regular))
                             .foregroundStyle(TerentoColors.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
                             .padding(.top, 4)
+                        #endif
                     }
 
                     diagnosticsSection(title: "Failure report") {
+                        #if TERENTO_APP_STORE
+                        Text("After an installation, update, or removal fails, Terento saves a report on this Mac. Report latest failure copies the full report and opens GitHub. If the report field is not filled in, click it and press ⌘A, then ⌘V. Review before submitting. GitHub issues are public.")
+                            .font(.terentoUI(size: 13, weight: .regular))
+                            .foregroundStyle(TerentoColors.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                        #else
                         Text("After an installation, update, or removal fails, Terento saves a report on this Mac. Report latest failure copies the full report and opens GitHub. If the report field is not filled in, click it and press ⌘A, then ⌘V. Review before submitting. GitHub issues are public. Without a GitHub account, send the report to Terento instead: you see exactly what is sent first. Sending a report doesn't depend on the sharing settings above.")
                             .font(.terentoUI(size: 13, weight: .regular))
                             .foregroundStyle(TerentoColors.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
+                        #endif
                         DiagnosticsActionButton(title: "Report latest failure") {
                             failureReportMessage = TerentoDiagnosticLog.reportLatestFailure()
                                 ? "The report is copied. Paste it into the GitHub form and review it before submitting."
@@ -118,6 +134,7 @@ struct DiagnosticsView: View {
                                 .foregroundStyle(TerentoColors.secondaryText)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
+                        #if !TERENTO_APP_STORE
                         HStack(spacing: 18) {
                             Button {
                                 openWindow(id: "support-report")
@@ -130,6 +147,7 @@ struct DiagnosticsView: View {
                             .accessibilityHint("Shows exactly what will be sent before anything is sent.")
                             TerentoHelpLink(topic: .sendReport)
                         }
+                        #endif
                     }
 
                     diagnosticsSection(title: "Delivery") {
@@ -183,6 +201,9 @@ struct DiagnosticsView: View {
         Binding(
             get: { evidenceController.compatibilitySharingEnabled },
             set: { enabled in
+                // Only a real change is a choice. A same-value set must not
+                // record "declined" while an App Store build is still undecided.
+                guard enabled != evidenceController.compatibilitySharingEnabled else { return }
                 actionMessage = nil
                 evidenceController.decideConsent(enabled ? .accepted : .declined)
             }
@@ -193,6 +214,7 @@ struct DiagnosticsView: View {
         Binding(
             get: { mapStatisticsController.sharingEnabled },
             set: { enabled in
+                guard enabled != mapStatisticsController.sharingEnabled else { return }
                 actionMessage = nil
                 mapStatisticsController.decideConsent(enabled ? .accepted : .declined)
             }

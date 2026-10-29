@@ -7,7 +7,12 @@ enum TerentoAppLinks {
     static let documentation = URL(string: "https://github.com/VooZ2/terento#readme")!
     static let issues = URL(string: "https://github.com/VooZ2/terento/issues")!
     static let repository = URL(string: "https://github.com/VooZ2/terento")!
+    #if TERENTO_APP_STORE
+    // App Store builds carry no external payment link (guideline 3.1.1).
+    static let appStoreReview = URL(string: "https://apps.apple.com/app/id6828556832?action=write-review")!
+    #else
     static let donate = URL(string: "https://buymeacoffee.com/vooz2")!
+    #endif
     static let privacy = URL(string: "https://terento.app/privacy/")!
     static let legal = URL(string: "https://terento.app/legal/")!
 
@@ -19,6 +24,28 @@ enum TerentoAppLinks {
     static let websiteFromApp = URL(string: "https://terento.app/?\(appReferralQuery)")!
     static let privacyFromApp = URL(string: "https://terento.app/privacy/?\(appReferralQuery)")!
     static let legalFromApp = URL(string: "https://terento.app/legal/?\(appReferralQuery)")!
+}
+
+/// When an App Store build may ask macOS to show the system rating prompt
+/// (guideline 5.6.1). macOS still decides whether it appears and limits it
+/// to three times a year.
+enum AppStoreReviewPolicy {
+    static let successfulInstallCountKey = "AppStoreSuccessfulInstallCount"
+    static let reviewRequestedVersionKey = "AppStoreReviewRequestedVersion"
+    static let firstRequestAfterInstalls = 3
+
+    /// Counts one successful installation. Returns true from the third one,
+    /// at most once per app version, and never while another prompt shows.
+    @discardableResult
+    static func recordSuccessfulInstallation(version: String, mayRequest: Bool = true,
+                                             defaults: UserDefaults = .standard) -> Bool {
+        let count = defaults.integer(forKey: successfulInstallCountKey) + 1
+        defaults.set(count, forKey: successfulInstallCountKey)
+        guard mayRequest, count >= firstRequestAfterInstalls,
+              defaults.string(forKey: reviewRequestedVersionKey) != version else { return false }
+        defaults.set(version, forKey: reviewRequestedVersionKey)
+        return true
+    }
 }
 
 enum TerentoUpdateChannel: String, Codable, Equatable, Sendable {
@@ -197,9 +224,13 @@ enum TerentoAppUpdateError: LocalizedError, Equatable, Sendable {
 }
 
 struct TerentoAppUpdateService: Sendable {
+    #if !TERENTO_APP_STORE
+    // App Store builds update only through the Mac App Store (guideline
+    // 2.4.5(vii)): the manifest URL and its network check are compiled out.
     static let defaultManifestURL = URL(
         string: "https://terento.app/updates/macos-arm64.json"
     )!
+    #endif
 
     private static let trustedWebsiteHosts: Set<String> = [
         "terento.app",
@@ -209,6 +240,7 @@ struct TerentoAppUpdateService: Sendable {
     private static let trustedGitHubOwner = "VooZ2"
     private static let trustedGitHubRepository = "terento"
 
+    #if !TERENTO_APP_STORE
     let manifestURL: URL
 
     init(manifestURL: URL = TerentoAppUpdateService.defaultManifestURL) {
@@ -254,6 +286,7 @@ struct TerentoAppUpdateService: Sendable {
             currentMacOSVersion: currentMacOSVersion
         )
     }
+    #endif
 
     static func evaluate(
         manifest: TerentoAppUpdateManifest,
@@ -411,6 +444,7 @@ struct TerentoAppUpdateService: Sendable {
         return installedVersion >= requiredVersion
     }
 
+    #if !TERENTO_APP_STORE
     private static func isTrustedManifestURL(_ url: URL) -> Bool {
         isHTTPSURL(url)
             && trustedWebsiteHosts.contains(url.host?.lowercased() ?? "")
@@ -419,6 +453,7 @@ struct TerentoAppUpdateService: Sendable {
             && url.password == nil
             && (url.port == nil || url.port == 443)
     }
+    #endif
 
     private static func isTrustedReleaseURL(_ url: URL) -> Bool {
         isTrustedReleaseNotesURL(url)
@@ -466,6 +501,19 @@ final class AppUpdateController: ObservableObject {
     private var deferredPromptKey: String?
     private var claimedPromptKey: String?
 
+    #if TERENTO_APP_STORE
+    /// App Store builds have no update check and no update UI; the Mac App
+    /// Store delivers updates. The controller stays idle.
+    init(
+        currentVersionProvider: @escaping @Sendable () -> TerentoInstalledVersion = {
+            .current()
+        },
+        checkOperation: @escaping CheckOperation = { _ in .upToDate }
+    ) {
+        self.currentVersionProvider = currentVersionProvider
+        self.checkOperation = checkOperation
+    }
+    #else
     init(
         currentVersionProvider: @escaping @Sendable () -> TerentoInstalledVersion = {
             .current()
@@ -477,6 +525,7 @@ final class AppUpdateController: ObservableObject {
         self.currentVersionProvider = currentVersionProvider
         self.checkOperation = checkOperation
     }
+    #endif
 
     var isChecking: Bool {
         if case .checking = state { return true }

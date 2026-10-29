@@ -59,7 +59,7 @@ for field in 'Failure category:' 'HTTP status:' 'Backend payload:' 'Schema versi
 done
 
 if ! grep -Fq 'var compatibilitySharingEnabled: Bool' "$evidence" \
-    || ! grep -Fq 'currentConsentChoice != .declined' "$evidence" \
+    || ! grep -Fq 'VersionedEvidenceConsent.permitsSharing(store.consent())' "$evidence" \
     || ! grep -Fq 'TerentoDiagnosticLog.recordCompatibilityReportDeliveryFailure' "$evidence"; then
     print -u2 "FAIL: evidence controller does not own persisted consent and diagnostics"
     exit 1

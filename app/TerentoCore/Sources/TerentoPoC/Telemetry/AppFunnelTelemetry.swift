@@ -430,7 +430,7 @@ final class AppFunnelTelemetryController {
         retryDelays: [UInt64] = [0, 5_000_000_000, 30_000_000_000],
         now: @escaping @Sendable () -> Date = { Date() },
         appBuild: String = TerentoTelemetryMetadata.eventBuild,
-        releaseLabel: String = TerentoTelemetryMetadata.releaseLabel,
+        releaseLabel: String = TerentoTelemetryMetadata.eventReleaseLabel,
         sessionID: UUID = AppFunnelSession.id
     ) {
         self.store = store
