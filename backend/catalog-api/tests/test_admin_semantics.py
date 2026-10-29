@@ -3354,9 +3354,9 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("<span class='admin-metric-label'>Last report</span><strong class='admin-metric-value' data-stat='lastReport'>—<span class='sr-only'>Unknown</span></strong>", statistics)
         self.assertNotIn("<span>Compatibility status</span>", statistics)
         self.assertIn("data-status='RESOLVED'", body)
-        # A resolved pre-write record is "Blocked before writing", not Failed (ADM-13).
+        # A resolved pre-write record is "Not started", not Failed (ADM-13).
         self.assertIn("data-diagnostic-result='not_started'", body)
-        self.assertIn("<span>Blocked</span>", body)
+        self.assertIn("<span>Not started</span>", body)
         self.assertNotIn("USB identity</dt>", body)
         self.assertNotIn("Firmware</dt>", body)
         self.assertIn("Write failed", body)
