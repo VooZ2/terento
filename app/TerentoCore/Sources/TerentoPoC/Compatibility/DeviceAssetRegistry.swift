@@ -430,6 +430,15 @@ struct DeviceAssetResolver {
     private static let controlledAssetPath = "/assets/devices/"
     private static let officialMediaHost = "res.garmin.com"
     private static let officialProductHosts: Set<String> = ["garmin.com", "www.garmin.com"]
+    /// The Mac App Store build shows only Terento's own watch images and never
+    /// fetches or displays manufacturer product photos.
+    static let allowsOfficialProductMedia: Bool = {
+        #if TERENTO_APP_STORE
+        return false
+        #else
+        return true
+        #endif
+    }()
     private let client: any DeviceCatalogAPIClient
     private let cache: DeviceAssetCache
 
@@ -459,7 +468,8 @@ struct DeviceAssetResolver {
                       records: catalog.devices
                   ) {
                 match = catalogMatch
-            } else if let productMatch = Self.matchingProductRecord(
+            } else if Self.allowsOfficialProductMedia,
+                      let productMatch = Self.matchingProductRecord(
                 identity: identity,
                 canonicalModel: canonicalModel,
                 records: catalog.devices
@@ -488,7 +498,9 @@ struct DeviceAssetResolver {
             guard let assetURL = Self.downloadURL(for: match.asset.url),
                   let scope = Self.scope(for: match.asset.scope),
                   match.asset.isAvailable,
-                  match.asset.hasValidSourceMetadata else {
+                  match.asset.hasValidSourceMetadata,
+                  Self.allowsOfficialProductMedia
+                      || match.asset.source?.sourceType != .officialProductMedia else {
                 return .fallback
             }
 
