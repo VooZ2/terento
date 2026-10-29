@@ -19,7 +19,7 @@ This list is built from real successful Terento installations shared by users. I
 
 Installation results are shared with Terento by users. They are not Garmin certification.
 
-The current version includes four map providers. This product information is separate from the device results shown here.
+The current version includes every map provider in the catalog. This product information is separate from the device results shown here.
 
 36 models
 

@@ -17,7 +17,7 @@ Per Mac con Apple Silicon. La pagina Compatibilità mostra i modelli e le varian
 
 ## Le mappe in un unico posto
 
-- Scegli e installa mappe da uno dei quattro provider di mappe.
+- Scegli e installa mappe da qualsiasi provider del catalogo.
 
 - Aggiungi la tua mappa compatibile (.img); le mappe personali non hanno aggiornamenti automatici.
 

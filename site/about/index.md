@@ -17,7 +17,7 @@ For Apple Silicon Macs. The Compatibility page shows exact models and variants w
 
 ## Maps, in one place
 
-- Choose and install maps from any of the four map providers.
+- Choose and install maps from any provider in the catalog.
 
 - Add your own compatible map (.img); custom maps have no automatic updates.
 

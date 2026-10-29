@@ -31,6 +31,6 @@ Przed instalacją
 
 ## Status wersji
 
-To aktualna wersja Terento. Obsługuje mapy od czterech dostawców. Strona zgodności pokazuje dokładne modele i warianty z udanymi, udostępnionymi instalacjami. Brak modelu nie oznacza, że urządzenie nie jest obsługiwane.
+To aktualna wersja Terento. Obsługuje mapy wszystkich dostawców z katalogu. Strona zgodności pokazuje dokładne modele i warianty z udanymi, udostępnionymi instalacjami. Brak modelu nie oznacza, że urządzenie nie jest obsługiwane.
 
 [Sprawdź kompatybilność](https://terento.app/pl/compatibility/)

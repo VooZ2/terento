@@ -59,7 +59,7 @@ COPY = {'en': {'title': 'About Terento — Free, Open-Source Garmin Maps for Mac
         'donate': 'Donate',
         'section_title': 'Made for your next trip',
         'does_title': 'Maps, in one place',
-        'does_items': ['Choose and install maps from any of the four map providers.',
+        'does_items': ['Choose and install maps from any provider in the catalog.',
                        'Add your own compatible map (.img); custom maps have no automatic updates.',
                        'Update and manage Terento-installed provider maps in one Mac app.',
                        'Keeps original Garmin maps protected.'],
@@ -92,7 +92,7 @@ COPY = {'en': {'title': 'About Terento — Free, Open-Source Garmin Maps for Mac
         'donate': 'Spenden',
         'section_title': 'Für deine nächste Reise',
         'does_title': 'Karten an einem Ort',
-        'does_items': ['Wähle und installiere Karten von einem der vier Kartenanbieter.',
+        'does_items': ['Wähle und installiere Karten von jedem Anbieter im Katalog.',
                        'Füge deine eigene kompatible Karte (.img) hinzu; eigene Karten erhalten keine '
                        'automatischen Updates.',
                        'Aktualisiere und verwalte mit Terento installierte Anbieterkarten in einer Mac-App.',
@@ -126,7 +126,7 @@ COPY = {'en': {'title': 'About Terento — Free, Open-Source Garmin Maps for Mac
         'donate': 'Faire un don',
         'section_title': 'Pour votre prochaine escapade',
         'does_title': 'Vos cartes au même endroit',
-        'does_items': ['Choisissez et installez des cartes de l’un des quatre fournisseurs de cartes.',
+        'does_items': ['Choisissez et installez des cartes de n’importe quel fournisseur du catalogue.',
                        'Ajoutez votre propre carte compatible (.img) ; les cartes personnelles ne '
                        'bénéficient pas de mises à jour automatiques.',
                        'Mettez à jour et gérez les cartes de fournisseurs installées par Terento dans une '
@@ -160,7 +160,7 @@ COPY = {'en': {'title': 'About Terento — Free, Open-Source Garmin Maps for Mac
         'donate': 'Wesprzyj',
         'section_title': 'Na Twoją kolejną podróż',
         'does_title': 'Mapy w jednym miejscu',
-        'does_items': ['Wybieraj i instaluj mapy jednego z czterech dostawców map.',
+        'does_items': ['Wybieraj i instaluj mapy dowolnego dostawcy z katalogu.',
                        'Dodaj własną zgodną mapę (.img); własne mapy nie mają automatycznych aktualizacji.',
                        'Aktualizuj i zarządzaj mapami dostawców zainstalowanymi przez Terento w jednej '
                        'aplikacji na Maca.',
@@ -193,7 +193,7 @@ COPY = {'en': {'title': 'About Terento — Free, Open-Source Garmin Maps for Mac
         'donate': 'Přispět',
         'section_title': 'Pro vaši příští cestu',
         'does_title': 'Mapy na jednom místě',
-        'does_items': ['Vyberte a nainstalujte mapy od jednoho ze čtyř poskytovatelů map.',
+        'does_items': ['Vyberte a nainstalujte mapy od kteréhokoli poskytovatele v katalogu.',
                        'Přidejte vlastní kompatibilní mapu (.img); vlastní mapy nemají automatické '
                        'aktualizace.',
                        'Aktualizujte a spravujte mapy poskytovatelů nainstalované přes Terento v jedné '
@@ -228,7 +228,7 @@ COPY = {'en': {'title': 'About Terento — Free, Open-Source Garmin Maps for Mac
         'donate': 'Dona',
         'section_title': 'Per il tuo prossimo viaggio',
         'does_title': 'Le mappe in un unico posto',
-        'does_items': ['Scegli e installa mappe da uno dei quattro provider di mappe.',
+        'does_items': ['Scegli e installa mappe da qualsiasi provider del catalogo.',
                        'Aggiungi la tua mappa compatibile (.img); le mappe personali non hanno aggiornamenti '
                        'automatici.',
                        'Aggiorna e gestisci le mappe dei fornitori installate da Terento in un’unica app '
