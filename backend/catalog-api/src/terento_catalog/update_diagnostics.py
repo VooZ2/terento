@@ -276,9 +276,9 @@ def _update_review_controls(row: dict[str, Any], csrf_token: str, return_to: str
 def update_summary_markup(summary: dict[str, Any], device_id: str, *, web: dict[str, Any] | None = None) -> str:
     """Update reports for one model: diagnostic stream, all time. Styled like
     the Installs card beside it, with plain (unlinked) counts (owner decision
-    2026-10-06); the update history below filters by outcome. App, Web and All
-    rows (owner decision 2026-10-11); the web installer has no Not started
-    result."""
+    2026-10-06); the update history below filters by outcome. App, App Store,
+    Web and All rows (owner decisions 2026-10-11 and 2026-10-30); the web
+    installer has no Not started result."""
     from .admin import _metric_row, _metric_tile, _source_count_grid
 
     app = {
@@ -296,10 +296,15 @@ def update_summary_markup(summary: dict[str, Any], device_id: str, *, web: dict[
     else:
         web_counts = {'successful': int(web.get('updatesSuccessful') or 0),
                       'failed': int(web.get('updatesFailed') or 0), 'blocked': None}
+        store = summary.get('appStore') if isinstance(summary.get('appStore'), dict) else {}
+        store_counts = {'successful': int(store.get('successfulUpdateCount') or 0),
+                        'failed': int(store.get('failedUpdateCount') or 0),
+                        'blocked': int(store.get('notStartedCount') or 0)}
+        direct = {key: app[key] - store_counts[key] for key in app}
         values = _source_count_grid(
             [('Successful', 'successful', False), ('Failed', 'failed', True),
              ('Not started', 'blocked', False)],
-            [('app', app), ('web', web_counts),
+            [('app', direct), ('appstore', store_counts), ('web', web_counts),
              ('all', {'successful': app['successful'] + web_counts['successful'],
                       'failed': app['failed'] + web_counts['failed'], 'blocked': app['blocked']})],
             label='Updates by source',

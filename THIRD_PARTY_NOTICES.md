@@ -229,7 +229,8 @@ original solid SVGs from the same pinned Font Awesome Free 7.3.1 revision under
 CC BY 4.0: `arrow-up-right-from-square`, `arrow-right`, `arrow-left`, `check`,
 `clock`, `xmark`, `circle-xmark`, `triangle-exclamation`, `circle-info`,
 `circle-question`, `circle-minus`, `download`, `message`, `circle-check`,
-`circle-exclamation`, `chevron-down`, `chevron-right` and `image`. Their
+`circle-exclamation`, `chevron-down`, `chevron-right` and `image`, and the
+original brands `app-store-ios` SVG for the App Store source. Their
 unchanged viewBox and path data live in `_FA_ICONS` in
 `backend/catalog-api/src/terento_catalog/admin.py` under the Font Awesome
 attribution comment; they are rendered as inline SVG or as `data:` CSS masks.

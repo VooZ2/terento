@@ -4,7 +4,7 @@ const fs=require('fs'),assert=require('node:assert/strict'); const q=JSON.parse(
 const db=new PGlite();await db.exec(q.schema);
 await db.exec(`ALTER TABLE compatibility_evidence_event ADD COLUMN statistics_exclusion_code text,ADD COLUMN received_at timestamptz NOT NULL DEFAULT '2100-01-01T00:00:00Z';
 ALTER TABLE map_download_event ADD COLUMN received_at timestamptz NOT NULL DEFAULT '2100-01-01T00:00:00Z';
-ALTER TABLE map_download_event ADD COLUMN map_result_index int,ADD COLUMN is_local_test boolean DEFAULT false,ADD COLUMN statistics_exclusion_code text,ADD COLUMN component_kind text,ADD COLUMN acquisition_id uuid,ADD COLUMN acquisition_purpose text,ADD COLUMN app_build text,ADD COLUMN failure_reason text;
+ALTER TABLE map_download_event ADD COLUMN map_result_index int,ADD COLUMN is_local_test boolean DEFAULT false,ADD COLUMN statistics_exclusion_code text,ADD COLUMN component_kind text,ADD COLUMN acquisition_id uuid,ADD COLUMN acquisition_purpose text,ADD COLUMN app_build text,ADD COLUMN release_label text,ADD COLUMN failure_reason text;
 CREATE TABLE map_provider(id text,name text);
 CREATE TABLE map_package(id text,provider_id text,name text,map_type text,region text,provider_region_id text,canonical_region_id text,geographic_region_id text,country text);
 CREATE TABLE map_update_diagnostic(event_id uuid,operation_id uuid,provider text,region text,outcome text,canonical_device_model_id text,is_local_test boolean,payload jsonb);

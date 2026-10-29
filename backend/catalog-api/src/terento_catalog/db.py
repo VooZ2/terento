@@ -143,7 +143,8 @@ INSTALLATION_PROBLEM_OPERATIONS_CTE = """
                         OR failure_code = 'INSTALL_BLOCKED_DOWNLOAD_FAILED'
                     )
                 )
-            ) AS identity_pending
+            ) AS identity_pending,
+            terento_is_app_store_release(release_label) AS app_store
         FROM compatibility_evidence_event
         WHERE diagnostic_status = 'ACTIVE'
           AND is_local_test IS NOT TRUE
@@ -154,7 +155,8 @@ INSTALLATION_PROBLEM_OPERATIONS_CTE = """
             bool_or(is_failure) AS has_failure,
             bool_or(has_github_issue) AS has_github_issue,
             bool_or(identity_pending) AS identity_pending,
-            min(identity_key) FILTER (WHERE is_failure) AS problem_identity_key
+            min(identity_key) FILTER (WHERE is_failure) AS problem_identity_key,
+            bool_or(app_store) AS app_store
         FROM installation_review_rows
         GROUP BY operation_key
     )
@@ -565,6 +567,22 @@ def _enrich_activity_models(connection, rows):
             row[field] = match[field]
         row['display_type'] = match['screen_technology']
     return rows
+
+
+# App results split by distribution (contracts/STATISTICS_CONTRACT.md, App and
+# App Store): ``app`` is the directly downloaded app, ``appstore`` the Mac App
+# Store build; no distribution keeps both.
+APP_DISTRIBUTIONS = frozenset({"app", "appstore"})
+
+
+def _distribution_clauses(filters: dict[str, Any], alias: str) -> list[str]:
+    distribution = filters.get("distribution")
+    if distribution is None:
+        return []
+    if distribution not in APP_DISTRIBUTIONS:
+        raise ValueError("invalid app distribution")
+    test = f"terento_is_app_store_release({alias}.release_label)"
+    return [test if distribution == "appstore" else f"NOT {test}"]
 
 
 # Only the catalog facts identity assessment and statistics exclusion read.
@@ -1638,13 +1656,16 @@ class Database:
         summary["total"] = summary["pendingReviewTasks"]
         return summary
 
-    def identity_pending_counts(self) -> dict[str, int]:
+    def identity_pending_counts(self, *, distribution: str | None = None) -> dict[str, int]:
         """Active results per reported identity, and how many await identity review.
 
         SQL twin of ``admin._identity_is_pending`` over the
         ``compatibility_diagnostic_population`` population, grouped like
         ``admin._diagnostic_summary_by_identity`` (identity, then map result).
+        ``distribution`` (``app`` or ``appstore``) limits it to that part of
+        the app results.
         """
+        clauses = _distribution_clauses({"distribution": distribution}, "compatibility_evidence_event")
         query = """
             WITH results AS (
                 SELECT
@@ -1660,6 +1681,7 @@ class Database:
                   AND is_local_test IS NOT TRUE
                   AND statistics_exclusion_code IS NULL
                   AND NULLIF(btrim(canonical_device_model_id), '') IS NULL
+                  """ + "".join(f"AND {clause} " for clause in clauses) + """
                 GROUP BY 1, CASE WHEN operation_id IS NOT NULL AND map_result_index IS NOT NULL
                                  THEN 'result:' || operation_id::text || ':' || map_result_index::text
                                  ELSE COALESCE(operation_id::text, 'legacy:' || event_id::text) END
@@ -1672,20 +1694,27 @@ class Database:
             return {str(row["identity_key"]): int(row["identity_pending"] or 0)
                     for row in connection.execute(query).fetchall()}
 
-    def installation_problem_counts(self, identity_key: str | None = None) -> dict[str, Any]:
+    def installation_problem_counts(
+        self, identity_key: str | None = None, *, distribution: str | None = None,
+    ) -> dict[str, Any]:
         """Return open installation problems (operations) in total and per identity.
 
         Uses the exact predicate and unit of the Needs attention installation
         task, so ``total`` equals ``admin_review_summary()['installationIssues']``
         and the per-identity values sum to it. ``identity_key`` limits the
-        result to that one identity.
+        result to that one identity; ``distribution`` (``app`` or ``appstore``)
+        to that part of the app results.
         """
+        if distribution is not None and distribution not in APP_DISTRIBUTIONS:
+            raise ValueError("invalid app distribution")
         query = """
             WITH """ + INSTALLATION_PROBLEM_OPERATIONS_CTE + """
             SELECT problem_identity_key AS identity_key, count(*) AS problem_count
             FROM operation_reviews
             WHERE has_failure AND NOT has_github_issue
-        """ + ("  AND problem_identity_key = %s" if identity_key is not None else "") + """
+        """ + ("  AND problem_identity_key = %s" if identity_key is not None else "") + (
+            "" if distribution is None else "  AND app_store" if distribution == "appstore" else "  AND NOT app_store"
+        ) + """
             GROUP BY problem_identity_key
         """
         with self.connection() as connection:
@@ -1898,6 +1927,7 @@ class Database:
         for row in rows:
             row = dict(row)
             row['reason_summary'] = _update_reason(row)[0]
+            row['release_label'] = (row.get('payload') or {}).get('releaseLabel') if isinstance(row.get('payload'), dict) else None
             row.pop('payload', None)
             result.append(row)
         return result
@@ -1909,6 +1939,7 @@ class Database:
         period: str = "24h",
         time_zone: str = "UTC",
         recent_limit: int = 8,
+        distribution: str | None = None,
     ) -> dict[str, Any]:
         """Return map-operation aggregates for the authenticated Overview.
 
@@ -1919,12 +1950,18 @@ class Database:
         Map statistics keeps diagnostic-only and custom results visible with
         unknown package and geography; provider + region is never a package
         identity. No records are changed.
+
+        ``distribution`` (``app`` or ``appstore``) limits the totals and the
+        trend to that part of the app results, for the Dashboard App and App
+        Store views; that snapshot carries no Activity.
         """
         # Dashboard metrics and trends are projections of the same canonical
         # map-statistics read model used by the Maps page. Keep raw map-event
         # queries below for activity/review context only; they must not define
         # a second install population.
-        metric_filters = {} if period == "all" else {"dateFrom": since}
+        metric_filters: dict[str, Any] = {} if period == "all" else {"dateFrom": since}
+        if distribution is not None:
+            metric_filters["distribution"] = distribution
         canonical_rows = self.map_statistics(metric_filters)
         period_metrics = _canonical_map_statistics_summary(canonical_rows)
         canonical_event_count = sum(
@@ -1942,6 +1979,45 @@ class Database:
         trend, bucket = self.map_statistics_trend(
             trend_filters, period=period, time_zone=time_zone,
         )
+
+        def snapshot(recent: list[dict[str, Any]]) -> dict[str, Any]:
+            trend_rows = [dict(row) for row in trend]
+            if trend_rows:
+                trend_rows = _fill_overview_trend_buckets(
+                    trend_rows,
+                    bucket=bucket,
+                    since=since,
+                    until=datetime.now(timezone.utc),
+                    all_time=period == "all",
+                    time_zone=time_zone,
+                )
+            completed = period_metrics["completedInstallCount"]
+            failed = period_metrics["failedInstallCount"]
+            completed_updates = period_metrics["completedMapUpdateCount"]
+            failed_updates = period_metrics["failedMapUpdateCount"]
+            completed_downloads = period_metrics["completedDownloadCount"]
+            failed_downloads = period_metrics["failedDownloadCount"]
+            return {
+                "eventCount": canonical_event_count,
+                "completedInstallCount": completed,
+                "failedInstallCount": failed,
+                "installSuccessRate": period_metrics["installSuccessRate"],
+                "completedDownloadCount": completed_downloads,
+                "failedDownloadCount": failed_downloads,
+                "downloadSuccessRate": period_metrics["downloadSuccessRate"],
+                "downloadPurposes": period_metrics["downloadPurposes"],
+                "completedMapUpdateCount": completed_updates,
+                "failedMapUpdateCount": failed_updates,
+                "mapUpdateCount": completed_updates + failed_updates,
+                "hasData": bool(canonical_rows or recent),
+                "recentActivity": [dict(row) for row in recent],
+                "trend": trend_rows,
+                "bucket": bucket,
+            }
+
+        if distribution is not None:
+            return snapshot([])
+
         # Period membership uses the KPI's effective time (receipt time for a
         # client clock far ahead), so Activity and the totals agree.
         event_scope = f"""
@@ -2018,6 +2094,7 @@ class Database:
                     e.provider AS provider_id,
                     e.region,
                     e.occurred_at,
+                    e.release_label,
                     CASE WHEN e.result_classification_effective = 'FAILURE'
                          THEN 'FAILED' ELSE 'SUCCEEDED' END AS outcome
                 FROM deduplicated_fallback AS e
@@ -2124,6 +2201,7 @@ class Database:
                     e.event_type,
                     e.outcome,
                     e.app_build,
+                    e.release_label,
                     e.occurred_at,
                     e.component_kind,
                     e.lifecycle,
@@ -2149,6 +2227,7 @@ class Database:
                          ELSE 'INSTALL_SUCCEEDED' END AS event_type,
                     c.outcome,
                     NULL AS app_build,
+                    c.release_label,
                     c.occurred_at,
                     NULL AS component_kind,
                     NULL AS lifecycle,
@@ -2168,39 +2247,7 @@ class Database:
             recent.extend(self._update_not_started_activity(connection, since, recent_limit))
             recent.sort(key=lambda row: (row['occurred_at'], str(row.get('event_id') or '')), reverse=True)
             recent = recent[:recent_limit]
-        trend_rows = [dict(row) for row in trend]
-        if trend_rows:
-            trend_rows = _fill_overview_trend_buckets(
-                trend_rows,
-                bucket=bucket,
-                since=since,
-                until=datetime.now(timezone.utc),
-                all_time=period == "all",
-                time_zone=time_zone,
-            )
-        completed = period_metrics["completedInstallCount"]
-        failed = period_metrics["failedInstallCount"]
-        completed_updates = period_metrics["completedMapUpdateCount"]
-        failed_updates = period_metrics["failedMapUpdateCount"]
-        completed_downloads = period_metrics["completedDownloadCount"]
-        failed_downloads = period_metrics["failedDownloadCount"]
-        return {
-            "eventCount": canonical_event_count,
-            "completedInstallCount": completed,
-            "failedInstallCount": failed,
-            "installSuccessRate": period_metrics["installSuccessRate"],
-            "completedDownloadCount": completed_downloads,
-            "failedDownloadCount": failed_downloads,
-            "downloadSuccessRate": period_metrics["downloadSuccessRate"],
-            "downloadPurposes": period_metrics["downloadPurposes"],
-            "completedMapUpdateCount": completed_updates,
-            "failedMapUpdateCount": failed_updates,
-            "mapUpdateCount": completed_updates + failed_updates,
-            "hasData": bool(canonical_rows or recent),
-            "recentActivity": [dict(row) for row in recent],
-            "trend": trend_rows,
-            "bucket": bucket,
-        }
+        return snapshot(recent)
 
     def admin_user_count(self) -> int:
         with self.connection() as connection:
@@ -2465,7 +2512,8 @@ class Database:
                         count(DISTINCT (COALESCE(canonical_device_model_id,''),outcome,
                             COALESCE(payload->>'writeStarted',''),COALESCE(payload->>'automaticFinishingResult',''))) = 1 AS agrees,
                         min(outcome) AS outcome,min(payload->>'writeStarted') AS write_started,
-                        min(payload->>'automaticFinishingResult') AS finishing
+                        min(payload->>'automaticFinishingResult') AS finishing,
+                        bool_or(terento_is_app_store_release(payload->>'releaseLabel')) AS app_store
                     FROM reports GROUP BY operation_id,provider,lower(region)
                 ), model_groups AS (
                     SELECT DISTINCT r.canonical_device_model_id,g.*
@@ -2476,13 +2524,20 @@ class Database:
                     count(*) FILTER (WHERE agrees AND outcome='SUCCEEDED' AND write_started='true' AND finishing='VERIFIED') AS successful,
                     count(*) FILTER (WHERE agrees AND outcome='FAILED' AND write_started='true') AS failed,
                     count(*) FILTER (WHERE agrees AND outcome='NOT_STARTED') AS not_started,
-                    count(*) FILTER (WHERE NOT agrees) AS ambiguous
+                    count(*) FILTER (WHERE NOT agrees) AS ambiguous,
+                    count(*) FILTER (WHERE agrees AND app_store AND outcome='SUCCEEDED' AND write_started='true' AND finishing='VERIFIED') AS app_store_successful,
+                    count(*) FILTER (WHERE agrees AND app_store AND outcome='FAILED' AND write_started='true') AS app_store_failed,
+                    count(*) FILTER (WHERE agrees AND app_store AND outcome='NOT_STARTED') AS app_store_not_started
                 FROM model_groups GROUP BY canonical_device_model_id
             """).fetchall()
+        # The App Store part is included in the totals (Admin shows it apart).
         return {row['canonical_device_model_id']: {
             'successfulUpdateCount':int(row['successful']), 'failedUpdateCount':int(row['failed']),
             'attemptedUpdateCount':int(row['successful'])+int(row['failed']),
             'notStartedCount':int(row['not_started']), 'ambiguousUpdateCount':int(row['ambiguous']),
+            'appStore': {'successfulUpdateCount': int(row['app_store_successful'] or 0),
+                         'failedUpdateCount': int(row['app_store_failed'] or 0),
+                         'notStartedCount': int(row['app_store_not_started'] or 0)},
         } for row in rows}
 
     def update_issue_queue_diagnostics(self) -> list[dict[str, Any]]:
@@ -5051,13 +5106,16 @@ class Database:
             ).fetchall()
         return [dict(row) for row in rows]
 
-    def app_installs_without_model_report(self) -> dict[str, Any]:
+    def app_installs_without_model_report(self, *, distribution: str | None = None) -> dict[str, Any]:
         """All-time app map installs that Maps counts but no watch report
         backs: a counted INSTALL_SUCCEEDED map event (the Maps rule) with no
         compatibility report for its operation, provider, map result and
         region. Installations shows them as one row, so its App total equals
-        the Maps App installs."""
+        the Maps App installs (``distribution`` ``app`` or ``appstore``: that
+        part of them, as on Maps)."""
         effective = _effective_occurred_at_sql("e")
+        distribution_sql = "".join(
+            f"AND {clause} " for clause in _distribution_clauses({"distribution": distribution}, "installed"))
         with self.connection() as connection:
             _prefer_hash_joins(connection)
             row = connection.execute(
@@ -5087,6 +5145,7 @@ class Database:
                 WHERE installed.rank = 1 AND NOT installed.conflict
                   AND installed.event_type = 'INSTALL_SUCCEEDED' AND installed.outcome = 'SUCCEEDED'
                   AND installed.component_kind IS DISTINCT FROM 'contours'
+                  {distribution_sql}
                   AND NOT EXISTS (
                       SELECT 1 FROM compatibility_evidence_event AS evidence
                       WHERE evidence.is_local_test IS NOT TRUE AND evidence.statistics_exclusion_code IS NULL
@@ -5501,6 +5560,7 @@ class Database:
         if filters.get("dateTo"):
             clauses.append(f"{alias}.occurred_at <= %s")
             values.append(filters["dateTo"])
+        clauses.extend(_distribution_clauses(filters, alias))
         return clauses, values
 
     @staticmethod
@@ -5547,6 +5607,7 @@ class Database:
             if filters.get(key):
                 clauses.append(f"{alias}.occurred_at {operator} %s")
                 values.append(filters[key])
+        clauses.extend(_distribution_clauses(filters, alias))
         return clauses, values
 
     def map_statistics(
@@ -6560,6 +6621,9 @@ class Database:
                 COALESCE(evidence.successful, 0) AS successful_install_count,
                 COALESCE(public_review.successful_install_count, 0) AS compatibility_successful_install_count,
                 COALESCE(evidence.failed, 0) AS failed_install_count,
+                COALESCE(evidence.app_store_attempts, 0) AS app_store_attempted_install_count,
+                COALESCE(evidence.app_store_successful, 0) AS app_store_successful_install_count,
+                COALESCE(evidence.app_store_failed, 0) AS app_store_failed_install_count,
                 evidence.first_success,
                 evidence.last_success,
                 evidence.last_evidence,
@@ -6620,7 +6684,10 @@ class Database:
                                OR other.phase_outcome IS DISTINCT FROM 'SUCCEEDED'
                                OR other.automatic_finishing_result IS DISTINCT FROM 'VERIFIED')
                        )) AS first_success,
-                    s.last_success, s.last_evidence
+                    s.last_success, s.last_evidence,
+                    s.app_store_attempted_install_count AS app_store_attempts,
+                    s.app_store_successful_install_count AS app_store_successful,
+                    s.app_store_failed_install_count AS app_store_failed
                 FROM model_statistics AS s
                 WHERE s.canonical_device_model_id = dm.id
             ) AS evidence ON TRUE
