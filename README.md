@@ -13,8 +13,9 @@ Terento is **free and open source**, built for Apple Silicon Macs and Garmin
 smartwatches with map support. Choose from
 [Freizeitkarte](https://www.freizeitkarte-osm.de/),
 [OpenTopoMap](https://garmin.opentopomap.org/),
-[MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), and
-[BBBike](https://garmin.bbbike.org), or import your own
+[MapRando](https://ravenfeld.gitlab.io/open-garmin-map/),
+[BBBike](https://garmin.bbbike.org), and
+[OSMapaPL](https://osmapa-garmin.las.org.pl/), or import your own
 compatible `.img` map.
 
 **Connect → Install → Done**
@@ -26,7 +27,7 @@ compatible `.img` map.
 
 **Free and open source · macOS 13+ · Apple Silicon**
 
-On Linux? Try the [web installer beta](#web-installer-beta) in Google Chrome, Microsoft Edge, Opera or Brave.
+On Linux? Try the [web installer](#web-installer) in Google Chrome, Microsoft Edge, Opera or Brave.
 
 <p align="center">
   <img src="site/assets/app/masters/your-garmin.png"
@@ -84,7 +85,7 @@ separate confirmation.
 
 Not sure which map to choose? The
 [map style comparison](https://terento.app/map-styles/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_map_styles)
-shows how the five map styles draw the same place. Pick a mountain area,
+shows how the map styles draw the same place. Pick a mountain area,
 trail or city, then compare contour lines, trails, streets and labels side by
 side or with a swipe.
 
@@ -97,14 +98,14 @@ and detail can differ with the watch model and its map settings.
        width="100%">
 </p>
 
-## Web installer (beta)
+## Web installer
 
 The web installer puts maps on your watch from Google Chrome, Microsoft Edge,
 Opera or Brave on a computer, without installing the app. Firefox and Safari
 can't connect to USB devices. It works on a Mac and on Linux. It does not work
 on Windows yet: with Windows' own watch driver, no browser can open the watch.
 
-**[Open the web installer](https://lab.terento.app/install/)**
+**[Open the web installer](https://terento.app/install/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_web_installer)**
 
 1. Plug in your watch with a USB data cable and unlock it. Quit Garmin
    Express and the Terento app.
@@ -113,18 +114,19 @@ on Windows yet: with Windows' own watch driver, no browser can open the watch.
    with "Garmin" in its name appears. Choose that one.
 3. Choose maps and install them.
 
-So far maps have been installed with the web installer only with a fēnix 8
-47 mm on a Mac in Google Chrome. On Linux, the browser may first need USB access to the watch; the
-page shows a one-time command for that. Other watch models are not confirmed
-yet.
+On Linux, where the web installer is still being tested, the browser may
+first need USB access to the watch; the page shows a one-time command for that.
+The web installer installs, updates and removes catalog maps; it cannot add
+your own `.img` maps. Successful web installations appear on the
+[Compatibility page](https://terento.app/compatibility/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_web_installer_compatibility)
+for each exact model.
 If you try it, please
 [tell us how it went](https://github.com/VooZ2/terento/issues), whether it
 worked or not.
 
 In the web installer, Terento's server downloads each map from its provider
 and passes it to your browser; the copy is deleted once your browser has it.
-The web installer is a separate beta: its code is not part of this
-repository. See the
+The web installer's code is not part of this repository. See the
 [Privacy Policy](https://terento.app/privacy/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_web_installer_privacy)
 for what it records.
 

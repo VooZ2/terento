@@ -248,6 +248,9 @@ for (const [href] of siteLinks) {
   assert.match(locations[0], /^readme_[a-z0-9_]+$/);
   assert.ok(!linkLocations.has(locations[0]), `${href}: duplicate attribution location`);
   linkLocations.add(locations[0]);
+  // The edge serves the web installer at /install/ from its own service
+  // (terento-internal), so it has no page under site/.
+  if (url.pathname === "/install/") continue;
   const sitePath = path.join(root, "site", url.pathname, "index.html");
   assert.ok(fs.existsSync(sitePath), `${href}: destination page must exist`);
 }
