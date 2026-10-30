@@ -12,6 +12,7 @@ enum TerentoColors {
     static let sidebar = TerentoGeneratedTokens.Light.backgroundSecondary
     static let surface = TerentoGeneratedTokens.Light.surfacePrimary.opacity(0.78)
     static let helpSurface = TerentoGeneratedTokens.Light.surfacePrimary.opacity(0.48)
+    static let surfaceElevated = TerentoGeneratedTokens.Light.surfaceElevated
     static let graphite = TerentoGeneratedTokens.Brand.graphite
     static let secondaryText = TerentoGeneratedTokens.Functional.secondaryText
     static let border = TerentoGeneratedTokens.Light.borderSubtle

@@ -47,13 +47,17 @@ struct AboutTerentoView: View {
 
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(spacing: 12) {
+                        #if !TERENTO_APP_STORE
                         AboutPrimaryButton(title: "Update", action: updateAction)
                             .disabled(appUpdateController.isChecking)
+                        #endif
                         AboutSecondaryButton(title: "Manage diagnostics") {
                             openWindow(id: "diagnostics")
                         }
                     }
+                    #if !TERENTO_APP_STORE
                     updateStatus
+                    #endif
                 }
 
                 section(title: "Support") {
@@ -87,10 +91,17 @@ struct AboutTerentoView: View {
                 .foregroundStyle(TerentoColors.secondaryText)
 
                 section(title: "Privacy") {
+                    #if TERENTO_APP_STORE
+                    // App Store builds share diagnostics only after an opt-in and
+                    // compile out the update check.
+                    Text("Terento sends privacy-minimised diagnostics only if you choose to share them, to help improve the app and its services. Device state, maps, manifests, Unit IDs, serial numbers, and local paths stay on this Mac.")
+                        .font(.terentoUI(size: 15, weight: .medium))
+                    #else
                     Text("Terento sends privacy-minimised diagnostics by default to help improve the app and its services. Device state, maps, manifests, Unit IDs, serial numbers, and local paths stay on this Mac.")
                         .font(.terentoUI(size: 15, weight: .medium))
                     Text("Terento may contact terento.app when the app starts to check whether a newer version is available. This request is not used for analytics or user tracking.")
                         .font(.terentoUI(size: 13, weight: .regular))
+                    #endif
                     HStack(spacing: 18) {
                         supportLink("Privacy ↗", destination: TerentoAppLinks.privacyFromApp)
                         supportLink("Legal ↗", destination: TerentoAppLinks.legalFromApp)
@@ -114,7 +125,11 @@ struct AboutTerentoView: View {
         supportLink("GitHub repository ↗", destination: TerentoAppLinks.repository)
         supportLink("Report an issue ↗", destination: TerentoAppLinks.issues)
         supportLink("Website ↗", destination: TerentoAppLinks.websiteFromApp)
+        #if TERENTO_APP_STORE
+        supportLink("Rate Terento on the App Store ↗", destination: TerentoAppLinks.appStoreReview)
+        #else
         supportLink("Donate ↗", destination: TerentoAppLinks.donate)
+        #endif
     }
 
     private func section<Content: View>(

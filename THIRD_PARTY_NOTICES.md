@@ -245,3 +245,11 @@ unchanged viewBox and path data, with the Font Awesome attribution comment,
 live in `scripts/build-compatibility-pages.py` and
 `site/compatibility/compatibility.js`; only presentation and accessibility
 attributes are added. No Font Awesome font, CSS or runtime is used.
+
+### Mac App Store installation icon
+
+The Mac App Store build of the app marks a successful installation with the
+original solid `circle-check` SVG from the same pinned Font Awesome Free 7.3.1
+revision, under CC BY 4.0. The unchanged SVG, with its attribution comment, is
+`app/Terento/Assets.xcassets/CircleCheck.imageset/circle-check.svg`; the app
+only tints it. No Font Awesome font, CSS or runtime is bundled.

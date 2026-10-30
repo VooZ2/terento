@@ -12,10 +12,10 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://api.terento.app/assets/devices/garmin/fenix-8-47-amoled.webp",
-      "successfulInstallations": 53,
-      "appSuccessfulInstallations": 53,
+      "successfulInstallations": 56,
+      "appSuccessfulInstallations": 56,
       "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-10-26T08:58:15+00:00"
+      "lastSuccessfulInstallation": "2026-10-29T21:40:05+00:00"
     },
     {
       "model": "Forerunner 965 · Historical",
@@ -386,6 +386,22 @@
       "lastSuccessfulInstallation": "2026-09-23T18:33:25+00:00"
     },
     {
+      "model": "fēnix 5 Plus · Historical",
+      "variant": "Historical",
+      "caseSizeMm": null,
+      "displayType": null,
+      "screenTechnology": null,
+      "solar": null,
+      "inReach": null,
+      "family": "fenix",
+      "familyName": "fēnix",
+      "imageUrl": "https://res.garmin.com/en/products/010-01988-00/v/cf-lg-e37adc65-8f4c-47a1-b178-1a70a53c8416.jpg",
+      "successfulInstallations": 3,
+      "appSuccessfulInstallations": 3,
+      "webSuccessfulInstallations": 0,
+      "lastSuccessfulInstallation": "2026-10-29T15:02:35+00:00"
+    },
+    {
       "model": "fēnix 9 Pro · inReach, Solar, 51 mm",
       "variant": "inReach, Solar, 51 mm",
       "caseSizeMm": 51,
@@ -514,6 +530,38 @@
       "lastSuccessfulInstallation": "2026-10-19T15:10:46+00:00"
     },
     {
+      "model": "fēnix 9 · 43 mm",
+      "variant": "43 mm",
+      "caseSizeMm": 43,
+      "displayType": null,
+      "screenTechnology": "AMOLED",
+      "solar": null,
+      "inReach": null,
+      "family": "fenix",
+      "familyName": "fēnix",
+      "imageUrl": "https://res.garmin.com/en/products/010-04761-00/g/cf-lg.jpg",
+      "successfulInstallations": 2,
+      "appSuccessfulInstallations": 2,
+      "webSuccessfulInstallations": 0,
+      "lastSuccessfulInstallation": "2026-10-29T10:00:10+00:00"
+    },
+    {
+      "model": "Venu X1",
+      "variant": null,
+      "caseSizeMm": null,
+      "displayType": null,
+      "screenTechnology": "AMOLED",
+      "solar": null,
+      "inReach": null,
+      "family": "venu",
+      "familyName": "Venu",
+      "imageUrl": "https://res.garmin.com/en/products/010-02980-04/g/cf-lg.jpg",
+      "successfulInstallations": 2,
+      "appSuccessfulInstallations": 2,
+      "webSuccessfulInstallations": 0,
+      "lastSuccessfulInstallation": "2026-10-29T08:52:55+00:00"
+    },
+    {
       "model": "fēnix 9 Pro · 43mm",
       "variant": "43mm",
       "caseSizeMm": 43,
@@ -578,5 +626,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-10-29T12:43:09.117197+00:00"
+  "generatedAt": "2026-10-29T22:38:51.306698+00:00"
 }

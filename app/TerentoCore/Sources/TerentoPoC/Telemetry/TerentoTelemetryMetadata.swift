@@ -41,6 +41,23 @@ enum TerentoTelemetryMetadata {
 
     static let isLocalTest: Bool = isLocalReleaseLabel(releaseLabel)
 
+    /// The label sent with diagnostics. App Store builds add SemVer build
+    /// metadata, so Admin tells them apart without another field.
+    static let eventReleaseLabel: String = {
+        #if TERENTO_APP_STORE
+        return appStoreEventReleaseLabel(releaseLabel)
+        #else
+        return releaseLabel
+        #endif
+    }()
+
+    static func appStoreEventReleaseLabel(_ label: String) -> String {
+        // A local test label must keep its "-local" ending: the server marks
+        // a build as a purgeable local test only by that suffix.
+        guard !label.isEmpty, !isLocalReleaseLabel(label) else { return label }
+        return label + (label.contains("+") ? ".appstore" : "+appstore")
+    }
+
     /// `appBuild` remains useful for build diagnostics while carrying the
     /// local marker for older admin views that only display the build column.
     static let eventBuild: String = {
