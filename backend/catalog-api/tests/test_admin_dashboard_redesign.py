@@ -110,11 +110,14 @@ class DashboardPresentationTests(unittest.TestCase):
                       head)
         self.assertNotIn("<small>", head)
         self.assertNotIn("admin-icon", head)
-        # One All/App/Web icon switch beside the period picker swaps both
-        # chart cards; All is shown first (owner decision 2026-10-11).
+        # One All/App/App Store/Web icon switch beside the period picker swaps
+        # both chart cards; All is shown first (owner decisions 2026-10-11 and
+        # 2026-10-30).
         self.assertNotIn("data-source-switch", head)
         form = body.split("id='overview-period-form'", 1)[1].split("</form>", 1)[0]
-        self.assertEqual(form.count("data-source-switch="), 3)
+        self.assertEqual(form.count("data-source-switch="), 4)
+        self.assertIn("<button type='button' data-source-switch='appstore' aria-pressed='false' aria-label='App Store'>"
+                      "<svg class='admin-icon admin-icon-source-appstore'", form)
         self.assertIn("<button type='button' class='active' data-source-switch='all' aria-pressed='true' aria-label='All'>"
                       "<svg class='admin-icon admin-icon-source-all'", form)
         self.assertIn("<button type='button' data-source-switch='app' aria-pressed='false' aria-label='App'>", form)
@@ -130,9 +133,9 @@ class DashboardPresentationTests(unittest.TestCase):
             self.assertNotIn("<strong>", legend)
             self.assertNotIn("class='overview-all-time'", card)
             self.assertNotIn("Downloads by purpose", card)
-            # After the App chart only the hidden Web panel follows (App/Web switch).
+            # After the App chart only the hidden App Store and Web panels follow.
             rest = card.split("</ul>", 1)[1].replace("</div>", "").strip()
-            self.assertTrue(rest.startswith("<div data-source-panel='web' hidden>"), rest[:80])
+            self.assertTrue(rest.startswith("<div data-source-panel='appstore' hidden>"), rest[:80])
 
     def test_needs_attention_lists_only_nonzero_rows_and_a_total(self):
         body = self.render(supportReports={"openCount": 2}, mapsUnknown={"modelCount": 4})

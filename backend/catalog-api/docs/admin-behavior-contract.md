@@ -299,18 +299,23 @@ header with the period scope chip and, top right, the period totals as one
 numbers-only badge `successful / failed / success rate` (owner decision
 2026-10-11; failed in the danger tone only when positive, the words only for
 screen readers; Installs counts fresh installs only); the chart; and a legend
-naming each series by colour without counts. One `All`/`App`/`Web` switch beside the
+naming each series by colour without counts. One `All`/`App`/`App Store`/`Web` switch beside the
 period picker, in the picker's height, swaps both chart cards at once (owner
 decisions 2026-10-10 and 2026-10-11; All is the default and the choice
 survives a period change): the chart and its header totals. The switch shows
-Font Awesome icons only (layer-group All, laptop App, globe Web; the names are
-for screen readers). App is the app-only statistic below, unchanged; Web shows
+Font Awesome icons only (layer-group All, laptop App, app-store-ios App Store,
+globe Web; the names are for screen readers). App and App Store split the
+app-only statistic below into the directly downloaded app and the Mac App Store
+build (owner request 2026-10-30;
+[`STATISTICS_CONTRACT.md`](../../../contracts/STATISTICS_CONTRACT.md), App and
+App Store), each with the same series; Web shows
 only web installer records
 ([`WEB_INSTALLER_STATISTICS_CONTRACT.md`](../../../contracts/WEB_INSTALLER_STATISTICS_CONTRACT.md)):
 Downloads are relay jobs (sent, failed on the server) and Installs are counted
 web map results (install and update, succeeded and failed; no Custom .img
-series); All adds App and Web per bucket. Activity lists app and web results
-together, newest first; a web row carries the globe icon after its label and
+series); All adds App, App Store and Web per bucket. Activity lists app and web results
+together, newest first; an App Store row carries the App Store icon and a web
+row the globe icon after its label, and a web row has
 no update-diagnostics link. A web row whose watch matches no single catalog
 model shows the model name the watch reported as plain text (no model link;
 it is not counted for any model). No All time line, purpose breakdown or other
@@ -597,15 +602,18 @@ another report or nearby timestamp.
 ### Installations
 
 Installations is all-time model evidence and is visibly labelled `All time ·
-Model evidence`. Beside that label the Dashboard `All`/`App`/`Web` switch
-(same icons) reloads the page with `source` (owner decision 2026-10-13; All is
-the default): App is the app evidence below, Web the counted web installs
+Model evidence`. Beside that label the Dashboard `All`/`App`/`App Store`/`Web`
+switch (same icons) reloads the page with `source` (owner decisions 2026-10-13
+and 2026-10-30; All is the default): App and App Store are the two parts of the
+app evidence below (each lists only identities with a result of that part, and
+takes its own Open problems, Identity review and `Watch not reported` part),
+Web the counted web installs
 ([`WEB_INSTALLER_STATISTICS_CONTRACT.md`](../../../contracts/WEB_INSTALLER_STATISTICS_CONTRACT.md)),
-and All adds both, so a model's row sums its app and web installs and the Web
+and All adds them, so a model's row sums its app and web installs and the Web
 part of the tiles equals the Dashboard and Maps web installs for all time. A
 web watch that matches no single catalog model is its own row: the reported
 text with the Web icon, no model link, Evidence `—`. Evidence stays app-only
-(a Web-only model row shows the model's catalog Evidence, as on Devices), and
+and keeps both app parts in every view (a Web-only model row shows the model's catalog Evidence, as on Devices), and
 web rows carry no Open problems or Identity review.
 Its summary tiles, in order, are Attempts, Successful, Failed,
 Success rate (all time) and Open problems (now), shown without scope chips under
@@ -787,10 +795,12 @@ population; event type, outcome, exact event, and detail pagination scope only
 the collapsed Events disclosure. Initial HTML and asynchronous JSON use the same
 server summary.
 
-The Maps filter bar starts with the Dashboard `All`/`App`/`Web` switch (owner
-decision 2026-10-13, replacing the combined-only Maps page; All is the
-default). It reloads the page with `source`, kept by the period, provider and
-detail page links: All sums app and web results, App shows app results only,
+The Maps filter bar starts with the Dashboard `All`/`App`/`App Store`/`Web`
+switch (owner decisions 2026-10-13, replacing the combined-only Maps page, and
+2026-10-30; All is the default). It reloads the page with `source`, kept by the
+period, provider and detail page links: All sums app and web results, App and
+App Store show the directly downloaded app and the App Store build results only
+(Event detail lists that part's reports),
 Web the web installer results only (counted map results as installs and
 updates, finished relay jobs as downloads), in every tile, card and trend.
 Event detail lists app reports only, so the Web view omits it.
@@ -990,7 +1000,9 @@ physical-watch identifier is collected.
 The model detail adds a separate Updates card and Update history, scoped to all
 retained nonlocal reports for that exact identity. The Installs and Updates
 cards share one design (same classes, label and value sizes), carry no `All
-time` chip, and show plain Successful, Failed and Not started counts
+time` chip, have one row per source in the switch order (App, App Store, Web,
+then All; owner decisions 2026-10-11 and 2026-10-30), and show plain
+Successful, Failed and Not started counts
 without links (owner decision 2026-10-06); the Update history outcome filters
 open the matching records. The Administration card has two separated sections,
 Install policy (Install policy and Public compatibility as label/value rows) and

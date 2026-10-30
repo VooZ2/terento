@@ -62,6 +62,21 @@ count, rate or chart. Optional installation-report `inventoryMetrics`
 they never add, remove or reclassify any acquisition, install, update, download
 or compatibility count.
 
+**App and App Store** (owner request 2026-10-30). The app population has two
+distributions. A Mac App Store build sends its SemVer release label with the
+`appstore` build-metadata identifier (`1.1.0+appstore`, or `.appstore` after
+other build metadata); every other app label is the directly downloaded app.
+One SQL function, `terento_is_app_store_release` (Python twin
+`telemetry.is_app_store_release_label`), decides it for every read model, and a
+result is App Store when its retained events carry that label. A `-local` label
+stays a local test: the app never adds the identifier to it. The split is a
+presentation of one population: both parts keep the same identity,
+deduplication, time and classification rules, so App + App Store is exactly the
+app-only number. Admin shows App (the directly downloaded app), App Store and
+Web wherever it shows sources, and All adds the three. Evidence status, Needs
+attention, write authority and the public Compatibility counts keep both app
+parts together.
+
 - **Acquisitions** are provider-download attempts. Only terminal
   `DOWNLOAD_SUCCEEDED` and `DOWNLOAD_FAILED` events count. `STARTED`,
   `PROCESSING`, `CANCELLED`, `INTERRUPTED`, missing, and unknown terminal
@@ -299,8 +314,9 @@ fresh-install totals, compatibility promotion, provider popularity or map covera
 
 The Dashboard installation trend is an installation-outcome chart. It must never
 include download or pre-install acquisition events. Every rule in this section
-defines the App view; the Web view of both Dashboard charts is defined by the
-web installer statistics contract, and the All view (the default) adds the two
+defines the app view, which the App and App Store views split by distribution
+(App and App Store above); the Web view of both Dashboard charts is defined by
+the web installer statistics contract, and the All view (the default) adds them
 per bucket.
 
 Fresh-install outcomes and map-update outcomes are separate statistical

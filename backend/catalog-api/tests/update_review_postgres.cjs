@@ -9,7 +9,7 @@ const input=JSON.parse(require('node:fs').readFileSync(0,'utf8'));
  await db.exec(`CREATE TABLE compatibility_evidence_event(event_id UUID,operation_id UUID,phase_outcome TEXT,write_started BOOLEAN,
  failure_stage TEXT,failure_code TEXT,linked_github_issue TEXT,canonical_device_model_id TEXT,identity_resolution_state TEXT,
  diagnostic_status TEXT,is_local_test BOOLEAN,statistics_exclusion_code TEXT,map_result_index INT,provider TEXT,region TEXT,
- compatibility_identity TEXT,model TEXT);
+ compatibility_identity TEXT,model TEXT,release_label TEXT);
  CREATE TABLE compatibility_model_statistics(canonical_device_model_id TEXT,calculated_status TEXT,successful_install_count INT,
  review_status TEXT,public_statistics_enabled BOOLEAN);
  CREATE TABLE map_download_event(event_id UUID,operation_id UUID,is_local_test BOOLEAN,statistics_exclusion_code TEXT,
@@ -47,8 +47,8 @@ const input=JSON.parse(require('node:fs').readFileSync(0,'utf8'));
  await add({operation:110,status:'RESOLVED'}); // review does not erase outcomes
  const stats=async()=>Object.fromEntries((await db.query(input.stats)).rows.map(r=>[r.canonical_device_model_id,r]));
  const before=await stats();
- assert.deepEqual(before['exact-47'],{canonical_device_model_id:'exact-47',successful:1,failed:3,not_started:1,ambiguous:5});
- assert.deepEqual(before['exact-51'],{canonical_device_model_id:'exact-51',successful:0,failed:1,not_started:0,ambiguous:1});
+ assert.deepEqual(before['exact-47'],{canonical_device_model_id:'exact-47',successful:1,failed:3,not_started:1,ambiguous:5,app_store_successful:0,app_store_failed:0,app_store_not_started:0});
+ assert.deepEqual(before['exact-51'],{canonical_device_model_id:'exact-51',successful:0,failed:1,not_started:0,ambiguous:1,app_store_successful:0,app_store_failed:0,app_store_not_started:0});
  const evidenceBefore=(await db.query('SELECT event_id,outcome,payload,canonical_device_model_id FROM map_update_diagnostic ORDER BY event_id')).rows;
  const reviewCounts=[];
  for(const[sql,args]of input.mutations){

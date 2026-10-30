@@ -56,9 +56,10 @@ shared install statistics from the start, like app results.
   decision is audited, and a record with a decision is never resolved
   automatically again. A manual assignment never teaches a USB code.
 - **Where they appear**: Dashboard charts, Installations and Maps (each with
-  the All, the default, App and Web switch; owner decision 2026-10-13, which
-  replaces the combined-only Maps page), Dashboard Activity (web rows marked
-  with the Web icon), Devices list and model pages (App, Web and All rows; the
+  the All, the default, App, App Store and Web switch; owner decisions
+  2026-10-13, which replaces the combined-only Maps page, and 2026-10-30),
+  Dashboard Activity (web rows marked with the Web icon), Devices list and
+  model pages (App, App Store, Web and All rows; the
   model page Installation history lists each counted web install with the Web
   icon), and the public Compatibility JSON and watch cards
   (`successfulInstallations` = app + web, with `appSuccessfulInstallations` and

@@ -369,7 +369,9 @@ The read model (`schemaVersion`, `period`, `timeZone`, `since`, `until`,
 test records are excluded from `watch` and `server`. A failed read renders the
 page as unavailable (200) and the JSON as `503 web_installer_unavailable`.
 The Dashboard overview adds the sections `web` (the same chart row shape as the
-app trend, from web records only) for the charts' Web switch and `all` (app and
+app trend, from web records only) for the charts' Web switch, `app` and
+`appStore` (the same shape for the directly downloaded app and the Mac App
+Store build, without `recentActivity`; `data` stays both parts) and `all` (app and
 web per bucket of the app trend, their totals and the newest app and web
 results as `recentActivity`, web rows with `source: "web"`) for the All view.
 The Maps statistics read model adds web rows (`source: "web"`) to `rows`, its
@@ -402,8 +404,14 @@ identity, the KPI is the sum of the rendered rows, and an identity with an open
 problem stays listed even with zero attempts. Positive Failed values use the
 shared danger styling.
 
-`source` (`all`, the default, `app` or `web`; any other value is All) selects
-the population: app evidence (`compatibility_model_statistics`), counted web
+`source` (`all`, the default, `app`, `appstore` or `web`; any other value is
+All) selects the population: app evidence (`compatibility_model_statistics`;
+`app` is the directly downloaded app, the total minus the appended
+`app_store_*` columns with the `direct_last_*` times, and `appstore` the Mac
+App Store build, its `app_store_*` columns, per
+[`STATISTICS_CONTRACT.md`](../../../contracts/STATISTICS_CONTRACT.md) App and
+App Store; each lists only identities with a result of that part and takes that
+part of Open problems, Identity review and `Watch not reported`), counted web
 installs (`Database.web_installer_installation_rows()`: the
 `web_installer_map_result` install results per catalog model, and per reported
 watch text while the watch matches no single model), or both summed per row.
@@ -1018,7 +1026,8 @@ Supported query filters are `provider`, `map`, `region`,
 `dateFrom`, `dateTo`, `eventType`, and `outcome`, plus `period` (`today`, `24h`,
 `7d`, `30d` or `all`, default `all`; any other value is `400
 invalid_period_filter`), `timeZone` and `source` (`all`, the default: app and
-web installer rows summed; `app`; or `web`; any other value is `400
+web installer rows summed; `app`, the directly downloaded app; `appstore`, the
+Mac App Store build; or `web`; any other value is `400
 invalid_source_filter`; the response echoes it as `source`). Event detail rows
 are app reports only, so `source=web` returns none. A non-`all` period replaces `dateFrom`
 with its start; `today` starts at midnight in `timeZone` (absent or unknown is
