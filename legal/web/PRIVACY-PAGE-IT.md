@@ -8,12 +8,14 @@ Titolare del trattamento: privato. Leggi [Informazioni su Terento](/it/about/) o
 
 ## Diagnostica dell’app
 
-Due flussi sono attivi per impostazione predefinita per migliorare affidabilità e compatibilità. Durante l’installazione non c’è una scelta di condivisione. Disattiva ciascun flusso in **Terento → Diagnostics** senza limitare l’app. Questo interrompe gli invii futuri e cancella la relativa coda non inviata. I rapporti inviati non si eliminano dall’app; usa il contatto sopra per le richieste sui dati.
+Nell’app scaricata da terento.app due flussi sono attivi per impostazione predefinita per migliorare affidabilità e compatibilità. Durante l’installazione non c’è una scelta di condivisione. Disattiva ciascun flusso in **Terento → Diagnostics** senza limitare l’app. Questo interrompe gli invii futuri e cancella la relativa coda non inviata. I rapporti inviati non si eliminano dall’app; usa il contatto sopra per le richieste sui dati.
 
-- **Compatibilità:** modello e firmware dell’orologio, versioni app/macOS, fornitore/mappe scelti, esito e informazioni tecniche limitate sugli errori.
+- **Compatibilità:** modello e firmware dell’orologio, versioni app/macOS, fornitore/mappe scelti, esito e informazioni tecniche limitate sugli errori, oltre a brevi note sull’esito di connessione dell’orologio, verifica del modello e caricamento del catalogo e sul motivo per cui un’installazione non è potuta partire, raggruppate da un codice casuale creato a ogni avvio dell’app.
 - **Uso delle mappe:** fornitore, mappa/regione, esito del download o installazione, ora, build e ID casuali di operazioni/eventi. Le importazioni `.img` personali sono escluse.
 
 I rapporti escludono Garmin Unit IDs, valori dei numeri di serie, account, percorsi locali, mappe e log grezzi. I rapporti individuali sono privati; vengono pubblicati solo risultati aggregati di compatibilità verificati. La base è il legittimo interesse a migliorare affidabilità e copertura dei dispositivi, ai sensi dell’art. 6(1)(f) GDPR.
+
+**Versione Mac App Store.** Entrambi i flussi sono disattivati finché non scegli di condividere. Dopo la prima installazione di una mappa riuscita, Terento chiede una sola volta se condividere i risultati dell’installazione con Terento; la casella non è selezionata. Se la selezioni, entrambi i flussi vengono attivati e viene condivisa anche quell’installazione. Puoi cambiare la scelta in qualsiasi momento in **Terento → Diagnostics**. Per questa versione la base è il tuo consenso, ai sensi dell’art. 6(1)(a) GDPR; revocarlo interrompe gli invii futuri e non incide su quanto già inviato. I suoi rapporti riportano un’indicazione App Store nella versione dell’app.
 
 ## Installer web
 
@@ -35,7 +37,7 @@ Alcuni dati restano nel tuo browser, non sul nostro server: quali mappe l’inst
 
 ## Connessioni del sito e dell’app
 
-Le richieste al sito, all’installer web, API, catalogo e aggiornamenti possono comunicare IP e metadati ai fornitori di hosting e sicurezza. Nell’app le mappe si scaricano direttamente da Freizeitkarte, OpenTopoMap, MapRando, BBBike o OSMapaPL; a queste connessioni si applicano le loro regole privacy. Il controllo all’avvio recupera informazioni sulla versione, non l’app.
+Le richieste al sito, all’installer web, API, catalogo e aggiornamenti possono comunicare IP e metadati ai fornitori di hosting e sicurezza. Nell’app le mappe si scaricano direttamente da Freizeitkarte, OpenTopoMap, MapRando, BBBike o OSMapaPL; a queste connessioni si applicano le loro regole privacy. Il controllo all’avvio recupera informazioni sulla versione, non l’app. La versione Mac App Store non controlla gli aggiornamenti; li fornisce Apple. Download, aggiornamenti e valutazioni nell’App Store sono gestiti da Apple secondo la sua [informativa sulla privacy](https://www.apple.com/legal/privacy/). Apple fornisce a Terento statistiche sui download e, solo se hai accettato di condividere i dati di analisi con gli sviluppatori, rapporti sugli arresti anomali e statistiche di utilizzo.
 
 Le connessioni forniscono contenuti e funzioni richieste e proteggono dagli abusi. Il trattamento per sicurezza si basa sul legittimo interesse ai sensi dell’art. 6(1)(f) GDPR.
 
@@ -75,4 +77,4 @@ La compatibilità può includere un nome modello MTP ripulito, USB VID/PID, tras
 
 I rapporti possono includere anche la descrizione originale del modello XML (fino a 160 caratteri) e il codice prodotto del modello (fino a 64 lettere ASCII, cifre o trattini). Questi dati identificano un modello, non un singolo orologio. Sono esclusi documenti XML completi, Unit ID e numeri di serie. Le associazioni dei codici e le correzioni amministrative sono conservate separatamente dal rapporto originale.
 
-Aggiornamento: 26 ottobre 2026.
+Aggiornamento: 29 ottobre 2026.

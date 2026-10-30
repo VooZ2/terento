@@ -8,12 +8,14 @@ Administrator danych: osoba prywatna. Przeczytaj [O Terento](/pl/about/) lub nap
 
 ## Diagnostyka aplikacji
 
-Dwa strumienie są domyślnie włączone, aby poprawiać niezawodność i zgodność. Podczas instalacji nie ma wyboru udostępniania. Każdy strumień można wyłączyć w **Terento → Diagnostics** bez ograniczania aplikacji. Zatrzymuje to przyszłe wysyłanie i usuwa niewysłaną kolejkę tego strumienia. Wysłanych raportów nie można usunąć z aplikacji; żądania dotyczące prywatności kieruj na adres powyżej.
+W aplikacji pobranej z terento.app dwa strumienie są domyślnie włączone, aby poprawiać niezawodność i zgodność. Podczas instalacji nie ma wyboru udostępniania. Każdy strumień można wyłączyć w **Terento → Diagnostics** bez ograniczania aplikacji. Zatrzymuje to przyszłe wysyłanie i usuwa niewysłaną kolejkę tego strumienia. Wysłanych raportów nie można usunąć z aplikacji; żądania dotyczące prywatności kieruj na adres powyżej.
 
-- **Zgodność:** model i oprogramowanie zegarka, wersje aplikacji i macOS, dostawca/mapy, wynik instalacji i ograniczone techniczne informacje o błędach.
+- **Zgodność:** model i oprogramowanie zegarka, wersje aplikacji i macOS, dostawca/mapy, wynik instalacji i ograniczone techniczne informacje o błędach, a także krótkie informacje o przebiegu łączenia zegarka, sprawdzania modelu i wczytywania katalogu map oraz o tym, dlaczego instalacja nie mogła się rozpocząć, grupowane losowym kodem tworzonym przy każdym uruchomieniu aplikacji.
 - **Użycie map:** dostawca, mapa/region, wynik pobrania lub instalacji, czas, build aplikacji i losowe identyfikatory operacji/zdarzeń. Własne importy `.img` są wyłączone z tego strumienia.
 
 Raporty nie zawierają Garmin Unit IDs, wartości numerów seryjnych, kont, lokalnych ścieżek, map ani surowych logów. Raporty indywidualne są prywatne; publikowane są tylko sprawdzone zbiorcze wyniki zgodności. Podstawą jest uzasadniony interes w poprawie niezawodności i obsługi urządzeń, zgodnie z art. 6 ust. 1 lit. f RODO.
+
+**Wersja z Mac App Store.** Oba strumienie są wyłączone, dopóki nie zdecydujesz się udostępniać danych. Po pierwszej udanej instalacji mapy Terento pyta jeden raz, czy udostępniać wyniki instalacji Terento; pole nie jest zaznaczone. Po jego zaznaczeniu oba strumienie zostają włączone i udostępniana jest także ta instalacja. Wybór można zmienić w dowolnym momencie w **Terento → Diagnostics**. W tej wersji podstawą jest zgoda, zgodnie z art. 6 ust. 1 lit. a RODO; jej wycofanie zatrzymuje przyszłe wysyłanie i nie wpływa na dane już wysłane. Raporty z tej wersji mają w wersji aplikacji oznaczenie App Store.
 
 ## Instalator webowy
 
@@ -35,7 +37,7 @@ Część danych zostaje w Twojej przeglądarce, nie na naszym serwerze: które m
 
 ## Połączenia witryny i aplikacji
 
-Żądania do witryny, instalatora webowego, API, katalogu i aktualizacji mogą ujawniać adres IP i metadane dostawcom hostingu i zabezpieczeń. W aplikacji mapy są pobierane bezpośrednio z Freizeitkarte, OpenTopoMap, MapRando, BBBike lub OSMapaPL; do tych połączeń mają zastosowanie ich zasady prywatności. Kontrola aktualizacji przy uruchomieniu pobiera informacje o wydaniu, nie aplikację.
+Żądania do witryny, instalatora webowego, API, katalogu i aktualizacji mogą ujawniać adres IP i metadane dostawcom hostingu i zabezpieczeń. W aplikacji mapy są pobierane bezpośrednio z Freizeitkarte, OpenTopoMap, MapRando, BBBike lub OSMapaPL; do tych połączeń mają zastosowanie ich zasady prywatności. Kontrola aktualizacji przy uruchomieniu pobiera informacje o wydaniu, nie aplikację. Wersja z Mac App Store nie sprawdza aktualizacji; aktualizacje dostarcza Apple. Pobrania, aktualizacje i oceny w App Store przetwarza Apple zgodnie ze swoją [polityką prywatności](https://www.apple.com/legal/privacy/). Apple przekazuje Terento statystyki pobrań oraz, tylko jeśli zgodzisz się udostępniać dane analityczne twórcom aplikacji, raporty awarii i statystyki użycia.
 
 Połączenia dostarczają treści i żądane funkcje oraz chronią przed nadużyciami. Przetwarzanie dla bezpieczeństwa opiera się na uzasadnionym interesie zgodnie z art. 6 ust. 1 lit. f RODO.
 
@@ -75,4 +77,4 @@ Zgodność może obejmować oczyszczoną nazwę modelu MTP, USB VID/PID, transpo
 
 Raporty mogą dodatkowo zawierać oryginalny opis modelu z XML (do 160 znaków) i kod produktu modelu (do 64 liter ASCII, cyfr lub łączników). Dane te określają model produktu, a nie pojedynczy zegarek. Pełne dokumenty XML, Unit ID i numery seryjne są wykluczone. Powiązania kodów modeli i poprawki administratora są przechowywane oddzielnie od oryginalnego raportu.
 
-Aktualizacja: 26 października 2026 r.
+Aktualizacja: 29 października 2026 r.

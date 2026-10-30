@@ -13,12 +13,14 @@ Data controller: private individual. Read [About Terento](https://terento.app/ab
 
 ## App diagnostics
 
-Two diagnostic streams are enabled by default to improve installation reliability and compatibility. There is no sharing choice during installation. Turn either stream off in **Terento → Diagnostics** without limiting the app. This stops future sharing and clears that stream’s unsent queue; uploaded reports cannot be deleted from the app. Privacy-rights requests can be sent to the contact above.
+In the app downloaded from terento.app, two diagnostic streams are enabled by default to improve installation reliability and compatibility. There is no sharing choice during installation. Turn either stream off in **Terento → Diagnostics** without limiting the app. This stops future sharing and clears that stream’s unsent queue; uploaded reports cannot be deleted from the app. Privacy-rights requests can be sent to the contact above.
 
-- **Compatibility:** watch model and firmware, app and macOS versions, selected provider/maps, installation result and limited technical error information.
+- **Compatibility:** watch model and firmware, app and macOS versions, selected provider/maps, installation result and limited technical error information, plus short notes on how connecting the watch, checking its model and loading the map catalog went and why an installation could not start, grouped by a random code created at each app launch.
 - **Map usage:** provider, map/region, download or installation outcome, time, app build and random operation/event IDs. Custom `.img` imports are excluded from this stream.
 
 Reports exclude Garmin Unit IDs, serial-number values, account details, local paths, map files and raw logs. Individual reports are private; only reviewed aggregate compatibility results are published. The basis is legitimate interests in improving reliability and device coverage, under GDPR Article 6(1)(f).
+
+**Mac App Store version.** Both streams are off until you choose to share. After your first successful map installation, Terento asks once whether to share install results with Terento; the box is not ticked. If you tick it, both streams are turned on and that installation is shared too. You can change this at any time in **Terento → Diagnostics**. For this version the basis is your consent, under GDPR Article 6(1)(a); withdrawing it stops future sharing and does not affect what was already sent. Its reports carry an App Store label in the app version.
 
 ## Web installer
 
@@ -40,7 +42,7 @@ Some data stays in your browser, not on our server: which maps the web installer
 
 ## Website and app connections
 
-Website, web installer, API, catalog and app-update requests may expose your IP address and request metadata to hosting and security providers. In the app, catalog maps download directly from Freizeitkarte, OpenTopoMap, MapRando, BBBike or OSMapaPL, whose privacy practices apply to those connections. The app’s launch update check retrieves release metadata, not an app download.
+Website, web installer, API, catalog and app-update requests may expose your IP address and request metadata to hosting and security providers. In the app, catalog maps download directly from Freizeitkarte, OpenTopoMap, MapRando, BBBike or OSMapaPL, whose privacy practices apply to those connections. The app’s launch update check retrieves release metadata, not an app download. The Mac App Store version has no update check; Apple delivers its updates. Apple handles App Store downloads, updates and ratings under [Apple’s privacy policy](https://www.apple.com/legal/privacy/). Apple gives Terento download statistics and, only if you agreed to share analytics with app developers, crash reports and usage statistics.
 
 These connections serve content, provide requested app functions and protect against abuse. Security processing relies on legitimate interests under GDPR Article 6(1)(f).
 
@@ -80,7 +82,7 @@ Compatibility reports may also include a sanitized MTP model label, USB VID/PID,
 
 Reports may additionally include the original XML model description (up to 160 characters) and model product code (up to 64 ASCII letters, digits or hyphens). These identify a product model, not an individual watch. Whole XML documents, Unit IDs and serial numbers are excluded. Model-code mappings and any administrator corrections are kept separately from the original report.
 
-Updated: 26 October 2026.
+Updated: 29 October 2026.
 
 # Datenschutz
 
@@ -92,12 +94,14 @@ Verantwortlicher: Privatperson. Lies [Über Terento](https://terento.app/de/abou
 
 ## App-Diagnose
 
-Zwei Diagnoseströme sind standardmäßig aktiviert, um Installation und Kompatibilität zu verbessern. Während der Installation gibt es keine Freigabeauswahl. Deaktiviere jeden Strom unter **Terento → Diagnostics**, ohne die App einzuschränken. Dies beendet künftige Übermittlungen und leert die jeweilige ungesendete Warteschlange. Hochgeladene Berichte können nicht in der App gelöscht werden; Datenschutzanfragen sind über den Kontakt oben möglich.
+In der App von terento.app sind zwei Diagnoseströme standardmäßig aktiviert, um Installation und Kompatibilität zu verbessern. Während der Installation gibt es keine Freigabeauswahl. Deaktiviere jeden Strom unter **Terento → Diagnostics**, ohne die App einzuschränken. Dies beendet künftige Übermittlungen und leert die jeweilige ungesendete Warteschlange. Hochgeladene Berichte können nicht in der App gelöscht werden; Datenschutzanfragen sind über den Kontakt oben möglich.
 
-- **Kompatibilität:** Uhrenmodell und Firmware, App- und macOS-Version, gewählte Anbieter/Karten, Installationsergebnis und begrenzte technische Fehlerinformationen.
+- **Kompatibilität:** Uhrenmodell und Firmware, App- und macOS-Version, gewählte Anbieter/Karten, Installationsergebnis und begrenzte technische Fehlerinformationen, dazu kurze Meldungen, wie das Verbinden der Uhr, die Modellprüfung und das Laden des Kartenkatalogs verliefen und warum eine Installation nicht starten konnte, gruppiert über einen Zufallscode, der bei jedem App-Start neu entsteht.
 - **Kartennutzung:** Anbieter, Karte/Region, Download- oder Installationsergebnis, Zeit, App-Build und zufällige Vorgangs-/Ereignis-IDs. Eigene `.img`-Importe sind ausgeschlossen.
 
 Berichte enthalten keine Garmin Unit IDs, Seriennummernwerte, Kontodaten, lokalen Pfade, Kartendateien oder Rohprotokolle. Einzelberichte sind privat; nur geprüfte zusammengefasste Kompatibilitätsergebnisse werden veröffentlicht. Grundlage sind berechtigte Interessen an Zuverlässigkeit und Geräteabdeckung nach Art. 6 Abs. 1 lit. f DSGVO.
+
+**Mac App Store-Version.** Beide Ströme sind aus, bis du dich für das Teilen entscheidest. Nach deiner ersten erfolgreichen Karteninstallation fragt Terento einmal, ob du Installationsergebnisse mit Terento teilen möchtest; das Kästchen ist nicht angekreuzt. Kreuzt du es an, werden beide Ströme eingeschaltet und auch diese Installation wird geteilt. Du kannst das jederzeit unter **Terento → Diagnostics** ändern. Grundlage ist bei dieser Version deine Einwilligung nach Art. 6 Abs. 1 lit. a DSGVO; ein Widerruf beendet künftige Übermittlungen und berührt bereits Gesendetes nicht. Ihre Berichte tragen in der App-Version eine App-Store-Kennzeichnung.
 
 ## Web-Installer
 
@@ -119,7 +123,7 @@ Einige Daten bleiben in deinem Browser, nicht auf unserem Server: welche Karten 
 
 ## Verbindungen von Website und App
 
-Bei Website-, Web-Installer-, API-, Katalog- und Update-Anfragen können Hosting- und Sicherheitsanbieter deine IP-Adresse und Anfrage-Metadaten erhalten. In der App werden Katalogkarten direkt von Freizeitkarte, OpenTopoMap, MapRando, BBBike oder OSMapaPL geladen; deren Datenschutzregeln gelten für diese Verbindungen. Die Update-Prüfung beim App-Start lädt Veröffentlichungsdaten, nicht die App selbst.
+Bei Website-, Web-Installer-, API-, Katalog- und Update-Anfragen können Hosting- und Sicherheitsanbieter deine IP-Adresse und Anfrage-Metadaten erhalten. In der App werden Katalogkarten direkt von Freizeitkarte, OpenTopoMap, MapRando, BBBike oder OSMapaPL geladen; deren Datenschutzregeln gelten für diese Verbindungen. Die Update-Prüfung beim App-Start lädt Veröffentlichungsdaten, nicht die App selbst. Die Mac App Store-Version hat keine Update-Prüfung; Updates liefert Apple. Downloads, Updates und Bewertungen im App Store verarbeitet Apple nach der [Datenschutzrichtlinie von Apple](https://www.apple.com/legal/privacy/). Apple stellt Terento Download-Statistiken bereit und, nur wenn du dem Teilen von Analysedaten mit App-Entwicklern zugestimmt hast, Absturzberichte und Nutzungsstatistiken.
 
 Diese Verbindungen liefern Inhalte, ermöglichen angeforderte Funktionen und schützen vor Missbrauch. Die Sicherheitsverarbeitung beruht auf berechtigten Interessen nach Art. 6 Abs. 1 lit. f DSGVO.
 
@@ -159,7 +163,7 @@ Kompatibilitätsberichte können außerdem eine bereinigte MTP-Modellbezeichnung
 
 Berichte können zusätzlich die ursprüngliche XML-Modellbeschreibung (bis zu 160 Zeichen) und den Modellproduktcode (bis zu 64 ASCII-Buchstaben, Ziffern oder Bindestrichen) enthalten. Diese beschreiben ein Produktmodell, keine einzelne Uhr. Vollständige XML-Dokumente, Unit IDs und Seriennummern sind ausgeschlossen. Modellcode-Zuordnungen und administrative Korrekturen werden getrennt vom ursprünglichen Bericht gespeichert.
 
-Aktualisiert: 26. Oktober 2026.
+Aktualisiert: 29. Oktober 2026.
 
 # Confidentialité
 
@@ -171,12 +175,14 @@ Responsable du traitement : particulier. Consultez [À propos de Terento](https:
 
 ## Diagnostics de l’application
 
-Deux flux sont activés par défaut pour améliorer la fiabilité et la compatibilité. Il n’y a pas de choix de partage pendant l’installation. Désactivez chaque flux dans **Terento → Diagnostics** sans limiter l’application. Cela arrête les futurs envois et vide la file correspondante non envoyée. Les rapports transmis ne peuvent pas être supprimés depuis l’application ; utilisez le contact ci-dessus pour vos demandes.
+Dans l’application téléchargée depuis terento.app, deux flux sont activés par défaut pour améliorer la fiabilité et la compatibilité. Il n’y a pas de choix de partage pendant l’installation. Désactivez chaque flux dans **Terento → Diagnostics** sans limiter l’application. Cela arrête les futurs envois et vide la file correspondante non envoyée. Les rapports transmis ne peuvent pas être supprimés depuis l’application ; utilisez le contact ci-dessus pour vos demandes.
 
-- **Compatibilité :** modèle et micrologiciel de la montre, versions de l’application et de macOS, fournisseur/cartes sélectionnés, résultat et informations techniques limitées sur les erreurs.
+- **Compatibilité :** modèle et micrologiciel de la montre, versions de l’application et de macOS, fournisseur/cartes sélectionnés, résultat et informations techniques limitées sur les erreurs, ainsi que de brèves notes sur le déroulement de la connexion de la montre, de la vérification de son modèle et du chargement du catalogue, et sur la raison pour laquelle une installation n’a pas pu démarrer, regroupées par un code aléatoire créé à chaque lancement de l’application.
 - **Utilisation des cartes :** fournisseur, carte/région, résultat du téléchargement ou de l’installation, heure, build et identifiants aléatoires d’opération/événement. Les imports `.img` personnels sont exclus.
 
 Les rapports excluent les Garmin Unit IDs, valeurs de numéros de série, comptes, chemins locaux, cartes et journaux bruts. Les rapports individuels sont privés ; seuls des résultats agrégés de compatibilité vérifiés sont publiés. Le fondement est l’intérêt légitime à améliorer la fiabilité et la couverture des appareils, selon l’article 6(1)(f) du RGPD.
+
+**Version Mac App Store.** Les deux flux sont désactivés tant que vous n’avez pas choisi de partager. Après votre première installation de carte réussie, Terento demande une seule fois si vous souhaitez partager les résultats d’installation avec Terento ; la case n’est pas cochée. Si vous la cochez, les deux flux sont activés et cette installation est également partagée. Vous pouvez modifier ce choix à tout moment dans **Terento → Diagnostics**. Pour cette version, le fondement est votre consentement, selon l’article 6(1)(a) du RGPD ; le retirer arrête les envois futurs sans affecter ceux déjà effectués. Ses rapports portent une mention App Store dans la version de l’application.
 
 ## Installateur web
 
@@ -198,7 +204,7 @@ Certaines données restent dans votre navigateur, pas sur notre serveur : les ca
 
 ## Connexions du site et de l’application
 
-Les requêtes au site, à l’installateur web, à l’API, au catalogue et aux mises à jour peuvent communiquer votre adresse IP et des métadonnées aux hébergeurs et services de sécurité. Dans l’application, les cartes du catalogue sont téléchargées directement depuis Freizeitkarte, OpenTopoMap, MapRando, BBBike ou OSMapaPL ; leurs règles de confidentialité s’appliquent à ces connexions. La vérification au démarrage récupère des informations de version, pas l’application.
+Les requêtes au site, à l’installateur web, à l’API, au catalogue et aux mises à jour peuvent communiquer votre adresse IP et des métadonnées aux hébergeurs et services de sécurité. Dans l’application, les cartes du catalogue sont téléchargées directement depuis Freizeitkarte, OpenTopoMap, MapRando, BBBike ou OSMapaPL ; leurs règles de confidentialité s’appliquent à ces connexions. La vérification au démarrage récupère des informations de version, pas l’application. La version Mac App Store n’a pas de vérification des mises à jour ; Apple fournit ses mises à jour. Apple traite les téléchargements, mises à jour et évaluations de l’App Store selon sa [politique de confidentialité](https://www.apple.com/legal/privacy/). Apple fournit à Terento des statistiques de téléchargement et, seulement si vous avez accepté de partager les données d’analyse avec les développeurs d’apps, des rapports de plantage et des statistiques d’utilisation.
 
 Ces connexions fournissent le contenu et les fonctions demandées et protègent contre les abus. Le traitement de sécurité repose sur l’intérêt légitime selon l’article 6(1)(f) du RGPD.
 
@@ -238,7 +244,7 @@ La compatibilité peut aussi inclure un libellé MTP nettoyé, USB VID/PID, tran
 
 Les rapports peuvent aussi contenir la description originale du modèle XML (160 caractères maximum) et son code produit (64 lettres ASCII, chiffres ou traits d’union maximum). Ces données désignent un modèle, pas une montre individuelle. Les documents XML complets, Unit IDs et numéros de série sont exclus. Les correspondances des codes et les corrections administratives sont conservées séparément du rapport original.
 
-Mise à jour : 26 octobre 2026.
+Mise à jour : 29 octobre 2026.
 
 # Prywatność
 
@@ -250,12 +256,14 @@ Administrator danych: osoba prywatna. Przeczytaj [O Terento](https://terento.app
 
 ## Diagnostyka aplikacji
 
-Dwa strumienie są domyślnie włączone, aby poprawiać niezawodność i zgodność. Podczas instalacji nie ma wyboru udostępniania. Każdy strumień można wyłączyć w **Terento → Diagnostics** bez ograniczania aplikacji. Zatrzymuje to przyszłe wysyłanie i usuwa niewysłaną kolejkę tego strumienia. Wysłanych raportów nie można usunąć z aplikacji; żądania dotyczące prywatności kieruj na adres powyżej.
+W aplikacji pobranej z terento.app dwa strumienie są domyślnie włączone, aby poprawiać niezawodność i zgodność. Podczas instalacji nie ma wyboru udostępniania. Każdy strumień można wyłączyć w **Terento → Diagnostics** bez ograniczania aplikacji. Zatrzymuje to przyszłe wysyłanie i usuwa niewysłaną kolejkę tego strumienia. Wysłanych raportów nie można usunąć z aplikacji; żądania dotyczące prywatności kieruj na adres powyżej.
 
-- **Zgodność:** model i oprogramowanie zegarka, wersje aplikacji i macOS, dostawca/mapy, wynik instalacji i ograniczone techniczne informacje o błędach.
+- **Zgodność:** model i oprogramowanie zegarka, wersje aplikacji i macOS, dostawca/mapy, wynik instalacji i ograniczone techniczne informacje o błędach, a także krótkie informacje o przebiegu łączenia zegarka, sprawdzania modelu i wczytywania katalogu map oraz o tym, dlaczego instalacja nie mogła się rozpocząć, grupowane losowym kodem tworzonym przy każdym uruchomieniu aplikacji.
 - **Użycie map:** dostawca, mapa/region, wynik pobrania lub instalacji, czas, build aplikacji i losowe identyfikatory operacji/zdarzeń. Własne importy `.img` są wyłączone z tego strumienia.
 
 Raporty nie zawierają Garmin Unit IDs, wartości numerów seryjnych, kont, lokalnych ścieżek, map ani surowych logów. Raporty indywidualne są prywatne; publikowane są tylko sprawdzone zbiorcze wyniki zgodności. Podstawą jest uzasadniony interes w poprawie niezawodności i obsługi urządzeń, zgodnie z art. 6 ust. 1 lit. f RODO.
+
+**Wersja z Mac App Store.** Oba strumienie są wyłączone, dopóki nie zdecydujesz się udostępniać danych. Po pierwszej udanej instalacji mapy Terento pyta jeden raz, czy udostępniać wyniki instalacji Terento; pole nie jest zaznaczone. Po jego zaznaczeniu oba strumienie zostają włączone i udostępniana jest także ta instalacja. Wybór można zmienić w dowolnym momencie w **Terento → Diagnostics**. W tej wersji podstawą jest zgoda, zgodnie z art. 6 ust. 1 lit. a RODO; jej wycofanie zatrzymuje przyszłe wysyłanie i nie wpływa na dane już wysłane. Raporty z tej wersji mają w wersji aplikacji oznaczenie App Store.
 
 ## Instalator webowy
 
@@ -277,7 +285,7 @@ Część danych zostaje w Twojej przeglądarce, nie na naszym serwerze: które m
 
 ## Połączenia witryny i aplikacji
 
-Żądania do witryny, instalatora webowego, API, katalogu i aktualizacji mogą ujawniać adres IP i metadane dostawcom hostingu i zabezpieczeń. W aplikacji mapy są pobierane bezpośrednio z Freizeitkarte, OpenTopoMap, MapRando, BBBike lub OSMapaPL; do tych połączeń mają zastosowanie ich zasady prywatności. Kontrola aktualizacji przy uruchomieniu pobiera informacje o wydaniu, nie aplikację.
+Żądania do witryny, instalatora webowego, API, katalogu i aktualizacji mogą ujawniać adres IP i metadane dostawcom hostingu i zabezpieczeń. W aplikacji mapy są pobierane bezpośrednio z Freizeitkarte, OpenTopoMap, MapRando, BBBike lub OSMapaPL; do tych połączeń mają zastosowanie ich zasady prywatności. Kontrola aktualizacji przy uruchomieniu pobiera informacje o wydaniu, nie aplikację. Wersja z Mac App Store nie sprawdza aktualizacji; aktualizacje dostarcza Apple. Pobrania, aktualizacje i oceny w App Store przetwarza Apple zgodnie ze swoją [polityką prywatności](https://www.apple.com/legal/privacy/). Apple przekazuje Terento statystyki pobrań oraz, tylko jeśli zgodzisz się udostępniać dane analityczne twórcom aplikacji, raporty awarii i statystyki użycia.
 
 Połączenia dostarczają treści i żądane funkcje oraz chronią przed nadużyciami. Przetwarzanie dla bezpieczeństwa opiera się na uzasadnionym interesie zgodnie z art. 6 ust. 1 lit. f RODO.
 
@@ -317,7 +325,7 @@ Zgodność może obejmować oczyszczoną nazwę modelu MTP, USB VID/PID, transpo
 
 Raporty mogą dodatkowo zawierać oryginalny opis modelu z XML (do 160 znaków) i kod produktu modelu (do 64 liter ASCII, cyfr lub łączników). Dane te określają model produktu, a nie pojedynczy zegarek. Pełne dokumenty XML, Unit ID i numery seryjne są wykluczone. Powiązania kodów modeli i poprawki administratora są przechowywane oddzielnie od oryginalnego raportu.
 
-Aktualizacja: 26 października 2026 r.
+Aktualizacja: 29 października 2026 r.
 
 # Soukromí
 
@@ -329,12 +337,14 @@ Správce údajů: soukromá osoba. Přečtěte si [O Terento](https://terento.ap
 
 ## Diagnostika aplikace
 
-Dva proudy jsou standardně zapnuté pro zlepšení spolehlivosti a kompatibility. Během instalace není volba sdílení. Každý proud vypnete v **Terento → Diagnostics** bez omezení aplikace. Zastaví se další sdílení a smaže jeho neodeslaná fronta. Odeslané zprávy nelze smazat v aplikaci; žádosti ohledně soukromí zašlete na kontakt výše.
+V aplikaci stažené z terento.app jsou dva proudy standardně zapnuté pro zlepšení spolehlivosti a kompatibility. Během instalace není volba sdílení. Každý proud vypnete v **Terento → Diagnostics** bez omezení aplikace. Zastaví se další sdílení a smaže jeho neodeslaná fronta. Odeslané zprávy nelze smazat v aplikaci; žádosti ohledně soukromí zašlete na kontakt výše.
 
-- **Kompatibilita:** model a firmware hodinek, verze aplikace a macOS, poskytovatel/mapy, výsledek instalace a omezené technické údaje o chybách.
+- **Kompatibilita:** model a firmware hodinek, verze aplikace a macOS, poskytovatel/mapy, výsledek instalace a omezené technické údaje o chybách, a také krátké zprávy o průběhu připojení hodinek, kontroly modelu a načtení katalogu map a o tom, proč instalace nemohla začít, seskupené náhodným kódem vytvořeným při každém spuštění aplikace.
 - **Použití map:** poskytovatel, mapa/oblast, výsledek stažení či instalace, čas, build a náhodná ID operací/událostí. Vlastní importy `.img` jsou z tohoto proudu vyloučeny.
 
 Zprávy neobsahují Garmin Unit IDs, hodnoty sériových čísel, účty, místní cesty, mapy ani surové protokoly. Jednotlivé zprávy jsou soukromé; zveřejňují se jen ověřené souhrnné výsledky kompatibility. Základem jsou oprávněné zájmy na spolehlivosti a pokrytí zařízení podle čl. 6 odst. 1 písm. f GDPR.
+
+**Verze z Mac App Store.** Oba proudy jsou vypnuté, dokud se nerozhodnete sdílet. Po první úspěšné instalaci mapy se Terento jednou zeptá, zda chcete sdílet výsledky instalace s Terento; políčko není zaškrtnuté. Když ho zaškrtnete, zapnou se oba proudy a sdílí se i tato instalace. Volbu můžete kdykoli změnit v **Terento → Diagnostics**. U této verze je základem váš souhlas podle čl. 6 odst. 1 písm. a GDPR; jeho odvolání zastaví další sdílení a neovlivní to, co již bylo odesláno. Zprávy z této verze mají ve verzi aplikace označení App Store.
 
 ## Webový instalátor
 
@@ -356,7 +366,7 @@ Některá data zůstávají ve vašem prohlížeči, ne na našem serveru: kter�
 
 ## Připojení webu a aplikace
 
-Požadavky na web, webový instalátor, API, katalog a aktualizace mohou poskytovatelům hostingu a zabezpečení zpřístupnit IP adresu a metadata. V aplikaci se mapy stahují přímo od Freizeitkarte, OpenTopoMap, MapRando, BBBike či OSMapaPL; pro tato připojení platí jejich pravidla soukromí. Kontrola při spuštění načítá informace o vydání, nikoli aplikaci.
+Požadavky na web, webový instalátor, API, katalog a aktualizace mohou poskytovatelům hostingu a zabezpečení zpřístupnit IP adresu a metadata. V aplikaci se mapy stahují přímo od Freizeitkarte, OpenTopoMap, MapRando, BBBike či OSMapaPL; pro tato připojení platí jejich pravidla soukromí. Kontrola při spuštění načítá informace o vydání, nikoli aplikaci. Verze z Mac App Store nekontroluje aktualizace; aktualizace dodává Apple. Stahování, aktualizace a hodnocení v App Store zpracovává Apple podle svých [zásad ochrany soukromí](https://www.apple.com/legal/privacy/). Apple poskytuje Terento statistiky stahování a jen pokud jste souhlasili se sdílením analytických dat s vývojáři aplikací, také zprávy o pádech a statistiky používání.
 
 Připojení poskytují obsah, požadované funkce a ochranu před zneužitím. Bezpečnostní zpracování se opírá o oprávněné zájmy podle čl. 6 odst. 1 písm. f GDPR.
 
@@ -396,7 +406,7 @@ Kompatibilita může zahrnovat očištěný název modelu MTP, USB VID/PID, tran
 
 Zprávy mohou navíc obsahovat původní popis modelu z XML (nejvýše 160 znaků) a produktový kód modelu (nejvýše 64 písmen ASCII, číslic nebo spojovníků). Tyto údaje označují model výrobku, nikoli jednotlivé hodinky. Celé dokumenty XML, Unit ID a sériová čísla jsou vyloučeny. Přiřazení kódů modelů a opravy správce se ukládají odděleně od původní zprávy.
 
-Aktualizováno: 26. října 2026.
+Aktualizováno: 29. října 2026.
 
 # Privacy
 
@@ -408,12 +418,14 @@ Titolare del trattamento: privato. Leggi [Informazioni su Terento](https://teren
 
 ## Diagnostica dell’app
 
-Due flussi sono attivi per impostazione predefinita per migliorare affidabilità e compatibilità. Durante l’installazione non c’è una scelta di condivisione. Disattiva ciascun flusso in **Terento → Diagnostics** senza limitare l’app. Questo interrompe gli invii futuri e cancella la relativa coda non inviata. I rapporti inviati non si eliminano dall’app; usa il contatto sopra per le richieste sui dati.
+Nell’app scaricata da terento.app due flussi sono attivi per impostazione predefinita per migliorare affidabilità e compatibilità. Durante l’installazione non c’è una scelta di condivisione. Disattiva ciascun flusso in **Terento → Diagnostics** senza limitare l’app. Questo interrompe gli invii futuri e cancella la relativa coda non inviata. I rapporti inviati non si eliminano dall’app; usa il contatto sopra per le richieste sui dati.
 
-- **Compatibilità:** modello e firmware dell’orologio, versioni app/macOS, fornitore/mappe scelti, esito e informazioni tecniche limitate sugli errori.
+- **Compatibilità:** modello e firmware dell’orologio, versioni app/macOS, fornitore/mappe scelti, esito e informazioni tecniche limitate sugli errori, oltre a brevi note sull’esito di connessione dell’orologio, verifica del modello e caricamento del catalogo e sul motivo per cui un’installazione non è potuta partire, raggruppate da un codice casuale creato a ogni avvio dell’app.
 - **Uso delle mappe:** fornitore, mappa/regione, esito del download o installazione, ora, build e ID casuali di operazioni/eventi. Le importazioni `.img` personali sono escluse.
 
 I rapporti escludono Garmin Unit IDs, valori dei numeri di serie, account, percorsi locali, mappe e log grezzi. I rapporti individuali sono privati; vengono pubblicati solo risultati aggregati di compatibilità verificati. La base è il legittimo interesse a migliorare affidabilità e copertura dei dispositivi, ai sensi dell’art. 6(1)(f) GDPR.
+
+**Versione Mac App Store.** Entrambi i flussi sono disattivati finché non scegli di condividere. Dopo la prima installazione di una mappa riuscita, Terento chiede una sola volta se condividere i risultati dell’installazione con Terento; la casella non è selezionata. Se la selezioni, entrambi i flussi vengono attivati e viene condivisa anche quell’installazione. Puoi cambiare la scelta in qualsiasi momento in **Terento → Diagnostics**. Per questa versione la base è il tuo consenso, ai sensi dell’art. 6(1)(a) GDPR; revocarlo interrompe gli invii futuri e non incide su quanto già inviato. I suoi rapporti riportano un’indicazione App Store nella versione dell’app.
 
 ## Installer web
 
@@ -435,7 +447,7 @@ Alcuni dati restano nel tuo browser, non sul nostro server: quali mappe l’inst
 
 ## Connessioni del sito e dell’app
 
-Le richieste al sito, all’installer web, API, catalogo e aggiornamenti possono comunicare IP e metadati ai fornitori di hosting e sicurezza. Nell’app le mappe si scaricano direttamente da Freizeitkarte, OpenTopoMap, MapRando, BBBike o OSMapaPL; a queste connessioni si applicano le loro regole privacy. Il controllo all’avvio recupera informazioni sulla versione, non l’app.
+Le richieste al sito, all’installer web, API, catalogo e aggiornamenti possono comunicare IP e metadati ai fornitori di hosting e sicurezza. Nell’app le mappe si scaricano direttamente da Freizeitkarte, OpenTopoMap, MapRando, BBBike o OSMapaPL; a queste connessioni si applicano le loro regole privacy. Il controllo all’avvio recupera informazioni sulla versione, non l’app. La versione Mac App Store non controlla gli aggiornamenti; li fornisce Apple. Download, aggiornamenti e valutazioni nell’App Store sono gestiti da Apple secondo la sua [informativa sulla privacy](https://www.apple.com/legal/privacy/). Apple fornisce a Terento statistiche sui download e, solo se hai accettato di condividere i dati di analisi con gli sviluppatori, rapporti sugli arresti anomali e statistiche di utilizzo.
 
 Le connessioni forniscono contenuti e funzioni richieste e proteggono dagli abusi. Il trattamento per sicurezza si basa sul legittimo interesse ai sensi dell’art. 6(1)(f) GDPR.
 
@@ -475,4 +487,4 @@ La compatibilità può includere un nome modello MTP ripulito, USB VID/PID, tras
 
 I rapporti possono includere anche la descrizione originale del modello XML (fino a 160 caratteri) e il codice prodotto del modello (fino a 64 lettere ASCII, cifre o trattini). Questi dati identificano un modello, non un singolo orologio. Sono esclusi documenti XML completi, Unit ID e numeri di serie. Le associazioni dei codici e le correzioni amministrative sono conservate separatamente dal rapporto originale.
 
-Aggiornamento: 26 ottobre 2026.
+Aggiornamento: 29 ottobre 2026.

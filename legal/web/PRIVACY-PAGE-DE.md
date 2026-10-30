@@ -8,12 +8,14 @@ Verantwortlicher: Privatperson. Lies [Über Terento](/de/about/) oder kontaktier
 
 ## App-Diagnose
 
-Zwei Diagnoseströme sind standardmäßig aktiviert, um Installation und Kompatibilität zu verbessern. Während der Installation gibt es keine Freigabeauswahl. Deaktiviere jeden Strom unter **Terento → Diagnostics**, ohne die App einzuschränken. Dies beendet künftige Übermittlungen und leert die jeweilige ungesendete Warteschlange. Hochgeladene Berichte können nicht in der App gelöscht werden; Datenschutzanfragen sind über den Kontakt oben möglich.
+In der App von terento.app sind zwei Diagnoseströme standardmäßig aktiviert, um Installation und Kompatibilität zu verbessern. Während der Installation gibt es keine Freigabeauswahl. Deaktiviere jeden Strom unter **Terento → Diagnostics**, ohne die App einzuschränken. Dies beendet künftige Übermittlungen und leert die jeweilige ungesendete Warteschlange. Hochgeladene Berichte können nicht in der App gelöscht werden; Datenschutzanfragen sind über den Kontakt oben möglich.
 
-- **Kompatibilität:** Uhrenmodell und Firmware, App- und macOS-Version, gewählte Anbieter/Karten, Installationsergebnis und begrenzte technische Fehlerinformationen.
+- **Kompatibilität:** Uhrenmodell und Firmware, App- und macOS-Version, gewählte Anbieter/Karten, Installationsergebnis und begrenzte technische Fehlerinformationen, dazu kurze Meldungen, wie das Verbinden der Uhr, die Modellprüfung und das Laden des Kartenkatalogs verliefen und warum eine Installation nicht starten konnte, gruppiert über einen Zufallscode, der bei jedem App-Start neu entsteht.
 - **Kartennutzung:** Anbieter, Karte/Region, Download- oder Installationsergebnis, Zeit, App-Build und zufällige Vorgangs-/Ereignis-IDs. Eigene `.img`-Importe sind ausgeschlossen.
 
 Berichte enthalten keine Garmin Unit IDs, Seriennummernwerte, Kontodaten, lokalen Pfade, Kartendateien oder Rohprotokolle. Einzelberichte sind privat; nur geprüfte zusammengefasste Kompatibilitätsergebnisse werden veröffentlicht. Grundlage sind berechtigte Interessen an Zuverlässigkeit und Geräteabdeckung nach Art. 6 Abs. 1 lit. f DSGVO.
+
+**Mac App Store-Version.** Beide Ströme sind aus, bis du dich für das Teilen entscheidest. Nach deiner ersten erfolgreichen Karteninstallation fragt Terento einmal, ob du Installationsergebnisse mit Terento teilen möchtest; das Kästchen ist nicht angekreuzt. Kreuzt du es an, werden beide Ströme eingeschaltet und auch diese Installation wird geteilt. Du kannst das jederzeit unter **Terento → Diagnostics** ändern. Grundlage ist bei dieser Version deine Einwilligung nach Art. 6 Abs. 1 lit. a DSGVO; ein Widerruf beendet künftige Übermittlungen und berührt bereits Gesendetes nicht. Ihre Berichte tragen in der App-Version eine App-Store-Kennzeichnung.
 
 ## Web-Installer
 
@@ -35,7 +37,7 @@ Einige Daten bleiben in deinem Browser, nicht auf unserem Server: welche Karten 
 
 ## Verbindungen von Website und App
 
-Bei Website-, Web-Installer-, API-, Katalog- und Update-Anfragen können Hosting- und Sicherheitsanbieter deine IP-Adresse und Anfrage-Metadaten erhalten. In der App werden Katalogkarten direkt von Freizeitkarte, OpenTopoMap, MapRando, BBBike oder OSMapaPL geladen; deren Datenschutzregeln gelten für diese Verbindungen. Die Update-Prüfung beim App-Start lädt Veröffentlichungsdaten, nicht die App selbst.
+Bei Website-, Web-Installer-, API-, Katalog- und Update-Anfragen können Hosting- und Sicherheitsanbieter deine IP-Adresse und Anfrage-Metadaten erhalten. In der App werden Katalogkarten direkt von Freizeitkarte, OpenTopoMap, MapRando, BBBike oder OSMapaPL geladen; deren Datenschutzregeln gelten für diese Verbindungen. Die Update-Prüfung beim App-Start lädt Veröffentlichungsdaten, nicht die App selbst. Die Mac App Store-Version hat keine Update-Prüfung; Updates liefert Apple. Downloads, Updates und Bewertungen im App Store verarbeitet Apple nach der [Datenschutzrichtlinie von Apple](https://www.apple.com/legal/privacy/). Apple stellt Terento Download-Statistiken bereit und, nur wenn du dem Teilen von Analysedaten mit App-Entwicklern zugestimmt hast, Absturzberichte und Nutzungsstatistiken.
 
 Diese Verbindungen liefern Inhalte, ermöglichen angeforderte Funktionen und schützen vor Missbrauch. Die Sicherheitsverarbeitung beruht auf berechtigten Interessen nach Art. 6 Abs. 1 lit. f DSGVO.
 
@@ -75,4 +77,4 @@ Kompatibilitätsberichte können außerdem eine bereinigte MTP-Modellbezeichnung
 
 Berichte können zusätzlich die ursprüngliche XML-Modellbeschreibung (bis zu 160 Zeichen) und den Modellproduktcode (bis zu 64 ASCII-Buchstaben, Ziffern oder Bindestrichen) enthalten. Diese beschreiben ein Produktmodell, keine einzelne Uhr. Vollständige XML-Dokumente, Unit IDs und Seriennummern sind ausgeschlossen. Modellcode-Zuordnungen und administrative Korrekturen werden getrennt vom ursprünglichen Bericht gespeichert.
 
-Aktualisiert: 26. Oktober 2026.
+Aktualisiert: 29. Oktober 2026.
