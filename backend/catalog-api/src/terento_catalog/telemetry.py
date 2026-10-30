@@ -49,3 +49,12 @@ def is_local_release_label(value: Any) -> bool:
         and value.endswith("-local")
     )
 
+
+def is_app_store_release_label(value: Any) -> bool:
+    """A Mac App Store build: the ``appstore`` SemVer build-metadata identifier
+    (``1.1.0+appstore``). Python twin of SQL ``terento_is_app_store_release``."""
+
+    if not isinstance(value, str) or SEMVER_RELEASE_LABEL.fullmatch(value) is None or "+" not in value:
+        return False
+    return "appstore" in value.split("+", 1)[1].split(".")
+

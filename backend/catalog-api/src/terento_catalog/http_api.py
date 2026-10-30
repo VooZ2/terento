@@ -71,7 +71,7 @@ from .asset_attribution import generic_fallback_image, public_asset_source
 from .catalog import build_catalog, catalog_etag, serialize_catalog
 from .config import DEFAULT_TRUSTED_PROXIES
 from .db import (
-    Database, IdentityResolutionError, _fill_overview_trend_buckets, _next_overview_bucket, _overview_bucket_floor,
+    APP_DISTRIBUTIONS, Database, IdentityResolutionError, _fill_overview_trend_buckets, _next_overview_bucket, _overview_bucket_floor,
     combine_trend_rows, web_installer_identity,
 )
 from .device_catalog import (
@@ -823,7 +823,7 @@ class CatalogService:
             raise MapEventValidationError("invalid_period_filter")
         time_zone = _admin_time_zone(query.get("timeZone"))
         source = str(query.get("source") or "all").strip().lower()
-        if source not in {"all", "app", "web"}:
+        if source not in {"all", "app", "appstore", "web"}:
             raise MapEventValidationError("invalid_source_filter")
         filter_query = {
             key: value for key, value in query.items()
@@ -833,6 +833,10 @@ class CatalogService:
         if start is not None:
             filter_query["dateFrom"] = start.isoformat()
         filters = validate_statistics_filters(filter_query)
+        if source in APP_DISTRIBUTIONS:
+            # App is the directly downloaded app, App Store the Mac App Store
+            # build (owner request 2026-10-30); All and Web keep both.
+            filters["distribution"] = source
         population_filters = {
             key: value for key, value in filters.items()
             if key not in {"eventType", "outcome", "eventId"}
@@ -844,11 +848,12 @@ class CatalogService:
             raise MapEventValidationError("invalid_detail_pagination") from exc
         if detail_page_size not in {25, 50}:
             raise MapEventValidationError("invalid_detail_page_size")
-        # All sums app and web results, App and Web show one source (owner
-        # decisions 2026-10-11 and 2026-10-13); Event detail stays app reports only.
+        # All sums app and web results, App, App Store and Web show one source
+        # (owner decisions 2026-10-11, 2026-10-13 and 2026-10-30); Event detail
+        # stays app reports only.
         def source_rows(population: dict[str, Any]) -> list[dict[str, Any]]:
             return [*(self.database.map_statistics(population) if source != "web" else []),
-                    *(self.database.web_installer_map_statistics(population) if source != "app" else [])]
+                    *(self.database.web_installer_map_statistics(population) if source in {"all", "web"} else [])]
 
         rows = source_rows(population_filters)
         all_time_filters = {
@@ -997,6 +1002,11 @@ class CatalogService:
             "funnel": section("funnel", lambda: self.app_funnel({"period": period, "timeZone": time_zone}), dict(unavailable)),
             # "data" stays app only and "web" web only; "all" sums both for the
             # default All view and the Activity list (owner decision 2026-10-11).
+            # "app" and "appStore" split "data" into the directly downloaded app
+            # and the Mac App Store build (owner request 2026-10-30).
+            **{key: section(key, lambda distribution=distribution: self.database.admin_overview_map_snapshot(
+                since, period=period, time_zone=time_zone, distribution=distribution,
+            ), dict(unavailable)) for key, distribution in (("app", "app"), ("appStore", "appstore"))},
             "web": section("web", lambda: self.web_installer_chart(since, period, time_zone), dict(unavailable)),
             "all": section("all", lambda: self._overview_all(data, since, period, time_zone), dict(unavailable)),
             "supportReports": section(
@@ -1075,15 +1085,20 @@ class CatalogService:
     def compatibility_statistics(self) -> list[dict[str, Any]]:
         return self._canonicalize_statistics(self.database.compatibility_statistics())
 
-    def compatibility_diagnostic_summary(self) -> dict[str, dict[str, int]]:
+    def compatibility_diagnostic_summary(self, distribution: str | None = None) -> dict[str, dict[str, int]]:
         """Open problems and pending identities per identity, counted in SQL.
 
         Attempt, success and failure counts come from the statistics view rows;
         open problems use the canonical Needs attention predicate and unit
-        (operations).
+        (operations). ``distribution`` (``app`` or ``appstore``) limits both to
+        that part of the app results.
         """
-        pending = self.database.identity_pending_counts()
-        by_identity = self.database.installation_problem_counts()["byIdentity"]
+        if distribution is None:
+            pending = self.database.identity_pending_counts()
+            by_identity = self.database.installation_problem_counts()["byIdentity"]
+        else:
+            pending = self.database.identity_pending_counts(distribution=distribution)
+            by_identity = self.database.installation_problem_counts(distribution=distribution)["byIdentity"]
         return {
             identity: {
                 "errors": int(by_identity.get(identity, 0)),
@@ -2210,15 +2225,20 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if request_path in {"/admin/installations", "/admin/installations/"}:
                 query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
                 source = (query.get("source") or ["all"])[-1]
+                source = source if source in {"all", "app", "appstore", "web"} else "all"
+                # App and App Store take their own part of open problems and
+                # watch-not-reported installs (owner request 2026-10-30).
+                distribution = source if source in APP_DISTRIBUTIONS else None
                 try:
                     body = dashboard_page(
                         service.compatibility_statistics(), session, csrf_token,
-                        diagnostic_summary=service.compatibility_diagnostic_summary(),
+                        diagnostic_summary=service.compatibility_diagnostic_summary(distribution),
                         public_stats_enabled=service.public_compatibility_stats_enabled,
                         identity_devices=service.admin_devices().get("devices", []),
                         web_rows=service.database.web_installer_installation_rows(),
-                        unreported_app=service.database.app_installs_without_model_report(),
-                        source=source if source in {"all", "app", "web"} else "all",
+                        unreported_app=(service.database.app_installs_without_model_report(distribution=distribution)
+                                        if distribution else service.database.app_installs_without_model_report()),
+                        source=source,
                     )
                 except Exception:
                     LOGGER.exception("compatibility statistics failed")

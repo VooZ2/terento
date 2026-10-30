@@ -50,6 +50,7 @@ from .maprando_geography import (
 )
 from .operational_health import provider_catalog_health
 from .statistics_periods import ADMIN_PERIOD_LABELS, ADMIN_PERIODS
+from .telemetry import is_app_store_release_label
 
 
 PASSWORD_MIN_LENGTH = 14
@@ -282,6 +283,7 @@ _FA_ICONS = {
     "source-all": ("0 0 512 512", "M232.5 5.2c14.9-6.9 32.1-6.9 47 0l218.6 101c8.5 3.9 13.9 12.4 13.9 21.8s-5.4 17.9-13.9 21.8l-218.6 101c-14.9 6.9-32.1 6.9-47 0L13.9 149.8C5.4 145.8 0 137.3 0 128s5.4-17.9 13.9-21.8L232.5 5.2zM48.1 218.4l164.3 75.9c27.7 12.8 59.6 12.8 87.3 0l164.3-75.9 34.1 15.8c8.5 3.9 13.9 12.4 13.9 21.8s-5.4 17.9-13.9 21.8l-218.6 101c-14.9 6.9-32.1 6.9-47 0L13.9 277.8C5.4 273.8 0 265.3 0 256s5.4-17.9 13.9-21.8l34.1-15.8zM13.9 362.2l34.1-15.8 164.3 75.9c27.7 12.8 59.6 12.8 87.3 0l164.3-75.9 34.1 15.8c8.5 3.9 13.9 12.4 13.9 21.8s-5.4 17.9-13.9 21.8l-218.6 101c-14.9 6.9-32.1 6.9-47 0L13.9 405.8C5.4 401.8 0 393.3 0 384s5.4-17.9 13.9-21.8z"),  # layer-group
     "source-app": ("0 0 640 512", "M128 32C92.7 32 64 60.7 64 96l0 240 64 0 0-240 384 0 0 240 64 0 0-240c0-35.3-28.7-64-64-64L128 32zM19.2 384C8.6 384 0 392.6 0 403.2 0 445.6 34.4 480 76.8 480l486.4 0c42.4 0 76.8-34.4 76.8-76.8 0-10.6-8.6-19.2-19.2-19.2L19.2 384z"),  # laptop
     "source-web": ("0 0 512 512", "M351.9 280l-190.9 0c2.9 64.5 17.2 123.9 37.5 167.4 11.4 24.5 23.7 41.8 35.1 52.4 11.2 10.5 18.9 12.2 22.9 12.2s11.7-1.7 22.9-12.2c11.4-10.6 23.7-28 35.1-52.4 20.3-43.5 34.6-102.9 37.5-167.4zM160.9 232l190.9 0C349 167.5 334.7 108.1 314.4 64.6 303 40.2 290.7 22.8 279.3 12.2 268.1 1.7 260.4 0 256.4 0s-11.7 1.7-22.9 12.2c-11.4 10.6-23.7 28-35.1 52.4-20.3 43.5-34.6 102.9-37.5 167.4zm-48 0C116.4 146.4 138.5 66.9 170.8 14.7 78.7 47.3 10.9 131.2 1.5 232l111.4 0zM1.5 280c9.4 100.8 77.2 184.7 169.3 217.3-32.3-52.2-54.4-131.7-57.9-217.3L1.5 280zm398.4 0c-3.5 85.6-25.6 165.1-57.9 217.3 92.1-32.7 159.9-116.5 169.3-217.3l-111.4 0zm111.4-48C501.9 131.2 434.1 47.3 342 14.7 374.3 66.9 396.4 146.4 399.9 232l111.4 0z"),  # globe
+    "source-appstore": ("0 0 448 512", "M400 32L48 32C21.5 32 0 53.5 0 80L0 432c0 26.5 21.5 48 48 48l352 0c26.5 0 48-21.5 48-48l0-352c0-26.5-21.5-48-48-48zM127 384.5c-5.5 9.6-17.8 12.8-27.3 7.3-9.6-5.5-12.8-17.8-7.3-27.3l14.3-24.7c16.1-4.9 29.3-1.1 39.6 11.4L127 384.5zm138.9-53.9L84 330.6c-11 0-20-9-20-20s9-20 20-20l51 0 65.4-113.2-20.5-35.4c-5.5-9.6-2.2-21.8 7.3-27.3 9.6-5.5 21.8-2.2 27.3 7.3l8.9 15.4 8.9-15.4c5.5-9.6 17.8-12.8 27.3-7.3 9.6 5.5 12.8 17.8 7.3 27.3l-85.8 148.6 62.1 0c20.2 0 31.5 23.7 22.7 40zm98.1 0l-29 0 19.6 33.9c5.5 9.6 2.2 21.8-7.3 27.3-9.6 5.5-21.8 2.2-27.3-7.3-32.9-56.9-57.5-99.7-74-128.1-16.7-29-4.8-58 7.1-67.8 13.1 22.7 32.7 56.7 58.9 102l52 0c11 0 20 9 20 20 0 11.1-9 20-20 20z"),  # brands/app-store-ios
 }
 
 
@@ -348,12 +350,18 @@ def _metric_value_text(value: Any, fmt: str) -> str | None:
     return f"{number:,}" if number is not None else None
 
 
+# The source switches and source rows, in order (owner decisions 2026-10-11,
+# 2026-10-13 and 2026-10-30): the names are for screen readers only.
+_SOURCE_LABELS = {"all": "All", "app": "App", "appstore": "App Store", "web": "Web"}
+
+
 def _source_count_grid(
     columns: list[tuple[str, str, bool]], rows: list[tuple[str, dict[str, Any]]], *, label: str,
 ) -> str:
-    """App, Web and All counts of one card (owner decision 2026-10-11): one
-    row per source, marked by its icon; ``columns`` are (heading, key,
-    failure). A value that does not apply to a source is None (shown as —)."""
+    """App, App Store, Web and All counts of one card (owner decisions
+    2026-10-11 and 2026-10-30): one row per source, marked by its icon;
+    ``columns`` are (heading, key, failure). A value that does not apply to a
+    source is None (shown as —)."""
     head = "<div class='source-count-row source-count-head' role='row'><span role='columnheader'><span class='sr-only'>Source</span></span>" + "".join(
         f"<span role='columnheader'>{html.escape(heading)}</span>" for heading, _, _ in columns) + "</div>"
     body = []
@@ -367,7 +375,7 @@ def _source_count_grid(
         body.append(
             f"<div class='source-count-row source-count-{source}' role='row'>"
             f"<span role='rowheader' class='source-count-source'>{_admin_icon('source-' + source)}"
-            f"<span class='sr-only'>{source.title()}</span></span>" + "".join(cells) + "</div>"
+            f"<span class='sr-only'>{_SOURCE_LABELS[source]}</span></span>" + "".join(cells) + "</div>"
         )
     return (f"<div class='source-count-grid' role='table' aria-label='{html.escape(label, quote=True)}' "
             f"style='--source-count-columns:{len(columns)}'>" + head + "".join(body) + "</div>")
@@ -1566,6 +1574,11 @@ def _overview_map_activity_row(event: dict[str, Any]) -> str:
             f"<span class='activity-context'>{_overview_activity_context(event)}</span></span>"
             f"{_timestamp_markup(event.get('occurred_at'))}</li>"
         )
+    if is_app_store_release_label(event.get("release_label")):
+        # Mac App Store build (owner request 2026-10-30): marked with the App
+        # Store icon like a web row.
+        status_markup += (f"<span class='activity-source-appstore' role='img' aria-label='App Store'>"
+                          f"{_admin_icon('source-appstore')}</span>")
     if event_type == 'MAP_UPDATE_NOT_STARTED' and event.get('diagnostic_report_id'):
         status_markup += f" <a href='/admin/update-diagnostics?diagnosticId={quote(str(event['diagnostic_report_id']), safe='')}'>View details</a>"
     if event_type == 'MAP_UPDATE_FAILED' and event.get('event_id'):
@@ -2233,8 +2246,8 @@ def _overview_period_script() -> str:
 
 
 def _overview_source_switch_script() -> str:
-    """Dashboard All/App/Web switch: one choice swaps both chart cards and
-    survives period reloads."""
+    """Dashboard All/App/App Store/Web switch: one choice swaps both chart
+    cards and survives period reloads."""
     return r"""(() => {
       let chosen = '';
       const show = (source) => {
@@ -2812,6 +2825,10 @@ def overview_page(
     # --- Charts with an explicit all-time line -------------------------------
     web = overview.get("web") if isinstance(overview.get("web"), dict) else {"available": False}
     all_sources = overview.get("all") if isinstance(overview.get("all"), dict) else {"available": False}
+    # A payload without the App/App Store split shows the whole app as App.
+    direct = overview.get("app") if isinstance(overview.get("app"), dict) else (
+        data if "app" not in overview else {"available": False})
+    app_store = overview.get("appStore") if isinstance(overview.get("appStore"), dict) else {"available": False}
     trend = list(data.get("trend") or [])
     bucket = str(data.get("bucket") or "day")
     if data_available:
@@ -2832,11 +2849,13 @@ def overview_page(
             return body, _period_totals(source, *keys, label=f"{kind.title()} in this period")
 
         def switched_card(title: str, kind: str, card_id: str, chart_id: str) -> str:
-            """All/App/Web (owner decisions 2026-10-10 and 2026-10-11): All
-            adds app and web results and is shown first; App is the app-only
-            statistic it always was; Web shows web installer records only.
-            One switch next to the period picker swaps both cards."""
-            panels = (("all", all_sources, chart_id + "-all"), ("app", data, chart_id), ("web", web, chart_id + "-web"))
+            """All/App/App Store/Web (owner decisions 2026-10-10, 2026-10-11
+            and 2026-10-30): All adds app and web results and is shown first;
+            App is the directly downloaded app and App Store the Mac App Store
+            build, together the app-only statistic; Web shows web installer
+            records only. One switch next to the period picker swaps both cards."""
+            panels = (("all", all_sources, chart_id + "-all"), ("app", direct, chart_id),
+                      ("appstore", app_store, chart_id + "-appstore"), ("web", web, chart_id + "-web"))
             rendered = [(name, *chart(source, kind, panel_chart_id)) for name, source, panel_chart_id in panels]
             hidden = lambda name: "" if name == "all" else " hidden"
             return _section_card(
@@ -2899,7 +2918,7 @@ def overview_page(
             f"<button type='button'{active_source.get(name, '')} data-source-switch='{name}' "
             f"aria-pressed='{str(name == 'all').lower()}' aria-label='{label}'>"
             f"{_admin_icon('source-' + name)}</button>"
-            for name, label in (("all", "All"), ("app", "App"), ("web", "Web"))
+            for name, label in _SOURCE_LABELS.items()
         )
         + "</span>"
     ) if data_available else ""
@@ -2954,10 +2973,10 @@ def _overview_revision_sections(
         ),
         "supportReports": overview.get("supportReports"),
         "system": [(card["title"], card["status"]) for card in system_issues],
-        "web": (
-            {**{k: v for k, v in web.items() if k != "trend"}, "trend": active_trend_buckets(web.get("trend"))}
-            if isinstance(web := overview.get("web"), dict) else None
-        ),
+        **{key: (
+            {**{k: v for k, v in part.items() if k != "trend"}, "trend": active_trend_buckets(part.get("trend"))}
+            if isinstance(part := overview.get(key), dict) else None
+        ) for key in ("app", "appStore", "web")},
     }
 
 
@@ -3838,15 +3857,43 @@ _ACTIVE_CLASS = " class='active'"
 
 
 def _source_switch(active: str, *, label: str) -> str:
-    """The All/App/Web switch (Font Awesome layer-group, laptop, globe) of a
-    GET form: Installations and Maps reload with ``source``; the Dashboard
-    variant swaps pre-rendered panels instead."""
+    """The All/App/App Store/Web switch (Font Awesome layer-group, laptop,
+    app-store-ios, globe) of a GET form: Installations and Maps reload with
+    ``source``; the Dashboard variant swaps pre-rendered panels instead."""
     buttons = "".join(
         f"<button type='submit' name='source' value='{name}'{_ACTIVE_CLASS if name == active else ''} "
         f"aria-pressed='{str(name == active).lower()}' aria-label='{name_label}'>{_admin_icon('source-' + name)}</button>"
-        for name, name_label in (("all", "All"), ("app", "App"), ("web", "Web"))
+        for name, name_label in _SOURCE_LABELS.items()
     )
     return f"<span class='overview-source-switch' role='group' aria-label='{html.escape(label, quote=True)}'>{buttons}</span>"
+
+
+_STORE_COUNTS = ("attempted_install_count", "successful_install_count", "failed_install_count", "prewrite_failure_count")
+_STORE_TIMES = ("last_success", "last_failure", "last_evidence")
+
+
+def _has_distribution_evidence(row: dict[str, Any], source: str) -> bool:
+    """App and App Store list only identities with a result of that part."""
+    if source == "appstore":
+        return row.get("app_store_last_evidence") is not None
+    if source == "app":
+        return row.get("direct_last_evidence") is not None
+    return True
+
+
+def _installation_distribution_row(row: dict[str, Any], source: str) -> dict[str, Any]:
+    """One statistics-view row as its App (directly downloaded app) or App
+    Store part (owner request 2026-10-30); All keeps both. Evidence stays the
+    model's, from both parts."""
+    if source not in {"app", "appstore"}:
+        return dict(row)
+    part = dict(row)
+    for key in _STORE_COUNTS:
+        store = int(row.get("app_store_" + key) or 0)
+        part[key] = store if source == "appstore" else int(row.get(key) or 0) - store
+    for key in _STORE_TIMES:
+        part[key] = row.get(("app_store_" if source == "appstore" else "direct_") + key)
+    return part
 
 
 def _installation_row_key(row: dict[str, Any]) -> str:
@@ -3878,16 +3925,18 @@ def dashboard_page(
     )
     summary_source = diagnostic_summary
     # Web installs join the model rows (owner decision 2026-10-13): All adds
-    # App and Web, a watch that matches no single model is its own Web row.
-    # Evidence stays app-only, so the app successes are kept apart.
-    source = source if web_rows is not None and source in {"all", "app", "web"} else "app"
-    app_rows = [{**row, "app_successful_install_count": int(row.get("successful_install_count") or 0)}
-                for row in rows] if source != "web" else []
+    # App, App Store and Web, a watch that matches no single model is its own
+    # Web row. Evidence stays app-only, so the app successes are kept apart.
+    # Without web rows there is no switch and the rows are the whole app.
+    source = source if web_rows is not None and source in _SOURCE_LABELS else "all"
+    app_rows = [{**_installation_distribution_row(row, source),
+                 "app_successful_install_count": int(row.get("successful_install_count") or 0)}
+                for row in rows if _has_distribution_evidence(row, source)] if source != "web" else []
     web_source_rows = [
         {**row, "web_only": True, "app_successful_install_count": 0, "web_reported": row.get("reported_model"),
          "model": row.get("reported_model") or row.get("canonical_device_model_id")}
         for row in (web_rows or [])
-    ] if source != "app" else []
+    ] if source in {"all", "web"} else []
     # App installs that Maps counts but no watch report backs: one row, so
     # the App total equals the Maps App installs (owner 2026-10-13).
     unreported_count = int((unreported_app or {}).get("successful_install_count") or 0)
@@ -4968,7 +5017,7 @@ def map_statistics_page(
     statistics = dict(statistics)
     selected = selected_filters or {}
     source = str(statistics.get("source") or "all")
-    source = source if source in {"all", "app", "web"} else "all"
+    source = source if source in _SOURCE_LABELS else "all"
     event_detail_open = " open" if selected.get("eventId") else ""
     has_event_data = bool(rows)
     has_all_time_data = bool(all_time_summary.get("hasEventData", has_event_data)) or has_event_data
@@ -6817,13 +6866,14 @@ def device_detail_page(
     failed = int(stats.get("failed") or 0)
     app_stats = stats.get("app") if isinstance(stats.get("app"), dict) else {
         "attempts": attempts, "successful": successful, "failed": failed}
+    store_stats = stats.get("appStore") if isinstance(stats.get("appStore"), dict) else {}
     web_stats = stats.get("web") if isinstance(stats.get("web"), dict) else {}
     open_errors = (
         int(open_problem_count) if open_problem_count is not None
         else _open_problem_operation_count(active_events)
     )
     status = calculate_compatibility_status(
-        successful_install_count=int(app_stats.get("successful") or 0),
+        successful_install_count=int(app_stats.get("successful") or 0) + int(store_stats.get("successful") or 0),
         recognized_map_capable_evidence=device.get("observedMapCapability") is True,
     )
     status_value = device.get("evidenceStatus") or (status.value if status else "")
@@ -6986,7 +7036,7 @@ def device_detail_page(
         "<header class='admin-card-head'><h2 id='model-installation-kpis-title'>Installs</h2></header>"
         + _source_count_grid(
             [("Attempts", "attempts", False), ("Successful", "successful", False), ("Failed", "failed", True)],
-            [("app", app_stats), ("web", web_stats),
+            [("app", app_stats), ("appstore", store_stats), ("web", web_stats),
              ("all", {"attempts": attempts, "successful": successful, "failed": failed})],
             label="Installs by source",
         )
@@ -7538,6 +7588,11 @@ def _admin_device_payload(
         attempts = int(row.get("attempted_install_count") or 0)
         successful = int(row.get("successful_install_count") or 0)
         failed = int(row.get("failed_install_count") or 0)
+        # The App Store part of the app results (owner request 2026-10-30);
+        # evidence and map capability keep both app distributions.
+        store_attempts = int(row.get("app_store_attempted_install_count") or 0)
+        store_successful = int(row.get("app_store_successful_install_count") or 0)
+        store_failed = int(row.get("app_store_failed_install_count") or 0)
         # Web installer results count with app results (owner decision
         # 2026-10-11); evidence and map capability stay app-only.
         web_attempts = int(row.get("web_attempted_install_count") or 0)
@@ -7643,7 +7698,9 @@ def _admin_device_payload(
                 "firstSuccessfulAt": _timestamp_iso(row.get("first_success")) or None,
                 "lastSuccessfulAt": _timestamp_iso(last_success) or None,
                 "lastEvidenceAt": _timestamp_iso(row.get("last_evidence")) or None,
-                "app": {"attempts": attempts, "successful": successful, "failed": failed},
+                "app": {"attempts": attempts - store_attempts, "successful": successful - store_successful,
+                        "failed": failed - store_failed},
+                "appStore": {"attempts": store_attempts, "successful": store_successful, "failed": store_failed},
                 "web": {
                     "attempts": web_attempts, "successful": web_successful, "failed": web_failed,
                     "updatesSuccessful": int(row.get("web_successful_update_count") or 0),
@@ -8719,7 +8776,7 @@ def _dashboard_script() -> str:
         const state = {search: search.value, status: status.value, sort: sort.value};
         try { sessionStorage.setItem(storageKey, JSON.stringify(state)); } catch (_) { /* optional */ }
         const stateQuery = new URLSearchParams();
-        if (['app', 'web'].includes(parameters.get('source'))) stateQuery.set('source', parameters.get('source'));
+        if (['app', 'appstore', 'web'].includes(parameters.get('source'))) stateQuery.set('source', parameters.get('source'));
         if (search.value) stateQuery.set('search', search.value);
         if (selectedQuickFilter !== 'all') stateQuery.set('state', selectedQuickFilter);
         if (status.value !== 'all') stateQuery.set('status', status.value);
@@ -10005,7 +10062,7 @@ button:active:not(:disabled),.copy-button:active{transform:scale(.96)}
 .map-activity-error .overview-activity-label{color:var(--danger)}
 .map-activity-warning .overview-activity-label{color:var(--status-tested-text)}
 .map-activity-neutral .overview-activity-label{color:var(--secondary)}
-.activity-source-web{display:inline-flex;margin-left:2px;color:var(--secondary)}.activity-source-web .admin-icon{width:13px;height:13px}
+.activity-source-web,.activity-source-appstore{display:inline-flex;margin-left:2px;color:var(--secondary)}.activity-source-web .admin-icon,.activity-source-appstore .admin-icon{width:13px;height:13px}
 .history-source-web{display:inline-flex;align-items:center;gap:4px;color:var(--secondary)}.history-source-web .admin-icon{width:13px;height:13px}
 .source-count-grid{display:grid;margin:4px 0 14px}.source-count-row{display:grid;grid-template-columns:44px repeat(var(--source-count-columns),minmax(0,1fr));align-items:center;padding:10px 0;border-top:1px solid color-mix(in srgb,var(--border) 75%,transparent)}.source-count-head{padding:0 0 8px;border-top:0;color:var(--secondary);font-size:12px;font-weight:650}.source-count-row>span:not(.source-count-source){text-align:right}.source-count-row .numeric{font-size:14px;font-weight:650;color:var(--graphite)}.source-count-row .numeric.is-positive{color:var(--danger)}.source-count-source{display:inline-flex;color:var(--graphite)}.source-count-source .admin-icon{width:18px;height:18px}.source-count-all{border-top-width:2px}.source-count-all .numeric{font-weight:750}
 @media(max-width:480px){.map-activity-row{grid-template-columns:minmax(0,1fr)}.map-activity-row>time{grid-column:1;grid-row:3;margin-left:21px}.map-activity-row .download-history>summary{grid-template-columns:minmax(0,1fr)}.map-activity-row .download-history>summary>time{grid-column:1;grid-row:3;margin-left:21px}.map-activity-row>.map-activity-copy{grid-row:1}}

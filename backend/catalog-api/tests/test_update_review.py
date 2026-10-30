@@ -133,7 +133,10 @@ class UpdateReviewTests(unittest.TestCase):
         db.update_issue_queue_diagnostics()
         root=Path(__file__).parent
         payload={'migrations':[(root.parent/'src/terento_catalog/migrations'/name).read_text() for name in
-                              ('064_provider_rechecks_update_diagnostics.sql','065_update_diagnostic_review.sql')],
+                              ('064_provider_rechecks_update_diagnostics.sql','065_update_diagnostic_review.sql')]
+                             # The App Store rule of the model update counts (089), without its view.
+                             +[(root.parent/'src/terento_catalog/migrations/089_app_store_distribution.sql').read_text()
+                               .split('-- Same population as 069',1)[0]],
                  'stats':stats_sql,'summary':summary_sql,'mutations':mutations,'queue':db.calls[-1][0]}
         result=subprocess.run(['node',str(root/'update_review_postgres.cjs'),require_pglite(self)],
                               input=json.dumps(payload),text=True,capture_output=True)
