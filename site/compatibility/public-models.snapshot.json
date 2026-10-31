@@ -44,10 +44,10 @@
       "family": "forerunner",
       "familyName": "Forerunner",
       "imageUrl": "https://res.garmin.com/en/products/010-02969-12/g/cf-lg.jpg",
-      "successfulInstallations": 26,
-      "appSuccessfulInstallations": 26,
+      "successfulInstallations": 28,
+      "appSuccessfulInstallations": 28,
       "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-10-27T19:12:50+00:00"
+      "lastSuccessfulInstallation": "2026-10-31T20:47:39+00:00"
     },
     {
       "model": "fēnix 9 Pro · 51 mm",
@@ -258,6 +258,22 @@
       "lastSuccessfulInstallation": "2026-10-23T23:36:05+00:00"
     },
     {
+      "model": "fēnix 8 · 43 mm, AMOLED",
+      "variant": "43 mm, AMOLED",
+      "caseSizeMm": 43,
+      "displayType": "AMOLED",
+      "screenTechnology": "AMOLED",
+      "solar": null,
+      "inReach": null,
+      "family": "fenix",
+      "familyName": "fēnix",
+      "imageUrl": "https://res.garmin.com/en/products/010-02903-10/g/cf-lg.jpg",
+      "successfulInstallations": 7,
+      "appSuccessfulInstallations": 7,
+      "webSuccessfulInstallations": 0,
+      "lastSuccessfulInstallation": "2026-10-31T21:13:30+00:00"
+    },
+    {
       "model": "fēnix 9 Pro · inReach, 47 mm",
       "variant": "inReach, 47 mm",
       "caseSizeMm": 47,
@@ -304,22 +320,6 @@
       "appSuccessfulInstallations": 6,
       "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-10-12T12:46:36+00:00"
-    },
-    {
-      "model": "fēnix 8 · 43 mm, AMOLED",
-      "variant": "43 mm, AMOLED",
-      "caseSizeMm": 43,
-      "displayType": "AMOLED",
-      "screenTechnology": "AMOLED",
-      "solar": null,
-      "inReach": null,
-      "family": "fenix",
-      "familyName": "fēnix",
-      "imageUrl": "https://res.garmin.com/en/products/010-02903-10/g/cf-lg.jpg",
-      "successfulInstallations": 6,
-      "appSuccessfulInstallations": 6,
-      "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-10-30T01:07:46+00:00"
     },
     {
       "model": "fēnix 8 Pro · 47 mm, AMOLED",
@@ -626,5 +626,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-10-31T17:13:54.723134+00:00"
+  "generatedAt": "2026-10-31T21:16:33.227593+00:00"
 }
