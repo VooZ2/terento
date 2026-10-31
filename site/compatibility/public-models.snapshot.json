@@ -108,10 +108,10 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-04337-00/g/cf-lg.jpg",
-      "successfulInstallations": 13,
-      "appSuccessfulInstallations": 13,
+      "successfulInstallations": 15,
+      "appSuccessfulInstallations": 15,
       "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-10-04T22:03:29+00:00"
+      "lastSuccessfulInstallation": "2026-10-31T15:37:44+00:00"
     },
     {
       "model": "Forerunner 955 · Standard",
@@ -626,5 +626,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-10-31T05:00:33.021450+00:00"
+  "generatedAt": "2026-10-31T17:13:54.723134+00:00"
 }
