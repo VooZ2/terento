@@ -11,7 +11,7 @@ Terento je navrženo pro hodinky Garmin s podporou map. Níže jsou uvedeny konk
 
 Pokud zde svůj model nevidíte, neznamená to, že není podporován — pro daný model a variantu zatím možná nebyla sdílena žádná úspěšná instalace.
 
-**39** modely s úspěšnými instalacemi**341** úspěšných instalacíPoslední úspěšná instalace 31. října 2026
+**39** modely s úspěšnými instalacemi**344** úspěšných instalacíPoslední úspěšná instalace 31. října 2026
 
 Jak tento seznam funguje
 
@@ -53,11 +53,11 @@ Forerunner
 
 AMOLED
 
-26 úspěšných instalací
+28 úspěšných instalací
 
-App 26
+App 28
 
-Poslední úspěšná instalace 27. října 2026
+Poslední úspěšná instalace 31. října 2026
 
 fēnix
 
@@ -217,6 +217,18 @@ Poslední úspěšná instalace 23. října 2026
 
 fēnix
 
+### fēnix 8
+
+43 mm, AMOLED
+
+7 úspěšných instalací
+
+App 7
+
+Poslední úspěšná instalace 31. října 2026
+
+fēnix
+
 ### fēnix 9 Pro
 
 47 mm, AMOLED, inReach
@@ -250,18 +262,6 @@ Solar, (no Wi-Fi)
 App 6
 
 Poslední úspěšná instalace 12. října 2026
-
-fēnix
-
-### fēnix 8
-
-43 mm, AMOLED
-
-6 úspěšných instalací
-
-App 6
-
-Poslední úspěšná instalace 30. října 2026
 
 fēnix
 
