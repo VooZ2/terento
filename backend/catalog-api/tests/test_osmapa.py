@@ -6,6 +6,7 @@ import re
 import unittest
 import zipfile
 from datetime import datetime, timezone
+from http.client import RemoteDisconnected
 from types import SimpleNamespace
 from urllib.error import HTTPError, URLError
 
@@ -273,6 +274,39 @@ class OSMapaTests(unittest.TestCase):
         fetcher.opener = SimpleNamespace(open=reset_once)
         fetcher.fetch_range(url(), 'bytes=0-15')
         self.assertEqual(len(calls), 2)
+        def disconnect(times):
+            calls.clear()
+            def open_(*_a, **_k):
+                calls.append(1)
+                if len(calls) <= times:
+                    raise RemoteDisconnected('Remote end closed connection without response')
+                return Response(206, headers)
+            return open_
+        fetcher.opener = SimpleNamespace(open=disconnect(1))
+        fetcher.fetch_range(url(), 'bytes=0-15')
+        self.assertEqual(len(calls), 2)
+        fetcher.opener = SimpleNamespace(open=disconnect(2))
+        with self.assertRaises(RemoteDisconnected):
+            fetcher.fetch_range(url(), 'bytes=0-15')
+        self.assertEqual(len(calls), 2)
+        index = Response(200, {}, body=b'<html></html>', location=ROOT)
+        calls.clear()
+        def index_after_disconnect(*_a, **_k):
+            calls.append(1)
+            if len(calls) == 1:
+                raise RemoteDisconnected('Remote end closed connection without response')
+            return index
+        fetcher.opener = SimpleNamespace(open=index_after_disconnect)
+        self.assertEqual(fetcher.fetch_index(), '<html></html>')
+        self.assertEqual(len(calls), 2)
+        calls.clear()
+        def http_503(*_a, **_k):
+            calls.append(1)
+            raise HTTPError(url(), 503, 'Unavailable', {}, None)
+        fetcher.opener = SimpleNamespace(open=http_503)
+        with self.assertRaises(HTTPError):
+            fetcher.fetch_range(url(), 'bytes=0-15')
+        self.assertEqual(len(calls), 1)
         with self.assertRaises(ProviderCollectionError):
             fetcher.fetch_range('https://example.test/x.zip', 'bytes=0-15')
 
