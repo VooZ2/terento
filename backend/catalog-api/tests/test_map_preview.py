@@ -738,6 +738,43 @@ class WorkerTests(unittest.TestCase):
             self.assertEqual(len(attempts), 3)
             self.assertTrue(all(seconds == job_module.LEASE_RENEW_SECONDS for seconds in waits))
 
+    def test_window_overrun_does_not_skip_the_next_window(self):
+        # 21:00-06:00 window; the last package finishes at 06:05, after the deadline.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            renderer_path = root / "renderer"
+            renderer_path.write_text("#!/bin/sh\n")
+            renderer_path.chmod(0o755)
+            stop = threading.Event()
+            now = [datetime(2026, 10, 30, 21, 2, tzinfo=timezone.utc)]
+            deadlines = []
+
+            class OverrunningRun:
+                def __init__(self, *args, **kwargs):
+                    pass
+
+                def run(self, deadline, stop_event):
+                    deadlines.append(deadline)
+                    if len(deadlines) >= 2:
+                        stop.set()
+                    now[0] = deadline + timedelta(minutes=5)
+                    return job_module.WindowResult()
+
+            class ClockStop:
+                def is_set(self):
+                    return stop.is_set()
+
+                def wait(self, seconds):
+                    now[0] += timedelta(seconds=seconds)
+                    return stop.is_set()
+
+            with mock.patch.object(job_module, "PreviewRun", OverrunningRun):
+                job_module.run_worker(mock.Mock(), ClockStop(),
+                                      settings(root, renderer=renderer_path, window_utc=(day_time(21), day_time(6))),
+                                      clock=lambda: now[0])
+            self.assertEqual(deadlines, [datetime(2026, 10, 31, 6, tzinfo=timezone.utc),
+                                         datetime(2026, 11, 1, 6, tzinfo=timezone.utc)])
+
 
 class PaperAndCountryTests(unittest.TestCase):
     def test_transparent_published_layers_are_detected(self):

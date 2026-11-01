@@ -426,7 +426,9 @@ def run_worker(database: Any, stop: Event, settings: PreviewSettings, *, clock=l
         except Exception as error:  # noqa: BLE001 - keep the scheduler alive
             LOGGER.exception("map preview window failed; next window will retry")
             _heartbeat(database, status="FAILED", completed_at=clock(), error_summary=f"{type(error).__name__}: {str(error)[:300]}")
-        _, end = next_window(clock(), settings.window_utc)
+        # Wait out the window just run, not the next one: the last package is
+        # finished after the deadline, and a window overrun past its end must
+        # not make the worker sleep through the whole following window.
         remaining = (end - clock()).total_seconds()
         if remaining > 0:
             stop.wait(remaining)
