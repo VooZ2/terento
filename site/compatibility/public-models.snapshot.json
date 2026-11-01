@@ -28,10 +28,10 @@
       "family": "forerunner",
       "familyName": "Forerunner",
       "imageUrl": "https://res.garmin.com/en/products/010-02809-01/v/cf-lg.jpg",
-      "successfulInstallations": 31,
+      "successfulInstallations": 32,
       "appSuccessfulInstallations": 29,
-      "webSuccessfulInstallations": 2,
-      "lastSuccessfulInstallation": "2026-10-22T08:05:21+00:00"
+      "webSuccessfulInstallations": 3,
+      "lastSuccessfulInstallation": "2026-11-01T16:37:09+00:00"
     },
     {
       "model": "Forerunner 970",
@@ -252,10 +252,10 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-02541-01/v/cf-lg-69399493-9540-4ea5-8033-b4aba04cea8f.jpg",
-      "successfulInstallations": 7,
-      "appSuccessfulInstallations": 7,
+      "successfulInstallations": 8,
+      "appSuccessfulInstallations": 8,
       "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-10-23T23:36:05+00:00"
+      "lastSuccessfulInstallation": "2026-11-01T13:53:32+00:00"
     },
     {
       "model": "fēnix 8 · 43 mm, AMOLED",
@@ -626,5 +626,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-10-31T21:16:33.227593+00:00"
+  "generatedAt": "2026-11-01T21:54:30.068229+00:00"
 }
