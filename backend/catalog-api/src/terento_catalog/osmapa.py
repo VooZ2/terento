@@ -99,8 +99,10 @@ class OSMapaFetcher:
                 if error.code == 429:
                     self.rate_limited.set()
                 raise
-            except URLError:
-                # One retry for a transport reset (seen once on this host); never for HTTP status.
+            except (URLError, ConnectionError):
+                # One retry for a transport reset; never for HTTP status. urllib wraps
+                # send errors in URLError, but a connection dropped before the
+                # response (http.client.RemoteDisconnected, seen 2026-10-31) is raw.
                 if attempt:
                     raise
 
