@@ -15,7 +15,7 @@ RUN cmake -S renderer -B out -DCMAKE_BUILD_TYPE=Release \
         --bbox 1.52,42.50,1.544,42.524 --zoom 14-14 --jobs 2 --out /tmp/smoke \
     && test -n "$(find /tmp/smoke -name '*.webp' -print -quit)"
 
-FROM python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+FROM python:3.15-slim-bookworm@sha256:4e03260adeeebafccd084f3584e6b84823aba5651cfb53ef8a078ed441ddf9cd
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
