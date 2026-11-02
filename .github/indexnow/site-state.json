@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "status": "published",
   "published": {
-    "commit": "6ab14877e50d15e84e5798cb3bf856b6f1299e3f",
+    "commit": "a4d1dd85b48614c3f34203bfdbb203836dcf836e",
     "pages": [
       {
         "path": "/",
@@ -82,7 +82,7 @@
         "file": "site/cs/guides/install-garmin-maps-mac/index.html",
         "locale": "cs",
         "indexable": true,
-        "fingerprint": "5938e9bae7e0310393cb8139c8504c725d1f247974d9882ab89e5b7713b1dc08",
+        "fingerprint": "e27c88bc46001bb9184da74757c6f20b860dc4976d393a861f72553af2512730",
         "lastmod": "2026-11-02"
       },
       {
@@ -99,7 +99,7 @@
         "url": "https://terento.app/cs/install/",
         "locale": "cs",
         "indexable": true,
-        "fingerprint": "7a1df6b02bbff4e8db2c65e4cda90feda91cf497c121c2ff6a6296ce89fbbcc9",
+        "fingerprint": "7d2d2745fafa35ccba0200efeaa746873adf4c30df5956113bb95026a1eb2d14",
         "lastmod": "2026-11-02"
       },
       {
@@ -162,7 +162,7 @@
         "file": "site/de/guides/install-garmin-maps-mac/index.html",
         "locale": "de",
         "indexable": true,
-        "fingerprint": "d17a73804382251179538c9f6e4b6f0699ef4b9e948c3e82afd8f3e47736f610",
+        "fingerprint": "662694d255159c917c847edf28ff0dbb43a84b998d05ced9266414c44d5802d5",
         "lastmod": "2026-11-02"
       },
       {
@@ -179,7 +179,7 @@
         "url": "https://terento.app/de/install/",
         "locale": "de",
         "indexable": true,
-        "fingerprint": "94deb422b4f840adc3f0015f7f348ba1ec4adcd38851e71df00f0986ca00865b",
+        "fingerprint": "91f287502681687ddef9d11704df1a2578e866e2765ac07e088fca7e318d8715",
         "lastmod": "2026-11-02"
       },
       {
@@ -251,7 +251,7 @@
         "file": "site/fr/guides/install-garmin-maps-mac/index.html",
         "locale": "fr",
         "indexable": true,
-        "fingerprint": "f9fb84a85c5d39470aaf9097c133921e73194399157470150c424179ce3b1dfa",
+        "fingerprint": "a7c7b0a7d4083c79d2d41a14e04f6d32cdf4da01f5efff43c12af035f4de996d",
         "lastmod": "2026-11-02"
       },
       {
@@ -268,7 +268,7 @@
         "url": "https://terento.app/fr/install/",
         "locale": "fr",
         "indexable": true,
-        "fingerprint": "7c1254f5be521060b953d6011e491cff2fb53504abebef4f5597b405b749261d",
+        "fingerprint": "05d1984293185dadb84bd714283573531718059c507efb5c629dfb06c726ffd8",
         "lastmod": "2026-11-02"
       },
       {
@@ -295,7 +295,7 @@
         "file": "site/guides/install-garmin-maps-mac/index.html",
         "locale": "en",
         "indexable": true,
-        "fingerprint": "2b2ec133b06910587950f42580c7c4b21d8a808a7ec780533b60bd3623dda5d5",
+        "fingerprint": "f306c831500e26f1e00fca80df867a14b509a994beb3cb30ce64e9219d370d40",
         "lastmod": "2026-11-02"
       },
       {
@@ -312,7 +312,7 @@
         "url": "https://terento.app/install/",
         "locale": "en",
         "indexable": true,
-        "fingerprint": "c431e54004ad24a5c689197440d98a1f2d80d2424a859b41d4beb9cd6b5caf1b",
+        "fingerprint": "68bfac8a3f08acbafa813275b1e310815c9e4fcab92e24ad8138b810aca88f58",
         "lastmod": "2026-11-02"
       },
       {
@@ -366,7 +366,7 @@
         "file": "site/it/guides/install-garmin-maps-mac/index.html",
         "locale": "it",
         "indexable": true,
-        "fingerprint": "c579d748ef20f65d69c6dc78c1be5f447cbf9ae2b93fdf0f1382d6ecdcac31d4",
+        "fingerprint": "e428bcff790b2b5037a36e5f3c796b21130326e24a2b5a994c35dc2a09ffd887",
         "lastmod": "2026-11-02"
       },
       {
@@ -383,7 +383,7 @@
         "url": "https://terento.app/it/install/",
         "locale": "it",
         "indexable": true,
-        "fingerprint": "59b3e5f83659b2b43db22c3b8cf67e2947be7187af75cb983a27c1eeace98efb",
+        "fingerprint": "3450fb8206cd5b83352d6bdc734c9e8c1004917fbf11f7990248fdf244ceb2b0",
         "lastmod": "2026-11-02"
       },
       {
@@ -464,7 +464,7 @@
         "file": "site/pl/guides/install-garmin-maps-mac/index.html",
         "locale": "pl",
         "indexable": true,
-        "fingerprint": "1b03711d0a2b2d0e4fc6df37cafb3fc154ad8b56882224166e787818c59aa6f2",
+        "fingerprint": "a7d422cebc70c3e5a51e78e8464f5666c8c01b33947837a23e17cc67c8e556a3",
         "lastmod": "2026-11-02"
       },
       {
@@ -481,7 +481,7 @@
         "url": "https://terento.app/pl/install/",
         "locale": "pl",
         "indexable": true,
-        "fingerprint": "1d9a08db5f985710ffbaa125e0deda10cb5e43c170cc2d1194c33dc6f98d0bbb",
+        "fingerprint": "605c326752298737c9b68d46ccc7e8af10e99cd81b74a0dfa97dba53ecc395fd",
         "lastmod": "2026-11-02"
       },
       {
@@ -5725,21 +5725,93 @@
         "fingerprint": "24685dd3b033582f14703979c9abf55990ceb5b8c5667c628f4ef3a6418e020e",
         "status": 200,
         "acceptedAt": "2026-11-02T14:21:17Z"
+      },
+      {
+        "url": "https://terento.app/cs/guides/install-garmin-maps-mac/",
+        "fingerprint": "e27c88bc46001bb9184da74757c6f20b860dc4976d393a861f72553af2512730",
+        "status": 200,
+        "acceptedAt": "2026-11-02T14:45:08Z"
+      },
+      {
+        "url": "https://terento.app/cs/install/",
+        "fingerprint": "7d2d2745fafa35ccba0200efeaa746873adf4c30df5956113bb95026a1eb2d14",
+        "status": 200,
+        "acceptedAt": "2026-11-02T14:45:08Z"
+      },
+      {
+        "url": "https://terento.app/de/guides/install-garmin-maps-mac/",
+        "fingerprint": "662694d255159c917c847edf28ff0dbb43a84b998d05ced9266414c44d5802d5",
+        "status": 200,
+        "acceptedAt": "2026-11-02T14:45:08Z"
+      },
+      {
+        "url": "https://terento.app/de/install/",
+        "fingerprint": "91f287502681687ddef9d11704df1a2578e866e2765ac07e088fca7e318d8715",
+        "status": 200,
+        "acceptedAt": "2026-11-02T14:45:08Z"
+      },
+      {
+        "url": "https://terento.app/fr/guides/install-garmin-maps-mac/",
+        "fingerprint": "a7c7b0a7d4083c79d2d41a14e04f6d32cdf4da01f5efff43c12af035f4de996d",
+        "status": 200,
+        "acceptedAt": "2026-11-02T14:45:08Z"
+      },
+      {
+        "url": "https://terento.app/fr/install/",
+        "fingerprint": "05d1984293185dadb84bd714283573531718059c507efb5c629dfb06c726ffd8",
+        "status": 200,
+        "acceptedAt": "2026-11-02T14:45:08Z"
+      },
+      {
+        "url": "https://terento.app/guides/install-garmin-maps-mac/",
+        "fingerprint": "f306c831500e26f1e00fca80df867a14b509a994beb3cb30ce64e9219d370d40",
+        "status": 200,
+        "acceptedAt": "2026-11-02T14:45:08Z"
+      },
+      {
+        "url": "https://terento.app/install/",
+        "fingerprint": "68bfac8a3f08acbafa813275b1e310815c9e4fcab92e24ad8138b810aca88f58",
+        "status": 200,
+        "acceptedAt": "2026-11-02T14:45:08Z"
+      },
+      {
+        "url": "https://terento.app/it/guides/install-garmin-maps-mac/",
+        "fingerprint": "e428bcff790b2b5037a36e5f3c796b21130326e24a2b5a994c35dc2a09ffd887",
+        "status": 200,
+        "acceptedAt": "2026-11-02T14:45:08Z"
+      },
+      {
+        "url": "https://terento.app/it/install/",
+        "fingerprint": "3450fb8206cd5b83352d6bdc734c9e8c1004917fbf11f7990248fdf244ceb2b0",
+        "status": 200,
+        "acceptedAt": "2026-11-02T14:45:08Z"
+      },
+      {
+        "url": "https://terento.app/pl/guides/install-garmin-maps-mac/",
+        "fingerprint": "a7d422cebc70c3e5a51e78e8464f5666c8c01b33947837a23e17cc67c8e556a3",
+        "status": 200,
+        "acceptedAt": "2026-11-02T14:45:08Z"
+      },
+      {
+        "url": "https://terento.app/pl/install/",
+        "fingerprint": "605c326752298737c9b68d46ccc7e8af10e99cd81b74a0dfa97dba53ecc395fd",
+        "status": 200,
+        "acceptedAt": "2026-11-02T14:45:08Z"
       }
     ],
     "pending": [],
-    "lastSubmissionAt": "2026-11-02T14:21:16Z",
-    "lastSuccessfulSubmissionAt": "2026-11-02T14:21:16Z",
+    "lastSubmissionAt": "2026-11-02T14:45:08Z",
+    "lastSuccessfulSubmissionAt": "2026-11-02T14:45:08Z",
     "lastResult": "submitted",
     "lastErrorCode": null
   },
   "lastRun": {
-    "at": "2026-11-02T14:21:17Z",
+    "at": "2026-11-02T14:45:08Z",
     "status": "accepted",
     "bootstrap": false,
-    "planned": 6,
-    "accepted": 6,
+    "planned": 12,
+    "accepted": 12,
     "pending": 0,
-    "previousAccepted": 864
+    "previousAccepted": 870
   }
 }
