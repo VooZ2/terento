@@ -62,3 +62,5 @@ Na pěší a cyklistické výlety ve známém stylu OpenTopoMap, i tam, kde jin�
 Tato mapa nemá vrstevnice.
 
 Náhledy jsou blízké, ale ne přesné: hodinky kreslí mapu samy, takže barvy a podrobnosti se mohou lišit podle modelu a nastavení mapy.
+
+Nainstalujte tyto mapy do hodinek pomocí [aplikace pro Mac](https://terento.app/cs/download/) nebo [webového instalátoru](https://terento.app/cs/install/).

@@ -497,5 +497,5 @@ Výsledky komunity
 
 Pokud vaše hodinky Garmin podporují mapy, můžete Terento přesto vyzkoušet. Seznam se rozšiřuje s dalšími sdílenými úspěšnými instalacemi pro konkrétní modely a varianty.
 
-[Instalujete mapy třetích stran poprvé? Přečtěte si průvodce pro Mac](https://terento.app/cs/guides/install-garmin-maps-mac/)
+[Instalujete mapy třetích stran poprvé? Přečtěte si průvodce pro Mac](https://terento.app/cs/guides/install-garmin-maps-mac/) [Nemáte Mac s Apple Silicon? Použijte webový instalátor](https://terento.app/cs/install/)
 [Stáhnout](https://terento.app/cs/download/)

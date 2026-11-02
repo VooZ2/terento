@@ -74,7 +74,9 @@ class DiscoverabilityTests(unittest.TestCase):
         tree = ET.fromstring(source)
         urls = [node.text for node in tree.findall('s:url/s:loc', ns)]
         expected = [BASE + p['path'] for p in CONFIG['pages'] if p.get('indexable', True)]
-        self.assertCountEqual(urls, expected)
+        # The web installer service serves these; the sitemap only lists them.
+        external = [BASE + p['path'] for p in CONFIG['externalPages']]
+        self.assertCountEqual(urls, expected + external)
         self.assertEqual(len(urls), len(set(urls)))
         self.assertLessEqual(len(urls), 50000)
         self.assertLessEqual(len(source), 50 * 1024 * 1024)
@@ -82,6 +84,7 @@ class DiscoverabilityTests(unittest.TestCase):
             parsed = urlsplit(url)
             self.assertEqual((parsed.scheme, parsed.netloc, parsed.query, parsed.fragment),
                              ('https', 'terento.app', '', ''))
+            if url in external: continue
             page = self.pages[parsed.path]
             self.assertEqual(page.canonical, [url])
             self.assertEqual(page.meta['robots'], 'index,follow')
@@ -131,6 +134,7 @@ class DiscoverabilityTests(unittest.TestCase):
         source = (ROOT / 'site/llms.txt').read_text()
         links = re.findall(r'\]\((https://[^)]+)\)', source)
         allowed = {BASE + p['path'] for p in CONFIG['pages'] if p.get('indexable', True)}
+        allowed |= {BASE + p['path'] for p in CONFIG['externalPages']}
         allowed.add('https://github.com/VooZ2/terento')
         self.assertTrue(set(links) <= allowed)
         for path in ('/', '/about/', '/compatibility/', '/download/', '/guides/install-garmin-maps-mac/', '/guides/troubleshooting/'):

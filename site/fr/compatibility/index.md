@@ -497,5 +497,5 @@ Résultats de la communauté
 
 Si votre montre Garmin prend en charge les cartes, vous pouvez tout de même essayer Terento. Cette liste s’allonge à mesure que des installations réussies sont partagées pour d’autres modèles et variantes exacts.
 
-[Vous installez des cartes tierces pour la première fois ? Lisez le guide Mac](https://terento.app/fr/guides/install-garmin-maps-mac/)
+[Vous installez des cartes tierces pour la première fois ? Lisez le guide Mac](https://terento.app/fr/guides/install-garmin-maps-mac/) [Pas de Mac Apple Silicon ? Utilisez l’installateur web](https://terento.app/fr/install/)
 [Télécharger](https://terento.app/fr/download/)

@@ -62,3 +62,5 @@ For hiking and cycling in the familiar OpenTopoMap look, also where other maps a
 This map has no contour lines.
 
 Previews are close, not exact: your watch draws the map itself, so colours and detail can differ with the watch model and its map settings.
+
+Install these maps on your watch with the [Mac app](https://terento.app/download/) or the [web installer](https://terento.app/install/).

@@ -62,3 +62,5 @@ Pour la randonnée et le vélo dans le style OpenTopoMap, même là où les autr
 Cette carte n’a pas de courbes de niveau.
 
 Les aperçus sont proches, mais pas exacts : votre montre dessine elle-même la carte, les couleurs et le niveau de détail peuvent donc varier selon le modèle et ses réglages de carte.
+
+Installez ces cartes sur votre montre avec l’ [app pour Mac](https://terento.app/fr/download/) ou l’ [installateur web](https://terento.app/fr/install/).

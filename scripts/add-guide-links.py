@@ -17,6 +17,7 @@ COPY = {
         "download_guide": "Read the Mac installation guide",
         "download_compatibility": "Check compatibility",
         "download_web_installer": "No Apple Silicon Mac? Use the web installer",
+        "download_linux_guide": "On Linux? Read the Linux guide",
         "compatibility": "First time installing third-party maps? Read the Mac guide",
         "community_eyebrow": "Community results",
         "community_heading": "Don’t see your Garmin here?",
@@ -30,6 +31,7 @@ COPY = {
         "download_guide": "Mac-Installationsanleitung lesen",
         "download_compatibility": "Kompatibilität prüfen",
         "download_web_installer": "Kein Mac mit Apple Silicon? Nutze den Web-Installer",
+        "download_linux_guide": "Linux? Lies die Linux-Anleitung",
         "compatibility": "Zum ersten Mal Drittanbieter-Karten installieren? Lies die Mac-Anleitung",
         "community_eyebrow": "Ergebnisse aus der Community",
         "community_heading": "Dein Garmin ist nicht dabei?",
@@ -43,6 +45,7 @@ COPY = {
         "download_guide": "Lire le guide d’installation sur Mac",
         "download_compatibility": "Vérifier la compatibilité",
         "download_web_installer": "Pas de Mac Apple Silicon ? Utilisez l’installateur web",
+        "download_linux_guide": "Sous Linux ? Lisez le guide Linux",
         "compatibility": "Vous installez des cartes tierces pour la première fois ? Lisez le guide Mac",
         "community_eyebrow": "Résultats de la communauté",
         "community_heading": "Votre Garmin n’apparaît pas ?",
@@ -56,6 +59,7 @@ COPY = {
         "download_guide": "Przeczytaj instrukcję instalacji na Macu",
         "download_compatibility": "Sprawdź kompatybilność",
         "download_web_installer": "Nie masz Maca z Apple Silicon? Użyj instalatora webowego",
+        "download_linux_guide": "Linux? Przeczytaj przewodnik dla Linuksa",
         "compatibility": "Instalujesz mapy innych firm pierwszy raz? Przeczytaj instrukcję na Macu",
         "community_eyebrow": "Wyniki społeczności",
         "community_heading": "Nie widzisz swojego Garmina?",
@@ -69,6 +73,7 @@ COPY = {
         "download_guide": "Přečíst průvodce instalací na Macu",
         "download_compatibility": "Ověřit kompatibilitu",
         "download_web_installer": "Nemáte Mac s Apple Silicon? Použijte webový instalátor",
+        "download_linux_guide": "Linux? Přečtěte si návod pro Linux",
         "compatibility": "Instalujete mapy třetích stran poprvé? Přečtěte si průvodce pro Mac",
         "community_eyebrow": "Výsledky komunity",
         "community_heading": "Nevidíte zde svůj Garmin?",
@@ -82,6 +87,7 @@ COPY = {
         "download_guide": "Leggi la guida all’installazione su Mac",
         "download_compatibility": "Verifica la compatibilità",
         "download_web_installer": "Niente Mac con Apple Silicon? Usa l’installer web",
+        "download_linux_guide": "Usi Linux? Leggi la guida per Linux",
         "compatibility": "Installi mappe di terze parti per la prima volta? Leggi la guida per Mac",
         "community_eyebrow": "Risultati della community",
         "community_heading": "Non vedi il tuo Garmin?",
@@ -288,8 +294,14 @@ def add_download_link(locale: str) -> None:
         event="web-installer-link-click",
         location="download-page",
     )
+    linux_guide = download_link(
+        COPY[locale]["download_linux_guide"],
+        f"/{'' if locale == 'en' else f'{locale}/'}guides/install-garmin-maps-linux/",
+        event="guide-link-click",
+        location="download-page-linux",
+    )
     source = replace_download_section_link(source, 1, compatibility)
-    source = replace_download_section_link(source, 0, guide + web_installer)
+    source = replace_download_section_link(source, 0, guide + web_installer + linux_guide)
     path.write_text(source, encoding="utf-8")
 
 

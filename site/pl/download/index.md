@@ -27,7 +27,7 @@ Przed instalacją
 - macOS 13 lub nowszy
 - Mac z Apple Silicon
 - Zegarek Garmin obsługujący mapy
-[Przeczytaj instrukcję instalacji na Macu](https://terento.app/pl/guides/install-garmin-maps-mac/) [Nie masz Maca z Apple Silicon? Użyj instalatora webowego](https://terento.app/pl/install/)
+[Przeczytaj instrukcję instalacji na Macu](https://terento.app/pl/guides/install-garmin-maps-mac/) [Nie masz Maca z Apple Silicon? Użyj instalatora webowego](https://terento.app/pl/install/) [Linux? Przeczytaj przewodnik dla Linuksa](https://terento.app/pl/guides/install-garmin-maps-linux/)
 
 ## Status wersji
 

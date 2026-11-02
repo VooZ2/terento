@@ -62,3 +62,5 @@ Per escursioni a piedi e in bici nello stile OpenTopoMap, anche dove mancano alt
 Questa mappa non ha curve di livello.
 
 Le anteprime sono vicine, ma non identiche: l’orologio disegna la mappa da sé, quindi colori e dettagli possono variare in base al modello e alle impostazioni della mappa.
+
+Installa queste mappe sull’orologio con l’ [app per Mac](https://terento.app/it/download/) o con l’ [installer web](https://terento.app/it/install/).
