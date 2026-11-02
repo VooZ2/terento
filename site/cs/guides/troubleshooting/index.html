@@ -62,7 +62,7 @@
       "headline": "Řešení potíží s hodinkami Garmin a mapami na Macu",
       "description": "Vyřešte potíže s Garminem na Macu: Mac nevidí hodinky, hodinky blokuje Garmin Express nebo Android File Transfer, režim USB (MTP), málo místa a nezdařené stažení map.",
       "datePublished": "2026-10-06T00:00:00Z",
-      "dateModified": "2026-10-06T00:00:00Z",
+      "dateModified": "2026-11-02T00:00:00Z",
       "mainEntityOfPage": {
         "@id": "https://terento.app/cs/guides/troubleshooting/"
       },
@@ -148,7 +148,7 @@
             <div class="troubleshooting-list"><section class="troubleshooting-item" id="connect-watch" aria-labelledby="connect-watch-title">
               <h3 id="connect-watch-title">Mac nevidí hodinky Garmin</h3>
               <p>Připojte hodinky přímo k Macu USB kabelem pro přenos dat, odemkněte je a počkejte až 2 minuty: Terento je najde automaticky.</p>
-              <ol class="troubleshooting-steps"><li>Použijte datový kabel. Kabely jen pro nabíjení a některé USB huby nefungují.</li><li>Počkejte až 2 minuty, než Terento ověří připojení.</li><li>Pokud se hodinky stále nezobrazí, odpojte je, počkejte několik sekund a připojte je znovu.</li><li>Pokud je otevřená jiná aplikace, viz <a href="#garmin-busy" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Hodinky používá Garmin Express nebo jiná aplikace</a>.</li></ol>
+              <ol class="troubleshooting-steps"><li>Použijte datový kabel. Kabely jen pro nabíjení a některé USB huby nefungují.</li><li>Je normální, že se hodinky nezobrazí ve Finderu: macOS většinu současných hodinek Garmin neotevře jako disk. Terento s hodinkami komunikuje přímo.</li><li>Pokud se macOS na notebooku Mac zeptá, zda povolit připojení příslušenství, zvolte Povolit.</li><li>Počkejte až 2 minuty, než Terento ověří připojení.</li><li>Pokud se hodinky stále nezobrazí, odpojte je, počkejte několik sekund a připojte je znovu.</li><li>Pokud je otevřená jiná aplikace, viz <a href="#garmin-busy" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Hodinky používá Garmin Express nebo jiná aplikace</a>.</li></ol>
             </section><section class="troubleshooting-item" id="garmin-busy" aria-labelledby="garmin-busy-title">
               <h3 id="garmin-busy-title">Hodinky používá Garmin Express nebo jiná aplikace</h3>
               <p>Ukončete Garmin Express a aplikace pro přenos souborů, jako je Android File Transfer, OpenMTP nebo MacDroid: připojení k hodinkám může v jednu chvíli používat jen jedna aplikace.</p>
@@ -159,7 +159,7 @@
               <ol class="troubleshooting-steps"><li>Odpojte ostatní hodinky, cyklopočítače a ruční navigace Garmin.</li><li>Nechte vybrané hodinky připojené a počkejte, až je Terento najde.</li></ol>
             </section><section class="troubleshooting-item" id="usb-mode" aria-labelledby="usb-mode-title">
               <h3 id="usb-mode-title">Hodinky Garmin nejsou rozpoznány: režim USB (MTP)</h3>
-              <p>Pokud Terento hlásí, že hodinky nejsou připravené na přenos souborů, nastavte v hodinkách režim USB na MTP, pokud ho váš model má.</p>
+              <p>Pokud Terento hlásí, že hodinky nejsou připravené na přenos souborů, nastavte režim USB hodinek na MTP, pokud ho váš model má. MTP (Media Transfer Protocol) je způsob, jakým většina současných hodinek Garmin sdílí soubory přes USB, stejně jako telefony s Androidem. macOS MTP nativně nepodporuje, proto se hodinky nezobrazí jako disk; Terento MTP používá samo, takže nepotřebujete Android File Transfer ani OpenMTP.</p>
               <ol class="troubleshooting-steps"><li>V hodinkách otevřete režim USB, obvykle v Nastavení › Systém. Ne každý model ho má.</li><li>Zvolte MTP.</li><li>Hodinky odpojte a znovu připojte.</li></ol>
             </section><section class="troubleshooting-item" id="connection-timeout" aria-labelledby="connection-timeout-title">
               <h3 id="connection-timeout-title">Hodinky Garmin jsou rozpoznané, ale nejsou připravené</h3>

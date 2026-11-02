@@ -62,7 +62,7 @@
       "headline": "Probleme mit Garmin-Uhr und Karten am Mac lösen",
       "description": "Garmin-Probleme am Mac lösen: Uhr wird nicht erkannt, Garmin Express oder Android File Transfer blockiert die Uhr, USB-Modus (MTP), zu wenig Speicher und fehlgeschlagene Karten-Downloads.",
       "datePublished": "2026-10-06T00:00:00Z",
-      "dateModified": "2026-10-06T00:00:00Z",
+      "dateModified": "2026-11-02T00:00:00Z",
       "mainEntityOfPage": {
         "@id": "https://terento.app/de/guides/troubleshooting/"
       },
@@ -148,7 +148,7 @@
             <div class="troubleshooting-list"><section class="troubleshooting-item" id="connect-watch" aria-labelledby="connect-watch-title">
               <h3 id="connect-watch-title">Garmin-Uhr wird am Mac nicht erkannt</h3>
               <p>Verbinde die Uhr direkt mit deinem Mac über ein USB-Kabel mit Datenübertragung, entsperre sie und warte bis zu 2 Minuten: Terento findet sie automatisch.</p>
-              <ol class="troubleshooting-steps"><li>Verwende ein Datenkabel. Reine Ladekabel und manche USB-Hubs funktionieren nicht.</li><li>Warte bis zu 2 Minuten, während Terento die Verbindung prüft.</li><li>Erscheint die Uhr weiterhin nicht, trenne sie, warte ein paar Sekunden und verbinde sie erneut.</li><li>Ist ein anderes Programm geöffnet, siehe <a href="#garmin-busy" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin Express oder eine andere App blockiert die Uhr</a>.</li></ol>
+              <ol class="troubleshooting-steps"><li>Verwende ein Datenkabel. Reine Ladekabel und manche USB-Hubs funktionieren nicht.</li><li>Dass die Uhr nicht im Finder erscheint, ist normal: macOS öffnet die meisten aktuellen Garmin-Uhren nicht als Laufwerk. Terento spricht direkt mit der Uhr.</li><li>Fragt macOS auf einem Mac-Laptop, ob das Zubehör verbunden werden darf, wähle Erlauben.</li><li>Warte bis zu 2 Minuten, während Terento die Verbindung prüft.</li><li>Erscheint die Uhr weiterhin nicht, trenne sie, warte ein paar Sekunden und verbinde sie erneut.</li><li>Ist ein anderes Programm geöffnet, siehe <a href="#garmin-busy" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin Express oder eine andere App blockiert die Uhr</a>.</li></ol>
             </section><section class="troubleshooting-item" id="garmin-busy" aria-labelledby="garmin-busy-title">
               <h3 id="garmin-busy-title">Garmin Express oder eine andere App blockiert die Uhr</h3>
               <p>Beende Garmin Express und Dateiübertragungs-Apps wie Android File Transfer, OpenMTP oder MacDroid: Die Verbindung zur Uhr kann immer nur ein Programm nutzen.</p>
@@ -159,7 +159,7 @@
               <ol class="troubleshooting-steps"><li>Trenne andere Garmin-Uhren, Fahrradcomputer und Handgeräte.</li><li>Lass die gewünschte Uhr verbunden und warte, bis Terento sie findet.</li></ol>
             </section><section class="troubleshooting-item" id="usb-mode" aria-labelledby="usb-mode-title">
               <h3 id="usb-mode-title">Garmin-Uhr nicht erkannt: USB-Modus (MTP)</h3>
-              <p>Meldet Terento, dass die Uhr nicht für die Dateiübertragung bereit ist, stelle den USB-Modus der Uhr auf MTP, sofern dein Modell diese Einstellung hat.</p>
+              <p>Wenn Terento meldet, dass die Uhr nicht für die Dateiübertragung bereit ist, stelle den USB-Modus der Uhr auf MTP, sofern dein Modell diese Einstellung hat. Über MTP (Media Transfer Protocol) teilen die meisten aktuellen Garmin-Uhren Dateien per USB, so wie Android-Smartphones. macOS unterstützt MTP nicht von Haus aus, daher erscheint die Uhr nicht als Laufwerk; Terento nutzt MTP selbst, du brauchst also weder Android File Transfer noch OpenMTP.</p>
               <ol class="troubleshooting-steps"><li>Öffne auf der Uhr den USB-Modus, meist unter Einstellungen › System. Nicht jedes Modell hat diese Einstellung.</li><li>Wähle MTP.</li><li>Trenne die Uhr und verbinde sie erneut.</li></ol>
             </section><section class="troubleshooting-item" id="connection-timeout" aria-labelledby="connection-timeout-title">
               <h3 id="connection-timeout-title">Garmin-Uhr erkannt, aber nicht bereit</h3>

@@ -45,7 +45,7 @@ GARMIN_EXPRESS_URL = "https://support.garmin.com/en-US/?faq=4QVp7mKSIA1LDk5fc1OH
 APPLE_ROSETTA_URL = "https://support.apple.com/en-ca/102527"
 TROUBLESHOOTING_SLUG = "guides/troubleshooting/"
 TROUBLESHOOTING_PUBLISHED = "2026-10-06T00:00:00Z"
-TROUBLESHOOTING_REVIEWED = "2026-10-06T00:00:00Z"
+TROUBLESHOOTING_REVIEWED = "2026-11-02T00:00:00Z"
 TROUBLESHOOTING_COPY = json.loads((ROOT / "scripts/templates/troubleshooting-copy.json").read_text(encoding="utf-8"))
 LINUX_SLUG = "guides/install-garmin-maps-linux/"
 LINUX_PUBLISHED = "2026-11-02T00:00:00Z"
