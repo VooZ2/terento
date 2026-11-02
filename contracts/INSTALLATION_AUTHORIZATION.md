@@ -96,17 +96,36 @@ decided by the original epix row alone and counted as that model. The
 MARQ (Gen 2) lines are not aliased because first-generation MARQ editions exist
 under the same names; those first-generation names are real Maps=Yes rows, so
 a Gen 2 watch that reported a plain first-generation name would also be
-approved correctly. Edge models stay absent and `PENDING`.
+approved correctly. No Edge name is aliased; Edge rows decide under their own
+reported base model.
 
 The public Compatibility directory and its `TESTED`/`SUPPORTED`/`VERIFIED`
 evidence categories, `successfulInstallations`, Admin `support_status`, and
 prior successful installs neither grant nor revoke write authority. Catalog
 `mapCapable` is the stored nullable value; separately observed or inferred
-map capability is diagnostic evidence only. The current Garmin Edge models
-are absent from the API catalog and therefore `PENDING`, not permanently
-unsupported. A future reliably identified, active Edge catalog model with
-Maps=Yes follows the same rule without a dedicated blacklist, whitelist, or
-feature flag. Public product claims remain independently evidence-gated.
+map capability is diagnostic evidence only. Edge cycling computers follow the
+same rule without a dedicated blacklist, whitelist, or feature flag: an Edge
+base model absent from the API catalog is `PENDING`, and a reliably identified,
+active Edge catalog model with Maps=Yes is `APPROVED`. Public product claims
+remain independently evidence-gated.
+
+**Edge test rows (owner, 2026-11-02).** So the owner can test Edge installs
+before deciding to keep or withdraw them, migration 090 adds active
+`HISTORICAL_REVIEWED` Maps=Yes rows for the Edge generations that connect over
+MTP, the only Terento transport: Edge 540, 840, 1040, 1050, 550, 850, 1060 and
+Edge Explore 2. Each row records the Garmin product specification row
+`Ability to add maps: yes` (checked 2026-11-02) in
+`specification_evidence.map_capable`. Solar editions normalize to the same
+base model, so no row carries a Solar value. Older Edge generations that
+connect as USB mass storage are not added. Every released native client
+approves these models under the ordinary rule; no client change is involved.
+The web installer approves a reported plain base model (for example `Edge 840`)
+but strips only a trailing case size, so a reported Solar name (`Edge 1040
+Solar`) is not found there and fails closed. The rows are not a public support claim: the public site and README
+keep Edge outside the public scope, and public Compatibility shows an Edge model
+only after the separate Admin publication. Withdrawing Edge is a later reviewed
+catalog change (Maps back to NULL, which is `PENDING`, or `false`, which is
+`BLOCKED`) shipped as a migration, because Admin has no Maps editor.
 
 The stored catalog Maps value of a **new** collector-managed model comes only
 from the official Garmin product specifications the collector already reads:
@@ -133,7 +152,8 @@ evidence row, source page and check time are recorded in
 `specification_evidence.map_capable`. A stored `true`/`false` (reviewed,
 backfilled or set by an administrator) is never replaced by the collector; an
 Unknown row may be filled later from the same specification evidence.
-Administrators still set Maps manually; Devices filtered to `Maps: Unknown`
+Admin has no Maps editor: a stored value changes only through a reviewed
+migration (as 075, 076 and 090 do). Devices filtered to `Maps: Unknown`
 and active models (`/admin/devices?maps=unknown&active=1`) lists active models
 whose value is Unknown.
 
@@ -166,8 +186,8 @@ Migration 075 applies these decisions; the per-row evidence is stored in
   fēnix 6X Pro), from the Garmin product specifications or the fēnix 6 Pro
   Series owner's manual. The standard fēnix 6 and 6S Dual Power editions are
   not added: Garmin publishes no map row for them, so they stay `PENDING`.
-  Edge, handheld and
-  non-map products are not added. Current-category models (for example
+  Handheld and
+  non-map products are not added (Edge test rows: migration 090, above). Current-category models (for example
   Enduro 4, Approach S72) are added by the weekly collector from their
   specification rows.
 - *Golf watches (owner rule, 2026-10-09).* A golf watch has Maps=Yes only

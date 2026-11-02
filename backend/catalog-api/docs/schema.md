@@ -785,3 +785,18 @@ size are rejected; the other added links stay PENDING. Only PENDING rows change;
 a `device_identity_mapping_audit` row with no administrator. Administrator
 decisions, reports, assignments, permissions and statistics are unchanged;
 identity assessment reads the reviewed links on its next pass.
+
+### Migration090: Edge map catalog
+
+Owner decision of 2026-11-02 (canonical rule:
+[`contracts/INSTALLATION_AUTHORIZATION.md`](../../../contracts/INSTALLATION_AUTHORIZATION.md)).
+Data-only and additive: inserts the `garmin-edge` family if absent and eight
+`HISTORICAL_REVIEWED`, `collector_managed = false`, active Maps=Yes rows
+(`ON CONFLICT (id) DO NOTHING`) for the Edge cycling computers that connect
+over MTP: Edge 540, 840, 1040, 1050, 550, 850, 1060 and Edge Explore 2. Each
+`model` label gives the reported base model (Solar editions normalize to it),
+and each row records `Ability to add maps: yes` from its Garmin product
+specifications (checked 2026-11-02) in `specification_evidence.map_capable`.
+The rows let the owner test Edge installs; they are not a public support claim
+and are not published to public Compatibility. The previous revision reads
+every row unchanged.

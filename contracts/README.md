@@ -66,9 +66,9 @@ first remote write, checking connected identity around both requests. A
 missing, invalid, or unavailable policy fails closed as a temporary
 verification failure; a previous approval cannot be reused. After writing
 starts, exact-target cleanup uses the operation's established safety facts.
-Current Edge rows are absent from the audited API catalog and therefore
-pending; Edge is not permanently blacklisted and a future catalogued Edge
-model with Maps=Yes can be authorized by the same matching rules. Public
+Edge is not blacklisted: an Edge base model absent from the API catalog is
+pending, and the MTP Edge rows added by migration 090 (owner test decision,
+2026-11-02) have Maps=Yes and are authorized by the same matching rules. Public
 compatibility remains a separate evidence-gated claim. The endpoint returned
 HTTP 200 with schemaVersion 3 and policyVersion 3 in the 2026-09-24 read-only
 check. Native enforcement remains published in beta.15 build 36; backend
