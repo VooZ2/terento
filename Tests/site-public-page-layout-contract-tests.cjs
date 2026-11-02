@@ -69,6 +69,8 @@ const locales = {
     compatibilityLabel: "Check compatibility",
     webInstaller: "/install/",
     webInstallerLabel: "No Apple Silicon Mac? Use the web installer",
+    linuxGuide: "/guides/install-garmin-maps-linux/",
+    linuxGuideLabel: "On Linux? Read the Linux guide",
   },
   de: {
     file: "site/de/download/index.html",
@@ -78,6 +80,8 @@ const locales = {
     compatibilityLabel: "Kompatibilität prüfen",
     webInstaller: "/de/install/",
     webInstallerLabel: "Kein Mac mit Apple Silicon? Nutze den Web-Installer",
+    linuxGuide: "/de/guides/install-garmin-maps-linux/",
+    linuxGuideLabel: "Linux? Lies die Linux-Anleitung",
   },
   fr: {
     file: "site/fr/download/index.html",
@@ -87,6 +91,8 @@ const locales = {
     compatibilityLabel: "Vérifier la compatibilité",
     webInstaller: "/fr/install/",
     webInstallerLabel: "Pas de Mac Apple Silicon ? Utilisez l’installateur web",
+    linuxGuide: "/fr/guides/install-garmin-maps-linux/",
+    linuxGuideLabel: "Sous Linux ? Lisez le guide Linux",
   },
   pl: {
     file: "site/pl/download/index.html",
@@ -96,6 +102,8 @@ const locales = {
     compatibilityLabel: "Sprawdź kompatybilność",
     webInstaller: "/pl/install/",
     webInstallerLabel: "Nie masz Maca z Apple Silicon? Użyj instalatora webowego",
+    linuxGuide: "/pl/guides/install-garmin-maps-linux/",
+    linuxGuideLabel: "Linux? Przeczytaj przewodnik dla Linuksa",
   },
   cs: {
     file: "site/cs/download/index.html",
@@ -105,6 +113,8 @@ const locales = {
     compatibilityLabel: "Ověřit kompatibilitu",
     webInstaller: "/cs/install/",
     webInstallerLabel: "Nemáte Mac s Apple Silicon? Použijte webový instalátor",
+    linuxGuide: "/cs/guides/install-garmin-maps-linux/",
+    linuxGuideLabel: "Linux? Přečtěte si návod pro Linux",
   },
   it: {
     file: "site/it/download/index.html",
@@ -114,6 +124,8 @@ const locales = {
     compatibilityLabel: "Verifica la compatibilità",
     webInstaller: "/it/install/",
     webInstallerLabel: "Niente Mac con Apple Silicon? Usa l’installer web",
+    linuxGuide: "/it/guides/install-garmin-maps-linux/",
+    linuxGuideLabel: "Usi Linux? Leggi la guida per Linux",
   },
 };
 
@@ -152,17 +164,18 @@ for (const [locale, contract] of Object.entries(locales)) {
   assert.doesNotMatch(html, /New to third-party maps\?|Neu bei Drittanbieter-Karten\?|Vous débutez avec les cartes tierces|Dopiero zaczynasz z mapami innych firm|Začínáte s mapami třetích stran|È la prima volta che installi mappe di terze parti/);
 
   const anchors = [...html.matchAll(/<a class="text-link download-info-link" href="([^"]+)"([^>]*)>([\s\S]*?)<\/a>/g)];
-  assert.equal(anchors.length, 3, `${locale} must expose exactly three Download information links`);
-  assert.deepEqual(anchors.map((match) => match[1]), [contract.guide, contract.webInstaller, contract.compatibility]);
-  assert.deepEqual(anchors.map((match) => visibleText(match[3])), [contract.guideLabel, contract.webInstallerLabel, contract.compatibilityLabel]);
+  assert.equal(anchors.length, 4, `${locale} must expose exactly four Download information links`);
+  assert.deepEqual(anchors.map((match) => match[1]), [contract.guide, contract.webInstaller, contract.linuxGuide, contract.compatibility]);
+  assert.deepEqual(anchors.map((match) => visibleText(match[3])), [contract.guideLabel, contract.webInstallerLabel, contract.linuxGuideLabel, contract.compatibilityLabel]);
   for (const match of anchors) {
     assert.match(match[3], /class="download-info-link-tail"/);
     assert.match(match[3], /class="download-info-link-arrow" aria-hidden="true">→<\/span>/);
     assert.doesNotMatch(match[1], /utm_/i);
   }
   assert.match(anchors[1][2], /data-umami-event="web-installer-link-click"/);
-  assert.match(anchors[2][2], /data-umami-event="compatibility-link-click"/);
-  assert.match(anchors[2][2], /data-umami-event-location="download-page"/);
+  assert.match(anchors[2][2], /data-umami-event-location="download-page-linux"/);
+  assert.match(anchors[3][2], /data-umami-event="compatibility-link-click"/);
+  assert.match(anchors[3][2], /data-umami-event-location="download-page"/);
   assert.doesNotMatch(html, /localized-content\.js/);
 }
 
