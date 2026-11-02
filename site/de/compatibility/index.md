@@ -1,5 +1,5 @@
 ---
-title: "Garmin-Uhren-Kompatibilität & erfolgreiche Installationen — Terento"
+title: "Kompatible Garmin-Uhren & erfolgreiche Installationen — Terento"
 canonical: https://terento.app/de/compatibility/
 ---
 

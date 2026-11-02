@@ -5,6 +5,15 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+# One product fact sheet for answer engines. Keep it to released behaviour:
+# the same facts as Home, About, Download and the web installer pages.
+FACTS = (
+    'Terento is a free, open-source (GPL-3.0-or-later) project that installs and manages third-party maps on Garmin smartwatches with map support.',
+    'Two ways to use it: the Terento app for Apple Silicon Macs with macOS 13 or later, or the web installer at https://terento.app/install/ in desktop Chrome, Edge, Opera or Brave, with no app to install.',
+    'The maps are free community maps based on OpenStreetMap data: Freizeitkarte, OpenTopoMap, MapRando, BBBike and OSMapaPL. The Mac app downloads each map directly from its provider and can also install your own compatible .img map file.',
+    'Terento does not update Garmin firmware or official Garmin maps and does not replace Garmin Express.',
+    'The Compatibility page lists exact watch models and variants with at least one successful installation. A model missing from it is not necessarily unsupported.',
+)
 
 
 def render(config):
@@ -14,6 +23,7 @@ def render(config):
     lines = [f"# {config['siteName']}", '', f"> {home['description']}", '',
              f"Canonical website: {base}/", '',
              'This supplemental index does not replace the website, robots.txt, or sitemap.', '',
+             '## Key facts', '', *[f'- {fact}' for fact in FACTS], '',
              '## Public pages', '']
     for page in pages:
         if page['locale'] == 'en':

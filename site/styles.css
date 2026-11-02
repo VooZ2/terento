@@ -1182,6 +1182,11 @@ h1 {
   display: none;
 }
 
+/* Drawn by CSS so the heading text reads "Connect → Install → Done". */
+.section-heading h2 .workflow-title-bullet::before {
+  content: "•";
+}
+
 .problem-statement {
   max-width: 660px;
   margin-top: 42px;

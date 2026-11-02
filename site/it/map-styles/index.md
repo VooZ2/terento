@@ -1,5 +1,5 @@
 ---
-title: "Confronta mappe Garmin gratuite: OpenTopoMap, Freizeitkarte — Terento"
+title: "Mappe Garmin gratuite: OpenTopoMap, Freizeitkarte — Terento"
 canonical: https://terento.app/it/map-styles/
 ---
 

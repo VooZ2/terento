@@ -1,5 +1,5 @@
 ---
-title: "À propos de Terento — Cartes Garmin gratuites et open source sur Mac"
+title: "À propos de Terento — Cartes Garmin gratuites et open source"
 canonical: https://terento.app/fr/about/
 ---
 

@@ -2,7 +2,7 @@
 <html lang="it" data-language="it" data-page="about">
   <head>
     <script defer src="/site-shell.js?v=20261029-web-installer-public-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20261102-linux-guide-v1">
+    <link rel="stylesheet" href="/styles.css?v=20261102-seo-v1">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
@@ -18,7 +18,7 @@
     <link rel="alternate" hreflang="x-default" href="https://terento.app/about/">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Terento">
-    <meta property="og:title" content="Informazioni su Terento — Mappe Garmin gratuite e open source su Mac">
+    <meta property="og:title" content="Informazioni su Terento — Mappe Garmin gratuite e open source">
     <meta property="og:description" content="Scopri perché esiste Terento: un’app macOS gratuita e open source per installare e gestire mappe di terze parti sugli smartwatch Garmin.">
     <meta property="og:url" content="https://terento.app/it/about/">
     <meta property="og:image" content="https://terento.app/assets/social/terento-og.png">
@@ -28,12 +28,65 @@
     <meta property="og:image:alt" content="Terento mostra uno smartwatch Garmin collegato su macOS">
     <meta property="og:locale" content="it_IT">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Informazioni su Terento — Mappe Garmin gratuite e open source su Mac">
+    <meta name="twitter:title" content="Informazioni su Terento — Mappe Garmin gratuite e open source">
     <meta name="twitter:description" content="Scopri perché esiste Terento: un’app macOS gratuita e open source per installare e gestire mappe di terze parti sugli smartwatch Garmin.">
     <meta name="twitter:image" content="https://terento.app/assets/social/terento-og.png">
-    <title>Informazioni su Terento — Mappe Garmin gratuite e open source su Mac</title>
+    <title>Informazioni su Terento — Mappe Garmin gratuite e open source</title>
 
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#222A2B">
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://terento.app/#organization",
+            "name": "Terento",
+            "url": "https://terento.app/",
+            "logo": "https://terento.app/assets/logo-sky.svg",
+            "sameAs": [
+              "https://github.com/VooZ2/terento"
+            ]
+          },
+          {
+            "@type": "AboutPage",
+            "@id": "https://terento.app/it/about/#webpage",
+            "url": "https://terento.app/it/about/",
+            "name": "Informazioni su Terento",
+            "description": "Scopri perché esiste Terento: un’app macOS gratuita e open source per installare e gestire mappe di terze parti sugli smartwatch Garmin.",
+            "inLanguage": "it",
+            "isPartOf": {
+              "@id": "https://terento.app/it/#website"
+            },
+            "publisher": {
+              "@id": "https://terento.app/#organization"
+            },
+            "breadcrumb": {
+              "@id": "https://terento.app/it/about/#breadcrumb"
+            }
+          },
+          {
+            "@type": "BreadcrumbList",
+            "@id": "https://terento.app/it/about/#breadcrumb",
+            "itemListElement": [
+              {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": "https://terento.app/it/"
+              },
+              {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Informazioni su Terento",
+                "item": "https://terento.app/it/about/"
+              }
+            ]
+          }
+        ]
+      }
+    </script>
 
     <link rel="icon" href="/favicon.ico?v=20260820-4" sizes="any">
     <link rel="icon" href="/favicon.svg?v=20260820-4" type="image/svg+xml">

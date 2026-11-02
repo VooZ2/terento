@@ -1,5 +1,5 @@
 ---
-title: "Il Mac non rileva l’orologio Garmin? Risoluzione problemi — Terento"
+title: "Il Mac non rileva il Garmin? Risoluzione problemi — Terento"
 canonical: https://terento.app/it/guides/troubleshooting/
 ---
 

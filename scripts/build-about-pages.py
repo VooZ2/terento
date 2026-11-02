@@ -5,10 +5,12 @@ from __future__ import annotations
 
 import html
 import json
+import runpy
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+SCHEMA = runpy.run_path(str(ROOT / "scripts/page_schema.py"))
 BASE_URL = "https://terento.app"
 ABOUT_SLUG = "about/"
 SHELL_VERSION = "20260905-in-page-language-v1"
@@ -294,6 +296,7 @@ def render(locale: str, copy: dict[str, object]) -> str:
     <meta name="twitter:description" content="{esc(copy["description"])}">
     <meta name="twitter:image" content="{BASE_URL}{SOCIAL_IMAGE}">
     <title>{esc(copy["title"])}</title>
+{SCHEMA["json_ld_block"](locale, ABOUT_SLUG, "AboutPage")}
 
 
     <link rel="icon" href="/favicon.ico?v=20260820-4" sizes="any">

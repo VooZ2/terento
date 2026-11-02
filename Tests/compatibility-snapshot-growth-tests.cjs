@@ -20,6 +20,7 @@ const sourceFiles = [
   "site/compatibility/compatibility-locales.js",
   "site/compatibility/compatibility.js",
   "scripts/build-compatibility-pages.py",
+  "scripts/page_schema.py",
   "scripts/build-markdown-pages.py",
   "scripts/update-compatibility-snapshot.py",
 ];

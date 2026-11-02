@@ -20,6 +20,7 @@ SLUG = "map-styles/"
 AREAS = json.loads((ROOT / "contracts/map-preview-areas.json").read_text(encoding="utf-8"))
 HOME = runpy.run_path(str(ROOT / "scripts/normalize-home-ia.py"))
 SHELL = runpy.run_path(str(ROOT / "scripts/normalize-public-shell.py"))
+SCHEMA = runpy.run_path(str(ROOT / "scripts/page_schema.py"))
 PROVIDER_COPY = HOME["PROVIDER_CARD_COPY"]
 MAPRANDO_NOTES = HOME["MAPRANDO_LANGUAGE_NOTES"]
 STYLE_NOTES = {"maprando": MAPRANDO_NOTES, "bbbike-opentopo": HOME["BBBIKE_OPENTOPO_NOTES"]}
@@ -533,6 +534,7 @@ def render(locale: str) -> str:
     <meta name="theme-color" content="#F7F3EC">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#222A2B">
     <title>Terento</title>
+{SCHEMA["json_ld_block"](locale, SLUG, "WebPage")}
     <link rel="icon" href="/favicon.ico?v=20260820-4" sizes="any">
     <link rel="icon" href="/favicon.svg?v=20260820-4" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20260820-4">

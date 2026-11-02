@@ -6,16 +6,24 @@ Canonical website: https://terento.app/
 
 This supplemental index does not replace the website, robots.txt, or sitemap.
 
+## Key facts
+
+- Terento is a free, open-source (GPL-3.0-or-later) project that installs and manages third-party maps on Garmin smartwatches with map support.
+- Two ways to use it: the Terento app for Apple Silicon Macs with macOS 13 or later, or the web installer at https://terento.app/install/ in desktop Chrome, Edge, Opera or Brave, with no app to install.
+- The maps are free community maps based on OpenStreetMap data: Freizeitkarte, OpenTopoMap, MapRando, BBBike and OSMapaPL. The Mac app downloads each map directly from its provider and can also install your own compatible .img map file.
+- Terento does not update Garmin firmware or official Garmin maps and does not replace Garmin Express.
+- The Compatibility page lists exact watch models and variants with at least one successful installation. A model missing from it is not necessarily unsupported.
+
 ## Public pages
 
 - [Terento — Third-Party Maps for Garmin on Mac](https://terento.app/): Install and manage third-party maps on Garmin smartwatches with map support using Terento, a free macOS app for Apple Silicon.
 - [About Terento — Free, Open-Source Garmin Maps for Mac](https://terento.app/about/): Learn why Terento exists: a free, open-source macOS app for installing and managing third-party maps on Garmin smartwatches.
 - [Download Terento for Mac — Third-Party Maps for Garmin](https://terento.app/download/): Download the free, notarized Terento app for Apple Silicon Macs to install and manage third-party maps on Garmin smartwatches with map support.
 - [Garmin Watch Compatibility & Successful Installs — Terento](https://terento.app/compatibility/): Terento is designed for Garmin smartwatches with map support. See exact models and variants with successful third-party map installations.
-- [Install Third-Party Garmin Maps on Mac — Terento](https://terento.app/guides/install-garmin-maps-mac/): Install third-party maps on a Garmin smartwatch with map support from an Apple Silicon Mac. Connect your watch, choose a map or upload your own .img file, and finish in three simple steps with Terento.
-- [Garmin Watch Not Showing Up on Mac? Troubleshooting — Terento](https://terento.app/guides/troubleshooting/): Fix Garmin watch and map problems on a Mac: watch not showing up, Garmin Express or Android File Transfer using the watch, USB mode (MTP), not enough space and failed map downloads.
-- [Install Garmin Maps on Linux from Chrome — Terento](https://terento.app/guides/install-garmin-maps-linux/): Install free OpenStreetMap maps on a Garmin watch from Linux in Chrome, Edge, Opera or Brave. Add one udev rule, connect the watch with a USB cable and send the map. No app needed.
-- [Compare Free Garmin Maps: OpenTopoMap vs Freizeitkarte — Terento](https://terento.app/map-styles/): See how OpenTopoMap, Freizeitkarte, MapRando, BBBike and OSMapaPL Garmin maps look on popular hiking areas, trails and cities. Compare contours, trails and labels before you install.
+- [Install Third-Party Garmin Maps on Mac — Terento](https://terento.app/guides/install-garmin-maps-mac/): Install third-party maps on a Garmin watch from an Apple Silicon Mac: connect the watch, choose a map or your own .img file, and install with Terento.
+- [Garmin Watch Not Showing Up on Mac? Troubleshooting — Terento](https://terento.app/guides/troubleshooting/): Garmin watch not showing up on your Mac? Fix USB mode (MTP), Garmin Express using the watch, low storage and failed map downloads.
+- [Install Garmin Maps on Linux from Chrome — Terento](https://terento.app/guides/install-garmin-maps-linux/): Install free OpenStreetMap maps on a Garmin watch from Linux in Chrome, Edge, Opera or Brave: add one udev rule, connect the watch, send the map.
+- [Compare Free Garmin Maps: OpenTopoMap vs Freizeitkarte — Terento](https://terento.app/map-styles/): See how OpenTopoMap, Freizeitkarte, MapRando, BBBike and OSMapaPL Garmin maps draw popular hikes, trails and cities before you install one.
 
 ## Web installer
 

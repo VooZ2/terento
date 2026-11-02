@@ -7,10 +7,12 @@ import datetime as dt
 import html
 import json
 import re
+import runpy
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+SCHEMA = runpy.run_path(str(ROOT / "scripts/page_schema.py"))
 SNAPSHOT_PATH = ROOT / "site/compatibility/public-models.snapshot.json"
 LOCALES = ("en", "de", "fr", "pl", "cs", "it")
 ASSET_VERSION = "20261011-compatibility-install-sources-v1"
@@ -306,6 +308,12 @@ def render_page(source: str, locale: str, snapshot: dict) -> str:
     source = re.sub(r'/compatibility/compatibility-locales\.js\?v=[^" ]+', f'/compatibility/compatibility-locales.js?v={ASSET_VERSION}', source)
     source = re.sub(r'/compatibility/compatibility\.js\?v=[^" ]+', f'/compatibility/compatibility.js?v={ASSET_VERSION}', source)
     source = re.sub(r'(<p class="compatibility-error"[^>]*>)[^<]*(</p>)', rf'\g<1>{esc(copy["error"])}\g<2>', source, count=1)
+    # One web-page + breadcrumb JSON-LD block (no device list: the snapshot is not a support list).
+    source = re.sub(r'\n[ \t]*<script type="application/ld\+json">[\s\S]*?</script>', "", source)
+    block = SCHEMA["json_ld_block"](locale, "compatibility/", "CollectionPage")
+    source, count = re.subn(r'\n(\s*)</head>', lambda match: "\n" + block + "\n" + match.group(1) + "</head>", source, count=1)
+    if count != 1:
+        raise ValueError(f"{page_path(locale)}: </head> not found")
     return source
 
 

@@ -1,5 +1,5 @@
 ---
-title: "Garmin-Karten vergleichen: OpenTopoMap vs. Freizeitkarte — Terento"
+title: "Garmin-Karten: OpenTopoMap vs. Freizeitkarte — Terento"
 canonical: https://terento.app/de/map-styles/
 ---
 

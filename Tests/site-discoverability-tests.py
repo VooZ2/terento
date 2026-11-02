@@ -55,7 +55,7 @@ class DiscoverabilityTests(unittest.TestCase):
     def test_robots_public_and_private_for_every_crawler(self):
         robots_source = (ROOT / 'site/robots.txt').read_text()
         self.assertEqual(re.findall(r'(?mi)^Content-Signal:\s*(.+)$', robots_source),
-                         ['ai-train=yes, search=yes, ai-input=no'])
+                         ['ai-train=yes, search=yes, ai-input=yes'])
         self.assertIn(f'Agentmap: {BASE}/.well-known/ard.json', robots_source)
         robots = RobotFileParser()
         robots.parse(robots_source.splitlines())
@@ -67,6 +67,13 @@ class DiscoverabilityTests(unittest.TestCase):
             for path in ('/admin', '/admin/login', '/admin?next=/', '/internal/operations',
                          '/api/private', '/diagnostics/', '/preview/', '/lab/', '/test/'):
                 self.assertFalse(robots.can_fetch(agent, BASE + path), (agent, path))
+
+    def test_security_txt_points_to_private_reporting(self):
+        # RFC 9116: Contact and Expires are required; renew Expires before it passes.
+        fields = dict(line.split(': ', 1) for line in (ROOT / 'site/.well-known/security.txt').read_text().splitlines() if line)
+        self.assertEqual(fields['Contact'], 'https://github.com/VooZ2/terento/security/advisories/new')
+        self.assertRegex(fields['Expires'], r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$')
+        self.assertEqual(fields['Canonical'], BASE + '/.well-known/security.txt')
 
     def test_sitemap_exact_inventory_limits_and_metadata(self):
         source = (ROOT / 'site/sitemap.xml').read_bytes()

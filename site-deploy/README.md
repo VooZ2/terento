@@ -265,6 +265,11 @@ the complete restored page must still match exactly.
 
 ### Search and AI discovery
 
+`site/.well-known/security.txt` (RFC 9116) points security reports to GitHub private
+vulnerability reporting, as `SECURITY.md` does. Its `Expires` is 2027-11-01: renew it
+before then. `/index.html` (and `/<locale>/index.html`) redirect permanently to the
+directory URL, the only canonical form.
+
 See [AI_DISCOVERABILITY.md](AI_DISCOVERABILITY.md) for crawler policy, static
 compatibility content, canonical/sitemap/IndexNow contracts and local checks.
 The supplemental `site/llms.txt` is generated from page metadata. JSON metadata
