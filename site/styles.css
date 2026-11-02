@@ -1626,7 +1626,7 @@ h1 {
   line-height: 1.04;
 }
 
-.final-cta-copy p:not(.eyebrow) {
+.final-cta-copy p {
   max-width: 520px;
   margin-bottom: 0;
   color: var(--secondary);
@@ -2784,10 +2784,6 @@ details p {
   line-height: 1.5;
 }
 
-.guide-bottom-cta .download-action {
-  min-height: 46px;
-}
-
 .guide-facts {
   display: flex;
   flex-wrap: wrap;
@@ -3093,11 +3089,6 @@ details p {
   border-bottom: 1px solid var(--border);
 }
 
-.guide-bottom-cta .download-action {
-  flex: 0 0 auto;
-  white-space: nowrap;
-}
-
 .troubleshooting-list {
   border-top: 1px solid var(--border);
 }
@@ -3264,10 +3255,6 @@ details p {
     align-items: flex-start;
     flex-direction: column;
     padding: 28px 0;
-  }
-
-  .guide-bottom-cta .download-action {
-    width: 100%;
   }
 }
 
