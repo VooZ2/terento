@@ -7,7 +7,7 @@ Terento
 
 # Pobierz Terento
 
-Natywna aplikacja na Maca do instalowania i zarządzania mapami społecznościowymi na zegarkach Garmin obsługujących mapy.
+Natywna aplikacja na Maca do instalowania i zarządzania mapami innych firm na zegarkach Garmin obsługujących mapy.
 
 - Bezpłatna
 - Notaryzowana

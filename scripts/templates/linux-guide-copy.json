@@ -4,7 +4,7 @@
     "description": "Install free OpenStreetMap maps on a Garmin watch from Linux in Chrome, Edge, Opera or Brave. Add one udev rule, connect the watch with a USB cable and send the map. No app needed.",
     "h1": "Install Garmin maps on Linux",
     "eyebrow": "Linux guide",
-    "intro": "On Linux, the Terento web installer puts free maps on Garmin watches that support maps, straight from your browser. Linux needs one permission rule first, so the browser can use the watch over USB.",
+    "intro": "On Linux, the Terento web installer puts free maps on Garmin watches with map support, straight from your browser. Linux needs one permission rule first, so the browser can use the watch over USB.",
     "skip": "Skip to content",
     "breadcrumb_home": "Home",
     "breadcrumb_current": "Linux guide",

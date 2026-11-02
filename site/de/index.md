@@ -9,15 +9,16 @@ Open-Source-Projekt
 
 Terento ist ein kostenloses Open-Source-Tool, mit dem du Drittanbieter-Karten auf Garmin-Uhren installierst, aktualisierst und verwaltest: mit einer nativen Mac-App oder im Desktop-Browser.
 
-[Herunterladen](https://terento.app/de/download/) [Kompatibilität prüfen](https://terento.app/de/compatibility/) [Oder direkt aus dem Browser installieren](https://terento.app/de/install/)
+[Für Mac herunterladen](https://terento.app/de/download/)
+[Kompatibilität prüfen](https://terento.app/de/compatibility/) [Direkt aus dem Browser installieren](https://terento.app/de/install/)
 
-Terento zeigt den Installationsfortschritt von Community-Karten unter macOS
+Terento zeigt den Installationsfortschritt von Drittanbieter-Karten unter macOS
 
 So funktioniert es
 
 ## Verbinden Installieren Fertig
 
-Die Installation von Drittanbieter-Karten sollte einfach und schnell sein — ohne zusätzliche Software, separate Download-Schritte oder technisches Vorwissen.
+Die Installation von Drittanbieter-Karten sollte einfach und schnell sein — ohne Dateien von Hand zu kopieren und ohne technisches Vorwissen.
 
 Terento bündelt den gesamten Ablauf in drei einfachen Schritten.
 

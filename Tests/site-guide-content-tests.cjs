@@ -449,8 +449,11 @@ for (const locale of locales) {
   }
   const main = visibleText(source.match(/<main\b[\s\S]*?<\/main>/)[0]);
   assert.doesNotMatch(main, /\bIMG\b|\.img|\/GARMIN|object (?:handle|ID)|libmtp|manifest/i, `${locale}: outcome language without device internals`);
-  const outsideMtpSections = visibleText(source.match(/<main\b[\s\S]*?<\/main>/)[0].replace(/<section class="troubleshooting-item" id="(?:usb-mode|garmin-busy)"[\s\S]*?<\/section>/g, ""));
+  const outsideMtpSections = visibleText(source.match(/<main\b[\s\S]*?<\/main>/)[0].replace(/<section class="troubleshooting-item" id="(?:usb-mode|garmin-busy)"[\s\S]*?<\/section>/g, "")
+    // The topic index repeats the section titles, including the USB-mode one.
+    .replace(/<nav class="troubleshooting-toc"[\s\S]*?<\/nav>/, ""));
   assert.doesNotMatch(outsideMtpSections, /\bMTP\b/, `${locale}: MTP only in the USB-mode and app-conflict sections`);
+  assert.equal((source.match(/<nav class="troubleshooting-toc"[\s\S]*?<\/nav>/)?.[0].match(/<a href="#/g) || []).length, troubleshootingAnchors.length, `${locale}: topic index links every topic`);
   assert.doesNotMatch(source, /Send report to Terento|TR-[A-Z0-9]{6}|TODO/i, `${locale}: no unreleased support-report claims`);
   assert.doesNotMatch(main, /\bresum|min left|Request support|automatic(?:ally)? reconnect/i, `${locale}: no unreleased resume, estimate or reconnect claims`);
   assert.match(main, /Report issue/, `${locale}: current GitHub report flow`);

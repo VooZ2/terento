@@ -134,12 +134,12 @@ def download_link(label: str, href: str, *, event=None, location=None) -> str:
 
 
 DOWNLOAD_PRESENTATION = {
-    "en": ("A native Mac app for installing and managing community maps on Garmin smartwatches with map support.", "Free", "Notarized", "Terento showing a connected Garmin watch on macOS"),
-    "de": ("Eine native Mac-App zum Installieren und Verwalten von Community-Karten auf Garmin-Smartwatches mit Kartenunterstützung.", "Kostenlos", "Notarisiert", "Terento zeigt eine verbundene Garmin-Uhr unter macOS"),
-    "fr": ("Une application Mac native pour installer et gérer des cartes communautaires sur les montres Garmin prenant en charge les cartes.", "Gratuit", "Notarié", "Terento affiche une montre Garmin connectée sur macOS"),
-    "pl": ("Natywna aplikacja na Maca do instalowania i zarządzania mapami społecznościowymi na zegarkach Garmin obsługujących mapy.", "Bezpłatna", "Notaryzowana", "Terento pokazuje podłączony zegarek Garmin w macOS"),
-    "cs": ("Nativní aplikace pro Mac k instalaci a správě komunitních map na hodinkách Garmin s podporou map.", "Zdarma", "Notarizovaná", "Terento zobrazuje připojené hodinky Garmin v macOS"),
-    "it": ("Un’app Mac nativa per installare e gestire mappe della comunità sugli smartwatch Garmin con supporto alle mappe.", "Gratuita", "Notarizzata", "Terento mostra uno smartwatch Garmin collegato su macOS"),
+    "en": ("A native Mac app for installing and managing third-party maps on Garmin smartwatches with map support.", "Free", "Notarized", "Terento showing a connected Garmin watch on macOS"),
+    "de": ("Eine native Mac-App zum Installieren und Verwalten von Drittanbieter-Karten auf Garmin-Smartwatches mit Kartenunterstützung.", "Kostenlos", "Notarisiert", "Terento zeigt eine verbundene Garmin-Uhr unter macOS"),
+    "fr": ("Une application Mac native pour installer et gérer des cartes tierces sur les montres Garmin prenant en charge les cartes.", "Gratuit", "Notarié", "Terento affiche une montre Garmin connectée sur macOS"),
+    "pl": ("Natywna aplikacja na Maca do instalowania i zarządzania mapami innych firm na zegarkach Garmin obsługujących mapy.", "Bezpłatna", "Notaryzowana", "Terento pokazuje podłączony zegarek Garmin w macOS"),
+    "cs": ("Nativní aplikace pro Mac k instalaci a správě map třetích stran na hodinkách Garmin s podporou map.", "Zdarma", "Notarizovaná", "Terento zobrazuje připojené hodinky Garmin v macOS"),
+    "it": ("Un’app Mac nativa per installare e gestire mappe di terze parti sugli smartwatch Garmin con supporto alle mappe.", "Gratuita", "Notarizzata", "Terento mostra uno smartwatch Garmin collegato su macOS"),
 }
 
 

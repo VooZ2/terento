@@ -9,15 +9,16 @@ Progetto open source
 
 Terento è uno strumento gratuito e open source per installare, aggiornare e gestire mappe di terze parti sugli smartwatch Garmin: con un’app Mac nativa o nel browser del computer.
 
-[Scarica](https://terento.app/it/download/) [Verifica la compatibilità](https://terento.app/it/compatibility/) [Oppure installa dal browser](https://terento.app/it/install/)
+[Scarica per Mac](https://terento.app/it/download/)
+[Verifica la compatibilità](https://terento.app/it/compatibility/) [Installa dal browser](https://terento.app/it/install/)
 
-Terento mostra l’avanzamento dell’installazione di mappe della comunità su macOS
+Terento mostra l’avanzamento dell’installazione di mappe di terze parti su macOS
 
 Come funziona
 
 ## Connetti Installa Fatto
 
-Installare mappe di terze parti dovrebbe essere semplice e veloce — senza software aggiuntivo, passaggi di download separati o competenze tecniche.
+Installare mappe di terze parti dovrebbe essere semplice e veloce — senza copiare file a mano né competenze tecniche.
 
 Terento riunisce l’intero processo in tre semplici passaggi.
 

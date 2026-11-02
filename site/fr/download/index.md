@@ -7,7 +7,7 @@ Terento
 
 # Télécharger Terento
 
-Une application Mac native pour installer et gérer des cartes communautaires sur les montres Garmin prenant en charge les cartes.
+Une application Mac native pour installer et gérer des cartes tierces sur les montres Garmin prenant en charge les cartes.
 
 - Gratuit
 - Notarié

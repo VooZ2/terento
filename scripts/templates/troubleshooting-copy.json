@@ -13,6 +13,7 @@
     "guide_link": "Read the Mac installation guide",
     "guide_page_link": "See all troubleshooting steps",
     "guide_related_label": "More help:",
+    "toc_label": "On this page",
     "groups": [
       {
         "id": "topic-connection",
@@ -80,6 +81,7 @@
     "guide_link": "Mac-Installationsanleitung lesen",
     "guide_page_link": "Alle Lösungsschritte ansehen",
     "guide_related_label": "Weitere Hilfe:",
+    "toc_label": "Auf dieser Seite",
     "groups": [
       {
         "id": "topic-connection",
@@ -147,6 +149,7 @@
     "guide_link": "Lire le guide d’installation sur Mac",
     "guide_page_link": "Voir toutes les solutions",
     "guide_related_label": "Plus d’aide :",
+    "toc_label": "Sur cette page",
     "groups": [
       {
         "id": "topic-connection",
@@ -214,6 +217,7 @@
     "guide_link": "Przeczytaj instrukcję instalacji na Macu",
     "guide_page_link": "Zobacz wszystkie rozwiązania",
     "guide_related_label": "Więcej pomocy:",
+    "toc_label": "Na tej stronie",
     "groups": [
       {
         "id": "topic-connection",
@@ -281,6 +285,7 @@
     "guide_link": "Přečíst průvodce instalací na Macu",
     "guide_page_link": "Zobrazit všechna řešení",
     "guide_related_label": "Další pomoc:",
+    "toc_label": "Na této stránce",
     "groups": [
       {
         "id": "topic-connection",
@@ -348,6 +353,7 @@
     "guide_link": "Leggi la guida all’installazione su Mac",
     "guide_page_link": "Vedi tutte le soluzioni",
     "guide_related_label": "Altro aiuto:",
+    "toc_label": "In questa pagina",
     "groups": [
       {
         "id": "topic-connection",

@@ -9,15 +9,16 @@ Open-source project
 
 Terento is a free, open-source way to install, update and manage third-party maps on Garmin watches: with a native Mac app or in your desktop browser.
 
-[Download](https://terento.app/download/) [Check compatibility](https://terento.app/compatibility/) [Or install from your browser](https://terento.app/install/)
+[Download for Mac](https://terento.app/download/)
+[Check compatibility](https://terento.app/compatibility/) [Install from your browser](https://terento.app/install/)
 
-Terento showing community map installation progress on macOS
+Terento showing third-party map installation progress on macOS
 
 How it works
 
 ## Connect Install Done
 
-Installing third-party maps should be simple and fast — without extra software, separate download steps, or technical know-how.
+Installing third-party maps should be simple and fast — no copying files by hand, no technical know-how.
 
 Terento brings the whole process together in three simple steps.
 

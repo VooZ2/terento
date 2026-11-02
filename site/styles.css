@@ -805,6 +805,20 @@ h1 {
   min-height: 44px;
 }
 
+/* The two secondary hero links share one row and wrap only when it is too narrow. */
+.hero-secondary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 28px;
+}
+
+.hero-secondary-actions > a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
 .primary-nav .download-action {
   min-height: 40px;
   padding: 8px 14px;
@@ -3071,6 +3085,38 @@ details p {
 
 .troubleshooting-list {
   border-top: 1px solid var(--border);
+}
+
+.troubleshooting-toc {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 24px 40px;
+  margin-top: 36px;
+  padding-top: 28px;
+  border-top: 1px solid var(--border);
+}
+
+.troubleshooting-toc-title {
+  margin: 0 0 6px;
+  color: var(--muted-text);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.troubleshooting-toc ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.troubleshooting-toc a {
+  display: inline-block;
+  padding: 5px 0;
+  color: var(--link-text);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.4;
 }
 
 .troubleshooting-item {

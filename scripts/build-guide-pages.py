@@ -624,7 +624,7 @@ FLOW_COPY = {
         "h1": "Install third-party maps on your Garmin watch in three simple steps",
         "meta_description": "Install third-party maps on a Garmin smartwatch with map support from an Apple Silicon Mac. Connect your watch, choose a map or upload your own .img file, and finish in three simple steps with Terento.",
         "intro": "Connect your watch, choose a map, and let Terento handle the installation — without manual file transfers.",
-        "facts": ["macOS 13+", "Apple Silicon", "Map-capable Garmin watch"],
+        "facts": ["macOS 13+", "Apple Silicon", "Garmin watch with map support"],
         "checklist": ["Apple Silicon Mac", "macOS 13 or later", "Garmin smartwatch with map support", "USB cable that supports data transfer"],
         "compatibility_note": "The Compatibility page shows exact Garmin models and variants with at least one successful shared installation. The list grows as more successful installations are shared. A missing model does not mean it is unsupported; it may simply not have a successful shared installation for that exact model and variant yet. Terento is intended for Garmin smartwatches with map support. After connection, Terento checks the detected device and tells you whether installation can safely continue.",
         "steps_eyebrow": "The workflow",
@@ -984,6 +984,12 @@ def render_troubleshooting(locale: str) -> str:
             <div class="troubleshooting-list">{''.join(items)}</div>
           </section>''')
     groups_markup = "\n          ".join(groups)
+    # A short index of every topic: the page is long and readers look for one symptom.
+    toc = "".join(
+        f'<div class="troubleshooting-toc-group"><p class="troubleshooting-toc-title">{esc(group["title"])}</p><ul>'
+        + "".join(f'<li><a href="#{item["anchor"]}">{esc(item["title"])}</a></li>' for item in group["items"])
+        + "</ul></div>"
+        for group in copy["groups"])
     return f'''<!doctype html>
 <html lang="{locale}" data-language="{locale}" data-page="troubleshooting">
   <head>
@@ -1018,6 +1024,7 @@ def render_troubleshooting(locale: str) -> str:
             <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>{esc(copy["eyebrow"])}</p>
             <h1>{esc(copy["h1"])}</h1>
             <p class="guide-lede">{esc(copy["intro"])}</p>
+            <nav class="troubleshooting-toc" aria-label="{esc(copy["toc_label"])}">{toc}</nav>
           </div>
         </header>
 

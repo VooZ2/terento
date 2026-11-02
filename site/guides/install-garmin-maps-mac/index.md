@@ -9,7 +9,7 @@ Mac installation guide
 
 Connect your watch, choose a map, and let Terento handle the installation — without manual file transfers.
 
-macOS 13+Apple SiliconMap-capable Garmin watch
+macOS 13+Apple SiliconGarmin watch with map support
 
 A quick check
 
