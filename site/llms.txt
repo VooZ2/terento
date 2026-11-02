@@ -27,7 +27,7 @@ This supplemental index does not replace the website, robots.txt, or sitemap.
 
 ## Web installer
 
-- [Install Maps on Your Garmin Watch from Your Browser — Terento](https://terento.app/install/): Install free maps based on OpenStreetMap on your Garmin watch straight from Chrome, Edge, Opera or Brave. Connect it with a USB cable, choose a map and send it. No app needed.
+- [Install Maps on Your Garmin Watch from Your Browser — Terento](https://terento.app/install/): Install free maps based on OpenStreetMap on your Garmin watch from Chrome, Edge, Opera or Brave: connect it by USB, choose a map, send it. No app needed.
 
 ## Other languages
 

@@ -81,6 +81,18 @@ Reconnectez ou redémarrez la montre et vérifiez ses réglages de carte. Si la 
 
 [Voir toutes les solutions](https://terento.app/fr/guides/troubleshooting/)
 
+Après l’installation
+
+## Premier lancement et désinstallation
+
+### Premier lancement
+
+Faites glisser Terento du DMG téléchargé vers Applications, puis ouvrez-le depuis ce dossier. Terento est notarié par Apple ; à la première ouverture, macOS demande si vous voulez ouvrir une app téléchargée depuis Internet : choisissez Ouvrir. Sur un Mac portable, si macOS demande d’autoriser la connexion de l’accessoire, choisissez Autoriser.
+
+### Désinstaller Terento
+
+Quittez Terento et placez-le dans la Corbeille depuis Applications. Les cartes déjà sur votre montre y restent. Terento conserve les informations sur les cartes qu’il a installées dans ~/Library/Application Support/Terento : gardez ce dossier si vous comptez réinstaller Terento, pour qu’il puisse encore mettre à jour et supprimer ces cartes. Pour tout supprimer, effacez aussi ce dossier, ~/Library/Caches/Terento, ~/Library/Logs/Terento et ~/Library/Preferences/app.terento.mac.plist.
+
 Prêt quand vous l’êtes
 
 ## Prêt à installer votre première carte ?

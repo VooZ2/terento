@@ -21,6 +21,7 @@ const read = (file) => fs.readFileSync(file, "utf8");
 const guideFile = (locale) => path.join(root, "site", locale === "en" ? slug : path.join(locale, slug), "index.html");
 const metadata = JSON.parse(read(path.join(root, "site", "metadata.json")));
 const release = JSON.parse(read(path.join(root, "site", "updates", "macos-arm64.json")));
+const guideContentReviewed = fs.readFileSync(path.join(__dirname, "..", "scripts", "build-guide-pages.py"), "utf8").match(/^GUIDE_CONTENT_REVIEWED = "([^"]+)"/m)[1];
 const metadataByPath = new Map(metadata.pages.map((page) => [page.path, page]));
 const downloadLabels = {
   en: "Download",
@@ -124,7 +125,7 @@ for (const locale of locales) {
   assert.equal(data["@context"], "https://schema.org");
   const article = oneEntity(data, "Article", file);
   assert.equal(article.datePublished, "2026-08-28T00:00:00Z", `${file}: ISO publication datetime`);
-  assert.equal(article.dateModified, `${release.publishedAt}T00:00:00Z`, `${file}: ISO modified datetime`);
+  assert.equal(article.dateModified, `${[release.publishedAt, guideContentReviewed].sort().at(-1)}T00:00:00Z`, `${file}: ISO modified datetime, the later of release and content review`);
   assert.deepEqual(oneEntity(data, "Organization", file), {
     "@type": "Organization",
     "@id": baseUrl + "/#organization",

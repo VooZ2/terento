@@ -81,6 +81,18 @@ Verbinde die Uhr erneut oder starte sie neu und prüfe die Karteneinstellungen. 
 
 [Alle Lösungsschritte ansehen](https://terento.app/de/guides/troubleshooting/)
 
+Nach der Installation
+
+## Erster Start und Deinstallation
+
+### Erster Start
+
+Ziehe Terento aus dem geladenen DMG in den Ordner „Programme“ und öffne es dort. Terento ist von Apple notarisiert; beim ersten Öffnen fragt macOS, ob du eine aus dem Internet geladene App öffnen möchtest, wähle dann „Öffnen“. Fragt macOS auf einem Mac-Laptop, ob das Zubehör verbunden werden darf, wähle „Erlauben“.
+
+### Terento deinstallieren
+
+Beende Terento und bewege es aus „Programme“ in den Papierkorb. Karten auf deiner Uhr bleiben dort. Terento speichert die Angaben zu den installierten Karten in ~/Library/Application Support/Terento: Behalte diesen Ordner, wenn du Terento wieder installieren möchtest, damit es diese Karten weiter aktualisieren und entfernen kann. Um alles zu entfernen, lösche auch diesen Ordner, ~/Library/Caches/Terento, ~/Library/Logs/Terento und ~/Library/Preferences/app.terento.mac.plist.
+
 Bereit, wenn du es bist
 
 ## Bereit, deine erste Karte zu installieren?

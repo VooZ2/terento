@@ -21,7 +21,11 @@ BASE_URL = "https://terento.app"
 GUIDE_SLUG = "guides/install-garmin-maps-mac/"
 PUBLISHED = "2026-08-28T00:00:00Z"
 RELEASE = json.loads((ROOT / "site/updates/macos-arm64.json").read_text())
-REVIEWED = RELEASE["publishedAt"] + "T00:00:00Z"
+# dateModified: the later of the release date and the last content review of
+# the guide. Bump GUIDE_CONTENT_REVIEWED when the guide text changes; the site
+# tests compare it with the sitemap lastmod (2026-11-02 SEO review, A6).
+GUIDE_CONTENT_REVIEWED = "2026-11-02"
+REVIEWED = max(RELEASE["publishedAt"], GUIDE_CONTENT_REVIEWED) + "T00:00:00Z"
 IMAGE_VERSION = "20260912-app-screens-v2"
 READING_STATE_VERSION = "20260902-reading-state"
 UMAMI_SCRIPT_VERSION = "20260905-campaign-url-only-v1"
@@ -91,6 +95,61 @@ TROUBLESHOOTING_ANCHORS = (
 # - update-remove: mention "About N min left" estimates if they ship.
 # - each section: the app's per-error Help links land on these anchors.
 
+
+# First launch and uninstall (2026-11-02 SEO review, B14). Facts: the DMG is
+# notarized; manifests and the device key live in Application Support/Terento
+# (TerentoManifestStore.swift), downloads in Caches/Terento (MapPackageAcquisition.swift),
+# logs in Logs/Terento (TerentoDiagnosticLog.swift), settings in app.terento.mac.plist.
+AFTER_INSTALL_COPY = {
+    "en": {
+        "eyebrow": "After installing",
+        "title": "First launch and uninstalling",
+        "items": (
+            ("First launch", "Drag Terento from the downloaded DMG to Applications and open it there. Terento is notarized by Apple; the first time, macOS asks whether to open an app downloaded from the internet, so choose Open. On a Mac laptop, if macOS asks whether to allow the accessory to connect, choose Allow."),
+            ("Uninstall Terento", "Quit Terento and move it from Applications to the Trash. Maps already on your watch stay there. Terento keeps its records of the maps it installed in ~/Library/Application Support/Terento: keep that folder if you may install Terento again, so it can still update and remove those maps. To remove everything, also delete that folder, ~/Library/Caches/Terento, ~/Library/Logs/Terento and ~/Library/Preferences/app.terento.mac.plist."),
+        ),
+    },
+    "de": {
+        "eyebrow": "Nach der Installation",
+        "title": "Erster Start und Deinstallation",
+        "items": (
+            ("Erster Start", "Ziehe Terento aus dem geladenen DMG in den Ordner „Programme“ und öffne es dort. Terento ist von Apple notarisiert; beim ersten Öffnen fragt macOS, ob du eine aus dem Internet geladene App öffnen möchtest, wähle dann „Öffnen“. Fragt macOS auf einem Mac-Laptop, ob das Zubehör verbunden werden darf, wähle „Erlauben“."),
+            ("Terento deinstallieren", "Beende Terento und bewege es aus „Programme“ in den Papierkorb. Karten auf deiner Uhr bleiben dort. Terento speichert die Angaben zu den installierten Karten in ~/Library/Application Support/Terento: Behalte diesen Ordner, wenn du Terento wieder installieren möchtest, damit es diese Karten weiter aktualisieren und entfernen kann. Um alles zu entfernen, lösche auch diesen Ordner, ~/Library/Caches/Terento, ~/Library/Logs/Terento und ~/Library/Preferences/app.terento.mac.plist."),
+        ),
+    },
+    "fr": {
+        "eyebrow": "Après l’installation",
+        "title": "Premier lancement et désinstallation",
+        "items": (
+            ("Premier lancement", "Faites glisser Terento du DMG téléchargé vers Applications, puis ouvrez-le depuis ce dossier. Terento est notarié par Apple ; à la première ouverture, macOS demande si vous voulez ouvrir une app téléchargée depuis Internet : choisissez Ouvrir. Sur un Mac portable, si macOS demande d’autoriser la connexion de l’accessoire, choisissez Autoriser."),
+            ("Désinstaller Terento", "Quittez Terento et placez-le dans la Corbeille depuis Applications. Les cartes déjà sur votre montre y restent. Terento conserve les informations sur les cartes qu’il a installées dans ~/Library/Application Support/Terento : gardez ce dossier si vous comptez réinstaller Terento, pour qu’il puisse encore mettre à jour et supprimer ces cartes. Pour tout supprimer, effacez aussi ce dossier, ~/Library/Caches/Terento, ~/Library/Logs/Terento et ~/Library/Preferences/app.terento.mac.plist."),
+        ),
+    },
+    "pl": {
+        "eyebrow": "Po instalacji",
+        "title": "Pierwsze uruchomienie i odinstalowanie",
+        "items": (
+            ("Pierwsze uruchomienie", "Przeciągnij Terento z pobranego pliku DMG do folderu Aplikacje i otwórz je stamtąd. Terento jest notaryzowane przez Apple; przy pierwszym otwarciu macOS zapyta, czy otworzyć aplikację pobraną z internetu, wybierz wtedy Otwórz. Jeśli na laptopie Mac macOS zapyta, czy zezwolić na połączenie akcesorium, wybierz Zezwól."),
+            ("Odinstalowanie Terento", "Zamknij Terento i przenieś je z folderu Aplikacje do Kosza. Mapy na zegarku zostają. Terento przechowuje informacje o zainstalowanych mapach w ~/Library/Application Support/Terento: zachowaj ten folder, jeśli możesz ponownie zainstalować Terento, aby nadal mogło aktualizować i usuwać te mapy. Aby usunąć wszystko, usuń też ten folder, ~/Library/Caches/Terento, ~/Library/Logs/Terento i ~/Library/Preferences/app.terento.mac.plist."),
+        ),
+    },
+    "cs": {
+        "eyebrow": "Po instalaci",
+        "title": "První spuštění a odinstalace",
+        "items": (
+            ("První spuštění", "Přetáhněte Terento ze staženého DMG do složky Aplikace a otevřete ho odtud. Terento je notářsky ověřené společností Apple; při prvním otevření se macOS zeptá, zda otevřít aplikaci staženou z internetu, zvolte Otevřít. Pokud se na notebooku Mac macOS zeptá, zda povolit připojení příslušenství, zvolte Povolit."),
+            ("Odinstalace Terento", "Ukončete Terento a přesuňte ho ze složky Aplikace do koše. Mapy v hodinkách zůstanou. Terento si údaje o nainstalovaných mapách ukládá do ~/Library/Application Support/Terento: tuto složku si ponechte, pokud budete Terento instalovat znovu, aby tyto mapy mohlo dál aktualizovat a odstraňovat. Chcete-li odstranit vše, smažte i tuto složku, ~/Library/Caches/Terento, ~/Library/Logs/Terento a ~/Library/Preferences/app.terento.mac.plist."),
+        ),
+    },
+    "it": {
+        "eyebrow": "Dopo l’installazione",
+        "title": "Primo avvio e disinstallazione",
+        "items": (
+            ("Primo avvio", "Trascina Terento dal DMG scaricato in Applicazioni e aprilo da lì. Terento è notarizzato da Apple; alla prima apertura macOS chiede se aprire un’app scaricata da Internet: scegli Apri. Su un Mac portatile, se macOS chiede se consentire il collegamento dell’accessorio, scegli Consenti."),
+            ("Disinstallare Terento", "Chiudi Terento e spostalo da Applicazioni nel Cestino. Le mappe già sull’orologio restano lì. Terento conserva le informazioni sulle mappe installate in ~/Library/Application Support/Terento: tieni questa cartella se potresti reinstallare Terento, così potrà ancora aggiornare e rimuovere quelle mappe. Per rimuovere tutto, elimina anche questa cartella, ~/Library/Caches/Terento, ~/Library/Logs/Terento e ~/Library/Preferences/app.terento.mac.plist."),
+        ),
+    },
+}
 
 def esc(value: str) -> str:
     return html.escape(value, quote=True)
@@ -339,6 +398,11 @@ def render(locale: str, copy: dict[str, object], release: dict[str, object]) -> 
           <section class="troubleshooting" id="troubleshooting" aria-labelledby="troubleshooting-title">
             <div class="guide-section-heading"><p class="eyebrow">{esc(copy["troubleshooting_eyebrow"])}</p><h2 id="troubleshooting-title">{esc(copy["troubleshooting_title"])}</h2></div>
             <div class="troubleshooting-list">{''.join(troubleshooting)}<p class="troubleshooting-more"><a class="text-link" href="{localized_path(locale, TROUBLESHOOTING_SLUG)}" data-umami-event="guide-link-click" data-umami-event-location="guide-troubleshooting">{esc(TROUBLESHOOTING_COPY[locale]["guide_page_link"])} <span aria-hidden="true">→</span></a></p></div>
+          </section>
+
+          <section class="troubleshooting guide-after-install" id="first-launch" aria-labelledby="first-launch-title">
+            <div class="guide-section-heading"><p class="eyebrow">{esc(AFTER_INSTALL_COPY[locale]["eyebrow"])}</p><h2 id="first-launch-title">{esc(AFTER_INSTALL_COPY[locale]["title"])}</h2></div>
+            <div class="troubleshooting-list">{''.join(f'<section class="troubleshooting-item"><h3>{esc(title)}</h3><p>{esc(body)}</p></section>' for title, body in AFTER_INSTALL_COPY[locale]["items"])}</div>
           </section>
 
           <section class="guide-bottom-cta" aria-labelledby="guide-bottom-title">

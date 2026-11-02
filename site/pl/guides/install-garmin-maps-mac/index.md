@@ -81,6 +81,18 @@ Podłącz zegarek ponownie lub uruchom go ponownie i sprawdź ustawienia map. Je
 
 [Zobacz wszystkie rozwiązania](https://terento.app/pl/guides/troubleshooting/)
 
+Po instalacji
+
+## Pierwsze uruchomienie i odinstalowanie
+
+### Pierwsze uruchomienie
+
+Przeciągnij Terento z pobranego pliku DMG do folderu Aplikacje i otwórz je stamtąd. Terento jest notaryzowane przez Apple; przy pierwszym otwarciu macOS zapyta, czy otworzyć aplikację pobraną z internetu, wybierz wtedy Otwórz. Jeśli na laptopie Mac macOS zapyta, czy zezwolić na połączenie akcesorium, wybierz Zezwól.
+
+### Odinstalowanie Terento
+
+Zamknij Terento i przenieś je z folderu Aplikacje do Kosza. Mapy na zegarku zostają. Terento przechowuje informacje o zainstalowanych mapach w ~/Library/Application Support/Terento: zachowaj ten folder, jeśli możesz ponownie zainstalować Terento, aby nadal mogło aktualizować i usuwać te mapy. Aby usunąć wszystko, usuń też ten folder, ~/Library/Caches/Terento, ~/Library/Logs/Terento i ~/Library/Preferences/app.terento.mac.plist.
+
 Gotowe, gdy Ty będziesz
 
 ## Gotowy, aby zainstalować pierwszą mapę?
