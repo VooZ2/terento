@@ -66,8 +66,8 @@ select candidates by itself. A single variant may be selected only when
 current connected-device facts independently establish it; otherwise, retain
 all remaining candidates. Thus conflicting variant hints with all-Yes
 candidates still produce `APPROVED`. Edge is not permanently excluded: an
-Edge base model absent from the catalog is `PENDING`, while a future catalogued
-Edge model with Maps=Yes may be authorized by the same rules. Safe Update
+Edge base model absent from the catalog is `PENDING`, and the MTP Edge rows of
+migration 090 (Maps=Yes) are authorized by the same rules. Safe Update
 refreshes the policy at start and before its first write.
 
 The historical registry in `terento_catalog.historical_devices` is versioned
