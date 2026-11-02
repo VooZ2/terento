@@ -109,6 +109,22 @@ class DiscoverabilityTests(unittest.TestCase):
         self.assertEqual(len(titles), len(set(titles)))
         self.assertEqual(len(descriptions), len(set(descriptions)))
 
+    def test_article_date_modified_matches_sitemap_lastmod(self):
+        # One date per guide: its JSON-LD dateModified and its sitemap lastmod
+        # (2026-11-02 SEO review, A6). Bump the guide's reviewed date with its text.
+        ns = {'s': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
+        tree = ET.fromstring((ROOT / 'site/sitemap.xml').read_bytes())
+        lastmods = {node.findtext('s:loc', namespaces=ns): node.findtext('s:lastmod', namespaces=ns)
+                    for node in tree.findall('s:url', ns)}
+        checked = 0
+        for page in CONFIG['pages']:
+            path, source = page['path'], (ROOT / page['file']).read_text(encoding='utf-8')
+            dates = re.findall(r'"dateModified":\s*"(\d{4}-\d{2}-\d{2})', source)
+            lastmod = lastmods.get(BASE + path)
+            if not dates or not lastmod: continue
+            self.assertEqual(set(dates), {lastmod}, path); checked += 1
+        self.assertGreaterEqual(checked, 18)
+
     def test_no_unregistered_html_and_all_pages_reachable_by_links(self):
         registered = {ROOT / page['file'] for page in CONFIG['pages']}
         exceptions = {ROOT / 'site/404.html', ROOT / 'site/supported-watches/index.html'}
