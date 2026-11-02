@@ -98,14 +98,15 @@ TROUBLESHOOTING_ANCHORS = (
 
 # First launch and uninstall (2026-11-02 SEO review, B14). Facts: the DMG is
 # notarized; manifests and the device key live in Application Support/Terento
-# (TerentoManifestStore.swift), downloads in Caches/Terento (MapPackageAcquisition.swift).
+# (TerentoManifestStore.swift), downloads in Caches/Terento (MapPackageAcquisition.swift),
+# logs in Logs/Terento (TerentoDiagnosticLog.swift), settings in app.terento.mac.plist.
 AFTER_INSTALL_COPY = {
     "en": {
         "eyebrow": "After installing",
         "title": "First launch and uninstalling",
         "items": (
             ("First launch", "Drag Terento from the downloaded DMG to Applications and open it there. Terento is notarized by Apple; the first time, macOS asks whether to open an app downloaded from the internet, so choose Open. On a Mac laptop, if macOS asks whether to allow the accessory to connect, choose Allow."),
-            ("Uninstall Terento", "Quit Terento and move it from Applications to the Trash. Maps already on your watch stay there. Terento keeps its records of the maps it installed in ~/Library/Application Support/Terento: keep that folder if you may install Terento again, so it can still update and remove those maps. To remove everything, also delete that folder and ~/Library/Caches/Terento."),
+            ("Uninstall Terento", "Quit Terento and move it from Applications to the Trash. Maps already on your watch stay there. Terento keeps its records of the maps it installed in ~/Library/Application Support/Terento: keep that folder if you may install Terento again, so it can still update and remove those maps. To remove everything, also delete that folder, ~/Library/Caches/Terento, ~/Library/Logs/Terento and ~/Library/Preferences/app.terento.mac.plist."),
         ),
     },
     "de": {
@@ -113,7 +114,7 @@ AFTER_INSTALL_COPY = {
         "title": "Erster Start und Deinstallation",
         "items": (
             ("Erster Start", "Ziehe Terento aus dem geladenen DMG in den Ordner „Programme“ und öffne es dort. Terento ist von Apple notarisiert; beim ersten Öffnen fragt macOS, ob du eine aus dem Internet geladene App öffnen möchtest, wähle dann „Öffnen“. Fragt macOS auf einem Mac-Laptop, ob das Zubehör verbunden werden darf, wähle „Erlauben“."),
-            ("Terento deinstallieren", "Beende Terento und bewege es aus „Programme“ in den Papierkorb. Karten auf deiner Uhr bleiben dort. Terento speichert die Angaben zu den installierten Karten in ~/Library/Application Support/Terento: Behalte diesen Ordner, wenn du Terento wieder installieren möchtest, damit es diese Karten weiter aktualisieren und entfernen kann. Um alles zu entfernen, lösche auch diesen Ordner und ~/Library/Caches/Terento."),
+            ("Terento deinstallieren", "Beende Terento und bewege es aus „Programme“ in den Papierkorb. Karten auf deiner Uhr bleiben dort. Terento speichert die Angaben zu den installierten Karten in ~/Library/Application Support/Terento: Behalte diesen Ordner, wenn du Terento wieder installieren möchtest, damit es diese Karten weiter aktualisieren und entfernen kann. Um alles zu entfernen, lösche auch diesen Ordner, ~/Library/Caches/Terento, ~/Library/Logs/Terento und ~/Library/Preferences/app.terento.mac.plist."),
         ),
     },
     "fr": {
@@ -121,7 +122,7 @@ AFTER_INSTALL_COPY = {
         "title": "Premier lancement et désinstallation",
         "items": (
             ("Premier lancement", "Faites glisser Terento du DMG téléchargé vers Applications, puis ouvrez-le depuis ce dossier. Terento est notarié par Apple ; à la première ouverture, macOS demande si vous voulez ouvrir une app téléchargée depuis Internet : choisissez Ouvrir. Sur un Mac portable, si macOS demande d’autoriser la connexion de l’accessoire, choisissez Autoriser."),
-            ("Désinstaller Terento", "Quittez Terento et placez-le dans la Corbeille depuis Applications. Les cartes déjà sur votre montre y restent. Terento conserve les informations sur les cartes qu’il a installées dans ~/Library/Application Support/Terento : gardez ce dossier si vous comptez réinstaller Terento, pour qu’il puisse encore mettre à jour et supprimer ces cartes. Pour tout supprimer, effacez aussi ce dossier et ~/Library/Caches/Terento."),
+            ("Désinstaller Terento", "Quittez Terento et placez-le dans la Corbeille depuis Applications. Les cartes déjà sur votre montre y restent. Terento conserve les informations sur les cartes qu’il a installées dans ~/Library/Application Support/Terento : gardez ce dossier si vous comptez réinstaller Terento, pour qu’il puisse encore mettre à jour et supprimer ces cartes. Pour tout supprimer, effacez aussi ce dossier, ~/Library/Caches/Terento, ~/Library/Logs/Terento et ~/Library/Preferences/app.terento.mac.plist."),
         ),
     },
     "pl": {
@@ -129,7 +130,7 @@ AFTER_INSTALL_COPY = {
         "title": "Pierwsze uruchomienie i odinstalowanie",
         "items": (
             ("Pierwsze uruchomienie", "Przeciągnij Terento z pobranego pliku DMG do folderu Aplikacje i otwórz je stamtąd. Terento jest notaryzowane przez Apple; przy pierwszym otwarciu macOS zapyta, czy otworzyć aplikację pobraną z internetu, wybierz wtedy Otwórz. Jeśli na laptopie Mac macOS zapyta, czy zezwolić na połączenie akcesorium, wybierz Zezwól."),
-            ("Odinstalowanie Terento", "Zamknij Terento i przenieś je z folderu Aplikacje do Kosza. Mapy na zegarku zostają. Terento przechowuje informacje o zainstalowanych mapach w ~/Library/Application Support/Terento: zachowaj ten folder, jeśli możesz ponownie zainstalować Terento, aby nadal mogło aktualizować i usuwać te mapy. Aby usunąć wszystko, usuń też ten folder i ~/Library/Caches/Terento."),
+            ("Odinstalowanie Terento", "Zamknij Terento i przenieś je z folderu Aplikacje do Kosza. Mapy na zegarku zostają. Terento przechowuje informacje o zainstalowanych mapach w ~/Library/Application Support/Terento: zachowaj ten folder, jeśli możesz ponownie zainstalować Terento, aby nadal mogło aktualizować i usuwać te mapy. Aby usunąć wszystko, usuń też ten folder, ~/Library/Caches/Terento, ~/Library/Logs/Terento i ~/Library/Preferences/app.terento.mac.plist."),
         ),
     },
     "cs": {
@@ -137,7 +138,7 @@ AFTER_INSTALL_COPY = {
         "title": "První spuštění a odinstalace",
         "items": (
             ("První spuštění", "Přetáhněte Terento ze staženého DMG do složky Aplikace a otevřete ho odtud. Terento je notářsky ověřené společností Apple; při prvním otevření se macOS zeptá, zda otevřít aplikaci staženou z internetu, zvolte Otevřít. Pokud se na notebooku Mac macOS zeptá, zda povolit připojení příslušenství, zvolte Povolit."),
-            ("Odinstalace Terento", "Ukončete Terento a přesuňte ho ze složky Aplikace do koše. Mapy v hodinkách zůstanou. Terento si údaje o nainstalovaných mapách ukládá do ~/Library/Application Support/Terento: tuto složku si ponechte, pokud budete Terento instalovat znovu, aby tyto mapy mohlo dál aktualizovat a odstraňovat. Chcete-li odstranit vše, smažte i tuto složku a ~/Library/Caches/Terento."),
+            ("Odinstalace Terento", "Ukončete Terento a přesuňte ho ze složky Aplikace do koše. Mapy v hodinkách zůstanou. Terento si údaje o nainstalovaných mapách ukládá do ~/Library/Application Support/Terento: tuto složku si ponechte, pokud budete Terento instalovat znovu, aby tyto mapy mohlo dál aktualizovat a odstraňovat. Chcete-li odstranit vše, smažte i tuto složku, ~/Library/Caches/Terento, ~/Library/Logs/Terento a ~/Library/Preferences/app.terento.mac.plist."),
         ),
     },
     "it": {
@@ -145,7 +146,7 @@ AFTER_INSTALL_COPY = {
         "title": "Primo avvio e disinstallazione",
         "items": (
             ("Primo avvio", "Trascina Terento dal DMG scaricato in Applicazioni e aprilo da lì. Terento è notarizzato da Apple; alla prima apertura macOS chiede se aprire un’app scaricata da Internet: scegli Apri. Su un Mac portatile, se macOS chiede se consentire il collegamento dell’accessorio, scegli Consenti."),
-            ("Disinstallare Terento", "Chiudi Terento e spostalo da Applicazioni nel Cestino. Le mappe già sull’orologio restano lì. Terento conserva le informazioni sulle mappe installate in ~/Library/Application Support/Terento: tieni questa cartella se potresti reinstallare Terento, così potrà ancora aggiornare e rimuovere quelle mappe. Per rimuovere tutto, elimina anche questa cartella e ~/Library/Caches/Terento."),
+            ("Disinstallare Terento", "Chiudi Terento e spostalo da Applicazioni nel Cestino. Le mappe già sull’orologio restano lì. Terento conserva le informazioni sulle mappe installate in ~/Library/Application Support/Terento: tieni questa cartella se potresti reinstallare Terento, così potrà ancora aggiornare e rimuovere quelle mappe. Per rimuovere tutto, elimina anche questa cartella, ~/Library/Caches/Terento, ~/Library/Logs/Terento e ~/Library/Preferences/app.terento.mac.plist."),
         ),
     },
 }
