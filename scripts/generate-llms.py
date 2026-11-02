@@ -18,6 +18,11 @@ def render(config):
     for page in pages:
         if page['locale'] == 'en':
             lines.append(f"- [{page['title']}]({base}{page['path']}): {page['description']}")
+    external = [page for page in config.get('externalPages', []) if page['locale'] == 'en']
+    if external:
+        lines.extend(['', '## Web installer', ''])
+        for page in external:
+            lines.append(f"- [{page['title']}]({base}{page['path']}): {page['description']}")
     lines.extend(['', '## Other languages', ''])
     for page in pages:
         if page['path'] == f"/{page['locale']}/":

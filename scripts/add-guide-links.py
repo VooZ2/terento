@@ -318,13 +318,15 @@ def add_compatibility_link(locale: str) -> None:
             raise RuntimeError(f"Compatibility evidence explanation not found for {locale}")
     guide = f'<a class="text-link compatibility-guide-link" href="{localized_guide(locale)}" data-umami-event="guide-link-click" data-umami-event-location="compatibility-community-testing">{COPY[locale]["compatibility"]} <span aria-hidden="true">→</span></a>'
     download = f'<a class="download-action download-action-primary compatibility-community-link" href="{localized_download(locale)}" data-umami-event="download-cta-click" data-umami-event-location="compatibility-community-testing">{COPY[locale]["community_download"]}</a>'
+    # Without an Apple Silicon Mac: the web installer (2026-11-02, same words as the Download page).
+    web_installer = f'<a class="text-link compatibility-web-installer-link" href="/{'' if locale == 'en' else f'{locale}/'}install/" data-umami-event="web-installer-link-click" data-umami-event-location="compatibility-community-testing">{COPY[locale]["download_web_installer"]} <span aria-hidden="true">→</span></a>'
     community = (
         '<div class="compatibility-community-cta">'
         '<div class="compatibility-community-copy">'
         f'<p class="eyebrow">{COPY[locale]["community_eyebrow"]}</p>'
         f'<h2>{COPY[locale]["community_heading"]}</h2>'
         f'<p>{COPY[locale]["community_body"]}</p>'
-        f'{guide}'
+        f'{guide}{web_installer}'
         '</div>'
         f'{download}'
         '</div></div></section>'

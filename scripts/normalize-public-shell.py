@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SHELL_VERSION = "20261029-web-installer-public-v1"
 PROVIDER_SCRIPT_VERSION = "20261026-osmapa-v1"
-STYLE_VERSION = "20261029-web-installer-v1"
+STYLE_VERSION = "20261102-linux-guide-v1"
 IMAGE_VERSION = "20260912-app-screens-v2"
 LANGUAGE_VERSION = "20260926-static-shell-v1"
 COMPATIBILITY_LOCALES_VERSION = "20261011-compatibility-install-sources-v1"
@@ -63,7 +63,7 @@ def shell(locale: str, route: str, page: str) -> tuple[str, str]:
     download = route_for(locale, "download/")
     guide = route_for(locale, "guides/install-garmin-maps-mac/")
     troubleshooting = route_for(locale, "guides/troubleshooting/")
-    route_for_language = route if page in {"about", "compatibility", "download", "guide", "troubleshooting", "map-styles"} else ""
+    route_for_language = route if page in {"about", "compatibility", "download", "guide", "troubleshooting", "linux-guide", "map-styles"} else ""
     nav = {"about": route_for(locale, "about/"), "compatibility": compatibility, "styles": route_for(locale, "map-styles/"), "guide": guide, "faq": f"{root}#faq", "troubleshooting": troubleshooting, "download": download}
     active = {"about": page == "about", "compatibility": page == "compatibility", "styles": page == "map-styles", "guide": page == "guide", "troubleshooting": page == "troubleshooting", "download": page == "download"}
     nav_events = {
@@ -177,6 +177,7 @@ def _internal_link_metadata(tag: str, page: str) -> tuple[str, str] | None:
         "download": "download-content",
         "guide": "guide-content",
         "troubleshooting": "troubleshooting-content",
+        "linux-guide": "linux-guide-content",
         "map-styles": "map-styles-content",
         "legal": "legal-content",
         "privacy": "privacy-content",
@@ -206,7 +207,7 @@ def _internal_link_metadata(tag: str, page: str) -> tuple[str, str] | None:
         return "home-link-click", page_location
     if _internal_route(path, "compatibility"):
         return "compatibility-link-click", page_location
-    if _internal_route(path, "guides/install-garmin-maps-mac") or _internal_route(path, "guides/troubleshooting"):
+    if _internal_route(path, "guides/install-garmin-maps-mac") or _internal_route(path, "guides/troubleshooting") or _internal_route(path, "guides/install-garmin-maps-linux"):
         return "guide-link-click", page_location
     if _internal_route(path, "download"):
         return "download-cta-click", page_location
@@ -264,6 +265,7 @@ def files() -> list[tuple[str, str, str]]:
             (f"site/{prefix}compatibility/index.html", locale, "compatibility"),
             (f"site/{prefix}guides/install-garmin-maps-mac/index.html", locale, "guide"),
             (f"site/{prefix}guides/troubleshooting/index.html", locale, "troubleshooting"),
+            (f"site/{prefix}guides/install-garmin-maps-linux/index.html", locale, "linux-guide"),
             (f"site/{prefix}map-styles/index.html", locale, "map-styles"),
         ])
     result.extend([("site/legal/index.html", "en", "legal"), ("site/privacy/index.html", "en", "privacy")])
@@ -280,7 +282,7 @@ def main() -> None:
         if not path.exists():
             continue
         source = path.read_text(encoding="utf-8")
-        header, footer = shell(locale, "about/" if page == "about" else "compatibility/" if page == "compatibility" else "download/" if page == "download" else "guides/install-garmin-maps-mac/" if page == "guide" else "guides/troubleshooting/" if page == "troubleshooting" else "map-styles/" if page == "map-styles" else "", page)
+        header, footer = shell(locale, "about/" if page == "about" else "compatibility/" if page == "compatibility" else "download/" if page == "download" else "guides/install-garmin-maps-mac/" if page == "guide" else "guides/troubleshooting/" if page == "troubleshooting" else "guides/install-garmin-maps-linux/" if page == "linux-guide" else "map-styles/" if page == "map-styles" else "", page)
         source, header_count = re.subn(r'<header class="site-header">[\s\S]*?</header>', header, source, count=1)
         if not header_count:
             raise SystemExit(f"missing header in {relative}")

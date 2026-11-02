@@ -324,6 +324,60 @@
       "alternates": true
     },
     {
+      "file": "site/guides/install-garmin-maps-linux/index.html",
+      "path": "/guides/install-garmin-maps-linux/",
+      "locale": "en",
+      "title": "Install Garmin Maps on Linux from Chrome — Terento",
+      "description": "Install free OpenStreetMap maps on a Garmin watch from Linux in Chrome, Edge, Opera or Brave. Add one udev rule, connect the watch with a USB cable and send the map. No app needed.",
+      "ogType": "article",
+      "alternates": true
+    },
+    {
+      "file": "site/de/guides/install-garmin-maps-linux/index.html",
+      "path": "/de/guides/install-garmin-maps-linux/",
+      "locale": "de",
+      "title": "Garmin-Karten unter Linux aus Chrome installieren — Terento",
+      "description": "Installiere kostenlose OpenStreetMap-Karten unter Linux aus Chrome, Edge, Opera oder Brave auf deine Garmin-Uhr. Eine udev-Regel anlegen, die Uhr per USB-Kabel verbinden und die Karte senden. Keine App nötig.",
+      "ogType": "article",
+      "alternates": true
+    },
+    {
+      "file": "site/fr/guides/install-garmin-maps-linux/index.html",
+      "path": "/fr/guides/install-garmin-maps-linux/",
+      "locale": "fr",
+      "title": "Installer des cartes Garmin sous Linux depuis Chrome — Terento",
+      "description": "Installez des cartes OpenStreetMap gratuites sur une montre Garmin sous Linux depuis Chrome, Edge, Opera ou Brave. Ajoutez une règle udev, branchez la montre avec un câble USB et envoyez la carte. Aucune application nécessaire.",
+      "ogType": "article",
+      "alternates": true
+    },
+    {
+      "file": "site/pl/guides/install-garmin-maps-linux/index.html",
+      "path": "/pl/guides/install-garmin-maps-linux/",
+      "locale": "pl",
+      "title": "Instaluj mapy Garmin w Linuksie z Chrome — Terento",
+      "description": "Instaluj darmowe mapy OpenStreetMap na zegarku Garmin w Linuksie z Chrome, Edge, Opery lub Brave. Dodaj jedną regułę udev, podłącz zegarek kablem USB i wyślij mapę. Bez aplikacji.",
+      "ogType": "article",
+      "alternates": true
+    },
+    {
+      "file": "site/cs/guides/install-garmin-maps-linux/index.html",
+      "path": "/cs/guides/install-garmin-maps-linux/",
+      "locale": "cs",
+      "title": "Instalace map Garmin v Linuxu z Chrome — Terento",
+      "description": "Nainstalujte bezplatné mapy OpenStreetMap do hodinek Garmin v Linuxu z Chrome, Edge, Opery nebo Brave. Přidejte jedno pravidlo udev, připojte hodinky kabelem USB a odešlete mapu. Bez aplikace.",
+      "ogType": "article",
+      "alternates": true
+    },
+    {
+      "file": "site/it/guides/install-garmin-maps-linux/index.html",
+      "path": "/it/guides/install-garmin-maps-linux/",
+      "locale": "it",
+      "title": "Installa mappe Garmin su Linux da Chrome — Terento",
+      "description": "Installa mappe OpenStreetMap gratuite su un orologio Garmin da Linux con Chrome, Edge, Opera o Brave. Aggiungi una regola udev, collega l’orologio con un cavo USB e invia la mappa. Nessuna app necessaria.",
+      "ogType": "article",
+      "alternates": true
+    },
+    {
       "file": "site/map-styles/index.html",
       "path": "/map-styles/",
       "locale": "en",
@@ -388,6 +442,56 @@
       "description": "Terento privacy notice for the public website and macOS app, including optional compatibility reports, Cloudflare services and privacy-preserving Umami visit statistics.",
       "indexable": false,
       "alternates": false
+    }
+  ],
+  "externalPages": [
+    {
+      "path": "/install/",
+      "locale": "en",
+      "title": "Install Maps on Your Garmin Watch from Your Browser — Terento",
+      "description": "Install free maps based on OpenStreetMap on your Garmin watch straight from Chrome, Edge, Opera or Brave. Connect it with a USB cable, choose a map and send it. No app needed.",
+      "lastmod": "2026-11-02",
+      "service": "web installer (VooZ2/terento-internal lab/web-installer; title and description = server.py HEAD)"
+    },
+    {
+      "path": "/de/install/",
+      "locale": "de",
+      "title": "Karten aus dem Browser auf deine Garmin-Uhr installieren — Terento",
+      "description": "Installiere kostenlose Karten auf Basis von OpenStreetMap direkt aus Chrome, Edge, Opera oder Brave auf deine Garmin-Uhr. Mit dem USB-Kabel verbinden, Karte wählen und senden. Keine App nötig.",
+      "lastmod": "2026-11-02",
+      "service": "web installer (VooZ2/terento-internal lab/web-installer; title and description = server.py HEAD)"
+    },
+    {
+      "path": "/fr/install/",
+      "locale": "fr",
+      "title": "Installer des cartes sur votre montre Garmin depuis votre navigateur — Terento",
+      "description": "Installez des cartes gratuites basées sur OpenStreetMap sur votre montre Garmin directement depuis Chrome, Edge, Opera ou Brave. Branchez-la avec un câble USB, choisissez une carte et envoyez-la. Aucune application nécessaire.",
+      "lastmod": "2026-11-02",
+      "service": "web installer (VooZ2/terento-internal lab/web-installer; title and description = server.py HEAD)"
+    },
+    {
+      "path": "/pl/install/",
+      "locale": "pl",
+      "title": "Instaluj mapy na zegarku Garmin z przeglądarki — Terento",
+      "description": "Instaluj darmowe mapy oparte na OpenStreetMap na zegarku Garmin prosto z Chrome, Edge, Opery lub Brave. Podłącz zegarek kablem USB, wybierz mapę i wyślij ją. Bez aplikacji.",
+      "lastmod": "2026-11-02",
+      "service": "web installer (VooZ2/terento-internal lab/web-installer; title and description = server.py HEAD)"
+    },
+    {
+      "path": "/cs/install/",
+      "locale": "cs",
+      "title": "Instalace map do hodinek Garmin z prohlížeče — Terento",
+      "description": "Nainstalujte bezplatné mapy založené na OpenStreetMap do hodinek Garmin přímo z Chrome, Edge, Opery nebo Brave. Připojte je kabelem USB, vyberte mapu a odešlete ji. Bez aplikace.",
+      "lastmod": "2026-11-02",
+      "service": "web installer (VooZ2/terento-internal lab/web-installer; title and description = server.py HEAD)"
+    },
+    {
+      "path": "/it/install/",
+      "locale": "it",
+      "title": "Installa mappe sul tuo orologio Garmin dal browser — Terento",
+      "description": "Installa mappe gratuite basate su OpenStreetMap sul tuo orologio Garmin direttamente da Chrome, Edge, Opera o Brave. Collegalo con un cavo USB, scegli una mappa e inviala. Nessuna app necessaria.",
+      "lastmod": "2026-11-02",
+      "service": "web installer (VooZ2/terento-internal lab/web-installer; title and description = server.py HEAD)"
     }
   ]
 }

@@ -145,6 +145,24 @@
     <lastmod>2026-10-29</lastmod>
   </url>
   <url>
+    <loc>https://terento.app/guides/install-garmin-maps-linux/</loc>
+  </url>
+  <url>
+    <loc>https://terento.app/de/guides/install-garmin-maps-linux/</loc>
+  </url>
+  <url>
+    <loc>https://terento.app/fr/guides/install-garmin-maps-linux/</loc>
+  </url>
+  <url>
+    <loc>https://terento.app/pl/guides/install-garmin-maps-linux/</loc>
+  </url>
+  <url>
+    <loc>https://terento.app/cs/guides/install-garmin-maps-linux/</loc>
+  </url>
+  <url>
+    <loc>https://terento.app/it/guides/install-garmin-maps-linux/</loc>
+  </url>
+  <url>
     <loc>https://terento.app/map-styles/</loc>
     <lastmod>2026-10-29</lastmod>
   </url>
@@ -167,5 +185,29 @@
   <url>
     <loc>https://terento.app/it/map-styles/</loc>
     <lastmod>2026-10-29</lastmod>
+  </url>
+  <url>
+    <loc>https://terento.app/install/</loc>
+    <lastmod>2026-11-02</lastmod>
+  </url>
+  <url>
+    <loc>https://terento.app/de/install/</loc>
+    <lastmod>2026-11-02</lastmod>
+  </url>
+  <url>
+    <loc>https://terento.app/fr/install/</loc>
+    <lastmod>2026-11-02</lastmod>
+  </url>
+  <url>
+    <loc>https://terento.app/pl/install/</loc>
+    <lastmod>2026-11-02</lastmod>
+  </url>
+  <url>
+    <loc>https://terento.app/cs/install/</loc>
+    <lastmod>2026-11-02</lastmod>
+  </url>
+  <url>
+    <loc>https://terento.app/it/install/</loc>
+    <lastmod>2026-11-02</lastmod>
   </url>
 </urlset>
