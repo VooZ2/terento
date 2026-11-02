@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "status": "published",
   "published": {
-    "commit": "ff54a8e57c582d2eb9b2ab5c15fa10c125d95883",
+    "commit": "fcfb15d3172f387984c9a34f629e3fde88fd8a02",
     "pages": [
       {
         "path": "/",
@@ -5992,7 +5992,7 @@
     "lastErrorCode": null
   },
   "lastRun": {
-    "at": "2026-11-02T16:32:59Z",
+    "at": "2026-11-02T16:48:18Z",
     "status": "no-eligible-notifications",
     "bootstrap": false,
     "planned": 0,
