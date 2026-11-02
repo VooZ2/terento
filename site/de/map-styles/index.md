@@ -11,7 +11,7 @@ Sieh, wie kostenlose Kartenstile denselben Ort darstellen. Wähle ein beliebtes 
 
 Ort
 
-## Dolomites – Tre Cime
+## Cinque Terre
 
 Kartenstil links Kartenstil rechts
 
@@ -64,3 +64,9 @@ Diese Karte enthält keine Höhenlinien.
 Vorschauen sind nah dran, aber nicht exakt: Deine Uhr zeichnet die Karte selbst, daher können Farben und Details je nach Modell und Karteneinstellungen abweichen.
 
 Installiere diese Karten mit der [Mac-App](https://terento.app/de/download/) oder dem [Web-Installer](https://terento.app/de/install/) auf deiner Uhr.
+
+## Kostenlose OpenStreetMap-Karten für Garmin-Uhren
+
+Jeder Stil hier ist eine kostenlose Karte auf Basis von OpenStreetMap, der Karte, die Freiwillige aktuell halten. Community-Projekte machen daraus Garmin-Karten, jede mit eigenem Aussehen und eigenem Detailgrad.
+
+Wähle nach dem, was du vorhast: Freizeitkarte enthält Höhenlinien, OpenTopoMap zeigt Geländeschummerung und kann Höhenlinien ergänzen. MapRando zeigt auch kleine Pfade abseits der Hauptwege. BBBike ist für Straßen und Radwege gemacht, sein Ontrail-Stil hält die Karten klein. OSMapaPL deckt Polen detailliert ab.

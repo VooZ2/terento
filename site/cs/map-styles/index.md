@@ -11,7 +11,7 @@ Podívejte se, jak bezplatné styly map zobrazují stejné místo. Vyberte oblí
 
 Místo
 
-## Dolomites – Tre Cime
+## Cinque Terre
 
 Styl levé mapy Styl pravé mapy
 
@@ -64,3 +64,9 @@ Tato mapa nemá vrstevnice.
 Náhledy jsou blízké, ale ne přesné: hodinky kreslí mapu samy, takže barvy a podrobnosti se mohou lišit podle modelu a nastavení mapy.
 
 Nainstalujte tyto mapy do hodinek pomocí [aplikace pro Mac](https://terento.app/cs/download/) nebo [webového instalátoru](https://terento.app/cs/install/).
+
+## Bezplatné mapy OpenStreetMap pro hodinky Garmin
+
+Každý styl na této stránce je bezplatná mapa z OpenStreetMap, mapy, kterou udržují dobrovolníci. Komunitní projekty z těchto dat vytvářejí mapy pro Garmin, každou s vlastním vzhledem a mírou detailu.
+
+Vybírejte podle toho, co děláte: Freizeitkarte obsahuje vrstevnice, OpenTopoMap ukazuje stínování terénu a vrstevnice může přidat. MapRando zobrazuje i malé pěšiny mimo hlavní trasy. BBBike je určený pro ulice a cyklostezky a jeho styl Ontrail drží mapy malé. OSMapaPL podrobně pokrývá Polsko.

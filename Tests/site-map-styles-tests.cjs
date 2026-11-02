@@ -104,7 +104,7 @@ function testPages() {
     assert.equal(page.manifestUrl, "https://api.terento.app/maps/previews/manifest.json");
     assert.equal(page.areas.length, contract.areas.length, `${locale}: every contract area is offered`);
     assert.deepEqual(page.areas.map((area) => area.id), contract.areas.map((area) => area.id));
-    assert.ok(page.areas.some((area) => area.id === "dolomites-tre-cime"), `${locale}: default area exists`);
+    assert.ok(page.areas.some((area) => area.id === page.defaults.area), `${locale}: default area exists`);
     // BBBike no longer publishes its classic style for regular regions, so the
     // page compares its Ontrail and OpenTopoMap styles and opens on one that has previews.
     assert.deepEqual(page.styles.filter((style) => !style.optional).map((style) => style.id),
@@ -113,10 +113,12 @@ function testPages() {
       ["osmapa-podstawowa", "osmapa-ogonki", "osmapa-light"], `${locale}: OSMapaPL styles wait for the manifest`);
     assert.ok(page.styles.every((style) => style.name && style.summary), `${locale}: every style has a name and summary`);
     assert.ok(!/\b[0-9]\b/.test(page.copy.styles_of.replace(/\{\w+\}/g, "")) && page.copy.styles_of.includes("{total}"), `${locale}: style count follows the listed styles`);
-    const defaults = read(path.join(root, "site/map-styles/map-styles.js")).match(/a: styleIds\.includes\(fromHash\.style\) \? fromHash\.style : "([^"]+)",\s*b: styleIds\.includes\(fromHash\.compare\) \? fromHash\.compare : "([^"]+)"/);
-    assert.ok(defaults, "default styles found");
+    // The page opens on Cinque Terre, OpenTopoMap beside Freizeitkarte: both render that coast clearly.
+    assert.deepEqual(page.defaults, {area: "cinque-terre", a: "opentopomap", b: "freizeitkarte"}, `${locale}: default view`);
     const always = page.styles.filter((style) => !style.optional);
-    assert.ok(always.some((style) => style.id === defaults[1]) && always.some((style) => style.id === defaults[2]), `${locale}: default styles are always on the page`);
+    assert.ok(always.some((style) => style.id === page.defaults.a) && always.some((style) => style.id === page.defaults.b), `${locale}: default styles are always on the page`);
+    assert.match(read(path.join(root, "site/map-styles/map-styles.js")), /const defaults = data\.defaults;/, "the viewer opens on the page's default view");
+    assert.match(source, /<section class="shell map-styles-guide" aria-labelledby="map-styles-guide-title">\s*<h2 id="map-styles-guide-title">[^<]+<\/h2>\s*<div class="map-styles-guide-text">(<p>[^<]+<\/p>){2}<\/div>/, `${locale}: static guide text about the free maps`);
 
     const h1 = source.match(/<h1 id="map-styles-title">([^<]+)<\/h1>/);
     assert.ok(h1 && h1[1].trim() && !h1[1].trim().endsWith("."), `${locale}: H1 is present without a trailing full stop`);

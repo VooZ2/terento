@@ -52,10 +52,11 @@
   }
   updateStyles();
 
+  const defaults = data.defaults;
   const state = {
-    area: areaById[fromHash.area] ? fromHash.area : "dolomites-tre-cime",
-    a: styleIds.includes(fromHash.style) ? fromHash.style : "opentopomap",
-    b: styleIds.includes(fromHash.compare) ? fromHash.compare : "bbbike-ontrail",
+    area: areaById[fromHash.area] ? fromHash.area : defaults.area,
+    a: styleIds.includes(fromHash.style) ? fromHash.style : defaults.a,
+    b: styleIds.includes(fromHash.compare) ? fromHash.compare : defaults.b,
     mode: fromHash.mode || "split",
     tab: "places",
     query: "",
@@ -63,7 +64,7 @@
   };
   const initial = {a: state.a, b: state.b};
   function keepSelection() {
-    if (!styleIds.includes(state.a)) state.a = "opentopomap";
+    if (!styleIds.includes(state.a)) state.a = defaults.a;
     if (!styleIds.includes(state.b) || state.b === state.a) state.b = styleIds.find((id) => id !== state.a);
   }
   keepSelection();
