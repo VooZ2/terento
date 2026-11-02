@@ -9,15 +9,16 @@ Projekt open source
 
 Terento to darmowe narzędzie open source do instalowania, aktualizowania i zarządzania mapami innych firm na zegarkach Garmin: w natywnej aplikacji na Maca lub w przeglądarce na komputerze.
 
-[Pobierz](https://terento.app/pl/download/) [Sprawdź kompatybilność](https://terento.app/pl/compatibility/) [Albo zainstaluj z przeglądarki](https://terento.app/pl/install/)
+[Pobierz na Maca](https://terento.app/pl/download/)
+[Sprawdź kompatybilność](https://terento.app/pl/compatibility/) [Zainstaluj z przeglądarki](https://terento.app/pl/install/)
 
-Terento pokazuje postęp instalacji map społecznościowych w macOS
+Terento pokazuje postęp instalacji map innych firm w macOS
 
 Jak to działa
 
 ## Połącz Zainstaluj Gotowe
 
-Instalowanie map innych firm powinno być proste i szybkie — bez dodatkowego oprogramowania, osobnych etapów pobierania ani wiedzy technicznej.
+Instalowanie map innych firm powinno być proste i szybkie — bez ręcznego kopiowania plików i bez wiedzy technicznej.
 
 Terento łączy cały proces w trzech prostych krokach.
 
@@ -135,10 +136,8 @@ Czy mogę zainstalować mapy bez instalowania aplikacji?
 
 Tak. [Instalator webowy](https://terento.app/pl/install/) instaluje, aktualizuje i usuwa mapy z katalogu w Chrome, Edge, Operze lub Brave na Macu oraz na Linuksie, gdzie jest jeszcze testowany. Nie działa jeszcze na Windowsie, telefonach ani tabletach i nie dodaje własnych map .img.
 
-Zacznij już dziś
-
 ## Gotowy na prostszy sposób instalowania map?
 
-Pobierz Terento i zarządzaj mapami innych firm z Maca.
+Pobierz Terento na Maca albo instaluj mapy prosto z przeglądarki.
 
-[Pobierz](https://terento.app/pl/download/)
+[Pobierz](https://terento.app/pl/download/) [Zainstaluj z przeglądarki](https://terento.app/pl/install/)

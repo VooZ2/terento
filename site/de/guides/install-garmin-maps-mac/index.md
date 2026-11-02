@@ -11,6 +11,8 @@ Verbinde deine Uhr, wähle eine Karte und überlasse Terento die Installation �
 
 macOS 13+Apple SiliconGarmin-Uhr mit Kartenunterstützung
 
+[Herunterladen](https://terento.app/de/download/)
+
 Kurz prüfen
 
 ## Bevor du startest
@@ -92,9 +94,3 @@ Ziehe Terento aus dem geladenen DMG in den Ordner „Programme“ und öffne es 
 ### Terento deinstallieren
 
 Beende Terento und bewege es aus „Programme“ in den Papierkorb. Karten auf deiner Uhr bleiben dort. Terento speichert die Angaben zu den installierten Karten in ~/Library/Application Support/Terento: Behalte diesen Ordner, wenn du Terento wieder installieren möchtest, damit es diese Karten weiter aktualisieren und entfernen kann. Um alles zu entfernen, lösche auch diesen Ordner, ~/Library/Caches/Terento, ~/Library/Logs/Terento und ~/Library/Preferences/app.terento.mac.plist.
-
-Bereit, wenn du es bist
-
-## Bereit, deine erste Karte zu installieren?
-
-[Herunterladen](https://terento.app/de/download/)

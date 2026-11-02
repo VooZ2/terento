@@ -9,15 +9,16 @@ Open-source projekt
 
 Terento je bezplatný open-source nástroj pro instalaci, aktualizaci a správu map třetích stran v hodinkách Garmin: v nativní aplikaci pro Mac nebo v prohlížeči na počítači.
 
-[Stáhnout](https://terento.app/cs/download/) [Ověřit kompatibilitu](https://terento.app/cs/compatibility/) [Nebo instalujte z prohlížeče](https://terento.app/cs/install/)
+[Stáhnout pro Mac](https://terento.app/cs/download/)
+[Ověřit kompatibilitu](https://terento.app/cs/compatibility/) [Instalovat z prohlížeče](https://terento.app/cs/install/)
 
-Terento zobrazuje průběh instalace komunitních map v macOS
+Terento zobrazuje průběh instalace map třetích stran v macOS
 
 Jak to funguje
 
 ## Připojit Instalovat Hotovo
 
-Instalace map třetích stran by měla být jednoduchá a rychlá — bez dalšího softwaru, samostatných kroků stahování a technických znalostí.
+Instalace map třetích stran by měla být jednoduchá a rychlá — bez ručního kopírování souborů a bez technických znalostí.
 
 Terento celý proces spojuje do tří jednoduchých kroků.
 
@@ -135,10 +136,8 @@ Mohu instalovat mapy bez instalace aplikace?
 
 Ano. [Webový instalátor](https://terento.app/cs/install/) instaluje, aktualizuje a odebírá mapy z katalogu v Chrome, Edge, Opeře nebo Brave na Macu a na Linuxu, kde se ještě testuje. Zatím nefunguje ve Windows, na telefonech ani tabletech a nepřidá vlastní mapy .img.
 
-Začněte ještě dnes
-
 ## Chcete jednodušší způsob instalace map?
 
-Stáhněte si Terento a spravujte mapy třetích stran z Macu.
+Stáhněte si Terento pro Mac, nebo instalujte mapy přímo z prohlížeče.
 
-[Stáhnout](https://terento.app/cs/download/)
+[Stáhnout](https://terento.app/cs/download/) [Instalovat z prohlížeče](https://terento.app/cs/install/)

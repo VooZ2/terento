@@ -7,7 +7,7 @@ Terento
 
 # Stáhnout Terento
 
-Nativní aplikace pro Mac k instalaci a správě komunitních map na hodinkách Garmin s podporou map.
+Nativní aplikace pro Mac k instalaci a správě map třetích stran na hodinkách Garmin s podporou map.
 
 - Zdarma
 - Notarizovaná

@@ -7,7 +7,7 @@ Terento
 
 # Download Terento
 
-A native Mac app for installing and managing community maps on Garmin smartwatches with map support.
+A native Mac app for installing and managing third-party maps on Garmin smartwatches with map support.
 
 - Free
 - Notarized

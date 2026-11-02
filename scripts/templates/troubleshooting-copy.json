@@ -9,10 +9,10 @@
     "breadcrumb_home": "Home",
     "breadcrumb_current": "Troubleshooting",
     "guide_eyebrow": "New to Terento?",
-    "guide_title": "Start with the three-step installation guide.",
     "guide_link": "Read the Mac installation guide",
     "guide_page_link": "See all troubleshooting steps",
     "guide_related_label": "More help:",
+    "toc_label": "On this page",
     "groups": [
       {
         "id": "topic-connection",
@@ -76,10 +76,10 @@
     "breadcrumb_home": "Startseite",
     "breadcrumb_current": "Fehlerbehebung",
     "guide_eyebrow": "Neu bei Terento?",
-    "guide_title": "Starte mit der Anleitung in drei Schritten.",
     "guide_link": "Mac-Installationsanleitung lesen",
     "guide_page_link": "Alle Lösungsschritte ansehen",
     "guide_related_label": "Weitere Hilfe:",
+    "toc_label": "Auf dieser Seite",
     "groups": [
       {
         "id": "topic-connection",
@@ -143,10 +143,10 @@
     "breadcrumb_home": "Accueil",
     "breadcrumb_current": "Dépannage",
     "guide_eyebrow": "Nouveau sur Terento ?",
-    "guide_title": "Commencez par le guide d’installation en trois étapes.",
     "guide_link": "Lire le guide d’installation sur Mac",
     "guide_page_link": "Voir toutes les solutions",
     "guide_related_label": "Plus d’aide :",
+    "toc_label": "Sur cette page",
     "groups": [
       {
         "id": "topic-connection",
@@ -210,10 +210,10 @@
     "breadcrumb_home": "Strona główna",
     "breadcrumb_current": "Rozwiązywanie problemów",
     "guide_eyebrow": "Pierwszy raz z Terento?",
-    "guide_title": "Zacznij od instrukcji instalacji w trzech krokach.",
     "guide_link": "Przeczytaj instrukcję instalacji na Macu",
     "guide_page_link": "Zobacz wszystkie rozwiązania",
     "guide_related_label": "Więcej pomocy:",
+    "toc_label": "Na tej stronie",
     "groups": [
       {
         "id": "topic-connection",
@@ -277,10 +277,10 @@
     "breadcrumb_home": "Domů",
     "breadcrumb_current": "Řešení potíží",
     "guide_eyebrow": "Poprvé s Terento?",
-    "guide_title": "Začněte průvodcem instalací ve třech krocích.",
     "guide_link": "Přečíst průvodce instalací na Macu",
     "guide_page_link": "Zobrazit všechna řešení",
     "guide_related_label": "Další pomoc:",
+    "toc_label": "Na této stránce",
     "groups": [
       {
         "id": "topic-connection",
@@ -344,10 +344,10 @@
     "breadcrumb_home": "Home",
     "breadcrumb_current": "Risoluzione dei problemi",
     "guide_eyebrow": "Nuovo su Terento?",
-    "guide_title": "Inizia dalla guida all’installazione in tre passaggi.",
     "guide_link": "Leggi la guida all’installazione su Mac",
     "guide_page_link": "Vedi tutte le soluzioni",
     "guide_related_label": "Altro aiuto:",
+    "toc_label": "In questa pagina",
     "groups": [
       {
         "id": "topic-connection",

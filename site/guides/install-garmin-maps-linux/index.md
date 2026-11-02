@@ -7,7 +7,7 @@ Linux guide
 
 # Install Garmin maps on Linux
 
-On Linux, the Terento web installer puts free maps on Garmin watches that support maps, straight from your browser. Linux needs one permission rule first, so the browser can use the watch over USB.
+On Linux, the Terento web installer puts free maps on Garmin watches with map support, straight from your browser. Linux needs one permission rule first, so the browser can use the watch over USB.
 
 ## What you need
 
