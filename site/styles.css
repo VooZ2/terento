@@ -3453,7 +3453,7 @@ details p {
 .map-styles-hero .hero-lede { max-width: 840px; margin-bottom: 0; }
 .map-styles-frame { width: min(calc(100% - 48px), 1440px); margin: 0 auto 24px; }
 /* The viewer leaves room for the hero so the style pickers at its bottom show on the first screen. */
-.map-styles-viewer { position: relative; height: clamp(420px, calc(100vh - 470px), 840px); height: clamp(420px, calc(100svh - 470px), 840px); overflow: hidden; overflow: clip; isolation: isolate; container: map-styles-viewer / size; border: 1px solid var(--border); border-radius: 18px; background: var(--surface-muted); }
+.map-styles-viewer { position: relative; height: clamp(380px, calc(100vh - 470px), 840px); height: clamp(380px, calc(100svh - 470px), 840px); overflow: hidden; overflow: clip; isolation: isolate; container: map-styles-viewer / size; border: 1px solid var(--border); border-radius: 18px; background: var(--surface-muted); }
 .map-styles-stage { position: absolute; inset: 0; --map-styles-split: 50%; }
 .map-styles-pane { position: absolute; inset: 0; overflow: hidden; }
 .map-styles-map { position: absolute; inset: 0; background: var(--surface-muted); font-family: var(--font-ui); }
