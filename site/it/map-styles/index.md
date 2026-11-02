@@ -33,6 +33,10 @@ Per escursioni in cui il terreno conta.
 - Dati altimetrici e rilievo ombreggiato
 - Curve di livello opzionali per maggiori dettagli del terreno
 
+Componente aggiuntivo opzionale per OpenTopoMap Curve di livello
+
+Aggiungi linee altimetriche per leggere meglio le pendenze. Scegli questo componente durante l’installazione di una regione OpenTopoMap in Terento.
+
 ### MapRando
 
 Per esplorare i sentieri minori a piedi.

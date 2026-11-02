@@ -34,6 +34,7 @@ function homeCards(locale) {
       name: decode(body.match(/<h3>([\s\S]*?)<\/h3>/)[1].trim()),
       summary: decode(body.match(/<p class="provider-summary">([\s\S]*?)<\/p>/)[1].trim()),
       benefits: [...body.matchAll(/<li>([\s\S]*?)<\/li>/g)].map((item) => decode(item[1].trim())),
+      note: (body.match(/<p class="provider-language-note">[\s\S]*?<\/p>/) || [null])[0],
     });
   }
   return cards;
@@ -148,20 +149,25 @@ function testPages() {
 
     const cards = homeCards(locale);
     assert.ok(cards.length >= 4, `${locale}: home provider cards found`);
-    const about = [...source.matchAll(/<article class="map-styles-about-card" data-style-card="([^"]+)">([\s\S]*?)<\/article>/g)];
+    // The style cards reuse the home "Explore available maps" component in one scrolling row (owner 2026-11-02).
+    assert.match(source, /<div class="provider-cards map-styles-about-cards" role="region" tabindex="0" aria-label="[^"]+">/, `${locale}: style cards sit in one scrolling row like the home page`);
+    assert.ok(!/map-styles-about-(card|grid|summary|language)\b/.test(source), `${locale}: no separate style card component`);
+    const about = [...source.matchAll(/<article class="provider-card" data-style-card="([^"]+)">([\s\S]*?)<\/article>/g)];
     assert.equal(about.length, 5, `${locale}: five always-shown style descriptions`);
-    const optional = [...source.matchAll(/<article class="map-styles-about-card" data-style-card="([^"]+)" data-style-ids="([^"]+)" hidden>([\s\S]*?)<\/article>/g)];
+    const optional = [...source.matchAll(/<article class="provider-card" data-style-card="([^"]+)" data-style-ids="([^"]+)" hidden>([\s\S]*?)<\/article>/g)];
     assert.deepEqual(optional.map((item) => [item[1], item[2]]), [["osmapa", "osmapa-podstawowa osmapa-ogonki osmapa-light"]],
       `${locale}: the OSMapaPL description starts hidden`);
     about.push(...optional.map((item) => [item[0], item[1], item[3]]));
     for (const [, styleId, body] of about) {
       const name = decode(body.match(/<h3>([^<]+)/)[1].trim());
-      const summary = decode(body.match(/<p class="map-styles-about-summary">([^<]+)<\/p>/)[1]);
+      const summary = decode(body.match(/<p class="provider-summary">([^<]+)<\/p>/)[1]);
       const benefits = [...body.matchAll(/<li>([^<]+)<\/li>/g)].map((item) => decode(item[1]));
       const card = cards.find((item) => item.name === name);
       assert.ok(card, `${locale}/${styleId}: style matches a home provider card`);
       assert.equal(summary, card.summary, `${locale}/${styleId}: summary matches the home page`);
       assert.deepEqual(benefits, card.benefits.slice(0, benefits.length), `${locale}/${styleId}: benefits match the home page`);
+      const note = body.match(/<p class="provider-language-note">[\s\S]*?<\/p>/);
+      assert.equal(note ? note[0] : null, card.note, `${locale}/${styleId}: the same note as the home page`);
     }
   }
   assert.equal(titles.size, locales.length);
