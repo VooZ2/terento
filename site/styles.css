@@ -814,8 +814,6 @@ h1 {
 }
 
 .hero-secondary-actions > a {
-  display: inline-flex;
-  align-items: center;
   min-height: 44px;
 }
 
@@ -3117,6 +3115,11 @@ details p {
   font-size: 15px;
   font-weight: 500;
   line-height: 1.4;
+  text-decoration: none;
+}
+
+.troubleshooting-toc a:hover {
+  text-decoration: underline;
 }
 
 .troubleshooting-item {
