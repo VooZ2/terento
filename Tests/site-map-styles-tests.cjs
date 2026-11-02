@@ -207,14 +207,12 @@ function testController() {
 }
 
 function testViewerHeight() {
-  // At 1366x850 the style pickers stay on screen in every language, including
-  // where the intro wraps to three lines (de, fr, it). The minimum must not
-  // override the screen-based height there.
+  // Owner 2026-11-02: the desktop map keeps its original height (80% of the
+  // screen); a screen-minus-intro height made the map too short.
   const css = read(path.join(root, "site", "styles.css"));
   const rule = css.match(/\.map-styles-viewer \{[^}]*\}/);
   assert.ok(rule, "map viewer rule is missing");
-  assert.match(rule[0], /height: clamp\(380px, calc\(100svh - 470px\), 840px\);/);
-  assert.doesNotMatch(rule[0], /clamp\(4\d\dpx/, "a larger minimum pushes the style pickers below an 850 px screen");
+  assert.match(rule[0], /height: clamp\(540px, 80vh, 840px\);/);
 }
 
 testHelpers();
