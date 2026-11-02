@@ -434,10 +434,12 @@ for (const locale of ["en", "de", "fr", "pl", "cs", "it"]) {
   assert.ok(downloadPage.includes(`v${label}`), `site/${prefix}download must show ${label}`);
   assert.ok(downloadPage.includes(release.downloadURL), `site/${prefix}download must use the manifest URL`);
   const guide = read(`site/${prefix}guides/install-garmin-maps-mac/index.html`);
-  assert.match(
-    guide,
-    new RegExp(`\"dateModified\": \"${release.publishedAt}T00:00:00Z\"`),
-    `site/${prefix}guides/install-garmin-maps-mac/index.html: guide review date must match the release date`,
+  // The guide is reviewed with each release; a later content review may move
+  // the date forward (scripts/build-guide-pages.py GUIDE_CONTENT_REVIEWED).
+  const guideModified = guide.match(/"dateModified": "(\d{4}-\d{2}-\d{2})T00:00:00Z"/)?.[1];
+  assert.ok(
+    guideModified && guideModified >= release.publishedAt,
+    `site/${prefix}guides/install-garmin-maps-mac/index.html: guide review date must not be older than the release date`,
   );
   const compatibilityMarkers = {
     en: [
