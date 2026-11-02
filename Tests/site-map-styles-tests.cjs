@@ -206,7 +206,19 @@ function testController() {
     "a recheck applies style list changes within the same release");
 }
 
+function testViewerHeight() {
+  // At 1366x850 the style pickers stay on screen in every language, including
+  // where the intro wraps to three lines (de, fr, it). The minimum must not
+  // override the screen-based height there.
+  const css = read(path.join(root, "site", "styles.css"));
+  const rule = css.match(/\.map-styles-viewer \{[^}]*\}/);
+  assert.ok(rule, "map viewer rule is missing");
+  assert.match(rule[0], /height: clamp\(380px, calc\(100svh - 470px\), 840px\);/);
+  assert.doesNotMatch(rule[0], /clamp\(4\d\dpx/, "a larger minimum pushes the style pickers below an 850 px screen");
+}
+
 testHelpers();
 testPages();
 testController();
+testViewerHeight();
 console.log("Map styles page tests passed for all six locales.");
