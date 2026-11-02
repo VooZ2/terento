@@ -206,7 +206,17 @@ function testController() {
     "a recheck applies style list changes within the same release");
 }
 
+function testViewerHeight() {
+  // Owner 2026-11-02: the desktop map keeps its original height (80% of the
+  // screen); a screen-minus-intro height made the map too short.
+  const css = read(path.join(root, "site", "styles.css"));
+  const rule = css.match(/\.map-styles-viewer \{[^}]*\}/);
+  assert.ok(rule, "map viewer rule is missing");
+  assert.match(rule[0], /height: clamp\(540px, 80vh, 840px\);/);
+}
+
 testHelpers();
 testPages();
 testController();
+testViewerHeight();
 console.log("Map styles page tests passed for all six locales.");
