@@ -33,6 +33,10 @@ Für Wanderungen, bei denen das Gelände zählt.
 - Höhendaten und Geländeschummerung
 - Optionale Höhenlinien für zusätzliche Geländedetails
 
+Optionales Extra für OpenTopoMap Höhenlinien
+
+Ergänze Höhenlinien, um Höhen und Hänge besser zu erkennen. Wähle dieses Extra bei der Installation einer OpenTopoMap-Region in Terento.
+
 ### MapRando
 
 Zum Erkunden kleinerer Wege zu Fuß.

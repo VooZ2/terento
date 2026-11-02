@@ -33,6 +33,10 @@ Na túry, při kterých záleží na terénu.
 - Výšková data a stínovaný reliéf
 - Volitelné vrstevnice pro podrobnější zobrazení terénu
 
+Volitelný doplněk pro OpenTopoMap Vrstevnice
+
+Přidejte výškové čáry, které pomáhají rozpoznat svahy. Tento doplněk vyberte při instalaci regionu OpenTopoMap v Terento.
+
 ### MapRando
 
 Pro pěší objevování menších stezek.

@@ -33,6 +33,10 @@ Pour les randonnées où le relief compte.
 - Données d’altitude et relief ombré
 - Courbes de niveau en option pour détailler le relief
 
+Complément facultatif pour OpenTopoMap Courbes de niveau
+
+Ajoutez des courbes d’altitude pour mieux lire les pentes. Choisissez ce complément lors de l’installation d’une région OpenTopoMap dans Terento.
+
 ### MapRando
 
 Pour explorer les petits sentiers à pied.

@@ -22,8 +22,6 @@ HOME = runpy.run_path(str(ROOT / "scripts/normalize-home-ia.py"))
 SHELL = runpy.run_path(str(ROOT / "scripts/normalize-public-shell.py"))
 SCHEMA = runpy.run_path(str(ROOT / "scripts/page_schema.py"))
 PROVIDER_COPY = HOME["PROVIDER_CARD_COPY"]
-MAPRANDO_NOTES = HOME["MAPRANDO_LANGUAGE_NOTES"]
-STYLE_NOTES = {"maprando": MAPRANDO_NOTES, "bbbike-opentopo": HOME["BBBIKE_OPENTOPO_NOTES"]}
 LEAFLET_VERSION = "1.9.4"
 SCRIPT_VERSION = "20261102-map-styles-v13"
 MANIFEST_URL = "https://api.terento.app/maps/previews/manifest.json"
@@ -435,7 +433,6 @@ def style_copy(locale: str) -> list[dict[str, object]]:
             "name": provider["name"],
             "summary": provider["summary"],
             "benefits": list(provider["benefits"]),
-            "note": STYLE_NOTES[style_id][locale] if style_id in STYLE_NOTES else None,
         })
     for provider_id, provider_styles in OPTIONAL_STYLES.items():
         provider = PROVIDER_COPY[locale][provider_id]
@@ -449,7 +446,6 @@ def style_copy(locale: str) -> list[dict[str, object]]:
                 "card_name": provider["name"],
                 "card_summary": provider["summary"],
                 "benefits": list(provider["benefits"]),
-                "note": None,
             })
     return styles
 
@@ -465,6 +461,19 @@ def install_line(locale: str, copy: dict[str, object]) -> str:
     return esc(copy["install_line"]).replace("{mac}", mac).replace("{web}", web)
 
 
+def about_card(style_id: str, provider_id: str, name: str, summary: str, benefits: list, locale: str, extra: str = "") -> str:
+    """One style card with the home page provider card component and copy (owner 2026-11-02)."""
+    items = "".join(f"<li>{esc(item)}</li>" for item in benefits)
+    addon = HOME["provider_card_addon"](locale, provider_id, contour_count=False)
+    return (
+        f'<article class="provider-card" data-style-card="{esc(style_id)}"{extra}>'
+        f'<div class="provider-card-header"><h3>{esc(name)}</h3></div>'
+        f'<p class="provider-summary">{esc(summary)}</p>'
+        f'<ul class="provider-benefits">{items}</ul>{addon}'
+        "</article>"
+    )
+
+
 def about_markup(locale: str, copy: dict[str, object], styles: list[dict[str, object]]) -> str:
     cards = []
     optional: dict[str, list[dict[str, object]]] = {}
@@ -472,30 +481,12 @@ def about_markup(locale: str, copy: dict[str, object], styles: list[dict[str, ob
         if style.get("optional"):
             optional.setdefault(str(style["card"]), []).append(style)
             continue
-        benefits = "".join(f"<li>{esc(item)}</li>" for item in style["benefits"])
-        note = (
-            f'<p class="map-styles-about-language">{icon("info")}<span>{esc(style["note"])}</span></p>'
-            if style["note"] else ""
-        )
-        cards.append(
-            f'<article class="map-styles-about-card" data-style-card="{esc(style["id"])}">'
-            f'<h3>{esc(style["name"])}</h3>'
-            f'<p class="map-styles-about-summary">{esc(style["summary"])}</p>'
-            f'<ul>{benefits}</ul>{note}'
-            "</article>"
-        )
+        cards.append(about_card(str(style["id"]), str(style["id"]), str(style["name"]), str(style["summary"]), list(style["benefits"]), locale))
     # One hidden card per optional provider; the page shows it once any of its styles is listed.
     for card_id, members in optional.items():
         first = members[0]
-        benefits = "".join(f"<li>{esc(item)}</li>" for item in first["benefits"])
         ids = " ".join(str(style["id"]) for style in members)
-        cards.append(
-            f'<article class="map-styles-about-card" data-style-card="{esc(card_id)}" data-style-ids="{esc(ids)}" hidden>'
-            f'<h3>{esc(first["card_name"])}</h3>'
-            f'<p class="map-styles-about-summary">{esc(first["card_summary"])}</p>'
-            f'<ul>{benefits}</ul>'
-            "</article>"
-        )
+        cards.append(about_card(card_id, card_id, str(first["card_name"]), str(first["card_summary"]), list(first["benefits"]), locale, f' data-style-ids="{esc(ids)}" hidden'))
     return "".join(cards)
 
 
@@ -647,7 +638,7 @@ def render(locale: str) -> str:
       <section class="shell map-styles-about" aria-label="{esc(copy["about"])}">
         <details class="map-styles-about-details" id="map-styles-about">
           <summary><span class="map-styles-about-label">{icon("info")}<span>{esc(copy["about"])}</span></span></summary>
-          <div class="map-styles-about-grid">{about_markup(locale, copy, styles)}</div>
+          <div class="provider-cards map-styles-about-cards" role="region" tabindex="0" aria-label="{esc(copy["about"])}">{about_markup(locale, copy, styles)}</div>
           <p class="map-styles-about-note">{esc(copy["about_note"])}</p>
         </details>
       </section>
