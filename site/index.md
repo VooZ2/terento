@@ -136,10 +136,8 @@ Can I install maps without installing the app?
 
 Yes. The [web installer](https://terento.app/install/) installs, updates and removes catalog maps from Chrome, Edge, Opera or Brave on a Mac, and on Linux, where it is still being tested. It does not work on Windows, phones or tablets yet, and it cannot add your own .img maps.
 
-Get started today
-
 ## Ready for an easier way to install maps?
 
-Download Terento and start managing third-party maps from your Mac.
+Download Terento for your Mac, or install maps straight from your browser.
 
-[Download](https://terento.app/download/)
+[Download](https://terento.app/download/) [Install from your browser](https://terento.app/install/)

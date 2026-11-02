@@ -150,8 +150,4 @@ Na obrazovce chyby zvolte „Report issue“: Terento otevře GitHub se zprávou
 3. Před zveřejněním zprávu zkontrolujte: hlášení na GitHubu jsou veřejná.
 4. Nemáte účet na GitHubu? Napište na [hello@terento.app](mailto:hello@terento.app?subject=Terento%20installation%20issue) a uveďte model hodinek, oblast mapy a co se stalo.
 
-Poprvé s Terento?
-
-## Začněte průvodcem instalací ve třech krocích.
-
-[Přečíst průvodce instalací na Macu](https://terento.app/cs/guides/install-garmin-maps-mac/)
+Poprvé s Terento? [Přečíst průvodce instalací na Macu](https://terento.app/cs/guides/install-garmin-maps-mac/)

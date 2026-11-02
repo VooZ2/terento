@@ -136,10 +136,8 @@ Mohu instalovat mapy bez instalace aplikace?
 
 Ano. [Webový instalátor](https://terento.app/cs/install/) instaluje, aktualizuje a odebírá mapy z katalogu v Chrome, Edge, Opeře nebo Brave na Macu a na Linuxu, kde se ještě testuje. Zatím nefunguje ve Windows, na telefonech ani tabletech a nepřidá vlastní mapy .img.
 
-Začněte ještě dnes
-
 ## Chcete jednodušší způsob instalace map?
 
-Stáhněte si Terento a spravujte mapy třetích stran z Macu.
+Stáhněte si Terento pro Mac, nebo instalujte mapy přímo z prohlížeče.
 
-[Stáhnout](https://terento.app/cs/download/)
+[Stáhnout](https://terento.app/cs/download/) [Instalovat z prohlížeče](https://terento.app/cs/install/)

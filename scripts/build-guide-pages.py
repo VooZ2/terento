@@ -318,6 +318,7 @@ def render(locale: str, copy: dict[str, object], release: dict[str, object]) -> 
             <h1>{esc(copy["h1"])}</h1>
             <p class="guide-lede">{esc(copy["intro"])}</p>
             <p class="guide-facts">{facts}</p>
+            <p class="guide-hero-action"><a class="download-action" href="{download}" data-umami-event="download-cta-click" data-umami-event-location="guide-hero">{esc(download_label)} <span aria-hidden="true">→</span></a></p>
           </div>
         </header>
 
@@ -339,11 +340,6 @@ def render(locale: str, copy: dict[str, object], release: dict[str, object]) -> 
           <section class="troubleshooting" id="troubleshooting" aria-labelledby="troubleshooting-title">
             <div class="guide-section-heading"><p class="eyebrow">{esc(copy["troubleshooting_eyebrow"])}</p><h2 id="troubleshooting-title">{esc(copy["troubleshooting_title"])}</h2></div>
             <div class="troubleshooting-list">{''.join(troubleshooting)}<p class="troubleshooting-more"><a class="text-link" href="{localized_path(locale, TROUBLESHOOTING_SLUG)}" data-umami-event="guide-link-click" data-umami-event-location="guide-troubleshooting">{esc(TROUBLESHOOTING_COPY[locale]["guide_page_link"])} <span aria-hidden="true">→</span></a></p></div>
-          </section>
-
-          <section class="guide-bottom-cta" aria-labelledby="guide-bottom-title">
-            <div><p class="eyebrow">{esc(copy["bottom_eyebrow"])}</p><h2 id="guide-bottom-title">{esc(copy["bottom_title"])}</h2></div>
-            <a class="download-action" href="{download}" data-umami-event="download-cta-click" data-umami-event-location="guide-bottom">{esc(download_label)} <span aria-hidden="true">→</span></a>
           </section>
         </div>
       </article>
@@ -392,8 +388,6 @@ COMMON = {
         "faq_link_eyebrow": "More help",
         "faq_link_text": "Still have questions?",
         "faq_link_label": "See the full FAQ",
-        "bottom_eyebrow": "Ready when you are",
-        "bottom_title": "Put the map you need on your watch.",
         "steps": [
             {"title": "Download Terento", "body": "Download the latest notarized version, open the DMG and move Terento to Applications.", "note": "Apple Silicon and macOS 13 or later are required."},
             {"title": "Connect your Garmin", "body": "Connect the watch with a USB data cable. Garmin watches that use MTP may take 1–2 minutes to appear, so keep the device connected and give Terento time to finish detection.", "note": "Close Garmin Express, OpenMTP or another app that may already be using the watch.", "image": {"asset": "your-garmin", "width": 2200, "height": 1346, "alt": "Terento showing a connected Garmin watch and device detection status", "caption": "MTP-based Garmin watches may take 1–2 minutes to appear after connection."}},
@@ -643,8 +637,6 @@ FLOW_COPY = {
         "done_caption": "Keep the watch connected until transfer and verification are complete.",
         "installation_failed": "On the failed installation screen, choose “Report issue”. Terento opens GitHub with the report already filled in. Review it before posting: GitHub issues are public. For help by email, include your watch model, map region and what happened.",
         "not_visible": "Reconnect or restart the watch and check its map settings. If the map still does not appear, email support with your exact watch model, map region, and what happened.",
-        "bottom_eyebrow": "Ready when you are",
-        "bottom_title": "Ready to install your first map?",
     },
     "de": {
         "h1": "Drittanbieter-Karten auf deiner Garmin-Uhr in drei einfachen Schritten installieren",
@@ -669,8 +661,6 @@ FLOW_COPY = {
         "done_caption": "Lass die Uhr verbunden, bis Übertragung und Prüfung abgeschlossen sind.",
         "installation_failed": "Wähle nach einer fehlgeschlagenen Installation „Report issue“. Terento öffnet GitHub mit einem bereits ausgefüllten Bericht. Prüfe ihn vor dem Veröffentlichen: GitHub-Issues sind öffentlich. Für Hilfe per E-Mail nenne dein Uhrenmodell, die Kartenregion und den Fehler.",
         "not_visible": "Verbinde die Uhr erneut oder starte sie neu und prüfe die Karteneinstellungen. Fehlt die Karte weiterhin, nenne dem Support per E-Mail dein genaues Uhrenmodell, die Kartenregion und das Problem.",
-        "bottom_eyebrow": "Bereit, wenn du es bist",
-        "bottom_title": "Bereit, deine erste Karte zu installieren?",
     },
     "fr": {
         "h1": "Installer des cartes tierces sur votre montre Garmin en trois étapes simples",
@@ -695,8 +685,6 @@ FLOW_COPY = {
         "done_caption": "Gardez la montre connectée jusqu’à la fin du transfert et de la vérification.",
         "installation_failed": "Sur l’écran d’échec de l’installation, choisissez « Report issue ». Terento ouvre GitHub avec le rapport déjà rempli. Vérifiez-le avant de le publier : les issues GitHub sont publiques. Pour une aide par e-mail, indiquez le modèle de votre montre, la région de la carte et ce qui s’est passé.",
         "not_visible": "Reconnectez ou redémarrez la montre et vérifiez ses réglages de carte. Si la carte reste invisible, envoyez au support le modèle exact de la montre, la région de la carte et une description du problème.",
-        "bottom_eyebrow": "Prêt quand vous l’êtes",
-        "bottom_title": "Prêt à installer votre première carte ?",
     },
     "pl": {
         "h1": "Zainstaluj mapy innych firm na zegarku Garmin w trzech prostych krokach",
@@ -721,8 +709,6 @@ FLOW_COPY = {
         "done_caption": "Pozostaw zegarek podłączony do zakończenia przesyłania i sprawdzania.",
         "installation_failed": "Na ekranie nieudanej instalacji wybierz „Report issue”. Terento otwiera GitHuba z już wypełnionym raportem. Sprawdź go przed publikacją: zgłoszenia na GitHubie są publiczne. Jeśli potrzebujesz pomocy e-mailem, podaj model zegarka, region mapy i opisz, co się stało.",
         "not_visible": "Podłącz zegarek ponownie lub uruchom go ponownie i sprawdź ustawienia map. Jeśli mapa nadal się nie pojawia, wyślij do pomocy technicznej dokładny model zegarka, region mapy i opis problemu.",
-        "bottom_eyebrow": "Gotowe, gdy Ty będziesz",
-        "bottom_title": "Gotowy, aby zainstalować pierwszą mapę?",
     },
     "cs": {
         "h1": "Nainstalujte mapy třetích stran do hodinek Garmin ve třech jednoduchých krocích",
@@ -747,8 +733,6 @@ FLOW_COPY = {
         "done_caption": "Nechte hodinky připojené do dokončení přenosu a kontroly.",
         "installation_failed": "Na obrazovce neúspěšné instalace zvolte „Report issue“. Terento otevře GitHub s již vyplněnou zprávou. Před zveřejněním ji zkontrolujte: hlášení na GitHubu jsou veřejná. Pro pomoc e-mailem uveďte model hodinek, oblast mapy a popis problému.",
         "not_visible": "Hodinky znovu připojte nebo restartujte a zkontrolujte nastavení map. Pokud mapa stále chybí, pošlete podpoře přesný model hodinek, oblast mapy a popis problému.",
-        "bottom_eyebrow": "Připraveno, až budete",
-        "bottom_title": "Jste připraveni nainstalovat první mapu?",
     },
     "it": {
         "h1": "Installa mappe di terze parti sul tuo Garmin in tre semplici passaggi",
@@ -773,8 +757,6 @@ FLOW_COPY = {
         "done_caption": "Lascia l’orologio collegato fino al completamento del trasferimento e della verifica.",
         "installation_failed": "Nella schermata di installazione non riuscita, scegli “Report issue”. Terento apre GitHub con il rapporto già compilato. Controllalo prima di pubblicarlo: le issue su GitHub sono pubbliche. Per assistenza via e-mail, indica il modello dell’orologio, la regione della mappa e cosa è successo.",
         "not_visible": "Ricollega o riavvia l’orologio e controlla le impostazioni della mappa. Se la mappa non appare ancora, invia all’assistenza il modello esatto dell’orologio, la regione della mappa e una descrizione del problema.",
-        "bottom_eyebrow": "Pronto quando vuoi",
-        "bottom_title": "Pronto a installare la tua prima mappa?",
     },
 }
 
@@ -798,7 +780,6 @@ def merged_copy(locale: str) -> dict[str, object]:
         for key in (
             "h1", "meta_description", "intro", "facts", "checklist",
             "compatibility_note", "steps_eyebrow", "steps_title",
-            "bottom_eyebrow", "bottom_title",
         )
     })
 
@@ -1031,10 +1012,7 @@ def render_troubleshooting(locale: str) -> str:
         <div class="shell guide-content">
           {groups_markup}
 
-          <section class="guide-bottom-cta" aria-labelledby="troubleshooting-bottom-title">
-            <div><p class="eyebrow">{esc(copy["guide_eyebrow"])}</p><h2 id="troubleshooting-bottom-title">{esc(copy["guide_title"])}</h2></div>
-            <a class="text-link" href="{localized_path(locale, GUIDE_SLUG)}" data-umami-event="guide-link-click" data-umami-event-location="troubleshooting-bottom">{esc(copy["guide_link"])} <span aria-hidden="true">→</span></a>
-          </section>
+          <p class="troubleshooting-guide-link">{esc(copy["guide_eyebrow"])} <a class="text-link" href="{localized_path(locale, GUIDE_SLUG)}" data-umami-event="guide-link-click" data-umami-event-location="troubleshooting-bottom">{esc(copy["guide_link"])} <span aria-hidden="true">→</span></a></p>
         </div>
       </article>
     </main>

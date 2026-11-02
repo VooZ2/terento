@@ -11,6 +11,8 @@ Připojte hodinky, vyberte mapu a nechte Terento instalaci vyřídit — bez ru�
 
 macOS 13+Apple SiliconHodinky Garmin s podporou map
 
+[Stáhnout](https://terento.app/cs/download/)
+
 Rychlá kontrola
 
 ## Než začnete
@@ -80,9 +82,3 @@ Na obrazovce neúspěšné instalace zvolte „Report issue“. Terento otevře 
 Hodinky znovu připojte nebo restartujte a zkontrolujte nastavení map. Pokud mapa stále chybí, pošlete podpoře přesný model hodinek, oblast mapy a popis problému. [hello@terento.app](mailto:hello@terento.app?subject=Terento%20installation%20issue)
 
 [Zobrazit všechna řešení](https://terento.app/cs/guides/troubleshooting/)
-
-Připraveno, až budete
-
-## Jste připraveni nainstalovat první mapu?
-
-[Stáhnout](https://terento.app/cs/download/)

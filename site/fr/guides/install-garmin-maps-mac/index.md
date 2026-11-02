@@ -11,6 +11,8 @@ Connectez votre montre, choisissez une carte et laissez Terento gérer l’insta
 
 macOS 13+Apple SiliconMontre Garmin prenant en charge les cartes
 
+[Télécharger](https://terento.app/fr/download/)
+
 Vérification rapide
 
 ## Avant de commencer
@@ -80,9 +82,3 @@ Sur l’écran d’échec de l’installation, choisissez « Report issue ». Te
 Reconnectez ou redémarrez la montre et vérifiez ses réglages de carte. Si la carte reste invisible, envoyez au support le modèle exact de la montre, la région de la carte et une description du problème. [hello@terento.app](mailto:hello@terento.app?subject=Terento%20installation%20issue)
 
 [Voir toutes les solutions](https://terento.app/fr/guides/troubleshooting/)
-
-Prêt quand vous l’êtes
-
-## Prêt à installer votre première carte ?
-
-[Télécharger](https://terento.app/fr/download/)

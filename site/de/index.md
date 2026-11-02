@@ -136,10 +136,8 @@ Kann ich Karten installieren, ohne die App zu installieren?
 
 Ja. Der [Web-Installer](https://terento.app/de/install/) installiert, aktualisiert und entfernt Karten aus dem Katalog in Chrome, Edge, Opera oder Brave auf dem Mac und unter Linux, wo er noch getestet wird. Unter Windows, auf Smartphones und Tablets funktioniert er noch nicht, und eigene .img-Karten kann er nicht hinzufügen.
 
-Heute loslegen
-
 ## Bereit für eine einfachere Karteninstallation?
 
-Lade Terento herunter und verwalte Drittanbieter-Karten von deinem Mac aus.
+Lade Terento für deinen Mac herunter oder installiere Karten direkt aus dem Browser.
 
-[Herunterladen](https://terento.app/de/download/)
+[Herunterladen](https://terento.app/de/download/) [Direkt aus dem Browser installieren](https://terento.app/de/install/)

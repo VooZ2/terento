@@ -106,12 +106,12 @@ for (const locale of locales) {
   assert.equal((source.match(/data-umami-event="support-link-click"/g) || []).length, 1, locale + ": one Guide support email event");
   assert.doesNotMatch(source, /mailto:hello@terento\.app/);
   assert.doesNotMatch(source, /mailto:hello@terento\.app\?subject=Terento%20installation%20issue/);
-  assert.equal((source.match(/data-umami-event-location="guide-bottom"/g) || []).length, 1, locale + ": one guide download CTA");
+  assert.equal((source.match(/data-umami-event-location="guide-hero"/g) || []).length, 1, locale + ": one guide download CTA");
   const downloadButtons = [...source.matchAll(/<a class="download-action"[^>]*>([^<]+)<span aria-hidden="true">→<\/span><\/a>/g)];
   assert.equal(downloadButtons.length, 1, locale + ": one rendered download button");
   for (const button of downloadButtons) assert.equal(button[1].trim(), downloadLabels[locale], locale + ": download button label");
-  assert.ok(source.includes('data-umami-event-location="guide-bottom"'), locale + ": guide-bottom");
-  assert.doesNotMatch(source, /data-umami-event-location="guide-hero"/);
+  assert.match(source, /<p class="guide-hero-action"><a class="download-action"[^>]*data-umami-event-location="guide-hero"/, locale + ": download CTA in the guide intro");
+  assert.doesNotMatch(source, /data-umami-event-location="guide-bottom"|guide-bottom-title/);
   assert.match(source, /data-umami-event="compatibility-link-click" data-umami-event-location="guide-preflight"/);
   assert.doesNotMatch(source, /guide-support-actions/);
   assert.doesNotMatch(source, /[?&]utm_/i);
