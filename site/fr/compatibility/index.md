@@ -1,5 +1,5 @@
 ---
-title: "Montres Garmin compatibles et installations réussies — Terento"
+title: "Compatibilité Garmin et installations réussies — Terento"
 canonical: https://terento.app/fr/compatibility/
 ---
 

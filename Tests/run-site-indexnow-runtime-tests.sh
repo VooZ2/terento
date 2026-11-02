@@ -76,6 +76,16 @@ grep -iq '^Content-Type: text/html' "$temporary/html-headers"
 grep -iq '^Vary: Accept' "$temporary/html-headers"
 cmp -s "$home_body" "$temporary/default-home.html"
 [ "$(http_status "http://127.0.0.1:$port/sitemap.xml" "$sitemap_body")" = 200 ]
+# /index.html URLs redirect to the canonical directory URL; the directory itself stays 200.
+while read -r index_path directory_path; do
+  [ "$(curl --silent --show-error --dump-header "$temporary/index-redirect-headers" --output /dev/null --write-out '%{http_code}' "http://127.0.0.1:$port$index_path")" = 301 ]
+  tr -d '\r' < "$temporary/index-redirect-headers" | grep -ixq "Location: $directory_path"
+  [ "$(http_status "http://127.0.0.1:$port$directory_path" /dev/null)" = 200 ]
+done <<'INDEX_CASES'
+/index.html /
+/de/index.html /de/
+/guides/troubleshooting/index.html /guides/troubleshooting/
+INDEX_CASES
 grep -q '<urlset' "$sitemap_body"
 # Discovery files and headers use the actual production Caddy configuration.
 for discovery_file in robots.txt llms.txt; do
