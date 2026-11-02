@@ -25,9 +25,7 @@ The current version includes every map provider in the catalog. This product inf
 
 fēnix
 
-### fēnix 8
-
-47 mm, AMOLED
+### fēnix 8 47 mm, AMOLED
 
 57 successful installs
 
@@ -37,9 +35,7 @@ Latest successful install October 31, 2026
 
 Forerunner
 
-### Forerunner 965
-
-Historical
+### Forerunner 965 Historical
 
 32 successful installs
 
@@ -49,9 +45,7 @@ Latest successful install November 1, 2026
 
 Forerunner
 
-### Forerunner 970
-
-AMOLED
+### Forerunner 970 AMOLED
 
 28 successful installs
 
@@ -61,9 +55,7 @@ Latest successful install October 31, 2026
 
 fēnix
 
-### fēnix 9 Pro
-
-51 mm, AMOLED
+### fēnix 9 Pro 51 mm, AMOLED
 
 19 successful installs
 
@@ -73,9 +65,7 @@ Latest successful install October 22, 2026
 
 epix
 
-### epix Pro (Gen 2)
-
-51 mm, AMOLED
+### epix Pro (Gen 2) 51 mm, AMOLED
 
 18 successful installs
 
@@ -85,9 +75,7 @@ Latest successful install October 26, 2026
 
 fēnix
 
-### fēnix 7X Pro
-
-Solar, Historical
+### fēnix 7X Pro Solar, Historical
 
 18 successful installs
 
@@ -97,9 +85,7 @@ Latest successful install October 26, 2026
 
 fēnix
 
-### fēnix 9 Pro
-
-51 mm, AMOLED, inReach
+### fēnix 9 Pro 51 mm, AMOLED, inReach
 
 15 successful installs
 
@@ -109,9 +95,7 @@ Latest successful install October 31, 2026
 
 Forerunner
 
-### Forerunner 955
-
-Solar, Standard
+### Forerunner 955 Solar, Standard
 
 12 successful installs
 
@@ -121,9 +105,7 @@ Latest successful install October 16, 2026
 
 fēnix
 
-### fēnix 7
-
-47 mm, Solar
+### fēnix 7 47 mm, Solar
 
 12 successful installs
 
@@ -133,9 +115,7 @@ Latest successful install October 17, 2026
 
 fēnix
 
-### fēnix 8
-
-47 mm, MIP, Solar
+### fēnix 8 47 mm, MIP, Solar
 
 11 successful installs
 
@@ -145,9 +125,7 @@ Latest successful install October 20, 2026
 
 fēnix
 
-### fēnix 9 Pro
-
-47 mm, AMOLED
+### fēnix 9 Pro 47 mm, AMOLED
 
 10 successful installs
 
@@ -157,9 +135,7 @@ Latest successful install October 22, 2026
 
 fēnix
 
-### fēnix 8 Pro
-
-51 mm, AMOLED, inReach
+### fēnix 8 Pro 51 mm, AMOLED, inReach
 
 9 successful installs
 
@@ -169,9 +145,7 @@ Latest successful install October 23, 2026
 
 fēnix
 
-### fēnix 8
-
-51 mm, AMOLED
+### fēnix 8 51 mm, AMOLED
 
 9 successful installs
 
@@ -181,9 +155,7 @@ Latest successful install October 23, 2026
 
 epix
 
-### epix Pro (Gen 2)
-
-47 mm, AMOLED
+### epix Pro (Gen 2) 47 mm, AMOLED
 
 8 successful installs
 
@@ -193,9 +165,7 @@ Latest successful install October 14, 2026
 
 fēnix
 
-### fēnix 7 Pro
-
-Solar, Historical
+### fēnix 7 Pro Solar, Historical
 
 8 successful installs
 
@@ -205,9 +175,7 @@ Latest successful install October 30, 2026
 
 fēnix
 
-### fēnix 7X
-
-51 mm, Solar
+### fēnix 7X 51 mm, Solar
 
 8 successful installs
 
@@ -217,9 +185,7 @@ Latest successful install November 1, 2026
 
 fēnix
 
-### fēnix 8
-
-43 mm, AMOLED
+### fēnix 8 43 mm, AMOLED
 
 7 successful installs
 
@@ -229,9 +195,7 @@ Latest successful install October 31, 2026
 
 fēnix
 
-### fēnix 9 Pro
-
-47 mm, AMOLED, inReach
+### fēnix 9 Pro 47 mm, AMOLED, inReach
 
 7 successful installs
 
@@ -241,9 +205,7 @@ Latest successful install October 30, 2026
 
 fēnix
 
-### fēnix 6 Pro
-
-47 mm, MIP, Historical
+### fēnix 6 Pro 47 mm, MIP, Historical
 
 6 successful installs
 
@@ -253,9 +215,7 @@ Latest successful install October 26, 2026
 
 fēnix
 
-### fēnix 7 Pro
-
-Solar, (no Wi-Fi)
+### fēnix 7 Pro Solar, (no Wi-Fi)
 
 6 successful installs
 
@@ -265,9 +225,7 @@ Latest successful install October 12, 2026
 
 fēnix
 
-### fēnix 8 Pro
-
-47 mm, AMOLED, inReach
+### fēnix 8 Pro 47 mm, AMOLED, inReach
 
 5 successful installs
 
@@ -277,9 +235,7 @@ Latest successful install October 21, 2026
 
 epix
 
-### epix (Gen 2)
-
-47 mm
+### epix (Gen 2) 47 mm
 
 4 successful installs
 
@@ -289,9 +245,7 @@ Latest successful install October 19, 2026
 
 fēnix
 
-### fēnix 7S Pro
-
-Solar, Historical
+### fēnix 7S Pro Solar, Historical
 
 4 successful installs
 
@@ -301,9 +255,7 @@ Latest successful install October 2, 2026
 
 fēnix
 
-### fēnix 9
-
-47 mm, AMOLED
+### fēnix 9 47 mm, AMOLED
 
 4 successful installs
 
@@ -313,9 +265,7 @@ Latest successful install September 23, 2026
 
 fēnix
 
-### fēnix 5 Plus
-
-Historical
+### fēnix 5 Plus Historical
 
 3 successful installs
 
@@ -325,9 +275,7 @@ Latest successful install October 29, 2026
 
 fēnix
 
-### fēnix 9 Pro
-
-51 mm, MIP, Solar, inReach
+### fēnix 9 Pro 51 mm, MIP, Solar, inReach
 
 3 successful installs
 
@@ -337,9 +285,7 @@ Latest successful install October 7, 2026
 
 fēnix
 
-### fēnix 9 Pro
-
-47 mm, MIP, Solar
+### fēnix 9 Pro 47 mm, MIP, Solar
 
 3 successful installs
 
@@ -349,9 +295,7 @@ Latest successful install October 16, 2026
 
 Descent
 
-### Descent Mk3i
-
-51 mm, AMOLED
+### Descent Mk3i 51 mm, AMOLED
 
 2 successful installs
 
@@ -361,9 +305,7 @@ Latest successful install October 14, 2026
 
 Enduro
 
-### Enduro 2
-
-Historical
+### Enduro 2 Historical
 
 2 successful installs
 
@@ -373,9 +315,7 @@ Latest successful install October 13, 2026
 
 Enduro
 
-### Enduro 4
-
-MIP, Solar
+### Enduro 4 MIP, Solar
 
 2 successful installs
 
@@ -385,9 +325,7 @@ Latest successful install October 23, 2026
 
 fēnix
 
-### fēnix 6X Pro
-
-51 mm, MIP, Historical
+### fēnix 6X Pro 51 mm, MIP, Historical
 
 2 successful installs
 
@@ -397,9 +335,7 @@ Latest successful install October 24, 2026
 
 fēnix
 
-### fēnix 6X
-
-51 mm
+### fēnix 6X 51 mm
 
 2 successful installs
 
@@ -409,9 +345,7 @@ Latest successful install October 20, 2026
 
 fēnix
 
-### fēnix 9 Pro
-
-51 mm, MIP, Solar
+### fēnix 9 Pro 51 mm, MIP, Solar
 
 2 successful installs
 
@@ -421,9 +355,7 @@ Latest successful install October 19, 2026
 
 fēnix
 
-### fēnix 9
-
-43 mm, AMOLED
+### fēnix 9 43 mm, AMOLED
 
 2 successful installs
 
@@ -433,9 +365,7 @@ Latest successful install October 29, 2026
 
 Venu
 
-### Venu X1
-
-AMOLED
+### Venu X1 AMOLED
 
 2 successful installs
 
@@ -445,9 +375,7 @@ Latest successful install October 29, 2026
 
 fēnix
 
-### fēnix 9 Pro
-
-43 mm, AMOLED
+### fēnix 9 Pro 43 mm, AMOLED
 
 1 successful install
 
@@ -457,9 +385,7 @@ Latest successful install October 12, 2026
 
 fēnix
 
-### fēnix 9 Pro
-
-47 mm, MIP, Solar, inReach
+### fēnix 9 Pro 47 mm, MIP, Solar, inReach
 
 1 successful install
 
@@ -469,9 +395,7 @@ Latest successful install September 27, 2026
 
 quatix
 
-### quatix 7
-
-Historical
+### quatix 7 Historical
 
 1 successful install
 
@@ -481,9 +405,7 @@ Latest successful install October 17, 2026
 
 tactix
 
-### tactix Delta
-
-Solar, Historical
+### tactix Delta Solar, Historical
 
 1 successful install
 

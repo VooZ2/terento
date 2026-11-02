@@ -5,9 +5,9 @@ canonical: https://terento.app/pl/
 
 Projekt open source
 
-# Instaluj mapy na zegarkach Garmin — po prostu
+# Instaluj darmowe mapy na zegarku Garmin
 
-Instaluj, aktualizuj i zarządzaj mapami innych firm z natywnej aplikacji macOS — bez ręcznego przesyłania plików.
+Terento to darmowe narzędzie open source do instalowania, aktualizowania i zarządzania mapami innych firm na zegarkach Garmin: w natywnej aplikacji na Maca lub w przeglądarce na komputerze.
 
 [Pobierz](https://terento.app/pl/download/) [Sprawdź kompatybilność](https://terento.app/pl/compatibility/) [Albo zainstaluj z przeglądarki](https://terento.app/pl/install/)
 
@@ -109,7 +109,7 @@ Jakie zegarki Garmin działają z Terento?
 
 Na [stronie zgodności](https://terento.app/pl/compatibility/) znajdziesz dokładne modele i warianty Garmin z co najmniej jedną udaną, udostępnioną instalacją. Brak modelu nie oznacza, że nie jest obsługiwany.
 
-Czy mogę instalować mapy innych firm na zegarku Garmin z Maca bez BaseCamp?
+Czy mogę instalować mapy innych firm na zegarku Garmin z Maca bez Garmin Express i BaseCamp?
 
 Tak. Terento powstało po to, by instalowanie i zarządzanie mapami innych firm na macOS było proste i szybkie — od wyboru mapy po instalację, aktualizację i zarządzanie nią na zegarku Garmin. [Przeczytaj instrukcję instalacji.](https://terento.app/pl/guides/install-garmin-maps-mac/)
 

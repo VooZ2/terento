@@ -2549,10 +2549,15 @@ details p {
 }
 
 .watch-variant {
+  display: block;
   min-height: 24px;
   margin: 6px 0 0;
   color: var(--secondary);
+  font-family: var(--font-ui);
   font-size: 14px;
+  font-weight: 400;
+  letter-spacing: normal;
+  line-height: 1.53;
 }
 
 .status-badge {

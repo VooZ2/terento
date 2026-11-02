@@ -34,7 +34,7 @@ for path in compatibility_files:
     assert 'class="compatibility-status' not in page
     assert 'successful-install-filter' in page
     assert '1–2' in page and '5+' in page
-    assert 'compatibility.js?v=20261011-compatibility-install-sources-v1' in page
+    assert 'compatibility.js?v=20261102-compatibility-heading-v1' in page
     assert '<noscript class="compatibility-noscript">' in page
 
     assert 'class="watch-install-sources"' in page, f"{path}: missing app/web install split"
