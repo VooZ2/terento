@@ -16,6 +16,7 @@ const downloadFile = (locale) => path.join(root, "site", locale === "en" ? "down
 const guideFile = (locale) => path.join(root, "site", locale === "en" ? "guides/install-garmin-maps-mac" : path.join(locale, "guides/install-garmin-maps-mac"), "index.html");
 
 const release = JSON.parse(fs.readFileSync(path.join(root, "site", "updates", "macos-arm64.json"), "utf8"));
+const guideContentReviewed = fs.readFileSync(path.join(__dirname, "..", "scripts", "build-guide-pages.py"), "utf8").match(/^GUIDE_CONTENT_REVIEWED = "([^"]+)"/m)[1];
 
 function readJsonLd(file) {
   const source = fs.readFileSync(file, "utf8");
@@ -147,7 +148,7 @@ for (const locale of locales) {
   assert.equal(guideOrganization.url, `${baseUrl}/`, `${guide}: organization URL`);
   const guideArticle = entity(guideData.data, "Article", guide);
   assert.equal(guideArticle.datePublished, "2026-08-28T00:00:00Z", `${guide}: ISO publication datetime`);
-  assert.equal(guideArticle.dateModified, `${release.publishedAt}T00:00:00Z`, `${guide}: ISO modified datetime`);
+  assert.equal(guideArticle.dateModified, `${[release.publishedAt, guideContentReviewed].sort().at(-1)}T00:00:00Z`, `${guide}: ISO modified datetime, the later of release and content review`);
   assert.equal(graph.filter((item) => item["@type"] === "Article").length, 1, `${guide}: Article entity`);
   assert.equal(graph.filter((item) => item["@type"] === "BreadcrumbList").length, 1, `${guide}: BreadcrumbList entity`);
   assert.equal(graph.filter((item) => item["@type"] === "FAQPage").length, 0, `${guide}: Guide must not publish FAQPage schema`);

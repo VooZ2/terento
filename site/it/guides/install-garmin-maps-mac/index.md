@@ -82,3 +82,15 @@ Nella schermata di installazione non riuscita, scegli “Report issue”. Terent
 Ricollega o riavvia l’orologio e controlla le impostazioni della mappa. Se la mappa non appare ancora, invia all’assistenza il modello esatto dell’orologio, la regione della mappa e una descrizione del problema. [hello@terento.app](mailto:hello@terento.app?subject=Terento%20installation%20issue)
 
 [Vedi tutte le soluzioni](https://terento.app/it/guides/troubleshooting/)
+
+Dopo l’installazione
+
+## Primo avvio e disinstallazione
+
+### Primo avvio
+
+Trascina Terento dal DMG scaricato in Applicazioni e aprilo da lì. Terento è notarizzato da Apple; alla prima apertura macOS chiede se aprire un’app scaricata da Internet: scegli Apri. Su un Mac portatile, se macOS chiede se consentire il collegamento dell’accessorio, scegli Consenti.
+
+### Disinstallare Terento
+
+Chiudi Terento e spostalo da Applicazioni nel Cestino. Le mappe già sull’orologio restano lì. Terento conserva le informazioni sulle mappe installate in ~/Library/Application Support/Terento: tieni questa cartella se potresti reinstallare Terento, così potrà ancora aggiornare e rimuovere quelle mappe. Per rimuovere tutto, elimina anche questa cartella, ~/Library/Caches/Terento, ~/Library/Logs/Terento e ~/Library/Preferences/app.terento.mac.plist.

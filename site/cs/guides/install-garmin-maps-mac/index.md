@@ -82,3 +82,15 @@ Na obrazovce neúspěšné instalace zvolte „Report issue“. Terento otevře 
 Hodinky znovu připojte nebo restartujte a zkontrolujte nastavení map. Pokud mapa stále chybí, pošlete podpoře přesný model hodinek, oblast mapy a popis problému. [hello@terento.app](mailto:hello@terento.app?subject=Terento%20installation%20issue)
 
 [Zobrazit všechna řešení](https://terento.app/cs/guides/troubleshooting/)
+
+Po instalaci
+
+## První spuštění a odinstalace
+
+### První spuštění
+
+Přetáhněte Terento ze staženého DMG do složky Aplikace a otevřete ho odtud. Terento je notářsky ověřené společností Apple; při prvním otevření se macOS zeptá, zda otevřít aplikaci staženou z internetu, zvolte Otevřít. Pokud se na notebooku Mac macOS zeptá, zda povolit připojení příslušenství, zvolte Povolit.
+
+### Odinstalace Terento
+
+Ukončete Terento a přesuňte ho ze složky Aplikace do koše. Mapy v hodinkách zůstanou. Terento si údaje o nainstalovaných mapách ukládá do ~/Library/Application Support/Terento: tuto složku si ponechte, pokud budete Terento instalovat znovu, aby tyto mapy mohlo dál aktualizovat a odstraňovat. Chcete-li odstranit vše, smažte i tuto složku, ~/Library/Caches/Terento, ~/Library/Logs/Terento a ~/Library/Preferences/app.terento.mac.plist.
