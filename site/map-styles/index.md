@@ -33,6 +33,10 @@ For hikes where terrain matters.
 - Elevation data and shaded relief
 - Optional contour lines for extra terrain detail
 
+Optional add-on for OpenTopoMap Contour lines
+
+Add lines that show elevation and help you read slopes. Choose this add-on when installing an OpenTopoMap region in Terento.
+
 ### MapRando
 
 For exploring smaller trails on foot.

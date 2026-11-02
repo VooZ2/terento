@@ -33,6 +33,10 @@ Na wędrówki, podczas których liczy się rzeźba terenu.
 - Dane wysokościowe i cieniowanie terenu
 - Opcjonalne poziomice ze szczegółami rzeźby terenu
 
+Opcjonalny dodatek do OpenTopoMap Poziomice
+
+Dodaj linie wysokości, które pomagają odczytać nachylenie terenu. Wybierz ten dodatek podczas instalacji regionu OpenTopoMap w Terento.
+
 ### MapRando
 
 Do odkrywania mniejszych szlaków pieszo.
