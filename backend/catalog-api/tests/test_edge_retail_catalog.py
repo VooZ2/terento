@@ -176,17 +176,17 @@ class MigratedCatalogTests(PGliteTestCase):
         for device_id in HISTORICAL:
             self.assertNotIn(device_id, devices)
 
-    def test_collector_keeps_maps_and_retail_status(self):
-        def edge(device_id, model):
-            return CollectedDevice(
-                id=device_id, family_id="garmin-edge", family_name="Edge", manufacturer="Garmin",
-                model=model, canonical_model=model.lower(), variant="", case_size_mm=None,
-                display_type="Solar" if "Solar" in model else None, part_number=None,
-                product_url="https://www.garmin.com/en-US/p/1/", source_url=CYCLING,
-                source_image_url=self.edge_rows()[device_id]["source_image_url"], map_capable=True,
-                map_evidence_row="ability to add maps")
+    def collected(self, device_id, model):
+        return CollectedDevice(
+            id=device_id, family_id="garmin-edge", family_name="Edge", manufacturer="Garmin",
+            model=model, canonical_model=model.lower(), variant="", case_size_mm=None,
+            display_type="Solar" if "Solar" in model else None, part_number=None,
+            product_url="https://www.garmin.com/en-US/p/1/", source_url=CYCLING,
+            source_image_url=self.edge_rows()[device_id]["source_image_url"], map_capable=True,
+            map_evidence_row="ability to add maps")
 
-        self.db.upsert_collected_devices([edge(device_id, model) for device_id, model in CURRENT.items()])
+    def test_collector_keeps_maps_and_retail_status(self):
+        self.db.upsert_collected_devices([self.collected(device_id, model) for device_id, model in CURRENT.items()])
         rows = self.edge_rows()
         for device_id in CURRENT:
             self.assertEqual((rows[device_id]["consecutive_missed_collections"], rows[device_id]["map_capable"]),
@@ -196,6 +196,22 @@ class MigratedCatalogTests(PGliteTestCase):
             self.assertEqual((rows[device_id]["active"], rows[device_id]["map_capable"]), (True, True))
         for device_id in HISTORICAL:
             self.assertEqual((rows[device_id]["collector_managed"], rows[device_id]["map_capable"]), (False, None))
+
+    def test_withdrawing_a_retail_edge_needs_maps_false(self):
+        # The contract's withdrawal rule for Edge rows the collector still sees:
+        # NULL Maps or an inactive row is restored by the next collection, a
+        # stored false is kept, so a withdrawal migration must write false.
+        self.sql("UPDATE device_model SET map_capable = NULL, active = FALSE WHERE id = 'garmin-edge-mtb'")
+        self.sql("UPDATE device_model SET map_capable = FALSE WHERE id = 'garmin-edge-explore-3'")
+        self.db.upsert_collected_devices([self.collected(device_id, model) for device_id, model in CURRENT.items()])
+        rows = self.edge_rows()
+        self.assertEqual((rows["garmin-edge-mtb"]["active"], rows["garmin-edge-mtb"]["map_capable"]), (True, True))
+        self.assertEqual((rows["garmin-edge-explore-3"]["active"], rows["garmin-edge-explore-3"]["map_capable"]),
+                         (True, False))
+        document = self.policy()
+        self.assertEqual(app_resolve(document, garmin("Edge MTB"))[0], "APPROVED")
+        # Maps=false: the shipped client refuses the model (policy BLOCKED).
+        self.assertEqual(app_resolve(document, garmin("Edge Explore 3"))[0], "OUT_OF_SCOPE")
 
 
 if __name__ == "__main__":

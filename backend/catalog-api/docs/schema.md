@@ -820,4 +820,7 @@ Explore, Edge 25 and Edge 20 have no Garmin image left and store none. The
 collector rows get the collector's `MISSING` image placeholder. The previous
 revision reads every row unchanged; its collector would only count current
 Edge rows as missed (an Admin label), with no change to Maps or
-authorization.
+authorization. Withdrawing a collector-managed Edge row needs Maps=`false`:
+the collector reactivates a row it sees and fills a NULL Maps value from the
+specification, but keeps a stored `false` (pinned by
+`test_edge_retail_catalog`).

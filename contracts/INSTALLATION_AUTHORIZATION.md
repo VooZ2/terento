@@ -134,8 +134,12 @@ but strips only a trailing case size, so a reported Solar name (`Edge 1040
 Solar`) is not found there and fails closed. The rows are not a public support claim: the public site and README
 keep Edge outside the public scope, and public Compatibility shows an Edge model
 only after the separate Admin publication. Withdrawing Edge is a later reviewed
-catalog change (Maps back to NULL, which is `PENDING`, or `false`, which is
-`BLOCKED`) shipped as a migration, because Admin has no Maps editor.
+catalog change shipped as a migration, because Admin has no Maps editor. For a
+collector-managed Edge row (current or retired from retail) the migration must
+write Maps=`false` (`BLOCKED`): the next collection that sees the model makes
+the row active again and replaces a NULL Maps value with the specification's
+`yes`, but it never replaces a stored `false`. A historical Edge row, which the
+collector does not touch, may be withdrawn with NULL (`PENDING`) or `false`.
 
 The stored catalog Maps value of a **new** collector-managed model comes only
 from the official Garmin product specifications the collector already reads:
