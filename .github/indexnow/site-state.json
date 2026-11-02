@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "status": "published",
   "published": {
-    "commit": "16d030b1f6aa50e31f407e17496c7f5a85d330e5",
+    "commit": "709cf2cb1b6ae20230210b28da3ff2a0ddd9bbf0",
     "pages": [
       {
         "path": "/",
@@ -28,8 +28,8 @@
         "file": "site/compatibility/index.html",
         "locale": "en",
         "indexable": true,
-        "fingerprint": "a6617980d395b5f6315c2f6ee1e2533a51ddc032361adc90e65483fa5db6740b",
-        "lastmod": "2026-11-01"
+        "fingerprint": "7d3ed3633cf1c9888803861c67e76b3d08f8f475dcaacd2251313a7c9bf7ef21",
+        "lastmod": "2026-11-02"
       },
       {
         "path": "/cs/",
@@ -55,8 +55,8 @@
         "file": "site/cs/compatibility/index.html",
         "locale": "cs",
         "indexable": true,
-        "fingerprint": "95f9e4efdab84646001e79df0e5945f683716038c98ad5a3a26d2005620a97af",
-        "lastmod": "2026-11-01"
+        "fingerprint": "655e89d5cd6d88c07d5f14e1c1f5c82cf552caa9a831bf8fdafa12496e905dae",
+        "lastmod": "2026-11-02"
       },
       {
         "path": "/cs/download/",
@@ -64,8 +64,17 @@
         "file": "site/cs/download/index.html",
         "locale": "cs",
         "indexable": true,
-        "fingerprint": "f175152d51057e5a696a0441d05cee25d109222a81f83c1d92ef99aecaab8948",
-        "lastmod": "2026-10-29"
+        "fingerprint": "3d682900e8b8c0086ef39257a52b89de5a8f2f90bd62ba28aea819ccef7a5aa2",
+        "lastmod": "2026-11-02"
+      },
+      {
+        "path": "/cs/guides/install-garmin-maps-linux/",
+        "url": "https://terento.app/cs/guides/install-garmin-maps-linux/",
+        "file": "site/cs/guides/install-garmin-maps-linux/index.html",
+        "locale": "cs",
+        "indexable": true,
+        "fingerprint": "17de977763abe473e64344830388eb6a0a89b530494b9f438928132937e3e48c",
+        "lastmod": "2026-11-02"
       },
       {
         "path": "/cs/guides/install-garmin-maps-mac/",
@@ -86,13 +95,21 @@
         "lastmod": "2026-10-29"
       },
       {
+        "path": "/cs/install/",
+        "url": "https://terento.app/cs/install/",
+        "locale": "cs",
+        "indexable": true,
+        "fingerprint": "7a1df6b02bbff4e8db2c65e4cda90feda91cf497c121c2ff6a6296ce89fbbcc9",
+        "lastmod": "2026-11-02"
+      },
+      {
         "path": "/cs/map-styles/",
         "url": "https://terento.app/cs/map-styles/",
         "file": "site/cs/map-styles/index.html",
         "locale": "cs",
         "indexable": true,
-        "fingerprint": "588b384e95b742215b8da9ae149ee792f856fb3ab3164cf8c56cb3245e3839c8",
-        "lastmod": "2026-10-29"
+        "fingerprint": "c4c0e593b09cf2682df1daffa7369cc7e67db7e2634f23c8c391ace33361e988",
+        "lastmod": "2026-11-02"
       },
       {
         "path": "/de/",
@@ -118,8 +135,8 @@
         "file": "site/de/compatibility/index.html",
         "locale": "de",
         "indexable": true,
-        "fingerprint": "f27d292991ef9853111c274966c283ace283d1ba87ac5f7866b560a1ac5d5e3e",
-        "lastmod": "2026-11-01"
+        "fingerprint": "7c5578a2c67066033e997e63e2db367cadfce487b4b6cfaf6f939670db09fa7b",
+        "lastmod": "2026-11-02"
       },
       {
         "path": "/de/download/",
@@ -127,8 +144,17 @@
         "file": "site/de/download/index.html",
         "locale": "de",
         "indexable": true,
-        "fingerprint": "ab5516309a7aee37d47b3670cd924adbdae776878036565b84014d7ea0944ed7",
-        "lastmod": "2026-10-29"
+        "fingerprint": "1cfb0a73c48e2ba08b6a415ea76f9a3498bdbf6c04c4bda7d787cad442875544",
+        "lastmod": "2026-11-02"
+      },
+      {
+        "path": "/de/guides/install-garmin-maps-linux/",
+        "url": "https://terento.app/de/guides/install-garmin-maps-linux/",
+        "file": "site/de/guides/install-garmin-maps-linux/index.html",
+        "locale": "de",
+        "indexable": true,
+        "fingerprint": "f101f40eefe3dc2e3b26b6c8b98c48f37615d52a941eb88e0be6fd2dbb7d4c6c",
+        "lastmod": "2026-11-02"
       },
       {
         "path": "/de/guides/install-garmin-maps-mac/",
@@ -149,13 +175,21 @@
         "lastmod": "2026-10-29"
       },
       {
+        "path": "/de/install/",
+        "url": "https://terento.app/de/install/",
+        "locale": "de",
+        "indexable": true,
+        "fingerprint": "94deb422b4f840adc3f0015f7f348ba1ec4adcd38851e71df00f0986ca00865b",
+        "lastmod": "2026-11-02"
+      },
+      {
         "path": "/de/map-styles/",
         "url": "https://terento.app/de/map-styles/",
         "file": "site/de/map-styles/index.html",
         "locale": "de",
         "indexable": true,
-        "fingerprint": "f52de0f0b13635392cc42a5955e205bf1edd3d74e6c54f06a1fc6c1152138c19",
-        "lastmod": "2026-10-29"
+        "fingerprint": "eb4658d1fb55ef96c1ccd65e9fed3a1fe155896c910ae43a8ea8a59016b61c89",
+        "lastmod": "2026-11-02"
       },
       {
         "path": "/download/",
@@ -163,8 +197,8 @@
         "file": "site/download/index.html",
         "locale": "en",
         "indexable": true,
-        "fingerprint": "f55bb59d8cb6d7d521085128bf95b5f02a5c7c81787a268506deae1510bd1f11",
-        "lastmod": "2026-10-29"
+        "fingerprint": "9af6e1d4591136392b858dc5da6aed766d2894ebac78025b1e871bcc5bc4c613",
+        "lastmod": "2026-11-02"
       },
       {
         "path": "/fr/",
@@ -190,8 +224,8 @@
         "file": "site/fr/compatibility/index.html",
         "locale": "fr",
         "indexable": true,
-        "fingerprint": "4ccc29f2cc34306b5de822e71b9f0d4809eb153ac731ca9083c5ee8d85178a0d",
-        "lastmod": "2026-11-01"
+        "fingerprint": "8021b2cd050c0d693f2cda4f663b3c3dfbd7da8265ad8ff9d244961b06f190c5",
+        "lastmod": "2026-11-02"
       },
       {
         "path": "/fr/download/",
@@ -199,8 +233,17 @@
         "file": "site/fr/download/index.html",
         "locale": "fr",
         "indexable": true,
-        "fingerprint": "5da1d1c4c5ac36cdb73188c828fca03bf727731dc4283b898dd2ce5d69c0b537",
-        "lastmod": "2026-10-29"
+        "fingerprint": "7357ab654d9b4160a28f20ca7ecf75ebb549ed31169772aab6dd880753ccf077",
+        "lastmod": "2026-11-02"
+      },
+      {
+        "path": "/fr/guides/install-garmin-maps-linux/",
+        "url": "https://terento.app/fr/guides/install-garmin-maps-linux/",
+        "file": "site/fr/guides/install-garmin-maps-linux/index.html",
+        "locale": "fr",
+        "indexable": true,
+        "fingerprint": "739ca330267eaf50e460c1c431166a227f41c62ead63ff3b184faab286ebe36b",
+        "lastmod": "2026-11-02"
       },
       {
         "path": "/fr/guides/install-garmin-maps-mac/",
@@ -221,13 +264,30 @@
         "lastmod": "2026-10-29"
       },
       {
+        "path": "/fr/install/",
+        "url": "https://terento.app/fr/install/",
+        "locale": "fr",
+        "indexable": true,
+        "fingerprint": "7c1254f5be521060b953d6011e491cff2fb53504abebef4f5597b405b749261d",
+        "lastmod": "2026-11-02"
+      },
+      {
         "path": "/fr/map-styles/",
         "url": "https://terento.app/fr/map-styles/",
         "file": "site/fr/map-styles/index.html",
         "locale": "fr",
         "indexable": true,
-        "fingerprint": "0f9a414eaecfbca9cf47ba725a5d46892b5ce6bd5e056ba024be29fe56119597",
-        "lastmod": "2026-10-29"
+        "fingerprint": "e3dd10e945f2ab3a5b72b792ddfbab7afc1bcd2633cec560f6fe9d276541577b",
+        "lastmod": "2026-11-02"
+      },
+      {
+        "path": "/guides/install-garmin-maps-linux/",
+        "url": "https://terento.app/guides/install-garmin-maps-linux/",
+        "file": "site/guides/install-garmin-maps-linux/index.html",
+        "locale": "en",
+        "indexable": true,
+        "fingerprint": "286777d1db133796866f5ceb031cf776268dc9e8e549ae39578943eee84ca9b2",
+        "lastmod": "2026-11-02"
       },
       {
         "path": "/guides/install-garmin-maps-mac/",
@@ -246,6 +306,14 @@
         "indexable": true,
         "fingerprint": "4217d9a8538162268305c25d20cd87eaddc3e45cc2e5a6aded9c7394032791c1",
         "lastmod": "2026-10-29"
+      },
+      {
+        "path": "/install/",
+        "url": "https://terento.app/install/",
+        "locale": "en",
+        "indexable": true,
+        "fingerprint": "c431e54004ad24a5c689197440d98a1f2d80d2424a859b41d4beb9cd6b5caf1b",
+        "lastmod": "2026-11-02"
       },
       {
         "path": "/it/",
@@ -271,8 +339,8 @@
         "file": "site/it/compatibility/index.html",
         "locale": "it",
         "indexable": true,
-        "fingerprint": "0af511ca8beeaed301f36288088512451aa8046023c745481f0fcab2a63a70ab",
-        "lastmod": "2026-11-01"
+        "fingerprint": "bb434a96c41efa2fbadbe2c6d0b235952b4a60fbb1e8d05d88c3610f3ea08603",
+        "lastmod": "2026-11-02"
       },
       {
         "path": "/it/download/",
@@ -280,8 +348,17 @@
         "file": "site/it/download/index.html",
         "locale": "it",
         "indexable": true,
-        "fingerprint": "dbcf2714d9a933d91537fa681d2cf1b966f12334b2fa803b2891ddff4c829e45",
-        "lastmod": "2026-10-29"
+        "fingerprint": "ed84c9f3944c74cfe800c212d45422bae6ca57b41bad0e09abf0adda0b764866",
+        "lastmod": "2026-11-02"
+      },
+      {
+        "path": "/it/guides/install-garmin-maps-linux/",
+        "url": "https://terento.app/it/guides/install-garmin-maps-linux/",
+        "file": "site/it/guides/install-garmin-maps-linux/index.html",
+        "locale": "it",
+        "indexable": true,
+        "fingerprint": "3c6ed53203de83e89a98998e903d20ea75e10d530b2c3948b000266aabf76f34",
+        "lastmod": "2026-11-02"
       },
       {
         "path": "/it/guides/install-garmin-maps-mac/",
@@ -302,13 +379,21 @@
         "lastmod": "2026-10-29"
       },
       {
+        "path": "/it/install/",
+        "url": "https://terento.app/it/install/",
+        "locale": "it",
+        "indexable": true,
+        "fingerprint": "59b3e5f83659b2b43db22c3b8cf67e2947be7187af75cb983a27c1eeace98efb",
+        "lastmod": "2026-11-02"
+      },
+      {
         "path": "/it/map-styles/",
         "url": "https://terento.app/it/map-styles/",
         "file": "site/it/map-styles/index.html",
         "locale": "it",
         "indexable": true,
-        "fingerprint": "7695b4ad2214164fe5be5221269b8da56742c0a0120dd443cc9f01b626fdd62a",
-        "lastmod": "2026-10-29"
+        "fingerprint": "13b83b3cc2268f4d478f11b9d214a37ed7bd70da5153d6a0ffe9a63a6f36f8ae",
+        "lastmod": "2026-11-02"
       },
       {
         "path": "/legal/",
@@ -325,8 +410,8 @@
         "file": "site/map-styles/index.html",
         "locale": "en",
         "indexable": true,
-        "fingerprint": "234c7bad9d8d636432977ce7953c3af8589ad6b4717a71e703776c7586883a5c",
-        "lastmod": "2026-10-29"
+        "fingerprint": "1e4965c3c287fddcdc176526766a08e6421bbc5919dbc40590f1c37401813c38",
+        "lastmod": "2026-11-02"
       },
       {
         "path": "/pl/",
@@ -352,8 +437,8 @@
         "file": "site/pl/compatibility/index.html",
         "locale": "pl",
         "indexable": true,
-        "fingerprint": "8cdef6e810856e1bc0d78b4e3f4f16a66e0fe243f3078840fe06270169b26645",
-        "lastmod": "2026-11-01"
+        "fingerprint": "38660958db90eb8916c66ecb24890bbc0a70677bbcf9522d7b319c236786f6b4",
+        "lastmod": "2026-11-02"
       },
       {
         "path": "/pl/download/",
@@ -361,8 +446,17 @@
         "file": "site/pl/download/index.html",
         "locale": "pl",
         "indexable": true,
-        "fingerprint": "3a17792526e57cbffd0f4f83f45b1545f4c323f46a0209e0f13ff30b3d6b764d",
-        "lastmod": "2026-10-29"
+        "fingerprint": "e9d9266cdba55e985185b2e05ec32738843a14e62db0f0b969ab9410e37d70cb",
+        "lastmod": "2026-11-02"
+      },
+      {
+        "path": "/pl/guides/install-garmin-maps-linux/",
+        "url": "https://terento.app/pl/guides/install-garmin-maps-linux/",
+        "file": "site/pl/guides/install-garmin-maps-linux/index.html",
+        "locale": "pl",
+        "indexable": true,
+        "fingerprint": "2f97703a8d4c4b54475c3339eb10459ab05a40725aeb92ff497702a5d6160d8b",
+        "lastmod": "2026-11-02"
       },
       {
         "path": "/pl/guides/install-garmin-maps-mac/",
@@ -383,13 +477,21 @@
         "lastmod": "2026-10-29"
       },
       {
+        "path": "/pl/install/",
+        "url": "https://terento.app/pl/install/",
+        "locale": "pl",
+        "indexable": true,
+        "fingerprint": "1d9a08db5f985710ffbaa125e0deda10cb5e43c170cc2d1194c33dc6f98d0bbb",
+        "lastmod": "2026-11-02"
+      },
+      {
         "path": "/pl/map-styles/",
         "url": "https://terento.app/pl/map-styles/",
         "file": "site/pl/map-styles/index.html",
         "locale": "pl",
         "indexable": true,
-        "fingerprint": "2905fb93f1d1fef8da7dc75326b9a5c9a8c8fe8bd365ebcefdeed872f61a5328",
-        "lastmod": "2026-10-29"
+        "fingerprint": "da3a68dabecb6dc63963554ae6cd6b8425260af98fc4325090b4bcb74a56c8f6",
+        "lastmod": "2026-11-02"
       },
       {
         "path": "/privacy/",
@@ -397,8 +499,8 @@
         "file": "site/privacy/index.html",
         "locale": "en",
         "indexable": false,
-        "fingerprint": "54046825295c321ee0451498c83a857a5ce69553a3ab902f2a34ff3416aff402",
-        "lastmod": "2026-10-29"
+        "fingerprint": "bac3958f2e25156725128e052d1e69113199f9637aaefe6cf0135cef75848005",
+        "lastmod": "2026-11-02"
       }
     ]
   },
@@ -5107,21 +5209,207 @@
         "fingerprint": "8cdef6e810856e1bc0d78b4e3f4f16a66e0fe243f3078840fe06270169b26645",
         "status": 200,
         "acceptedAt": "2026-11-01T21:59:08Z"
+      },
+      {
+        "url": "https://terento.app/compatibility/",
+        "fingerprint": "7d3ed3633cf1c9888803861c67e76b3d08f8f475dcaacd2251313a7c9bf7ef21",
+        "status": 200,
+        "acceptedAt": "2026-11-02T09:19:51Z"
+      },
+      {
+        "url": "https://terento.app/cs/compatibility/",
+        "fingerprint": "655e89d5cd6d88c07d5f14e1c1f5c82cf552caa9a831bf8fdafa12496e905dae",
+        "status": 200,
+        "acceptedAt": "2026-11-02T09:19:51Z"
+      },
+      {
+        "url": "https://terento.app/cs/download/",
+        "fingerprint": "3d682900e8b8c0086ef39257a52b89de5a8f2f90bd62ba28aea819ccef7a5aa2",
+        "status": 200,
+        "acceptedAt": "2026-11-02T09:19:51Z"
+      },
+      {
+        "url": "https://terento.app/cs/guides/install-garmin-maps-linux/",
+        "fingerprint": "17de977763abe473e64344830388eb6a0a89b530494b9f438928132937e3e48c",
+        "status": 200,
+        "acceptedAt": "2026-11-02T09:19:51Z"
+      },
+      {
+        "url": "https://terento.app/cs/install/",
+        "fingerprint": "7a1df6b02bbff4e8db2c65e4cda90feda91cf497c121c2ff6a6296ce89fbbcc9",
+        "status": 200,
+        "acceptedAt": "2026-11-02T09:19:51Z"
+      },
+      {
+        "url": "https://terento.app/cs/map-styles/",
+        "fingerprint": "c4c0e593b09cf2682df1daffa7369cc7e67db7e2634f23c8c391ace33361e988",
+        "status": 200,
+        "acceptedAt": "2026-11-02T09:19:51Z"
+      },
+      {
+        "url": "https://terento.app/de/compatibility/",
+        "fingerprint": "7c5578a2c67066033e997e63e2db367cadfce487b4b6cfaf6f939670db09fa7b",
+        "status": 200,
+        "acceptedAt": "2026-11-02T09:19:51Z"
+      },
+      {
+        "url": "https://terento.app/de/download/",
+        "fingerprint": "1cfb0a73c48e2ba08b6a415ea76f9a3498bdbf6c04c4bda7d787cad442875544",
+        "status": 200,
+        "acceptedAt": "2026-11-02T09:19:51Z"
+      },
+      {
+        "url": "https://terento.app/de/guides/install-garmin-maps-linux/",
+        "fingerprint": "f101f40eefe3dc2e3b26b6c8b98c48f37615d52a941eb88e0be6fd2dbb7d4c6c",
+        "status": 200,
+        "acceptedAt": "2026-11-02T09:19:51Z"
+      },
+      {
+        "url": "https://terento.app/de/install/",
+        "fingerprint": "94deb422b4f840adc3f0015f7f348ba1ec4adcd38851e71df00f0986ca00865b",
+        "status": 200,
+        "acceptedAt": "2026-11-02T09:19:51Z"
+      },
+      {
+        "url": "https://terento.app/de/map-styles/",
+        "fingerprint": "eb4658d1fb55ef96c1ccd65e9fed3a1fe155896c910ae43a8ea8a59016b61c89",
+        "status": 200,
+        "acceptedAt": "2026-11-02T09:19:51Z"
+      },
+      {
+        "url": "https://terento.app/download/",
+        "fingerprint": "9af6e1d4591136392b858dc5da6aed766d2894ebac78025b1e871bcc5bc4c613",
+        "status": 200,
+        "acceptedAt": "2026-11-02T09:19:51Z"
+      },
+      {
+        "url": "https://terento.app/fr/compatibility/",
+        "fingerprint": "8021b2cd050c0d693f2cda4f663b3c3dfbd7da8265ad8ff9d244961b06f190c5",
+        "status": 200,
+        "acceptedAt": "2026-11-02T09:19:51Z"
+      },
+      {
+        "url": "https://terento.app/fr/download/",
+        "fingerprint": "7357ab654d9b4160a28f20ca7ecf75ebb549ed31169772aab6dd880753ccf077",
+        "status": 200,
+        "acceptedAt": "2026-11-02T09:19:51Z"
+      },
+      {
+        "url": "https://terento.app/fr/guides/install-garmin-maps-linux/",
+        "fingerprint": "739ca330267eaf50e460c1c431166a227f41c62ead63ff3b184faab286ebe36b",
+        "status": 200,
+        "acceptedAt": "2026-11-02T09:19:51Z"
+      },
+      {
+        "url": "https://terento.app/fr/install/",
+        "fingerprint": "7c1254f5be521060b953d6011e491cff2fb53504abebef4f5597b405b749261d",
+        "status": 200,
+        "acceptedAt": "2026-11-02T09:19:51Z"
+      },
+      {
+        "url": "https://terento.app/fr/map-styles/",
+        "fingerprint": "e3dd10e945f2ab3a5b72b792ddfbab7afc1bcd2633cec560f6fe9d276541577b",
+        "status": 200,
+        "acceptedAt": "2026-11-02T09:19:51Z"
+      },
+      {
+        "url": "https://terento.app/guides/install-garmin-maps-linux/",
+        "fingerprint": "286777d1db133796866f5ceb031cf776268dc9e8e549ae39578943eee84ca9b2",
+        "status": 200,
+        "acceptedAt": "2026-11-02T09:19:51Z"
+      },
+      {
+        "url": "https://terento.app/install/",
+        "fingerprint": "c431e54004ad24a5c689197440d98a1f2d80d2424a859b41d4beb9cd6b5caf1b",
+        "status": 200,
+        "acceptedAt": "2026-11-02T09:19:51Z"
+      },
+      {
+        "url": "https://terento.app/it/compatibility/",
+        "fingerprint": "bb434a96c41efa2fbadbe2c6d0b235952b4a60fbb1e8d05d88c3610f3ea08603",
+        "status": 200,
+        "acceptedAt": "2026-11-02T09:19:51Z"
+      },
+      {
+        "url": "https://terento.app/it/download/",
+        "fingerprint": "ed84c9f3944c74cfe800c212d45422bae6ca57b41bad0e09abf0adda0b764866",
+        "status": 200,
+        "acceptedAt": "2026-11-02T09:19:51Z"
+      },
+      {
+        "url": "https://terento.app/it/guides/install-garmin-maps-linux/",
+        "fingerprint": "3c6ed53203de83e89a98998e903d20ea75e10d530b2c3948b000266aabf76f34",
+        "status": 200,
+        "acceptedAt": "2026-11-02T09:19:51Z"
+      },
+      {
+        "url": "https://terento.app/it/install/",
+        "fingerprint": "59b3e5f83659b2b43db22c3b8cf67e2947be7187af75cb983a27c1eeace98efb",
+        "status": 200,
+        "acceptedAt": "2026-11-02T09:19:51Z"
+      },
+      {
+        "url": "https://terento.app/it/map-styles/",
+        "fingerprint": "13b83b3cc2268f4d478f11b9d214a37ed7bd70da5153d6a0ffe9a63a6f36f8ae",
+        "status": 200,
+        "acceptedAt": "2026-11-02T09:19:51Z"
+      },
+      {
+        "url": "https://terento.app/map-styles/",
+        "fingerprint": "1e4965c3c287fddcdc176526766a08e6421bbc5919dbc40590f1c37401813c38",
+        "status": 200,
+        "acceptedAt": "2026-11-02T09:19:51Z"
+      },
+      {
+        "url": "https://terento.app/pl/compatibility/",
+        "fingerprint": "38660958db90eb8916c66ecb24890bbc0a70677bbcf9522d7b319c236786f6b4",
+        "status": 200,
+        "acceptedAt": "2026-11-02T09:19:51Z"
+      },
+      {
+        "url": "https://terento.app/pl/download/",
+        "fingerprint": "e9d9266cdba55e985185b2e05ec32738843a14e62db0f0b969ab9410e37d70cb",
+        "status": 200,
+        "acceptedAt": "2026-11-02T09:19:51Z"
+      },
+      {
+        "url": "https://terento.app/pl/guides/install-garmin-maps-linux/",
+        "fingerprint": "2f97703a8d4c4b54475c3339eb10459ab05a40725aeb92ff497702a5d6160d8b",
+        "status": 200,
+        "acceptedAt": "2026-11-02T09:19:51Z"
+      },
+      {
+        "url": "https://terento.app/pl/install/",
+        "fingerprint": "1d9a08db5f985710ffbaa125e0deda10cb5e43c170cc2d1194c33dc6f98d0bbb",
+        "status": 200,
+        "acceptedAt": "2026-11-02T09:19:51Z"
+      },
+      {
+        "url": "https://terento.app/pl/map-styles/",
+        "fingerprint": "da3a68dabecb6dc63963554ae6cd6b8425260af98fc4325090b4bcb74a56c8f6",
+        "status": 200,
+        "acceptedAt": "2026-11-02T09:19:51Z"
+      },
+      {
+        "url": "https://terento.app/privacy/",
+        "fingerprint": "bac3958f2e25156725128e052d1e69113199f9637aaefe6cf0135cef75848005",
+        "status": 200,
+        "acceptedAt": "2026-11-02T09:19:51Z"
       }
     ],
     "pending": [],
-    "lastSubmissionAt": "2026-11-01T21:59:06Z",
-    "lastSuccessfulSubmissionAt": "2026-11-01T21:59:06Z",
+    "lastSubmissionAt": "2026-11-02T09:19:50Z",
+    "lastSuccessfulSubmissionAt": "2026-11-02T09:19:50Z",
     "lastResult": "submitted",
     "lastErrorCode": null
   },
   "lastRun": {
-    "at": "2026-11-01T21:59:08Z",
+    "at": "2026-11-02T09:19:51Z",
     "status": "accepted",
     "bootstrap": false,
-    "planned": 6,
-    "accepted": 6,
+    "planned": 31,
+    "accepted": 31,
     "pending": 0,
-    "previousAccepted": 778
+    "previousAccepted": 784
   }
 }
