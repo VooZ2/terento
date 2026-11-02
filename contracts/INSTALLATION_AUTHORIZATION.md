@@ -117,9 +117,11 @@ Edge Explore 2. Each row records the Garmin product specification row
 `Ability to add maps: yes` (checked 2026-11-02) in
 `specification_evidence.map_capable`. Solar editions normalize to the same
 base model, so no row carries a Solar value. Older Edge generations that
-connect as USB mass storage are not added. Every released native client and the
-web installer approve these models under the ordinary rule; no client change is
-involved. The rows are not a public support claim: the public site and README
+connect as USB mass storage are not added. Every released native client
+approves these models under the ordinary rule; no client change is involved.
+The web installer approves a reported plain base model (for example `Edge 840`)
+but strips only a trailing case size, so a reported Solar name (`Edge 1040
+Solar`) is not found there and fails closed. The rows are not a public support claim: the public site and README
 keep Edge outside the public scope, and public Compatibility shows an Edge model
 only after the separate Admin publication. Withdrawing Edge is a later reviewed
 catalog change (Maps back to NULL, which is `PENDING`, or `false`, which is

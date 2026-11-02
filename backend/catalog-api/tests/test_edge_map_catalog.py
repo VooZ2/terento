@@ -72,6 +72,9 @@ class MigrationSourceTests(unittest.TestCase):
         self.assertEqual(len(ids), len(set(ids)))
         # No row names a Solar value: a reported Solar edition must stay a candidate.
         self.assertNotIn("solar", code.lower())
+        # Catalog rows only: no public Compatibility review or publication is written.
+        for table in ("compatibility_model_review", "public_statistics", "support_status = 'SUPPORTED'"):
+            self.assertNotIn(table, code)
 
     def test_model_labels_match_the_reported_base_models(self):
         sql = MIGRATION.read_text(encoding="utf-8")
@@ -128,11 +131,6 @@ class MigratedCatalogTests(PGliteTestCase):
             with self.subTest(reported=reported):
                 self.assertEqual(app_resolve(document, garmin(reported)), ("PENDING", []))
 
-    def test_rows_are_not_published_to_public_compatibility(self):
-        published = self.sql(
-            "SELECT model FROM compatibility_model_review WHERE public_statistics_enabled IS TRUE "
-            "AND lower(model) LIKE 'edge%%'")
-        self.assertEqual(published, [])
 
 
 if __name__ == "__main__":
