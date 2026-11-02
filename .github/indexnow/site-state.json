@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "status": "published",
   "published": {
-    "commit": "4af4722c96e638e35d08e8031902751fe761af44",
+    "commit": "6ab14877e50d15e84e5798cb3bf856b6f1299e3f",
     "pages": [
       {
         "path": "/",
@@ -108,7 +108,7 @@
         "file": "site/cs/map-styles/index.html",
         "locale": "cs",
         "indexable": true,
-        "fingerprint": "b37d1f351c3f37e5b225e21916249ad9d5a86ed0cb48d7d19cf9ad11e0c74907",
+        "fingerprint": "55418795ad1c065d095e43132db1d81b3c343702f405b5523cac46ec9f3f82c1",
         "lastmod": "2026-11-02"
       },
       {
@@ -188,7 +188,7 @@
         "file": "site/de/map-styles/index.html",
         "locale": "de",
         "indexable": true,
-        "fingerprint": "1936826ea2f0db51ac947c17039df3acb3be02a1a109729c68563ae21b57f284",
+        "fingerprint": "c3d0428db4b9b6d9333b9db90128f09c78c5f6a9f4bf600a66f34217748474ff",
         "lastmod": "2026-11-02"
       },
       {
@@ -277,7 +277,7 @@
         "file": "site/fr/map-styles/index.html",
         "locale": "fr",
         "indexable": true,
-        "fingerprint": "a53dd31fd0a6d8f267260388540a410a54c5a1d5b64846e59ca7f112f10defd2",
+        "fingerprint": "351e6d75e27b5a9d131abf1c927ca5eb515a391467e4bc5734ba6e9ab4229d62",
         "lastmod": "2026-11-02"
       },
       {
@@ -392,7 +392,7 @@
         "file": "site/it/map-styles/index.html",
         "locale": "it",
         "indexable": true,
-        "fingerprint": "efc53f388fccec8eac7e552e528b731919c6bd4d364172e5d950a1ca59b8e3af",
+        "fingerprint": "65ea2b35c8fa7c634f3d146b5b3fc16ed57ea91c3dcb5708d90d97e4544dff81",
         "lastmod": "2026-11-02"
       },
       {
@@ -410,7 +410,7 @@
         "file": "site/map-styles/index.html",
         "locale": "en",
         "indexable": true,
-        "fingerprint": "b236ddbc0811bd9ca4d4f928522b1412cb178f3f1acbd7cc5c2aeec50d9b028b",
+        "fingerprint": "2d9fa953f40811daac686be796af42d75187591eb3504abe11218ab29acf5d16",
         "lastmod": "2026-11-02"
       },
       {
@@ -490,7 +490,7 @@
         "file": "site/pl/map-styles/index.html",
         "locale": "pl",
         "indexable": true,
-        "fingerprint": "9b51bd21e2d4380ea3e5837da77902eaae0fb7275a7cec0569ce0d1425697d7a",
+        "fingerprint": "24685dd3b033582f14703979c9abf55990ceb5b8c5667c628f4ef3a6418e020e",
         "lastmod": "2026-11-02"
       },
       {
@@ -5689,21 +5689,57 @@
         "fingerprint": "9d2d254c034e73ef2b8090a2103ac7a59a7fd04524c2bf8c3fa097cb40b9fece",
         "status": 200,
         "acceptedAt": "2026-11-02T10:51:09Z"
+      },
+      {
+        "url": "https://terento.app/cs/map-styles/",
+        "fingerprint": "55418795ad1c065d095e43132db1d81b3c343702f405b5523cac46ec9f3f82c1",
+        "status": 200,
+        "acceptedAt": "2026-11-02T14:21:17Z"
+      },
+      {
+        "url": "https://terento.app/de/map-styles/",
+        "fingerprint": "c3d0428db4b9b6d9333b9db90128f09c78c5f6a9f4bf600a66f34217748474ff",
+        "status": 200,
+        "acceptedAt": "2026-11-02T14:21:17Z"
+      },
+      {
+        "url": "https://terento.app/fr/map-styles/",
+        "fingerprint": "351e6d75e27b5a9d131abf1c927ca5eb515a391467e4bc5734ba6e9ab4229d62",
+        "status": 200,
+        "acceptedAt": "2026-11-02T14:21:17Z"
+      },
+      {
+        "url": "https://terento.app/it/map-styles/",
+        "fingerprint": "65ea2b35c8fa7c634f3d146b5b3fc16ed57ea91c3dcb5708d90d97e4544dff81",
+        "status": 200,
+        "acceptedAt": "2026-11-02T14:21:17Z"
+      },
+      {
+        "url": "https://terento.app/map-styles/",
+        "fingerprint": "2d9fa953f40811daac686be796af42d75187591eb3504abe11218ab29acf5d16",
+        "status": 200,
+        "acceptedAt": "2026-11-02T14:21:17Z"
+      },
+      {
+        "url": "https://terento.app/pl/map-styles/",
+        "fingerprint": "24685dd3b033582f14703979c9abf55990ceb5b8c5667c628f4ef3a6418e020e",
+        "status": 200,
+        "acceptedAt": "2026-11-02T14:21:17Z"
       }
     ],
     "pending": [],
-    "lastSubmissionAt": "2026-11-02T10:51:08Z",
-    "lastSuccessfulSubmissionAt": "2026-11-02T10:51:08Z",
+    "lastSubmissionAt": "2026-11-02T14:21:16Z",
+    "lastSuccessfulSubmissionAt": "2026-11-02T14:21:16Z",
     "lastResult": "submitted",
     "lastErrorCode": null
   },
   "lastRun": {
-    "at": "2026-11-02T10:51:09Z",
+    "at": "2026-11-02T14:21:17Z",
     "status": "accepted",
     "bootstrap": false,
-    "planned": 49,
-    "accepted": 49,
+    "planned": 6,
+    "accepted": 6,
     "pending": 0,
-    "previousAccepted": 815
+    "previousAccepted": 864
   }
 }
