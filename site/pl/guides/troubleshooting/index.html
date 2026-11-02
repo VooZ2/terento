@@ -2,11 +2,11 @@
 <html lang="pl" data-language="pl" data-page="troubleshooting">
   <head>
     <script defer src="/site-shell.js?v=20261029-web-installer-public-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20261102-linux-guide-v1">
+    <link rel="stylesheet" href="/styles.css?v=20261102-seo-v1">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
-    <meta name="description" content="Rozwiąż problemy z Garminem na Macu: zegarek niewidoczny, Garmin Express lub Android File Transfer blokuje zegarek, tryb USB (MTP), za mało miejsca i nieudane pobieranie map.">
+    <meta name="description" content="Mac nie widzi zegarka Garmin? Rozwiąż problemy z trybem USB (MTP), Garmin Express blokującym zegarek, brakiem miejsca i pobieraniem map.">
     <meta name="robots" content="index,follow">
     <link rel="canonical" href="https://terento.app/pl/guides/troubleshooting/">
     <link rel="alternate" hreflang="en" href="https://terento.app/guides/troubleshooting/">
@@ -19,7 +19,7 @@
     <meta property="og:type" content="article">
     <meta property="og:site_name" content="Terento">
     <meta property="og:title" content="Mac nie widzi zegarka Garmin? Rozwiązywanie problemów — Terento">
-    <meta property="og:description" content="Rozwiąż problemy z Garminem na Macu: zegarek niewidoczny, Garmin Express lub Android File Transfer blokuje zegarek, tryb USB (MTP), za mało miejsca i nieudane pobieranie map.">
+    <meta property="og:description" content="Mac nie widzi zegarka Garmin? Rozwiąż problemy z trybem USB (MTP), Garmin Express blokującym zegarek, brakiem miejsca i pobieraniem map.">
     <meta property="og:url" content="https://terento.app/pl/guides/troubleshooting/">
     <meta property="og:image" content="https://terento.app/assets/social/terento-og.png">
     <meta property="og:image:type" content="image/png">
@@ -29,7 +29,7 @@
     <meta property="og:locale" content="pl_PL">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Mac nie widzi zegarka Garmin? Rozwiązywanie problemów — Terento">
-    <meta name="twitter:description" content="Rozwiąż problemy z Garminem na Macu: zegarek niewidoczny, Garmin Express lub Android File Transfer blokuje zegarek, tryb USB (MTP), za mało miejsca i nieudane pobieranie map.">
+    <meta name="twitter:description" content="Mac nie widzi zegarka Garmin? Rozwiąż problemy z trybem USB (MTP), Garmin Express blokującym zegarek, brakiem miejsca i pobieraniem map.">
     <meta name="twitter:image" content="https://terento.app/assets/social/terento-og.png">
     <title>Mac nie widzi zegarka Garmin? Rozwiązywanie problemów — Terento</title>
 
@@ -62,7 +62,7 @@
       "headline": "Rozwiązywanie problemów z zegarkiem Garmin i mapami na Macu",
       "description": "Rozwiąż problemy z Garminem na Macu: zegarek niewidoczny, Garmin Express lub Android File Transfer blokuje zegarek, tryb USB (MTP), za mało miejsca i nieudane pobieranie map.",
       "datePublished": "2026-10-06T00:00:00Z",
-      "dateModified": "2026-10-06T00:00:00Z",
+      "dateModified": "2026-11-02T00:00:00Z",
       "mainEntityOfPage": {
         "@id": "https://terento.app/pl/guides/troubleshooting/"
       },
@@ -148,7 +148,7 @@
             <div class="troubleshooting-list"><section class="troubleshooting-item" id="connect-watch" aria-labelledby="connect-watch-title">
               <h3 id="connect-watch-title">Mac nie widzi zegarka Garmin</h3>
               <p>Podłącz zegarek bezpośrednio do Maca kablem USB do przesyłania danych, odblokuj go i poczekaj do 2 minut: Terento wykryje go automatycznie.</p>
-              <ol class="troubleshooting-steps"><li>Użyj kabla do przesyłania danych. Kable tylko do ładowania i niektóre huby USB nie działają.</li><li>Poczekaj do 2 minut, aż Terento sprawdzi połączenie.</li><li>Jeśli zegarek nadal się nie pojawia, odłącz go, odczekaj kilka sekund i podłącz ponownie.</li><li>Jeśli otwarta jest inna aplikacja, zobacz <a href="#garmin-busy" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin Express lub inna aplikacja używa zegarka</a>.</li></ol>
+              <ol class="troubleshooting-steps"><li>Użyj kabla do przesyłania danych. Kable tylko do ładowania i niektóre huby USB nie działają.</li><li>To normalne, że zegarek nie pojawia się w Finderze: macOS nie otwiera większości obecnych zegarków Garmin jako dysku. Terento komunikuje się z zegarkiem bezpośrednio.</li><li>Jeśli na MacBooku macOS zapyta, czy zezwolić akcesorium na połączenie, wybierz Zezwól.</li><li>Poczekaj do 2 minut, aż Terento sprawdzi połączenie.</li><li>Jeśli zegarek nadal się nie pojawia, odłącz go, odczekaj kilka sekund i podłącz ponownie.</li><li>Jeśli otwarta jest inna aplikacja, zobacz <a href="#garmin-busy" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin Express lub inna aplikacja używa zegarka</a>.</li></ol>
             </section><section class="troubleshooting-item" id="garmin-busy" aria-labelledby="garmin-busy-title">
               <h3 id="garmin-busy-title">Garmin Express lub inna aplikacja używa zegarka</h3>
               <p>Zamknij Garmin Express i aplikacje do przesyłania plików, takie jak Android File Transfer, OpenMTP czy MacDroid: z połączenia z zegarkiem może korzystać tylko jedna aplikacja naraz.</p>
@@ -159,7 +159,7 @@
               <ol class="troubleshooting-steps"><li>Odłącz inne zegarki, liczniki rowerowe i urządzenia ręczne Garmin.</li><li>Pozostaw wybrany zegarek podłączony i poczekaj, aż Terento go znajdzie.</li></ol>
             </section><section class="troubleshooting-item" id="usb-mode" aria-labelledby="usb-mode-title">
               <h3 id="usb-mode-title">Mac nie rozpoznaje zegarka Garmin: tryb USB (MTP)</h3>
-              <p>Jeśli Terento informuje, że zegarek nie jest gotowy do przesyłania plików, ustaw w zegarku tryb USB na MTP, o ile Twój model ma to ustawienie.</p>
+              <p>Jeśli Terento informuje, że zegarek nie jest gotowy do przesyłania plików, ustaw tryb USB zegarka na MTP, jeśli Twój model ma to ustawienie. MTP (Media Transfer Protocol) to sposób, w jaki większość obecnych zegarków Garmin udostępnia pliki przez USB, tak jak telefony z Androidem. macOS nie obsługuje MTP natywnie, dlatego zegarek nie pojawia się jako dysk; Terento samo korzysta z MTP, więc nie potrzebujesz Android File Transfer ani OpenMTP.</p>
               <ol class="troubleshooting-steps"><li>Na zegarku otwórz tryb USB, zwykle w Ustawienia › System. Nie każdy model go ma.</li><li>Wybierz MTP.</li><li>Odłącz zegarek i podłącz go ponownie.</li></ol>
             </section><section class="troubleshooting-item" id="connection-timeout" aria-labelledby="connection-timeout-title">
               <h3 id="connection-timeout-title">Zegarek Garmin wykryty, ale niegotowy</h3>

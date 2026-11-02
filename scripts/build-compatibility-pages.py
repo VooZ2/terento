@@ -7,13 +7,15 @@ import datetime as dt
 import html
 import json
 import re
+import runpy
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+SCHEMA = runpy.run_path(str(ROOT / "scripts/page_schema.py"))
 SNAPSHOT_PATH = ROOT / "site/compatibility/public-models.snapshot.json"
 LOCALES = ("en", "de", "fr", "pl", "cs", "it")
-ASSET_VERSION = "20261011-compatibility-install-sources-v1"
+ASSET_VERSION = "20261102-compatibility-heading-v1"
 FALLBACK_IMAGE_URL = "/assets/generic-garmin-watch.png?v=20260826-1"
 
 
@@ -224,7 +226,7 @@ def card_markup(model: dict[str, object], locale: str) -> str:
     latest_markup = f'<p class="watch-card-meta">{esc(copy["card_latest"])} {esc(latest)}</p>' if latest else ""
     image = model.get("imageUrl") or FALLBACK_IMAGE_URL
     accessible = ", ".join(filter(None, (display_model, variant, install_label(count, locale), sources_accessible(model, locale), f'{copy["card_latest"]} {latest}' if latest else "")))
-    return f'''<article class="watch-card" aria-label="{esc(accessible)}"><div class="watch-card-image"><img data-remote-src="{esc(image)}" src="{esc(image)}" alt="" loading="lazy"></div><div class="watch-card-body"><div class="watch-card-heading"><p class="watch-family">{esc(model.get("familyName") or "Garmin")}</p><div class="watch-card-model-row"><h3>{esc(display_model)}</h3></div><p class="watch-variant">{esc(variant)}</p></div><p class="watch-install-count">{esc(install_label(count, locale))}</p>{sources_markup(model, locale)}{latest_markup}</div></article>'''
+    return f'''<article class="watch-card" aria-label="{esc(accessible)}"><div class="watch-card-image"><img data-remote-src="{esc(image)}" src="{esc(image)}" alt="" loading="lazy"></div><div class="watch-card-body"><div class="watch-card-heading"><p class="watch-family">{esc(model.get("familyName") or "Garmin")}</p><div class="watch-card-model-row"><h3>{esc(display_model)} <span class="watch-variant">{esc(variant)}</span></h3></div></div><p class="watch-install-count">{esc(install_label(count, locale))}</p>{sources_markup(model, locale)}{latest_markup}</div></article>'''
 
 
 def summary_markup(snapshot: dict, locale: str) -> str:
@@ -306,6 +308,12 @@ def render_page(source: str, locale: str, snapshot: dict) -> str:
     source = re.sub(r'/compatibility/compatibility-locales\.js\?v=[^" ]+', f'/compatibility/compatibility-locales.js?v={ASSET_VERSION}', source)
     source = re.sub(r'/compatibility/compatibility\.js\?v=[^" ]+', f'/compatibility/compatibility.js?v={ASSET_VERSION}', source)
     source = re.sub(r'(<p class="compatibility-error"[^>]*>)[^<]*(</p>)', rf'\g<1>{esc(copy["error"])}\g<2>', source, count=1)
+    # One web-page + breadcrumb JSON-LD block (no device list: the snapshot is not a support list).
+    source = re.sub(r'\n[ \t]*<script type="application/ld\+json">[\s\S]*?</script>', "", source)
+    block = SCHEMA["json_ld_block"](locale, "compatibility/", "CollectionPage")
+    source, count = re.subn(r'\n(\s*)</head>', lambda match: "\n" + block + "\n" + match.group(1) + "</head>", source, count=1)
+    if count != 1:
+        raise ValueError(f"{page_path(locale)}: </head> not found")
     return source
 
 

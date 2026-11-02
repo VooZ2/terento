@@ -2,9 +2,9 @@
 <html lang="fr" data-language="fr">
   <head>
     <script defer src="/site-shell.js?v=20261029-web-installer-public-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20261102-linux-guide-v1">
+    <link rel="stylesheet" href="/styles.css?v=20261102-seo-v1">
     <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#F7F3EC">
-    <meta name="description" content="Téléchargez l’app Terento gratuite et notariée pour Mac Apple Silicon afin d’installer et de gérer des cartes tierces sur les montres Garmin prenant en charge les cartes.">
+    <meta name="description" content="Téléchargez Terento, l’app gratuite et notariée pour Mac Apple Silicon, et installez des cartes tierces sur les montres Garmin avec cartes.">
     <meta name="robots" content="index,follow">
     <link rel="canonical" href="https://terento.app/fr/download/">
     <link rel="alternate" hreflang="en" href="https://terento.app/download/">
@@ -17,7 +17,7 @@
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Terento">
     <meta property="og:title" content="Télécharger Terento pour Mac — Cartes tierces pour Garmin">
-    <meta property="og:description" content="Téléchargez l’app Terento gratuite et notariée pour Mac Apple Silicon afin d’installer et de gérer des cartes tierces sur les montres Garmin prenant en charge les cartes.">
+    <meta property="og:description" content="Téléchargez Terento, l’app gratuite et notariée pour Mac Apple Silicon, et installez des cartes tierces sur les montres Garmin avec cartes.">
     <meta property="og:url" content="https://terento.app/fr/download/">
     <meta property="og:image" content="https://terento.app/assets/social/terento-og.png">
     <meta property="og:image:type" content="image/png">
@@ -27,7 +27,7 @@
     <meta property="og:locale" content="fr_FR">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Télécharger Terento pour Mac — Cartes tierces pour Garmin">
-    <meta name="twitter:description" content="Téléchargez l’app Terento gratuite et notariée pour Mac Apple Silicon afin d’installer et de gérer des cartes tierces sur les montres Garmin prenant en charge les cartes.">
+    <meta name="twitter:description" content="Téléchargez Terento, l’app gratuite et notariée pour Mac Apple Silicon, et installez des cartes tierces sur les montres Garmin avec cartes.">
     <meta name="twitter:image" content="https://terento.app/assets/social/terento-og.png">
     <title>Télécharger Terento pour Mac — Cartes tierces pour Garmin</title>
 
@@ -36,26 +36,42 @@
     <link rel="icon" href="/favicon.ico?v=20260820-4" sizes="any"><link rel="icon" href="/favicon.svg?v=20260820-4" type="image/svg+xml"><link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20260820-4"><link rel="manifest" href="/manifest.webmanifest"><script defer src="/language.js?v=20260926-static-shell-v1"></script><script defer src="/privacy-consent.js?v=20260905-campaign-url-only-v1"></script><script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    "@id": "https://terento.app/#software",
-    "name": "Terento",
-    "url": "https://terento.app/fr/download/",
-    "applicationCategory": "UtilitiesApplication",
-    "operatingSystem": "macOS 13 ou version ultérieure sur Apple Silicon",
-    "softwareVersion": "1.1.0",
-    "softwareRequirements": "Mac Apple Silicon requis.",
-    "description": "Téléchargez l’app Terento gratuite et notariée pour Mac Apple Silicon afin d’installer et de gérer des cartes tierces sur les montres Garmin prenant en charge les cartes.",
-    "downloadUrl": "https://github.com/VooZ2/terento/releases/download/v1.1.0-build46/Terento-1.1.0-macOS-arm64.dmg",
-    "releaseNotes": "https://github.com/VooZ2/terento/releases/tag/v1.1.0-build46",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "EUR"
-    },
-    "inLanguage": "fr",
-    "publisher": {
-      "@id": "https://terento.app/#organization"
-    }
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://terento.app/#organization",
+        "name": "Terento",
+        "url": "https://terento.app/",
+        "logo": "https://terento.app/assets/logo-sky.svg",
+        "sameAs": [
+          "https://github.com/VooZ2/terento"
+        ]
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://terento.app/#software",
+        "name": "Terento",
+        "url": "https://terento.app/fr/download/",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "macOS 13 ou version ultérieure sur Apple Silicon",
+        "softwareVersion": "1.1.0",
+        "softwareRequirements": "Mac Apple Silicon requis.",
+        "description": "Téléchargez Terento, l’app gratuite et notariée pour Mac Apple Silicon, et installez des cartes tierces sur les montres Garmin avec cartes.",
+        "downloadUrl": "https://github.com/VooZ2/terento/releases/download/v1.1.0-build46/Terento-1.1.0-macOS-arm64.dmg",
+        "releaseNotes": "https://github.com/VooZ2/terento/releases/tag/v1.1.0-build46",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "EUR"
+        },
+        "processorRequirements": "Apple Silicon (arm64)",
+        "screenshot": "https://terento.app/assets/app/optimized/installing-maps-1600.png?v=20260912-app-screens-v2",
+        "inLanguage": "fr",
+        "publisher": {
+          "@id": "https://terento.app/#organization"
+        }
+      }
+    ]
   }
 </script>
 </head>

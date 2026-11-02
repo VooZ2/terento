@@ -5,9 +5,9 @@ canonical: https://terento.app/cs/
 
 Open-source projekt
 
-# Instalujte mapy do hodinek Garmin jednoduše
+# Nainstalujte do hodinek Garmin mapy zdarma
 
-Instalujte, aktualizujte a spravujte mapy třetích stran z nativní aplikace pro macOS — bez ručních přenosů souborů.
+Terento je bezplatný open-source nástroj pro instalaci, aktualizaci a správu map třetích stran v hodinkách Garmin: v nativní aplikaci pro Mac nebo v prohlížeči na počítači.
 
 [Stáhnout](https://terento.app/cs/download/) [Ověřit kompatibilitu](https://terento.app/cs/compatibility/) [Nebo instalujte z prohlížeče](https://terento.app/cs/install/)
 
@@ -109,7 +109,7 @@ Které hodinky Garmin fungují s Terento?
 
 Na stránce [Kompatibilita](https://terento.app/cs/compatibility/) najdete konkrétní modely a varianty Garmin s alespoň jednou úspěšnou sdílenou instalací. Chybějící model nemusí znamenat, že není podporován.
 
-Mohu instalovat mapy třetích stran do hodinek Garmin z Macu bez BaseCamp?
+Mohu instalovat mapy třetích stran do hodinek Garmin z Macu bez Garmin Express a BaseCamp?
 
 Ano. Terento je navrženo tak, aby správa map třetích stran v macOS byla jednoduchá a rychlá — od výběru mapy po instalaci, aktualizaci a správu v hodinkách Garmin. [Přečtěte si instalační příručku.](https://terento.app/cs/guides/install-garmin-maps-mac/)
 

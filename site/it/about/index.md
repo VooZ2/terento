@@ -1,5 +1,5 @@
 ---
-title: "Informazioni su Terento — Mappe Garmin gratuite e open source su Mac"
+title: "Informazioni su Terento — Mappe Garmin gratuite e open source"
 canonical: https://terento.app/it/about/
 ---
 

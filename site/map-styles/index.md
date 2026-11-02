@@ -11,7 +11,7 @@ See how free map styles draw the same place. Pick a popular area, trail or city,
 
 Place
 
-## Dolomites – Tre Cime
+## Cinque Terre
 
 Left map style Right map style
 
@@ -64,3 +64,9 @@ This map has no contour lines.
 Previews are close, not exact: your watch draws the map itself, so colours and detail can differ with the watch model and its map settings.
 
 Install these maps on your watch with the [Mac app](https://terento.app/download/) or the [web installer](https://terento.app/install/).
+
+## Free OpenStreetMap maps for Garmin watches
+
+Every style here is a free map built from OpenStreetMap, the map that volunteers keep up to date. Community projects turn that data into Garmin maps, each with its own look and level of detail.
+
+Pick by what you do: Freizeitkarte includes contour lines, while OpenTopoMap shows shaded relief and can add contour lines. MapRando also draws small paths beyond the main trails. BBBike is made for streets and cycle paths, and its Ontrail style keeps maps small. OSMapaPL covers Poland in detail.

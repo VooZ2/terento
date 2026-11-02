@@ -18,9 +18,11 @@ Verbindung
 Verbinde die Uhr direkt mit deinem Mac über ein USB-Kabel mit Datenübertragung, entsperre sie und warte bis zu 2 Minuten: Terento findet sie automatisch.
 
 1. Verwende ein Datenkabel. Reine Ladekabel und manche USB-Hubs funktionieren nicht.
-2. Warte bis zu 2 Minuten, während Terento die Verbindung prüft.
-3. Erscheint die Uhr weiterhin nicht, trenne sie, warte ein paar Sekunden und verbinde sie erneut.
-4. Ist ein anderes Programm geöffnet, siehe [Garmin Express oder eine andere App blockiert die Uhr](https://terento.app/de/guides/troubleshooting/#garmin-busy).
+2. Dass die Uhr nicht im Finder erscheint, ist normal: macOS öffnet die meisten aktuellen Garmin-Uhren nicht als Laufwerk. Terento spricht direkt mit der Uhr.
+3. Fragt macOS auf einem Mac-Laptop, ob das Zubehör verbunden werden darf, wähle Erlauben.
+4. Warte bis zu 2 Minuten, während Terento die Verbindung prüft.
+5. Erscheint die Uhr weiterhin nicht, trenne sie, warte ein paar Sekunden und verbinde sie erneut.
+6. Ist ein anderes Programm geöffnet, siehe [Garmin Express oder eine andere App blockiert die Uhr](https://terento.app/de/guides/troubleshooting/#garmin-busy).
 
 ### Garmin Express oder eine andere App blockiert die Uhr
 
@@ -40,7 +42,7 @@ Trenne alle Garmin-Geräte außer der Uhr, die du verwenden möchtest: Terento a
 
 ### Garmin-Uhr nicht erkannt: USB-Modus (MTP)
 
-Meldet Terento, dass die Uhr nicht für die Dateiübertragung bereit ist, stelle den USB-Modus der Uhr auf MTP, sofern dein Modell diese Einstellung hat.
+Wenn Terento meldet, dass die Uhr nicht für die Dateiübertragung bereit ist, stelle den USB-Modus der Uhr auf MTP, sofern dein Modell diese Einstellung hat. Über MTP (Media Transfer Protocol) teilen die meisten aktuellen Garmin-Uhren Dateien per USB, so wie Android-Smartphones. macOS unterstützt MTP nicht von Haus aus, daher erscheint die Uhr nicht als Laufwerk; Terento nutzt MTP selbst, du brauchst also weder Android File Transfer noch OpenMTP.
 
 1. Öffne auf der Uhr den USB-Modus, meist unter Einstellungen › System. Nicht jedes Modell hat diese Einstellung.
 2. Wähle MTP.

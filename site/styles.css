@@ -1182,6 +1182,11 @@ h1 {
   display: none;
 }
 
+/* Drawn by CSS so the heading text reads "Connect → Install → Done". */
+.section-heading h2 .workflow-title-bullet::before {
+  content: "•";
+}
+
 .problem-statement {
   max-width: 660px;
   margin-top: 42px;
@@ -2544,10 +2549,15 @@ details p {
 }
 
 .watch-variant {
+  display: block;
   min-height: 24px;
   margin: 6px 0 0;
   color: var(--secondary);
+  font-family: var(--font-ui);
   font-size: 14px;
+  font-weight: 400;
+  letter-spacing: normal;
+  line-height: 1.53;
 }
 
 .status-badge {
@@ -3513,6 +3523,10 @@ details p {
 .map-styles-about-language .map-styles-icon { width: 16px; height: 16px; margin-top: 1px; }
 .map-styles-about-note { max-width: 80ch; margin: 14px 4px 0; color: var(--muted-text); font-size: 14px; line-height: 1.5; }
 .map-styles-install { margin-top: -16px; padding-bottom: 40px; color: var(--muted-text); font-size: 15px; line-height: 1.5; }
+.map-styles-guide { padding-bottom: 48px; }
+.map-styles-guide h2 { max-width: 30ch; margin: 0 0 16px; font-size: clamp(26px, 3vw, 34px); line-height: 1.15; }
+.map-styles-guide-text { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px 40px; max-width: 1100px; }
+.map-styles-guide-text p { margin: 0; color: var(--muted-text); font-size: 16px; line-height: 1.6; }
 .map-styles-viewer:not(.is-ready) .map-styles-overlay, .map-styles-viewer:not(.is-ready) .map-styles-zoom, .map-styles-viewer:not(.is-ready) .map-styles-divider { display: none; }
 
 @media (max-width: 1000px) {

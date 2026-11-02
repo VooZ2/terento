@@ -18,9 +18,11 @@ Połączenie
 Podłącz zegarek bezpośrednio do Maca kablem USB do przesyłania danych, odblokuj go i poczekaj do 2 minut: Terento wykryje go automatycznie.
 
 1. Użyj kabla do przesyłania danych. Kable tylko do ładowania i niektóre huby USB nie działają.
-2. Poczekaj do 2 minut, aż Terento sprawdzi połączenie.
-3. Jeśli zegarek nadal się nie pojawia, odłącz go, odczekaj kilka sekund i podłącz ponownie.
-4. Jeśli otwarta jest inna aplikacja, zobacz [Garmin Express lub inna aplikacja używa zegarka](https://terento.app/pl/guides/troubleshooting/#garmin-busy).
+2. To normalne, że zegarek nie pojawia się w Finderze: macOS nie otwiera większości obecnych zegarków Garmin jako dysku. Terento komunikuje się z zegarkiem bezpośrednio.
+3. Jeśli na MacBooku macOS zapyta, czy zezwolić akcesorium na połączenie, wybierz Zezwól.
+4. Poczekaj do 2 minut, aż Terento sprawdzi połączenie.
+5. Jeśli zegarek nadal się nie pojawia, odłącz go, odczekaj kilka sekund i podłącz ponownie.
+6. Jeśli otwarta jest inna aplikacja, zobacz [Garmin Express lub inna aplikacja używa zegarka](https://terento.app/pl/guides/troubleshooting/#garmin-busy).
 
 ### Garmin Express lub inna aplikacja używa zegarka
 
@@ -40,7 +42,7 @@ Odłącz wszystkie urządzenia Garmin oprócz zegarka, którego chcesz użyć: T
 
 ### Mac nie rozpoznaje zegarka Garmin: tryb USB (MTP)
 
-Jeśli Terento informuje, że zegarek nie jest gotowy do przesyłania plików, ustaw w zegarku tryb USB na MTP, o ile Twój model ma to ustawienie.
+Jeśli Terento informuje, że zegarek nie jest gotowy do przesyłania plików, ustaw tryb USB zegarka na MTP, jeśli Twój model ma to ustawienie. MTP (Media Transfer Protocol) to sposób, w jaki większość obecnych zegarków Garmin udostępnia pliki przez USB, tak jak telefony z Androidem. macOS nie obsługuje MTP natywnie, dlatego zegarek nie pojawia się jako dysk; Terento samo korzysta z MTP, więc nie potrzebujesz Android File Transfer ani OpenMTP.
 
 1. Na zegarku otwórz tryb USB, zwykle w Ustawienia › System. Nie każdy model go ma.
 2. Wybierz MTP.

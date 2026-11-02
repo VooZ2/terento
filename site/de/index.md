@@ -5,9 +5,9 @@ canonical: https://terento.app/de/
 
 Open-Source-Projekt
 
-# Karten einfach auf Garmin-Uhren installieren
+# Kostenlose Karten auf deiner Garmin-Uhr installieren
 
-Installiere, aktualisiere und verwalte Drittanbieter-Karten mit einer nativen macOS-App — ohne manuelle Dateiübertragungen.
+Terento ist ein kostenloses Open-Source-Tool, mit dem du Drittanbieter-Karten auf Garmin-Uhren installierst, aktualisierst und verwaltest: mit einer nativen Mac-App oder im Desktop-Browser.
 
 [Herunterladen](https://terento.app/de/download/) [Kompatibilität prüfen](https://terento.app/de/compatibility/) [Oder direkt aus dem Browser installieren](https://terento.app/de/install/)
 
@@ -109,7 +109,7 @@ Welche Garmin-Uhren funktionieren mit Terento?
 
 Auf der [Kompatibilitätsseite](https://terento.app/de/compatibility/) findest du genaue Garmin-Modelle und Varianten mit mindestens einer erfolgreich geteilten Installation. Ein fehlendes Modell ist nicht unbedingt ununterstützt.
 
-Kann ich Drittanbieter-Karten von einem Mac ohne BaseCamp auf einer Garmin-Uhr installieren?
+Kann ich Drittanbieter-Karten von einem Mac ohne Garmin Express oder BaseCamp auf einer Garmin-Uhr installieren?
 
 Ja. Terento wurde entwickelt, um die Verwaltung von Drittanbieter-Karten auf macOS einfach und schnell zu machen — von der Kartenauswahl bis zur Installation, Aktualisierung und Verwaltung auf deiner Garmin-Uhr. [Lies die Installationsanleitung.](https://terento.app/de/guides/install-garmin-maps-mac/)
 

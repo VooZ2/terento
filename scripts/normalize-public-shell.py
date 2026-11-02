@@ -12,11 +12,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SHELL_VERSION = "20261029-web-installer-public-v1"
 PROVIDER_SCRIPT_VERSION = "20261026-osmapa-v1"
-STYLE_VERSION = "20261102-linux-guide-v1"
+STYLE_VERSION = "20261102-seo-v1"
 IMAGE_VERSION = "20260912-app-screens-v2"
 LANGUAGE_VERSION = "20260926-static-shell-v1"
 COMPATIBILITY_LOCALES_VERSION = "20261011-compatibility-install-sources-v1"
-COMPATIBILITY_VERSION = "20261011-compatibility-install-sources-v1"
+COMPATIBILITY_VERSION = "20261102-compatibility-heading-v1"
 UMAMI_SCRIPT_VERSION = "20260905-campaign-url-only-v1"
 PAGE_LANGUAGE_VERSION = "20261015-shared-page-language-v3"
 # Footer Web installer link: the public installer (launch 2026-10-29) on the

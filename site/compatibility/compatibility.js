@@ -136,7 +136,7 @@
       .filter(Boolean)
       .join(", ");
     const imageUrl = row.imageUrl || FALLBACK_IMAGE_URL;
-    return `<article class="watch-card" aria-label="${escapeHtml(accessibleName)}"><div class="watch-card-image"><img data-remote-src="${escapeHtml(imageUrl)}" src="${escapeHtml(imageUrl)}" alt="" loading="lazy"></div><div class="watch-card-body"><div class="watch-card-heading"><p class="watch-family">${escapeHtml(row.familyName || "Garmin")}</p><div class="watch-card-model-row"><h3>${escapeHtml(modelName)}</h3></div><p class="watch-variant">${escapeHtml(variantLabel)}</p></div><p class="watch-install-count">${escapeHtml(installLabel)}</p>${sourcesMarkup}${latestInstallationMarkup}</div></article>`;
+    return `<article class="watch-card" aria-label="${escapeHtml(accessibleName)}"><div class="watch-card-image"><img data-remote-src="${escapeHtml(imageUrl)}" src="${escapeHtml(imageUrl)}" alt="" loading="lazy"></div><div class="watch-card-body"><div class="watch-card-heading"><p class="watch-family">${escapeHtml(row.familyName || "Garmin")}</p><div class="watch-card-model-row"><h3>${escapeHtml(modelName)} <span class="watch-variant">${escapeHtml(variantLabel)}</span></h3></div></div><p class="watch-install-count">${escapeHtml(installLabel)}</p>${sourcesMarkup}${latestInstallationMarkup}</div></article>`;
   }
 
   function matchesSuccessfulRange(row) {

@@ -2,7 +2,7 @@
 <html lang="en" data-language="en" data-page="about">
   <head>
     <script defer src="/site-shell.js?v=20261029-web-installer-public-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20261102-linux-guide-v1">
+    <link rel="stylesheet" href="/styles.css?v=20261102-seo-v1">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
@@ -34,6 +34,59 @@
     <title>About Terento — Free, Open-Source Garmin Maps for Mac</title>
 
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#222A2B">
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://terento.app/#organization",
+            "name": "Terento",
+            "url": "https://terento.app/",
+            "logo": "https://terento.app/assets/logo-sky.svg",
+            "sameAs": [
+              "https://github.com/VooZ2/terento"
+            ]
+          },
+          {
+            "@type": "AboutPage",
+            "@id": "https://terento.app/about/#webpage",
+            "url": "https://terento.app/about/",
+            "name": "About Terento",
+            "description": "Learn why Terento exists: a free, open-source macOS app for installing and managing third-party maps on Garmin smartwatches.",
+            "inLanguage": "en",
+            "isPartOf": {
+              "@id": "https://terento.app/#website"
+            },
+            "publisher": {
+              "@id": "https://terento.app/#organization"
+            },
+            "breadcrumb": {
+              "@id": "https://terento.app/about/#breadcrumb"
+            }
+          },
+          {
+            "@type": "BreadcrumbList",
+            "@id": "https://terento.app/about/#breadcrumb",
+            "itemListElement": [
+              {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": "https://terento.app/"
+              },
+              {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "About Terento",
+                "item": "https://terento.app/about/"
+              }
+            ]
+          }
+        ]
+      }
+    </script>
 
     <link rel="icon" href="/favicon.ico?v=20260820-4" sizes="any">
     <link rel="icon" href="/favicon.svg?v=20260820-4" type="image/svg+xml">

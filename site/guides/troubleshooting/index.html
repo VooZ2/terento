@@ -2,11 +2,11 @@
 <html lang="en" data-language="en" data-page="troubleshooting">
   <head>
     <script defer src="/site-shell.js?v=20261029-web-installer-public-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20261102-linux-guide-v1">
+    <link rel="stylesheet" href="/styles.css?v=20261102-seo-v1">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
-    <meta name="description" content="Fix Garmin watch and map problems on a Mac: watch not showing up, Garmin Express or Android File Transfer using the watch, USB mode (MTP), not enough space and failed map downloads.">
+    <meta name="description" content="Garmin watch not showing up on your Mac? Fix USB mode (MTP), Garmin Express using the watch, low storage and failed map downloads.">
     <meta name="robots" content="index,follow">
     <link rel="canonical" href="https://terento.app/guides/troubleshooting/">
     <link rel="alternate" hreflang="en" href="https://terento.app/guides/troubleshooting/">
@@ -19,7 +19,7 @@
     <meta property="og:type" content="article">
     <meta property="og:site_name" content="Terento">
     <meta property="og:title" content="Garmin Watch Not Showing Up on Mac? Troubleshooting — Terento">
-    <meta property="og:description" content="Fix Garmin watch and map problems on a Mac: watch not showing up, Garmin Express or Android File Transfer using the watch, USB mode (MTP), not enough space and failed map downloads.">
+    <meta property="og:description" content="Garmin watch not showing up on your Mac? Fix USB mode (MTP), Garmin Express using the watch, low storage and failed map downloads.">
     <meta property="og:url" content="https://terento.app/guides/troubleshooting/">
     <meta property="og:image" content="https://terento.app/assets/social/terento-og.png">
     <meta property="og:image:type" content="image/png">
@@ -29,7 +29,7 @@
     <meta property="og:locale" content="en_US">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Garmin Watch Not Showing Up on Mac? Troubleshooting — Terento">
-    <meta name="twitter:description" content="Fix Garmin watch and map problems on a Mac: watch not showing up, Garmin Express or Android File Transfer using the watch, USB mode (MTP), not enough space and failed map downloads.">
+    <meta name="twitter:description" content="Garmin watch not showing up on your Mac? Fix USB mode (MTP), Garmin Express using the watch, low storage and failed map downloads.">
     <meta name="twitter:image" content="https://terento.app/assets/social/terento-og.png">
     <title>Garmin Watch Not Showing Up on Mac? Troubleshooting — Terento</title>
 
@@ -62,7 +62,7 @@
       "headline": "Fix Garmin watch and map problems on Mac",
       "description": "Fix Garmin watch and map problems on a Mac: watch not showing up, Garmin Express or Android File Transfer using the watch, USB mode (MTP), not enough space and failed map downloads.",
       "datePublished": "2026-10-06T00:00:00Z",
-      "dateModified": "2026-10-06T00:00:00Z",
+      "dateModified": "2026-11-02T00:00:00Z",
       "mainEntityOfPage": {
         "@id": "https://terento.app/guides/troubleshooting/"
       },
@@ -148,7 +148,7 @@
             <div class="troubleshooting-list"><section class="troubleshooting-item" id="connect-watch" aria-labelledby="connect-watch-title">
               <h3 id="connect-watch-title">Garmin watch not showing up on Mac</h3>
               <p>Connect the watch directly to your Mac with a USB cable that supports data, unlock it and wait up to 2 minutes: Terento finds it automatically.</p>
-              <ol class="troubleshooting-steps"><li>Use a USB data cable. Charge-only cables and some USB hubs don’t work.</li><li>Wait up to 2 minutes while Terento checks the connection.</li><li>If the watch still doesn’t appear, unplug it, wait a few seconds and connect it again.</li><li>If another app is open, see <a href="#garmin-busy" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin Express or another app is using the watch</a>.</li></ol>
+              <ol class="troubleshooting-steps"><li>Use a USB data cable. Charge-only cables and some USB hubs don’t work.</li><li>Your watch won’t appear in Finder, and that’s normal: macOS doesn’t open most current Garmin watches as a drive. Terento talks to the watch directly.</li><li>On a Mac laptop, if macOS asks whether to allow the accessory to connect, choose Allow.</li><li>Wait up to 2 minutes while Terento checks the connection.</li><li>If the watch still doesn’t appear, unplug it, wait a few seconds and connect it again.</li><li>If another app is open, see <a href="#garmin-busy" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin Express or another app is using the watch</a>.</li></ol>
             </section><section class="troubleshooting-item" id="garmin-busy" aria-labelledby="garmin-busy-title">
               <h3 id="garmin-busy-title">Garmin Express or another app is using the watch</h3>
               <p>Quit Garmin Express and file-transfer apps such as Android File Transfer, OpenMTP or MacDroid: only one app at a time can use the watch connection.</p>
@@ -159,7 +159,7 @@
               <ol class="troubleshooting-steps"><li>Unplug other Garmin watches, bike computers and handheld devices.</li><li>Keep the watch you want to use connected and wait for Terento to find it.</li></ol>
             </section><section class="troubleshooting-item" id="usb-mode" aria-labelledby="usb-mode-title">
               <h3 id="usb-mode-title">Garmin watch not recognized: USB mode (MTP)</h3>
-              <p>If Terento says the watch isn’t ready for file transfer, set the watch’s USB Mode to MTP, if your model has this setting.</p>
+              <p>If Terento says the watch isn’t ready for file transfer, set the watch’s USB Mode to MTP, if your model has this setting. MTP (Media Transfer Protocol) is how most current Garmin watches share files over USB, the same way Android phones do. macOS has no built-in MTP support, so the watch doesn’t show up as a drive; Terento uses MTP itself, so you don’t need Android File Transfer or OpenMTP.</p>
               <ol class="troubleshooting-steps"><li>On the watch, open USB Mode, usually under Settings › System. Not every model has it.</li><li>Choose MTP.</li><li>Disconnect the watch and connect it again.</li></ol>
             </section><section class="troubleshooting-item" id="connection-timeout" aria-labelledby="connection-timeout-title">
               <h3 id="connection-timeout-title">Garmin watch detected but not ready</h3>

@@ -133,7 +133,8 @@ for (const locale of locales) {
   assertCanonicalMetadata(downloadData.source, downloadUrl, download);
   assert.equal(downloadData.data["@context"], "https://schema.org", `${download}: schema context`);
   assertApplication(entity(downloadData.data, "SoftwareApplication", download), locale, downloadUrl, download);
-  assert.equal((downloadData.data["@graph"] || []).length, 0, `${download}: no duplicate graph entities`);
+  assert.deepEqual((downloadData.data["@graph"] || []).map((item) => item["@type"]), ["Organization", "SoftwareApplication"], `${download}: the page carries the publisher it references`);
+  assert.equal(entity(downloadData.data, "Organization", download)["@id"], organizationId, `${download}: publisher reference resolves on the page`);
   assert.equal((downloadData.source.match(/type=["']application\/ld\+json["']/gi) || []).length, 1, `${download}: one JSON-LD block`);
 }
 
@@ -159,7 +160,9 @@ const compatibilityPages = [
 ];
 for (const [locale, compatibility] of compatibilityPages) {
   const compatibilitySource = fs.readFileSync(compatibility, "utf8");
-  assert.equal((compatibilitySource.match(/application\/ld\+json/gi) || []).length, 0, `${compatibility}: no compatibility schema block`);
+  assert.equal((compatibilitySource.match(/application\/ld\+json/gi) || []).length, 1, `${compatibility}: one compatibility schema block`);
+  const compatibilityData = readJsonLd(compatibility).data;
+  assert.deepEqual(compatibilityData["@graph"].map((item) => item["@type"]), ["Organization", "CollectionPage", "BreadcrumbList"], `${compatibility}: web page and breadcrumb only, no device list`);
   assert.equal((compatibilitySource.match(/hreflang=/g) || []).length, 7, `${compatibility}: reciprocal hreflang set`);
   assert.match(compatibilitySource, /data-page="compatibility"/);
   assert.match(compatibilitySource, /data-umami-event="download-cta-click"/);

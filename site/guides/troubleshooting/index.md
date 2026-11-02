@@ -18,9 +18,11 @@ Connection
 Connect the watch directly to your Mac with a USB cable that supports data, unlock it and wait up to 2 minutes: Terento finds it automatically.
 
 1. Use a USB data cable. Charge-only cables and some USB hubs don’t work.
-2. Wait up to 2 minutes while Terento checks the connection.
-3. If the watch still doesn’t appear, unplug it, wait a few seconds and connect it again.
-4. If another app is open, see [Garmin Express or another app is using the watch](https://terento.app/guides/troubleshooting/#garmin-busy).
+2. Your watch won’t appear in Finder, and that’s normal: macOS doesn’t open most current Garmin watches as a drive. Terento talks to the watch directly.
+3. On a Mac laptop, if macOS asks whether to allow the accessory to connect, choose Allow.
+4. Wait up to 2 minutes while Terento checks the connection.
+5. If the watch still doesn’t appear, unplug it, wait a few seconds and connect it again.
+6. If another app is open, see [Garmin Express or another app is using the watch](https://terento.app/guides/troubleshooting/#garmin-busy).
 
 ### Garmin Express or another app is using the watch
 
@@ -40,7 +42,7 @@ Disconnect every Garmin device except the watch you want to use: Terento works w
 
 ### Garmin watch not recognized: USB mode (MTP)
 
-If Terento says the watch isn’t ready for file transfer, set the watch’s USB Mode to MTP, if your model has this setting.
+If Terento says the watch isn’t ready for file transfer, set the watch’s USB Mode to MTP, if your model has this setting. MTP (Media Transfer Protocol) is how most current Garmin watches share files over USB, the same way Android phones do. macOS has no built-in MTP support, so the watch doesn’t show up as a drive; Terento uses MTP itself, so you don’t need Android File Transfer or OpenMTP.
 
 1. On the watch, open USB Mode, usually under Settings › System. Not every model has it.
 2. Choose MTP.

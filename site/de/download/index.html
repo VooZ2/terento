@@ -2,9 +2,9 @@
 <html lang="de" data-language="de">
   <head>
     <script defer src="/site-shell.js?v=20261029-web-installer-public-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20261102-linux-guide-v1">
+    <link rel="stylesheet" href="/styles.css?v=20261102-seo-v1">
     <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#F7F3EC">
-    <meta name="description" content="Lade die kostenlose, notarielle Terento-App für Apple-Silicon-Macs herunter, um Drittanbieter-Karten auf Garmin-Smartwatches mit Kartenunterstützung zu installieren und zu verwalten.">
+    <meta name="description" content="Lade die kostenlose, notarisierte Terento-App für Apple-Silicon-Macs herunter und installiere Drittanbieter-Karten auf Garmin-Uhren mit Kartenunterstützung.">
     <meta name="robots" content="index,follow">
     <link rel="canonical" href="https://terento.app/de/download/">
     <link rel="alternate" hreflang="en" href="https://terento.app/download/">
@@ -17,7 +17,7 @@
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Terento">
     <meta property="og:title" content="Terento für Mac herunterladen — Drittanbieter-Karten für Garmin">
-    <meta property="og:description" content="Lade die kostenlose, notarielle Terento-App für Apple-Silicon-Macs herunter, um Drittanbieter-Karten auf Garmin-Smartwatches mit Kartenunterstützung zu installieren und zu verwalten.">
+    <meta property="og:description" content="Lade die kostenlose, notarisierte Terento-App für Apple-Silicon-Macs herunter und installiere Drittanbieter-Karten auf Garmin-Uhren mit Kartenunterstützung.">
     <meta property="og:url" content="https://terento.app/de/download/">
     <meta property="og:image" content="https://terento.app/assets/social/terento-og.png">
     <meta property="og:image:type" content="image/png">
@@ -27,7 +27,7 @@
     <meta property="og:locale" content="de_DE">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Terento für Mac herunterladen — Drittanbieter-Karten für Garmin">
-    <meta name="twitter:description" content="Lade die kostenlose, notarielle Terento-App für Apple-Silicon-Macs herunter, um Drittanbieter-Karten auf Garmin-Smartwatches mit Kartenunterstützung zu installieren und zu verwalten.">
+    <meta name="twitter:description" content="Lade die kostenlose, notarisierte Terento-App für Apple-Silicon-Macs herunter und installiere Drittanbieter-Karten auf Garmin-Uhren mit Kartenunterstützung.">
     <meta name="twitter:image" content="https://terento.app/assets/social/terento-og.png">
     <title>Terento für Mac herunterladen — Drittanbieter-Karten für Garmin</title>
 
@@ -37,26 +37,42 @@
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "SoftwareApplication",
-        "@id": "https://terento.app/#software",
-        "name": "Terento",
-        "url": "https://terento.app/de/download/",
-        "applicationCategory": "UtilitiesApplication",
-        "operatingSystem": "macOS 13 oder neuer auf Apple Silicon",
-        "softwareVersion": "1.1.0",
-        "softwareRequirements": "Apple-Silicon-Mac erforderlich.",
-        "description": "Lade die kostenlose, notarielle Terento-App für Apple-Silicon-Macs herunter, um Drittanbieter-Karten auf Garmin-Smartwatches mit Kartenunterstützung zu installieren und zu verwalten.",
-        "downloadUrl": "https://github.com/VooZ2/terento/releases/download/v1.1.0-build46/Terento-1.1.0-macOS-arm64.dmg",
-        "releaseNotes": "https://github.com/VooZ2/terento/releases/tag/v1.1.0-build46",
-        "offers": {
-          "@type": "Offer",
-          "price": "0",
-          "priceCurrency": "EUR"
-        },
-        "inLanguage": "de",
-        "publisher": {
-          "@id": "https://terento.app/#organization"
-        }
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://terento.app/#organization",
+            "name": "Terento",
+            "url": "https://terento.app/",
+            "logo": "https://terento.app/assets/logo-sky.svg",
+            "sameAs": [
+              "https://github.com/VooZ2/terento"
+            ]
+          },
+          {
+            "@type": "SoftwareApplication",
+            "@id": "https://terento.app/#software",
+            "name": "Terento",
+            "url": "https://terento.app/de/download/",
+            "applicationCategory": "UtilitiesApplication",
+            "operatingSystem": "macOS 13 oder neuer auf Apple Silicon",
+            "softwareVersion": "1.1.0",
+            "softwareRequirements": "Apple-Silicon-Mac erforderlich.",
+            "description": "Lade die kostenlose, notarisierte Terento-App für Apple-Silicon-Macs herunter und installiere Drittanbieter-Karten auf Garmin-Uhren mit Kartenunterstützung.",
+            "downloadUrl": "https://github.com/VooZ2/terento/releases/download/v1.1.0-build46/Terento-1.1.0-macOS-arm64.dmg",
+            "releaseNotes": "https://github.com/VooZ2/terento/releases/tag/v1.1.0-build46",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "EUR"
+            },
+            "processorRequirements": "Apple Silicon (arm64)",
+            "screenshot": "https://terento.app/assets/app/optimized/installing-maps-1600.png?v=20260912-app-screens-v2",
+            "inLanguage": "de",
+            "publisher": {
+              "@id": "https://terento.app/#organization"
+            }
+          }
+        ]
       }
     </script>
 </head>
