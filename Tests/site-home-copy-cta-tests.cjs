@@ -15,7 +15,7 @@ const locales = new Map([
     featureTabsLabel: "Map features",
     installLabel: "Install maps",
     manageLabel: "Manage maps",
-    problem: "Installing third-party maps should be simple and fast — without extra software, separate download steps, or technical know-how.",
+    problem: "Installing third-party maps should be simple and fast — no copying files by hand, no technical know-how.",
     problemSecondary: "Terento brings the whole process together in three simple steps.",
     installStep: "Choose maps from the catalog, or add your own compatible .img map.",
     doneLabel: "Done",
@@ -27,6 +27,7 @@ const locales = new Map([
     providerCopy: "Choose maps from available providers. Maps are downloaded from each provider's original source.",
     heroCompatibility: "Check compatibility",
     download: "Download",
+    heroDownload: "Download for Mac",
   }],
   ["de", {
     file: path.join(root, "site", "de", "index.html"),
@@ -37,7 +38,7 @@ const locales = new Map([
     featureTabsLabel: "Kartenfunktionen",
     installLabel: "Karten installieren",
     manageLabel: "Karten verwalten",
-    problem: "Die Installation von Drittanbieter-Karten sollte einfach und schnell sein — ohne zusätzliche Software, separate Download-Schritte oder technisches Vorwissen.",
+    problem: "Die Installation von Drittanbieter-Karten sollte einfach und schnell sein — ohne Dateien von Hand zu kopieren und ohne technisches Vorwissen.",
     problemSecondary: "Terento bündelt den gesamten Ablauf in drei einfachen Schritten.",
     installStep: "Wähle Karten aus dem Katalog oder füge deine eigene kompatible .img-Karte hinzu.",
     doneLabel: "Fertig",
@@ -49,6 +50,7 @@ const locales = new Map([
     providerCopy: "Wähle Karten der verfügbaren Anbieter. Karten werden von der Originalquelle des jeweiligen Anbieters geladen.",
     heroCompatibility: "Kompatibilität prüfen",
     download: "Herunterladen",
+    heroDownload: "Für Mac herunterladen",
   }],
   ["fr", {
     file: path.join(root, "site", "fr", "index.html"),
@@ -59,7 +61,7 @@ const locales = new Map([
     featureTabsLabel: "Fonctions cartographiques",
     installLabel: "Installer des cartes",
     manageLabel: "Gérer les cartes",
-    problem: "Installer des cartes tierces devrait être simple et rapide — sans logiciel supplémentaire, étapes de téléchargement séparées ni connaissances techniques.",
+    problem: "Installer des cartes tierces devrait être simple et rapide — sans copier de fichiers à la main ni connaissances techniques.",
     problemSecondary: "Terento réunit tout le parcours en trois étapes simples.",
     installStep: "Choisissez des cartes dans le catalogue ou ajoutez votre propre carte .img compatible.",
     doneLabel: "Terminé",
@@ -71,6 +73,7 @@ const locales = new Map([
     providerCopy: "Choisissez parmi les fournisseurs disponibles. Les cartes sont téléchargées depuis la source d’origine de chaque fournisseur.",
     heroCompatibility: "Vérifier la compatibilité",
     download: "Télécharger",
+    heroDownload: "Télécharger pour Mac",
   }],
   ["pl", {
     file: path.join(root, "site", "pl", "index.html"),
@@ -81,7 +84,7 @@ const locales = new Map([
     featureTabsLabel: "Funkcje map",
     installLabel: "Instaluj mapy",
     manageLabel: "Zarządzaj mapami",
-    problem: "Instalowanie map innych firm powinno być proste i szybkie — bez dodatkowego oprogramowania, osobnych etapów pobierania ani wiedzy technicznej.",
+    problem: "Instalowanie map innych firm powinno być proste i szybkie — bez ręcznego kopiowania plików i bez wiedzy technicznej.",
     problemSecondary: "Terento łączy cały proces w trzech prostych krokach.",
     installStep: "Wybierz mapy z katalogu albo dodaj własną zgodną mapę .img.",
     doneLabel: "Gotowe",
@@ -93,6 +96,7 @@ const locales = new Map([
     providerCopy: "Wybieraj mapy od dostępnych dostawców. Mapy są pobierane z oryginalnego źródła każdego dostawcy.",
     heroCompatibility: "Sprawdź kompatybilność",
     download: "Pobierz",
+    heroDownload: "Pobierz na Maca",
   }],
   ["cs", {
     file: path.join(root, "site", "cs", "index.html"),
@@ -103,7 +107,7 @@ const locales = new Map([
     featureTabsLabel: "Funkce map",
     installLabel: "Instalovat mapy",
     manageLabel: "Spravovat mapy",
-    problem: "Instalace map třetích stran by měla být jednoduchá a rychlá — bez dalšího softwaru, samostatných kroků stahování a technických znalostí.",
+    problem: "Instalace map třetích stran by měla být jednoduchá a rychlá — bez ručního kopírování souborů a bez technických znalostí.",
     problemSecondary: "Terento celý proces spojuje do tří jednoduchých kroků.",
     installStep: "Vybírejte mapy z katalogu podle oblasti nebo přidejte vlastní kompatibilní mapu .img.",
     doneLabel: "Hotovo",
@@ -115,6 +119,7 @@ const locales = new Map([
     providerCopy: "Vyberte si mapy od dostupných poskytovatelů. Mapy se stahují z původního zdroje každého poskytovatele.",
     heroCompatibility: "Ověřit kompatibilitu",
     download: "Stáhnout",
+    heroDownload: "Stáhnout pro Mac",
   }],
   ["it", {
     file: path.join(root, "site", "it", "index.html"),
@@ -125,7 +130,7 @@ const locales = new Map([
     featureTabsLabel: "Funzioni delle mappe",
     installLabel: "Installa mappe",
     manageLabel: "Gestisci mappe",
-    problem: "Installare mappe di terze parti dovrebbe essere semplice e veloce — senza software aggiuntivo, passaggi di download separati o competenze tecniche.",
+    problem: "Installare mappe di terze parti dovrebbe essere semplice e veloce — senza copiare file a mano né competenze tecniche.",
     problemSecondary: "Terento riunisce l’intero processo in tre semplici passaggi.",
     installStep: "Scegli le mappe dal catalogo oppure aggiungi la tua mappa .img compatibile.",
     doneLabel: "Fatto",
@@ -137,6 +142,7 @@ const locales = new Map([
     providerCopy: "Scegli mappe dei provider disponibili. Le mappe vengono scaricate dalla fonte originale di ciascun provider.",
     heroCompatibility: "Verifica la compatibilità",
     download: "Scarica",
+    heroDownload: "Scarica per Mac",
   }],
 ]);
 
@@ -153,7 +159,7 @@ const anchorFor = (page, className) => {
 
 for (const [locale, expected] of locales) {
   const page = pageFor(locale);
-  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20261102-map-style-cards-v1">/, `${locale}: Home stylesheet cache bust`);
+  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20261102-design-audit-v1">/, `${locale}: Home stylesheet cache bust`);
   assert.match(page, /<script defer src="\/home-features\.js\?v=20260904-home-workflow-tabs"><\/script>/, `${locale}: Home feature script cache bust`);
   assert.match(page, /installing-maps-1600\.png\?v=20260912-app-screens-v2/, `${locale}: installation screenshot cache bust`);
   const heroArtwork = page.match(/<figure class="app-shot app-shot--hero">[\s\S]*?<\/figure>/)?.[0];
@@ -276,7 +282,7 @@ for (const [locale, expected] of locales) {
   });
   assert.doesNotMatch(page, /class="scope-section"|class="scope-link"|id="scope-title"|>Beta scope<|Available today|Choose a map and get moving/i, `${locale}: removed Beta scope and stale provider copy`);
   assert.ok(download.classes.has("download-action"), `${locale}: hero Download CTA uses the solid action style`);
-  assert.equal(download.label, expected.download, `${locale}: download CTA label`);
+  assert.equal(download.label, expected.heroDownload, `${locale}: download CTA label`);
   assert.equal(download.arrow, "→", `${locale}: download CTA arrow`);
   assert.ok(heroCompatibility.classes.has("text-link"), `${locale}: Hero Compatibility CTA uses the shared text-link style`);
   assert.ok(heroCompatibility.classes.has("hero-compatibility-link"), `${locale}: Hero Compatibility CTA uses its layout modifier`);

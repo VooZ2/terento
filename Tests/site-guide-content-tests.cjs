@@ -107,12 +107,12 @@ for (const locale of locales) {
   assert.equal((source.match(/data-umami-event="support-link-click"/g) || []).length, 1, locale + ": one Guide support email event");
   assert.doesNotMatch(source, /mailto:hello@terento\.app/);
   assert.doesNotMatch(source, /mailto:hello@terento\.app\?subject=Terento%20installation%20issue/);
-  assert.equal((source.match(/data-umami-event-location="guide-bottom"/g) || []).length, 1, locale + ": one guide download CTA");
+  assert.equal((source.match(/data-umami-event-location="guide-hero"/g) || []).length, 1, locale + ": one guide download CTA");
   const downloadButtons = [...source.matchAll(/<a class="download-action"[^>]*>([^<]+)<span aria-hidden="true">→<\/span><\/a>/g)];
   assert.equal(downloadButtons.length, 1, locale + ": one rendered download button");
   for (const button of downloadButtons) assert.equal(button[1].trim(), downloadLabels[locale], locale + ": download button label");
-  assert.ok(source.includes('data-umami-event-location="guide-bottom"'), locale + ": guide-bottom");
-  assert.doesNotMatch(source, /data-umami-event-location="guide-hero"/);
+  assert.match(source, /<p class="guide-hero-action"><a class="download-action"[^>]*data-umami-event-location="guide-hero"/, locale + ": download CTA in the guide intro");
+  assert.doesNotMatch(source, /data-umami-event-location="guide-bottom"|guide-bottom-title/);
   assert.match(source, /data-umami-event="compatibility-link-click" data-umami-event-location="guide-preflight"/);
   assert.doesNotMatch(source, /guide-support-actions/);
   assert.doesNotMatch(source, /[?&]utm_/i);
@@ -450,8 +450,11 @@ for (const locale of locales) {
   }
   const main = visibleText(source.match(/<main\b[\s\S]*?<\/main>/)[0]);
   assert.doesNotMatch(main, /\bIMG\b|\.img|\/GARMIN|object (?:handle|ID)|libmtp|manifest/i, `${locale}: outcome language without device internals`);
-  const outsideMtpSections = visibleText(source.match(/<main\b[\s\S]*?<\/main>/)[0].replace(/<section class="troubleshooting-item" id="(?:usb-mode|garmin-busy)"[\s\S]*?<\/section>/g, ""));
+  const outsideMtpSections = visibleText(source.match(/<main\b[\s\S]*?<\/main>/)[0].replace(/<section class="troubleshooting-item" id="(?:usb-mode|garmin-busy)"[\s\S]*?<\/section>/g, "")
+    // The topic index repeats the section titles, including the USB-mode one.
+    .replace(/<nav class="troubleshooting-toc"[\s\S]*?<\/nav>/, ""));
   assert.doesNotMatch(outsideMtpSections, /\bMTP\b/, `${locale}: MTP only in the USB-mode and app-conflict sections`);
+  assert.equal((source.match(/<nav class="troubleshooting-toc"[\s\S]*?<\/nav>/)?.[0].match(/<a href="#/g) || []).length, troubleshootingAnchors.length, `${locale}: topic index links every topic`);
   assert.doesNotMatch(source, /Send report to Terento|TR-[A-Z0-9]{6}|TODO/i, `${locale}: no unreleased support-report claims`);
   assert.doesNotMatch(main, /\bresum|min left|Request support|automatic(?:ally)? reconnect/i, `${locale}: no unreleased resume, estimate or reconnect claims`);
   assert.match(main, /Report issue/, `${locale}: current GitHub report flow`);

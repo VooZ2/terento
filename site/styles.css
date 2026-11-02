@@ -805,6 +805,18 @@ h1 {
   min-height: 44px;
 }
 
+/* The two secondary hero links share one row and wrap only when it is too narrow. */
+.hero-secondary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 28px;
+}
+
+.hero-secondary-actions > a {
+  min-height: 44px;
+}
+
 .primary-nav .download-action {
   min-height: 40px;
   padding: 8px 14px;
@@ -1614,11 +1626,18 @@ h1 {
   line-height: 1.04;
 }
 
-.final-cta-copy p:not(.eyebrow) {
+.final-cta-copy p {
   max-width: 520px;
   margin-bottom: 0;
   color: var(--secondary);
   font-size: 17px;
+}
+
+.final-cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 28px;
 }
 
 .testing-grid,
@@ -2182,6 +2201,16 @@ details p {
   .final-cta-inner .download-action {
     justify-content: center;
     width: 100%;
+  }
+
+  .final-cta-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .final-cta-actions .text-link {
+    justify-content: center;
+    min-height: 44px;
   }
 
   .download-detail .download-info-link {
@@ -2755,10 +2784,6 @@ details p {
   line-height: 1.5;
 }
 
-.guide-bottom-cta .download-action {
-  min-height: 46px;
-}
-
 .guide-facts {
   display: flex;
   flex-wrap: wrap;
@@ -3064,13 +3089,45 @@ details p {
   border-bottom: 1px solid var(--border);
 }
 
-.guide-bottom-cta .download-action {
-  flex: 0 0 auto;
-  white-space: nowrap;
-}
-
 .troubleshooting-list {
   border-top: 1px solid var(--border);
+}
+
+.troubleshooting-toc {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 24px 40px;
+  margin-top: 36px;
+  padding-top: 28px;
+  border-top: 1px solid var(--border);
+}
+
+.troubleshooting-toc-title {
+  margin: 0 0 6px;
+  color: var(--muted-text);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.troubleshooting-toc ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.troubleshooting-toc a {
+  display: inline-block;
+  padding: 5px 0;
+  color: var(--link-text);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-decoration: none;
+}
+
+.troubleshooting-toc a:hover {
+  text-decoration: underline;
 }
 
 .troubleshooting-item {
@@ -3116,6 +3173,17 @@ details p {
 
 .troubleshooting-more {
   margin: 22px 0 0;
+}
+
+.guide-hero-action {
+  margin: 28px 0 0;
+}
+
+.troubleshooting-guide-link {
+  margin: 0;
+  padding: clamp(40px, 5vw, 56px) 0 clamp(64px, 8vw, 96px);
+  color: var(--muted-text);
+  font-size: 16px;
 }
 
 .guide-bottom-cta {
@@ -3187,10 +3255,6 @@ details p {
     align-items: flex-start;
     flex-direction: column;
     padding: 28px 0;
-  }
-
-  .guide-bottom-cta .download-action {
-    width: 100%;
   }
 }
 
@@ -3388,7 +3452,8 @@ details p {
 .map-styles-hero h1 { max-width: 1100px; margin: 12px 0 16px; font-size: clamp(48px, 5.2vw, 76px); }
 .map-styles-hero .hero-lede { max-width: 840px; margin-bottom: 0; }
 .map-styles-frame { width: min(calc(100% - 48px), 1440px); margin: 0 auto 24px; }
-.map-styles-viewer { position: relative; height: clamp(540px, 80vh, 840px); overflow: hidden; overflow: clip; isolation: isolate; container: map-styles-viewer / size; border: 1px solid var(--border); border-radius: 18px; background: var(--surface-muted); }
+/* The viewer leaves room for the hero so the style pickers at its bottom show on the first screen. */
+.map-styles-viewer { position: relative; height: clamp(420px, calc(100vh - 470px), 840px); height: clamp(420px, calc(100svh - 470px), 840px); overflow: hidden; overflow: clip; isolation: isolate; container: map-styles-viewer / size; border: 1px solid var(--border); border-radius: 18px; background: var(--surface-muted); }
 .map-styles-stage { position: absolute; inset: 0; --map-styles-split: 50%; }
 .map-styles-pane { position: absolute; inset: 0; overflow: hidden; }
 .map-styles-map { position: absolute; inset: 0; background: var(--surface-muted); font-family: var(--font-ui); }
