@@ -139,12 +139,12 @@ struct InstallationAuthorizationTests {
             let unknown = await client(for: data).resolve(identity: identity(model: "unknown audit model", displayType: nil))
             try require(unknown.blockReason == .pending, "unknown live model remains pending")
             // Migration 090 (owner, 2026-11-02) adds the MTP Edge rows with
-            // Maps=Yes; a mass-storage Edge generation stays absent.
+            // Maps=Yes; migration 091 keeps older Edge generations Maps Unknown.
             let edge = await client(for: data).resolve(identity: identity(model: "Edge 840", family: "Edge", displayType: nil))
             try require(edge.canInstall, "live MTP Edge 840 row is approved")
             let absentEdge = await client(for: data).resolve(identity: identity(model: "Edge 830", family: "Edge", displayType: nil))
-            try require(absentEdge.blockReason == .pending, "absent live Edge 830 remains pending")
-            print("PASS: current native resolver accepts the live policy, approves MTP Edge rows and keeps unknown/absent Edge pending")
+            try require(absentEdge.blockReason == .pending, "older live Edge 830 remains pending")
+            print("PASS: current native resolver accepts the live policy, approves MTP Edge rows and keeps unknown/older Edge pending")
         }
         let exact = await client(for: allMapsYesPolicy).resolve(identity: identity())
         try require(exact.canInstall, "exact fenix 8 47 AMOLED Maps=Yes is installable")

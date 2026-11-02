@@ -110,14 +110,24 @@ active Edge catalog model with Maps=Yes is `APPROVED`. Public product claims
 remain independently evidence-gated.
 
 **Edge test rows (owner, 2026-11-02).** So the owner can test Edge installs
-before deciding to keep or withdraw them, migration 090 adds active
-`HISTORICAL_REVIEWED` Maps=Yes rows for the Edge generations that connect over
-MTP, the only Terento transport: Edge 540, 840, 1040, 1050, 550, 850, 1060 and
-Edge Explore 2. Each row records the Garmin product specification row
-`Ability to add maps: yes` (checked 2026-11-02) in
-`specification_evidence.map_capable`. Solar editions normalize to the same
-base model, so no row carries a Solar value. Older Edge generations that
-connect as USB mass storage are not added. Every released native client
+before deciding to keep or withdraw them, migration 090 adds active Maps=Yes
+rows for the Edge generations that connect over MTP, the only Terento
+transport: Edge 540, 840, 1040, 1050, 550, 850, 1060 and Edge Explore 2. Each
+row records the Garmin product specification row `Ability to add maps: yes`
+(checked 2026-11-02) in `specification_evidence.map_capable`. Migration 091
+(owner: real status, Garmin's names and images, every Edge model) makes them
+ordinary Garmin catalog rows: the collector reads Garmin's cycling category
+(Edge products only), so current Edge models are `CURRENT_RETAIL` collector
+rows and models that leave the category are retired from retail like watches.
+It adds Edge MTB, Explore 3, Explore 3 Plus and the Solar editions (540, 840,
+1040 Solar) of the same generation with Maps=Yes from the same specification
+row; a Solar row must match its base row, because a base model is approved
+only when all its rows are Maps=Yes. Every older Edge model Garmin sold (Edge
+1030 Plus and earlier, back to Edge 205) is a `HISTORICAL_REVIEWED` row with
+Maps Unknown, so it stays `PENDING` until an install is verified; many of them
+connect as USB mass storage, which Terento does not use. A new Edge model that
+appears in the cycling category takes its Maps value from its specification
+row like any new collector model. Every released native client
 approves these models under the ordinary rule; no client change is involved.
 The web installer approves a reported plain base model (for example `Edge 840`)
 but strips only a trailing case size, so a reported Solar name (`Edge 1040
@@ -187,7 +197,7 @@ Migration 075 applies these decisions; the per-row evidence is stored in
   Series owner's manual. The standard fēnix 6 and 6S Dual Power editions are
   not added: Garmin publishes no map row for them, so they stay `PENDING`.
   Handheld and
-  non-map products are not added (Edge test rows: migration 090, above). Current-category models (for example
+  non-map products are not added (Edge rows: migrations 090 and 091, above). Current-category models (for example
   Enduro 4, Approach S72) are added by the weekly collector from their
   specification rows.
 - *Golf watches (owner rule, 2026-10-09).* A golf watch has Maps=Yes only

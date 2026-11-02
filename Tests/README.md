@@ -15,8 +15,8 @@ Release audits may additionally pass a freshly downloaded read-only response via
 optional checks use the real Swift clients and temporary test caches, never
 upload events or contact a Garmin device. Ordinary CI remains fixture-based.
 The policy check requires schema 3, policy version at least 3, a known approved
-fēnix 8, an approved MTP Edge 840 (migration 090) and pending unknown and absent
-Edge 830 identities. Update the audit assertions
+fēnix 8, an approved MTP Edge 840 (migration 090) and pending unknown and
+older-generation Edge 830 (Maps Unknown, migration 091) identities. Update the audit assertions
 explicitly if the live catalog scope changes; do not reinterpret a failed check
 as success. Local Docker skips require separate actual CI runtime evidence.
 The map-statistics runner accepts `TERENTO_MAP_EVENT_FIXTURE_OUTPUT` to export
