@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Generate Terento's deterministic sitemap and public-page content manifest.
 
-The page inventory comes from site/metadata.json.  A page fingerprint keeps
+The page inventory comes from site/metadata.json.  Its externalPages are
+public pages served by another service on this host (the web installer at
+/install/): listed with their reviewed lastmod, fingerprinted from their entry
+because their HTML is not in this repository.  A page fingerprint keeps
 IndexNow and sitemap lastmod decisions aligned: visible text, SEO metadata,
 structured data, embedded JSON and local JavaScript dependencies are included;
 presentation-only HTML attributes, comments and asset cache versions are not.
@@ -219,6 +222,31 @@ def validate_page(page: dict[str, object], pages: list[dict[str, object]]) -> No
     page_path(page)
 
 
+_DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
+def validate_external_page(page: object, pages: list[dict[str, object]]) -> None:
+    """An externalPages entry: canonical path on this host, no local file,
+    a reviewed lastmod (bumped by hand when that service's page changes)."""
+    if not isinstance(page, dict) or "file" in page:
+        raise ValueError("externalPages entries are objects without a file")
+    path = str(page.get("path", ""))
+    if not path.startswith("/") or not path.endswith("/") or "?" in path or "#" in path:
+        raise ValueError(f"invalid external page path: {path}")
+    if sum(1 for candidate in pages if isinstance(candidate, dict) and candidate.get("path") == path) != 1:
+        raise ValueError(f"duplicate canonical page path: {path}")
+    for key in ("locale", "title", "description", "lastmod"):
+        if not isinstance(page.get(key), str) or not page[key]:
+            raise ValueError(f"external page {path} needs {key}")
+    if not _DATE_RE.fullmatch(page["lastmod"]):
+        raise ValueError(f"external page {path} lastmod must be YYYY-MM-DD")
+
+
+def external_fingerprint(page: dict[str, object]) -> str:
+    material = json.dumps({key: page[key] for key in ("path", "locale", "title", "description", "lastmod")}, ensure_ascii=False, sort_keys=True)
+    return hashlib.sha256(("external\n" + material).encode("utf-8")).hexdigest()
+
+
 def read_state(path: Path) -> dict[str, object] | None:
     if not path.is_file():
         return None
@@ -307,6 +335,12 @@ def build_manifest(state_path: Path) -> dict[str, object]:
             raise ValueError("site/metadata.json pages must be objects")
         validate_page(page, pages)
 
+    external = config.get("externalPages", [])
+    if not isinstance(external, list):
+        raise ValueError("site/metadata.json externalPages must be a list")
+    for page in external:
+        validate_external_page(page, [*pages, *external])
+
     previous = read_state(state_path)
     result_pages: list[dict[str, object]] = []
     for page in pages:
@@ -337,6 +371,20 @@ def build_manifest(state_path: Path) -> dict[str, object]:
                 "dependencies": dependencies,
                 **({"lastmod": lastmod} if lastmod else {}),
                 **({"lastmodOmittedReason": lastmod_reason} if lastmod_reason else {}),
+            }
+        )
+
+    for page in external:
+        result_pages.append(
+            {
+                "path": page["path"],
+                "url": f"{BASE_URL}{page['path']}",
+                "external": True,
+                "locale": page["locale"],
+                "indexable": True,
+                "fingerprint": external_fingerprint(page),
+                "dependencies": [],
+                "lastmod": page["lastmod"],
             }
         )
 

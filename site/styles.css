@@ -2702,10 +2702,17 @@ details p {
   font-size: 15px;
 }
 
-.compatibility-guide-link {
+.compatibility-guide-link,
+.compatibility-web-installer-link {
   display: inline-flex;
   margin-top: 13px;
   font-size: 13px;
+}
+
+.compatibility-web-installer-link {
+  display: flex;
+  width: fit-content;
+  margin-top: 6px;
 }
 
 .compatibility-community-link {
@@ -2926,6 +2933,38 @@ details p {
   color: var(--secondary);
   font-size: 15px;
   line-height: 1.55;
+}
+
+/* Steps without screenshots (Linux guide, 2026-11-02): marker and text only. */
+.guide-timeline-text .guide-step {
+  grid-template-columns: 72px minmax(0, 1fr);
+  padding-bottom: 48px;
+}
+
+.guide-timeline-text .guide-step:not(:last-child)::before {
+  grid-column: 1;
+  margin-bottom: -48px;
+}
+
+.guide-timeline-text .guide-step-marker {
+  grid-column: 1;
+}
+
+.guide-timeline-text .guide-step-copy {
+  grid-column: 2;
+}
+
+.guide-command {
+  margin: 16px 0 0;
+  padding: 14px 16px;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-muted);
+  color: var(--graphite);
+  font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .guide-step-note {
@@ -3473,6 +3512,7 @@ details p {
 .map-styles-about-language { display: flex; align-items: flex-start; gap: 6px; margin: 0; color: var(--muted-text); font-size: 13px; }
 .map-styles-about-language .map-styles-icon { width: 16px; height: 16px; margin-top: 1px; }
 .map-styles-about-note { max-width: 80ch; margin: 14px 4px 0; color: var(--muted-text); font-size: 14px; line-height: 1.5; }
+.map-styles-install { margin-top: -16px; padding-bottom: 40px; color: var(--muted-text); font-size: 15px; line-height: 1.5; }
 .map-styles-viewer:not(.is-ready) .map-styles-overlay, .map-styles-viewer:not(.is-ready) .map-styles-zoom, .map-styles-viewer:not(.is-ready) .map-styles-divider { display: none; }
 
 @media (max-width: 1000px) {

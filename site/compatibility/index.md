@@ -497,5 +497,5 @@ Community results
 
 If your Garmin smartwatch supports maps, you can still try Terento. This list grows as successful installations are shared from more exact models and variants.
 
-[First time installing third-party maps? Read the Mac guide](https://terento.app/guides/install-garmin-maps-mac/)
+[First time installing third-party maps? Read the Mac guide](https://terento.app/guides/install-garmin-maps-mac/) [No Apple Silicon Mac? Use the web installer](https://terento.app/install/)
 [Download](https://terento.app/download/)

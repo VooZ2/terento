@@ -62,3 +62,5 @@ Zum Wandern und Radfahren im bekannten OpenTopoMap-Stil, auch wo andere Karten f
 Diese Karte enthält keine Höhenlinien.
 
 Vorschauen sind nah dran, aber nicht exakt: Deine Uhr zeichnet die Karte selbst, daher können Farben und Details je nach Modell und Karteneinstellungen abweichen.
+
+Installiere diese Karten mit der [Mac-App](https://terento.app/de/download/) oder dem [Web-Installer](https://terento.app/de/install/) auf deiner Uhr.

@@ -255,10 +255,28 @@ def results_markup(snapshot: dict, locale: str) -> str:
     return f'''<p class="compatibility-results-count" id="results-count" aria-live="polite">{len(models)} {esc(label)}</p><div class="watch-grid" id="watch-grid" aria-live="polite" aria-busy="false">{cards}</div><script type="application/json" id="compatibility-snapshot">{snapshot_json}</script><noscript class="compatibility-noscript"><p>{esc(copy["noscript"])}</p></noscript><p class="compatibility-empty" id="compatibility-empty" hidden>{esc(copy["no_match"])}</p>'''
 
 
+# Same words as add-guide-links.py COPY["download_web_installer"] (Download page).
+WEB_INSTALLER_LABEL = {
+    "en": "No Apple Silicon Mac? Use the web installer",
+    "de": "Kein Mac mit Apple Silicon? Nutze den Web-Installer",
+    "fr": "Pas de Mac Apple Silicon ? Utilisez l’installateur web",
+    "pl": "Nie masz Maca z Apple Silicon? Użyj instalatora webowego",
+    "cs": "Nemáte Mac s Apple Silicon? Použijte webový instalátor",
+    "it": "Niente Mac con Apple Silicon? Usa l’installer web",
+}
+
+
+def web_installer_link(locale: str) -> str:
+    """Without an Apple Silicon Mac: the web installer, in the Download page's words (add-guide-links.py)."""
+    label = WEB_INSTALLER_LABEL[locale]
+    href = f"/{'' if locale == 'en' else f'{locale}/'}install/"
+    return f'<a class="text-link compatibility-web-installer-link" href="{href}" data-umami-event="web-installer-link-click" data-umami-event-location="compatibility-community-testing">{esc(label)} <span aria-hidden="true">→</span></a>'
+
+
 def community_markup(locale: str) -> str:
     copy, prefix = COPY[locale], "" if locale == "en" else f"/{locale}"
     guide, download = f"{prefix}/guides/install-garmin-maps-mac/", f"{prefix}/download/"
-    return f'''<div class="compatibility-community-cta"><div class="compatibility-community-copy"><p class="eyebrow">{esc(copy["community_eyebrow"])}</p><h2>{esc(copy["community_heading"])}</h2><p>{esc(copy["community_body"])}</p><a class="text-link compatibility-guide-link" href="{guide}" data-umami-event="guide-link-click" data-umami-event-location="compatibility-community-testing">{esc(copy["guide_link"])} <span aria-hidden="true">→</span></a></div><a class="download-action download-action-primary compatibility-community-link" href="{download}" data-umami-event="download-cta-click" data-umami-event-location="compatibility-community-testing">{esc(copy["download"])}</a></div>'''
+    return f'''<div class="compatibility-community-cta"><div class="compatibility-community-copy"><p class="eyebrow">{esc(copy["community_eyebrow"])}</p><h2>{esc(copy["community_heading"])}</h2><p>{esc(copy["community_body"])}</p><a class="text-link compatibility-guide-link" href="{guide}" data-umami-event="guide-link-click" data-umami-event-location="compatibility-community-testing">{esc(copy["guide_link"])} <span aria-hidden="true">→</span></a>{web_installer_link(locale)}</div><a class="download-action download-action-primary compatibility-community-link" href="{download}" data-umami-event="download-cta-click" data-umami-event-location="compatibility-community-testing">{esc(copy["download"])}</a></div>'''
 
 
 def render_page(source: str, locale: str, snapshot: dict) -> str:

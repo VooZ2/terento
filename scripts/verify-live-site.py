@@ -142,6 +142,14 @@ def main() -> int:
                 continue
             url = entry.get("url")
             page = current.get(url)
+            if isinstance(url, str) and isinstance(page, dict) and page.get("external") is True:
+                # Served by another service on this host (the web installer):
+                # it must answer and name itself as canonical.
+                canonical = f'<link rel="canonical" href="{url}">'.encode()
+                if canonical not in fetch(http, "live external public page", url):
+                    raise RuntimeError(f"live external page does not name itself canonical: {url}")
+                checked += 1
+                continue
             if not isinstance(url, str) or not isinstance(page, dict) or not isinstance(page.get("file"), str):
                 raise RuntimeError("IndexNow plan contains a current URL without a local page")
             expected = (ROOT / page["file"]).read_bytes()

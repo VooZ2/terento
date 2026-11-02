@@ -497,5 +497,5 @@ Wyniki społeczności
 
 Jeśli Twój zegarek Garmin obsługuje mapy, nadal możesz wypróbować Terento. Lista rośnie wraz z udanymi instalacjami udostępnianymi dla kolejnych dokładnych modeli i wariantów.
 
-[Instalujesz mapy innych firm pierwszy raz? Przeczytaj instrukcję na Macu](https://terento.app/pl/guides/install-garmin-maps-mac/)
+[Instalujesz mapy innych firm pierwszy raz? Przeczytaj instrukcję na Macu](https://terento.app/pl/guides/install-garmin-maps-mac/) [Nie masz Maca z Apple Silicon? Użyj instalatora webowego](https://terento.app/pl/install/)
 [Pobierz](https://terento.app/pl/download/)

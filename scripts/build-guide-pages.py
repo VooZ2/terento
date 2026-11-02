@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Build the six static Terento Mac installation and troubleshooting guide pages.
+"""Build the static Terento guide pages: Mac installation, troubleshooting and
+the Linux web installer guide, six locales each.
 
 English is the meaning source. The release label is read from the canonical
 application update manifest so the guide cannot drift from the current release.
@@ -46,6 +47,18 @@ TROUBLESHOOTING_SLUG = "guides/troubleshooting/"
 TROUBLESHOOTING_PUBLISHED = "2026-10-06T00:00:00Z"
 TROUBLESHOOTING_REVIEWED = "2026-10-06T00:00:00Z"
 TROUBLESHOOTING_COPY = json.loads((ROOT / "scripts/templates/troubleshooting-copy.json").read_text(encoding="utf-8"))
+LINUX_SLUG = "guides/install-garmin-maps-linux/"
+LINUX_PUBLISHED = "2026-11-02T00:00:00Z"
+LINUX_REVIEWED = "2026-11-02T00:00:00Z"
+LINUX_COPY = json.loads((ROOT / "scripts/templates/linux-guide-copy.json").read_text(encoding="utf-8"))
+# One udev rule for every Garmin USB device (vendor 091e). The web installer
+# itself offers a rule for the connected watch only; this guide is read before
+# a watch is chosen. TAG+="uaccess" gives the signed-in user access on
+# systemd-logind systems; GROUP="plugdev" covers systems that use that group.
+LINUX_UDEV_COMMAND = (
+    "echo 'SUBSYSTEM==\"usb\", ATTR{idVendor}==\"091e\", MODE=\"0660\", GROUP=\"plugdev\", TAG+=\"uaccess\"' "
+    "| sudo tee /etc/udev/rules.d/70-garmin.rules >/dev/null && sudo udevadm control --reload-rules && sudo udevadm trigger"
+)
 # Stable public contract: the app opens
 # https://terento.app/guides/troubleshooting/#<anchor> for each error. Every
 # locale renders exactly these ids. Rename or remove one only together with the
@@ -1024,6 +1037,147 @@ def render_troubleshooting(locale: str) -> str:
 '''
 
 
+def web_installer_path(locale: str) -> str:
+    return localized_path(locale, "install/")
+
+
+def linux_json_ld(locale: str, copy: dict[str, object]) -> str:
+    canonical = f"{BASE_URL}{localized_path(locale, LINUX_SLUG)}"
+    graph = [
+        {
+            "@type": "Organization",
+            "@id": f"{BASE_URL}/#organization",
+            "name": "Terento",
+            "url": f"{BASE_URL}/",
+            "logo": f"{BASE_URL}/assets/logo-sky.svg",
+            "sameAs": ["https://github.com/VooZ2/terento"],
+        },
+        {
+            "@type": "HowTo",
+            "@id": f"{canonical}#howto",
+            "name": copy["h1"],
+            "description": copy["description"],
+            "inLanguage": locale,
+            "image": f"{BASE_URL}{SOCIAL_IMAGE}",
+            "datePublished": LINUX_PUBLISHED,
+            "dateModified": LINUX_REVIEWED,
+            "mainEntityOfPage": {"@id": canonical},
+            "publisher": {"@id": f"{BASE_URL}/#organization"},
+            "tool": [{"@type": "HowToTool", "name": need} for need in copy["needs"]],
+            "step": [
+                {"@type": "HowToStep", "position": index, "name": step["title"], "text": step["body"], "url": f"{canonical}#linux-step-{index}"}
+                for index, step in enumerate(copy["steps"], start=1)
+            ],
+        },
+        {
+            "@type": "BreadcrumbList",
+            "@id": f"{canonical}#breadcrumb",
+            "itemListElement": [
+                {"@type": "ListItem", "position": 1, "name": copy["breadcrumb_home"], "item": f"{BASE_URL}{localized_path(locale)}"},
+                {"@type": "ListItem", "position": 2, "name": copy["breadcrumb_current"], "item": canonical},
+            ],
+        },
+    ]
+    return json.dumps({"@context": "https://schema.org", "@graph": graph}, ensure_ascii=False, indent=2)
+
+
+def render_linux(locale: str) -> str:
+    """Render the Linux web installer guide; metadata and shell are filled by later passes."""
+    copy = LINUX_COPY[locale]
+    canonical = f"{BASE_URL}{localized_path(locale, LINUX_SLUG)}"
+    installer = web_installer_path(locale)
+    needs = "".join(f"<li>{esc(need)}</li>" for need in copy["needs"])
+    steps = []
+    for index, step in enumerate(copy["steps"], start=1):
+        command = (
+            f'<pre class="guide-command" aria-label="{esc(copy["command_label"])}"><code>{esc(LINUX_UDEV_COMMAND)}</code></pre>'
+            if step.get("command") else ""
+        )
+        steps.append(f'''<li class="guide-step" id="linux-step-{index}">
+              <div class="guide-step-marker" aria-hidden="true">{index:02d}</div>
+              <div class="guide-step-content">
+                <div class="guide-step-copy">
+                  <h3>{esc(step["title"])}</h3>
+                  <p>{esc(step["body"])}</p>{command}
+                </div>
+              </div>
+            </li>''')
+    problems = "".join(
+        f'''<section class="troubleshooting-item" id="linux-problem-{index}" aria-labelledby="linux-problem-{index}-title">
+              <h3 id="linux-problem-{index}-title">{esc(problem["title"])}</h3>
+              <p>{esc(problem["body"])}</p>
+            </section>'''
+        for index, problem in enumerate(copy["problems"], start=1)
+    )
+    steps_markup = "\n            ".join(steps)
+    return f'''<!doctype html>
+<html lang="{locale}" data-language="{locale}" data-page="linux-guide">
+  <head>
+    <script defer src="/site-shell.js?v={SHELL_VERSION}"></script>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#F7F3EC">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#222A2B">
+    <meta name="description" content="{esc(copy["description"])}">
+    <meta name="robots" content="index,follow">
+    <link rel="canonical" href="{canonical}">
+    <title>{esc(copy["title"])}</title>
+    <link rel="icon" href="/favicon.ico?v=20260820-4" sizes="any">
+    <link rel="icon" href="/favicon.svg?v=20260820-4" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20260820-4">
+    <link rel="mask-icon" href="/safari-pinned-tab.svg?v=20260820-4" color="#7898A8">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="stylesheet" href="/styles.css?v={STYLE_VERSION}">
+    <script defer src="/language.js?v={LANGUAGE_VERSION}"></script>
+    <script defer src="/privacy-consent.js?v={UMAMI_SCRIPT_VERSION}"></script>
+    <script type="application/ld+json">
+{linux_json_ld(locale, copy)}
+    </script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content" data-umami-event="internal-link-click" data-umami-event-location="skip-link">{esc(copy["skip"])}</a>
+    <header class="site-header"></header>
+    <main id="main-content" class="guide-main">
+      <article class="guide-article">
+        <header class="guide-intro">
+          <div class="shell">
+            <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>{esc(copy["eyebrow"])}</p>
+            <h1>{esc(copy["h1"])}</h1>
+            <p class="guide-lede">{esc(copy["intro"])}</p>
+          </div>
+        </header>
+
+        <div class="shell guide-content">
+          <section class="guide-preflight" id="before-you-start" aria-labelledby="linux-needs-title">
+            <div class="guide-section-heading"><h2 id="linux-needs-title">{esc(copy["needs_title"])}</h2></div>
+            <div class="guide-preflight-copy">
+              <ul class="guide-checklist">{needs}</ul>
+            </div>
+          </section>
+
+          <section class="guide-steps" id="steps" aria-labelledby="linux-steps-title">
+            <div class="guide-section-heading"><p class="eyebrow">{esc(copy["steps_eyebrow"])}</p><h2 id="linux-steps-title">{esc(copy["steps_title"])}</h2></div>
+            <ol class="guide-timeline guide-timeline-text">{steps_markup}</ol>
+          </section>
+
+          <section class="troubleshooting" id="linux-problems" aria-labelledby="linux-problems-title">
+            <div class="guide-section-heading"><p class="eyebrow">{esc(copy["problems_eyebrow"])}</p><h2 id="linux-problems-title">{esc(copy["problems_title"])}</h2></div>
+            <div class="troubleshooting-list">{problems}</div>
+          </section>
+
+          <section class="guide-bottom-cta" aria-labelledby="linux-bottom-title">
+            <div><p class="eyebrow">{esc(copy["cta_eyebrow"])}</p><h2 id="linux-bottom-title">{esc(copy["cta_title"])}</h2></div>
+            <a class="text-link" href="{installer}" data-umami-event="web-installer-link-click" data-umami-event-location="linux-guide-bottom">{esc(copy["cta_link"])} <span aria-hidden="true">→</span></a>
+          </section>
+        </div>
+      </article>
+    </main>
+    <footer class="site-footer"></footer>
+  </body>
+</html>
+'''
+
+
 def main() -> None:
     release_path = ROOT / "site" / "updates" / "macos-arm64.json"
     release = json.loads(release_path.read_text(encoding="utf-8"))
@@ -1037,6 +1191,11 @@ def main() -> None:
         output = ROOT / "site" / localized_path(locale, TROUBLESHOOTING_SLUG).lstrip("/") / "index.html"
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(re.sub(r"[ \t]+\n", "\n", render_troubleshooting(locale)), encoding="utf-8")
+        print(output.relative_to(ROOT))
+    for locale in ("en", "de", "fr", "pl", "cs", "it"):
+        output = ROOT / "site" / localized_path(locale, LINUX_SLUG).lstrip("/") / "index.html"
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(re.sub(r"[ \t]+\n", "\n", render_linux(locale)), encoding="utf-8")
         print(output.relative_to(ROOT))
 
 

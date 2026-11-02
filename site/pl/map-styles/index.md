@@ -62,3 +62,5 @@ Na piesze i rowerowe wycieczki w znanym stylu OpenTopoMap, także tam, gdzie bra
 Ta mapa nie ma poziomic.
 
 Podglądy są zbliżone, ale nie dokładne: zegarek sam rysuje mapę, więc kolory i szczegóły mogą się różnić w zależności od modelu i ustawień mapy.
+
+Zainstaluj te mapy na zegarku w [aplikacji na Maca](https://terento.app/pl/download/) lub w [instalatorze webowym](https://terento.app/pl/install/).

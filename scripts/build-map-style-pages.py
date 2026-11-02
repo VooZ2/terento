@@ -107,6 +107,9 @@ COPY: dict[str, dict[str, object]] = {
         "showing": "Showing {style} for {place}",
         "about": "About the map styles",
         "about_note": "Previews are close, not exact: your watch draws the map itself, so colours and detail can differ with the watch model and its map settings.",
+        "install_line": "Install these maps on your watch with the {mac} or the {web}.",
+        "install_mac": "Mac app",
+        "install_web": "web installer",
         "noscript": "Turn on JavaScript to compare the map styles on the map.",
         "continents": {"europe": "Europe", "north-america": "North America", "south-america": "South America", "africa": "Africa", "asia": "Asia", "oceania": "Oceania"},
         "tags": {"mountains": "Mountains", "glaciers": "Glaciers", "lakes": "Lakes", "coast": "Coast", "forest": "Forest", "volcano": "Volcano", "canyon": "Canyon", "dunes": "Dunes", "river": "River", "highlands": "Highlands", "island": "Island", "rocks": "Rock formations", "city": "City", "cycling": "Cycling", "parks": "Parks", "old-town": "Old town", "non-latin-labels": "Non-Latin labels", "long-distance-trail": "Long-distance trail", "pilgrim-route": "Pilgrim route"},
@@ -157,6 +160,9 @@ COPY: dict[str, dict[str, object]] = {
         "showing": "{style} für {place} wird angezeigt",
         "about": "Über die Kartenstile",
         "about_note": "Vorschauen sind nah dran, aber nicht exakt: Deine Uhr zeichnet die Karte selbst, daher können Farben und Details je nach Modell und Karteneinstellungen abweichen.",
+        "install_line": "Installiere diese Karten mit der {mac} oder dem {web} auf deiner Uhr.",
+        "install_mac": "Mac-App",
+        "install_web": "Web-Installer",
         "noscript": "Aktiviere JavaScript, um die Kartenstile auf der Karte zu vergleichen.",
         "continents": {"europe": "Europa", "north-america": "Nordamerika", "south-america": "Südamerika", "africa": "Afrika", "asia": "Asien", "oceania": "Ozeanien"},
         "tags": {"mountains": "Berge", "glaciers": "Gletscher", "lakes": "Seen", "coast": "Küste", "forest": "Wald", "volcano": "Vulkan", "canyon": "Schlucht", "dunes": "Dünen", "river": "Fluss", "highlands": "Hochland", "island": "Insel", "rocks": "Felsformationen", "city": "Stadt", "cycling": "Radfahren", "parks": "Parks", "old-town": "Altstadt", "non-latin-labels": "Nicht-lateinische Beschriftung", "long-distance-trail": "Fernwanderweg", "pilgrim-route": "Pilgerweg"},
@@ -207,6 +213,9 @@ COPY: dict[str, dict[str, object]] = {
         "showing": "Affichage de {style} pour {place}",
         "about": "À propos des styles de carte",
         "about_note": "Les aperçus sont proches, mais pas exacts : votre montre dessine elle-même la carte, les couleurs et le niveau de détail peuvent donc varier selon le modèle et ses réglages de carte.",
+        "install_line": "Installez ces cartes sur votre montre avec l’{mac} ou l’{web}.",
+        "install_mac": "app pour Mac",
+        "install_web": "installateur web",
         "noscript": "Activez JavaScript pour comparer les styles sur la carte.",
         "continents": {"europe": "Europe", "north-america": "Amérique du Nord", "south-america": "Amérique du Sud", "africa": "Afrique", "asia": "Asie", "oceania": "Océanie"},
         "tags": {"mountains": "Montagnes", "glaciers": "Glaciers", "lakes": "Lacs", "coast": "Côte", "forest": "Forêt", "volcano": "Volcan", "canyon": "Canyon", "dunes": "Dunes", "river": "Rivière", "highlands": "Hautes terres", "island": "Île", "rocks": "Formations rocheuses", "city": "Ville", "cycling": "Vélo", "parks": "Parcs", "old-town": "Vieille ville", "non-latin-labels": "Libellés non latins", "long-distance-trail": "Grande randonnée", "pilgrim-route": "Chemin de pèlerinage"},
@@ -257,6 +266,9 @@ COPY: dict[str, dict[str, object]] = {
         "showing": "Wyświetlono {style} dla miejsca {place}",
         "about": "O stylach map",
         "about_note": "Podglądy są zbliżone, ale nie dokładne: zegarek sam rysuje mapę, więc kolory i szczegóły mogą się różnić w zależności od modelu i ustawień mapy.",
+        "install_line": "Zainstaluj te mapy na zegarku w {mac} lub w {web}.",
+        "install_mac": "aplikacji na Maca",
+        "install_web": "instalatorze webowym",
         "noscript": "Włącz JavaScript, aby porównać style na mapie.",
         "continents": {"europe": "Europa", "north-america": "Ameryka Północna", "south-america": "Ameryka Południowa", "africa": "Afryka", "asia": "Azja", "oceania": "Oceania"},
         "tags": {"mountains": "Góry", "glaciers": "Lodowce", "lakes": "Jeziora", "coast": "Wybrzeże", "forest": "Las", "volcano": "Wulkan", "canyon": "Kanion", "dunes": "Wydmy", "river": "Rzeka", "highlands": "Wyżyny", "island": "Wyspa", "rocks": "Formacje skalne", "city": "Miasto", "cycling": "Rower", "parks": "Parki", "old-town": "Stare miasto", "non-latin-labels": "Opisy niełacińskie", "long-distance-trail": "Szlak długodystansowy", "pilgrim-route": "Szlak pielgrzymkowy"},
@@ -307,6 +319,9 @@ COPY: dict[str, dict[str, object]] = {
         "showing": "Zobrazeno {style} pro {place}",
         "about": "O stylech map",
         "about_note": "Náhledy jsou blízké, ale ne přesné: hodinky kreslí mapu samy, takže barvy a podrobnosti se mohou lišit podle modelu a nastavení mapy.",
+        "install_line": "Nainstalujte tyto mapy do hodinek pomocí {mac} nebo {web}.",
+        "install_mac": "aplikace pro Mac",
+        "install_web": "webového instalátoru",
         "noscript": "Zapněte JavaScript a porovnejte styly na mapě.",
         "continents": {"europe": "Evropa", "north-america": "Severní Amerika", "south-america": "Jižní Amerika", "africa": "Afrika", "asia": "Asie", "oceania": "Oceánie"},
         "tags": {"mountains": "Hory", "glaciers": "Ledovce", "lakes": "Jezera", "coast": "Pobřeží", "forest": "Les", "volcano": "Sopka", "canyon": "Kaňon", "dunes": "Duny", "river": "Řeka", "highlands": "Vysočina", "island": "Ostrov", "rocks": "Skalní útvary", "city": "Město", "cycling": "Cyklistika", "parks": "Parky", "old-town": "Staré město", "non-latin-labels": "Nelatinkové popisky", "long-distance-trail": "Dálková trasa", "pilgrim-route": "Poutní cesta"},
@@ -357,6 +372,9 @@ COPY: dict[str, dict[str, object]] = {
         "showing": "Visualizzazione di {style} per {place}",
         "about": "Informazioni sugli stili di mappa",
         "about_note": "Le anteprime sono vicine, ma non identiche: l’orologio disegna la mappa da sé, quindi colori e dettagli possono variare in base al modello e alle impostazioni della mappa.",
+        "install_line": "Installa queste mappe sull’orologio con l’{mac} o con l’{web}.",
+        "install_mac": "app per Mac",
+        "install_web": "installer web",
         "noscript": "Attiva JavaScript per confrontare gli stili sulla mappa.",
         "continents": {"europe": "Europa", "north-america": "Nord America", "south-america": "Sud America", "africa": "Africa", "asia": "Asia", "oceania": "Oceania"},
         "tags": {"mountains": "Montagne", "glaciers": "Ghiacciai", "lakes": "Laghi", "coast": "Costa", "forest": "Foresta", "volcano": "Vulcano", "canyon": "Canyon", "dunes": "Dune", "river": "Fiume", "highlands": "Altopiani", "island": "Isola", "rocks": "Formazioni rocciose", "city": "Città", "cycling": "Bici", "parks": "Parchi", "old-town": "Centro storico", "non-latin-labels": "Etichette non latine", "long-distance-trail": "Sentiero a lunga percorrenza", "pilgrim-route": "Cammino di pellegrinaggio"},
@@ -422,6 +440,13 @@ def style_copy(locale: str) -> list[dict[str, object]]:
 
 def area_name(area: dict, locale: str) -> str:
     return area["name"].get(locale) or area["name"]["en"]
+
+
+def install_line(locale: str, copy: dict[str, object]) -> str:
+    """Where to install the compared maps: the Mac app or the web installer (2026-11-02)."""
+    mac = f'<a class="text-link" href="{localized_path(locale, "download/")}" data-umami-event="download-cta-click" data-umami-event-location="map-styles-install">{esc(copy["install_mac"])}</a>'
+    web = f'<a class="text-link" href="{localized_path(locale, "install/")}" data-umami-event="web-installer-link-click" data-umami-event-location="map-styles-install">{esc(copy["install_web"])}</a>'
+    return esc(copy["install_line"]).replace("{mac}", mac).replace("{web}", web)
 
 
 def about_markup(locale: str, copy: dict[str, object], styles: list[dict[str, object]]) -> str:
@@ -608,6 +633,7 @@ def render(locale: str) -> str:
           <p class="map-styles-about-note">{esc(copy["about_note"])}</p>
         </details>
       </section>
+      <p class="shell map-styles-install">{install_line(locale, copy)}</p>
     </main>
     <footer class="site-footer"></footer>
     <script type="application/json" id="map-styles-data">{page_data(locale, copy, styles)}</script>
