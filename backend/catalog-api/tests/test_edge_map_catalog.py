@@ -1,5 +1,9 @@
 """Migration 090: Garmin Edge map catalog (owner test decision 2026-11-02).
 
+Migration 091 later moves these rows into the retail catalog and adds the
+other Edge models (test_edge_retail_catalog.py); the database tests here
+check only what 090 decided and 091 keeps.
+
 The shipped macOS resolver is exercised through the Python port in
 test_installation_policy.py, against the policy built from the migrated
 PostgreSQL catalog.
@@ -37,7 +41,8 @@ NEW_ROWS = {
     "garmin-edge-explore-2": "edge explore 2",
 }
 
-# Reported name -> the one approved row. Solar editions share the base model.
+# Reported name -> its approved row. Solar editions share the base model
+# (091 adds each Solar edition as its own Maps=Yes row of that base model).
 REPORTED_APPROVED = {
     "Edge 540": "garmin-edge-540",
     "Edge® 540 Solar": "garmin-edge-540",
@@ -52,7 +57,7 @@ REPORTED_APPROVED = {
     "Edge Explore 2": "garmin-edge-explore-2",
 }
 
-# Mass-storage generations and other Edge names stay absent, therefore PENDING.
+# Older generations (091: Maps Unknown) and other Edge names stay PENDING.
 REPORTED_PENDING = ("Edge 530", "Edge 830", "Edge 1030", "Edge 1030 Plus", "Edge 130 Plus",
                     "Edge Explore", "Edge", "Edge 10400")
 
@@ -106,12 +111,11 @@ class MigratedCatalogTests(PGliteTestCase):
                 self.assertIs(row["mapCapable"], True)
                 self.assertEqual((row["scope"], row["installationAuthorization"]), ("IN_SCOPE", "APPROVED"))
                 self.assertIsNone(row["solar"])
-        stored = self.sql("SELECT id, family_id, record_source, collector_managed, support_status, "
+        stored = self.sql("SELECT id, family_id, support_status, "
                           "specification_evidence FROM device_model WHERE id = ANY(%s)", (list(NEW_ROWS),))
         self.assertEqual(len(stored), len(NEW_ROWS))
         for row in stored:
-            self.assertEqual((row["family_id"], row["record_source"], row["collector_managed"], row["support_status"]),
-                             ("garmin-edge", "HISTORICAL_REVIEWED", False, "NOT_EVALUATED"))
+            self.assertEqual((row["family_id"], row["support_status"]), ("garmin-edge", "NOT_EVALUATED"))
             evidence = row["specification_evidence"]["map_capable"]
             self.assertIs(evidence["value"], True)
             self.assertRegex(evidence["source"], r"^https://www\.garmin\.com/en-US/p/\d+/$")
@@ -122,14 +126,15 @@ class MigratedCatalogTests(PGliteTestCase):
         for reported, device_id in REPORTED_APPROVED.items():
             for strict in (True, False):
                 with self.subTest(reported=reported, strict=strict):
-                    self.assertEqual(app_resolve(document, garmin(reported), strict=strict),
-                                     ("APPROVED", [device_id]))
+                    decision, candidates = app_resolve(document, garmin(reported), strict=strict)
+                    self.assertEqual(decision, "APPROVED")
+                    self.assertIn(device_id, candidates)
 
     def test_other_edge_names_stay_pending(self):
         document = self.policy()
         for reported in REPORTED_PENDING:
             with self.subTest(reported=reported):
-                self.assertEqual(app_resolve(document, garmin(reported)), ("PENDING", []))
+                self.assertEqual(app_resolve(document, garmin(reported))[0], "PENDING")
 
 
 
