@@ -1737,6 +1737,18 @@ def _bucket_in_progress(value: Any, bucket: str, time_zone: str = "UTC") -> bool
     return start is not None and _next_overview_bucket(start, bucket, time_zone=time_zone) > datetime.now(timezone.utc)
 
 
+def _partial_outline(segments: dict[int, tuple[float, float, float, float]]) -> str:
+    """One dashed outline around a whole bar still in progress; the segments
+    keep their colours and touch without a separator."""
+    if not segments:
+        return ""
+    x, width = next(iter(segments.values()))[:2]
+    top = min(y for _, _, y, _ in segments.values())
+    height = sum(h for _, _, _, h in segments.values())
+    return (f"<rect class='overview-chart-partial-outline' x='{x:.1f}' y='{top:.2f}' "
+            f"width='{width:.1f}' height='{height:.2f}' aria-hidden='true'/>")
+
+
 def _chart_axis_labels(
     positions: list[float], texts: list[str], *, font_size: float, chart_width: float,
     gap: float = 6.0,
@@ -1889,6 +1901,8 @@ def _overview_trend_chart(
                 f"<title>{html.escape(title)}</title></rect>"
             )
         in_progress = _bucket_in_progress(item.get("bucket"), bucket, time_zone)
+        if in_progress:
+            group_bars.append(_partial_outline(segments))
         group_title = f"{bucket_label}{' (in progress)' if in_progress else ''} · Total: {stack_total}"
         if series_titles:
             group_title += " · " + " · ".join(series_titles)
@@ -1939,6 +1953,19 @@ def _overview_trend_chart(
     )
 
 
+def _download_marker_texts(item: dict[str, Any]) -> list[str]:
+    """The visible marker texts of one App downloads bucket (wide chart)."""
+    markers = [marker for marker in item.get("release_markers") or [] if isinstance(marker, dict)]
+    texts = []
+    if len(markers) == 1:
+        texts.append(f"New release · {markers[0].get('label') or markers[0].get('tag') or 'release'}")
+    elif markers:
+        texts.append(f"New releases · {len(markers)}")
+    if item.get("contains_discontinuity") or item.get("state") == "discontinuity":
+        texts.append("Data boundary")
+    return texts
+
+
 def _overview_download_marker(
     item: dict[str, Any], center: float, top: float, plot_height: float,
     chart_bucket: str, time_zone: str, *, _compact: bool = False, show_text: bool = True,
@@ -1953,10 +1980,8 @@ def _overview_download_marker(
         if len(markers) == 1:
             marker = markers[0]
             label = str(marker.get("label") or marker.get("tag") or "release")
-            visible = "New release" if _compact else f"New release · {label}"
             detail = f"New release: {label}"
         else:
-            visible = f"New releases · {len(markers)}"
             detail = "New releases: " + ", ".join(
                 str(marker.get("label") or marker.get("tag") or "release")
                 for marker in markers
@@ -1967,7 +1992,7 @@ def _overview_download_marker(
             f"<g class='overview-chart-download-release' role='img' aria-label='{html.escape(title, quote=True)}'>"
             f"<line x1='{center + 1.5:.1f}' x2='{center + 1.5:.1f}' y1='{top:.1f}' y2='{top + plot_height:.1f}'/>"
             # The bare line keeps its name in the title when the text is hidden.
-            + (f"<text x='{center:.1f}' y='{top - (24 if item.get('contains_discontinuity') or item.get('state') == 'discontinuity' else 8):.1f}' text-anchor='middle'>{html.escape(visible)}</text>" if show_text else "")
+            + (f"<text x='{center:.1f}' y='{top - (24 if item.get('contains_discontinuity') or item.get('state') == 'discontinuity' else 8):.1f}' text-anchor='middle'>{html.escape(_download_marker_texts(item)[0])}</text>" if show_text else "")
             + f"<title>{html.escape(title)}</title></g>"
         )
     if item.get("contains_discontinuity") or item.get("state") == "discontinuity":
@@ -1975,7 +2000,6 @@ def _overview_download_marker(
             "counter_decrease": "download counter decreased",
             "population_change": "asset or release population changed",
         }.get(str(item.get("discontinuity_reason") or ""), "the interval cannot be compared")
-        visible = "Data boundary"
         retained = int(item.get("discontinuity_count") or 0)
         retained_note = f" · {retained} data boundary retained" if retained == 1 else (
             f" · {retained} data boundaries retained" if retained > 1 else ""
@@ -1985,7 +2009,7 @@ def _overview_download_marker(
         parts.append(
             f"<g class='overview-chart-download-boundary' role='img' aria-label='{html.escape(title, quote=True)}'>"
             f"<line x1='{center - 1.5:.1f}' x2='{center - 1.5:.1f}' y1='{top:.1f}' y2='{top + plot_height:.1f}'/>"
-            + (f"<text x='{center:.1f}' y='{top - 8:.1f}' text-anchor='middle'>{html.escape(visible)}</text>" if show_text else "")
+            + (f"<text x='{center:.1f}' y='{top - 8:.1f}' text-anchor='middle'>Data boundary</text>" if show_text else "")
             + f"<title>{html.escape(title)}</title></g>"
         )
     if not parts:
@@ -2090,14 +2114,12 @@ def _overview_downloads_chart(
     bucket_times = [_parse_timestamp(item.get("bucket")) for item in trend]
     slot_indexes = list(range(len(trend)))
     known = [value for value in bucket_times if value is not None]
-    if chart_bucket != "hour" and len(known) == len(trend) and len(trend) > 1:
-        steps = [(b - a).total_seconds() for a, b in zip(bucket_times, bucket_times[1:]) if b > a]
-        if steps:
-            step = min(steps)
-            # Pairwise rounding keeps uneven months on consecutive slots.
-            slot_indexes = [0]
-            for a, b in zip(bucket_times, bucket_times[1:]):
-                slot_indexes.append(slot_indexes[-1] + max(1, round((b - a).total_seconds() / step)))
+    if len(known) == len(trend) and len(trend) > 1:
+        step = {"hour": 3600, "day": 86400, "week": 7 * 86400}.get(chart_bucket, 30.44 * 86400)
+        # Pairwise rounding keeps uneven months and DST days on consecutive slots.
+        slot_indexes = [0]
+        for a, b in zip(bucket_times, bucket_times[1:]):
+            slot_indexes.append(slot_indexes[-1] + max(1, round((b - a).total_seconds() / step)))
     slot = plot_width / (max(slot_indexes, default=0) + 1)
 
     def position_center(index: int) -> float:
@@ -2107,7 +2129,7 @@ def _overview_downloads_chart(
         (".dmg downloads", "overview-chart-download-dmg"),
         (".zip downloads", "overview-chart-download-zip"),
     )
-    last_marker_text = -math.inf
+    marker_text_end = -math.inf
     for index, (counts, item) in enumerate(zip(values, trend)):
         center = position_center(index)
         bar_width = min(slot * 0.72, 64 if _compact else 86)
@@ -2190,18 +2212,21 @@ def _overview_downloads_chart(
                 f"width='{segment_width:.1f}' height='{height:.2f}' aria-hidden='true'>"
                 f"<title>{html.escape(title)}</title></rect>"
             )
+        if in_progress:
+            bars.append(_partial_outline(segments))
         bars.append("</g>")
         # Visible marker text only on the desktop chart and only clear of the
-        # previous one; every marker keeps its line, title and accessible name.
-        show_text = not _compact and center - last_marker_text >= 120
+        # previous text; every marker keeps its line, title and accessible name.
+        half_width = max((len(text) * 10 * 0.62 for text in _download_marker_texts(item)), default=0) / 2
+        show_text = not _compact and center - half_width >= marker_text_end + 8
         marker = _overview_download_marker(
             item, center, top, plot_height, chart_bucket, time_zone,
             _compact=_compact, show_text=show_text,
         )
         if marker:
             bars.append(marker)
-            if show_text:
-                last_marker_text = center
+            if show_text and half_width:
+                marker_text_end = center + half_width
     centers = [position_center(index) for index in range(len(values))]
     axis_texts = [_overview_chart_bucket_label(item.get("bucket"), chart_bucket, time_zone) for item in trend]
     for index, anchor in _chart_axis_labels(
@@ -10920,7 +10945,7 @@ a.overview-kpi:focus-visible{outline:var(--admin-focus-ring);outline-offset:-2px
 .overview-kpi-spark polygon{fill:color-mix(in srgb,var(--sky) 14%,transparent)}
 /* A bucket still in progress is dashed: its bar outlined, its sparkline segment broken. */
 .overview-kpi-spark polyline.is-partial{stroke-dasharray:3 2}
-.overview-chart-group.is-partial rect{fill-opacity:.45}.overview-chart-group.is-partial:not(:focus-visible) rect{stroke:var(--secondary);stroke-width:1;stroke-dasharray:3 2}
+.overview-chart-partial-outline{fill:none;stroke:var(--secondary);stroke-width:1.5;stroke-dasharray:4 3;pointer-events:none}
 @media(max-width:900px){.overview-kpi-strip{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr))}.overview-kpi-cell{border-bottom:1px solid var(--admin-line)}.overview-kpi-cell:nth-child(2n),.overview-kpi-cell:last-child{border-right:0}.overview-kpi-cell:last-child:nth-child(odd){grid-column:1/-1;border-bottom:0}}
 """
 

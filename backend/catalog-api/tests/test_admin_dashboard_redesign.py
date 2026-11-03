@@ -497,6 +497,15 @@ class ChartQaTests(unittest.TestCase):
         chart = _overview_trend_chart(trend, "hour")
         self.assertEqual(chart.count("overview-chart-group is-partial"), 2)  # the last bar, desktop and mobile
         self.assertIn("(in progress) · Total: 1", chart)
+        # One dashed outline per bar; segments keep full tone and no separators.
+        self.assertEqual(chart.count("class='overview-chart-partial-outline'"), 2)
+        self.assertNotIn("fill-opacity", ADMIN_STYLES.split(".overview-chart-partial-outline", 1)[1].split("}", 1)[0])
+        # Hourly App downloads use the same grid: a missing hour is an empty slot.
+        hourly = _overview_downloads_chart({"hasData": True, "bucket": "hour", "trend": [
+            {"bucket": f"2026-09-11T{hour}:00:00Z", "dmg_count": 1, "zip_count": 0} for hour in (10, 12)]})
+        slot = (720 - 38 - 12) / 3
+        self.assertIn(f"<rect class='overview-chart-download-dmg' data-stack-index='0' data-stack-total='1' "
+                      f"x='{38 + 2.5 * slot - min(slot * 0.72, 86) / 2:.1f}'", hourly)
         self.assertNotIn("(in progress) · Total: 2", chart)
         spark = _sparkline([2, 1], partial_last=True)
         self.assertIn("<polyline points='0.0,2.0'/><polyline class='is-partial' points='0.0,2.0 100.0,15.0'/>", spark)

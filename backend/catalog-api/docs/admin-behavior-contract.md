@@ -316,8 +316,9 @@ failed). Successful bars use the quiet
 `--sky` tone so failures stand out. Every Dashboard chart, App downloads
 included, puts its bars on one even bucket grid (a missing bucket stays an
 empty slot, never a drawn zero), uses a four-step axis with round steps (3,
-20, 40, never 19 or 37), and draws the bucket still in progress dashed, as do
-the headline sparklines (owner QA 2026-11-03). App downloads marker text shows
+20, 40, never 19 or 37), and marks the bucket still in progress with one
+dashed outline around the whole bar (its segments keep their full tone and no
+separator) and a dashed last sparkline segment (owner QA 2026-11-03). App downloads marker text shows
 only on the wide chart and only where it does not collide; on phones the
 marker lines keep their names in titles. One `All`/`App`/`App Store`/`Web` switch beside the
 period picker, in the picker's height, swaps both chart cards at once (owner
