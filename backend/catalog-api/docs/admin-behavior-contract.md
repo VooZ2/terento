@@ -306,7 +306,7 @@ Installs (successful as the value, success rate top right whenever it is
 known, including 0%, `N failed` below in the danger tone only when positive, a
 sparkline of the period's successful results per bucket; one tile per source,
 swapped by the source switch), App downloads (the period's .dmg plus .zip
-increase, each named), First run (opened sessions, % allowed, connected; `—`
+increase, with `.dmg N · .zip N` on one line under the value), First run (opened sessions, % allowed, connected; `—`
 and `Unavailable` when the funnel cannot be read) and Needs attention (the
 `Now` total, `—` when any row is unavailable). Below 900 px the tiles form two
 columns and each tile puts its top-right fact under the label, so the values
