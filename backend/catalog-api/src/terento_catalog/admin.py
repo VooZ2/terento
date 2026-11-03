@@ -29,6 +29,7 @@ from .campaign_links import (
 )
 from .asset_attribution import generic_fallback_image
 from .admin_brand_tokens_generated import ADMIN_BRAND_TOKENS_CSS
+from .db import _next_overview_bucket
 from .compatibility_status import (
     CANONICAL_STATUS_ORDER,
     STATUS_PUBLIC_COPY,
@@ -1721,6 +1722,33 @@ def _chart_value_strip() -> str:
     return "<p class='overview-chart-values admin-legend' data-chart-values-strip aria-live='polite'></p>"
 
 
+def _nice_tick_step(maximum: int) -> int:
+    """Smallest round whole step (3, 4, 20, 25, 40, 150 …, never 19 or 37)
+    that fits ``maximum`` in four steps."""
+    raw = max(maximum, 1) / 4
+    magnitude = 10 ** math.floor(math.log10(raw)) if raw >= 1 else 1
+    return next(int(m * magnitude) for m in (1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10)
+                if m * magnitude >= raw and float(m * magnitude).is_integer())
+
+
+def _bucket_in_progress(value: Any, bucket: str, time_zone: str = "UTC") -> bool:
+    """True while the bucket starting at ``value`` has not ended yet."""
+    start = _parse_timestamp(value)
+    return start is not None and _next_overview_bucket(start, bucket, time_zone=time_zone) > datetime.now(timezone.utc)
+
+
+def _partial_outline(segments: dict[int, tuple[float, float, float, float]]) -> str:
+    """One dashed outline around a whole bar still in progress; the segments
+    keep their colours and touch without a separator."""
+    if not segments:
+        return ""
+    x, width = next(iter(segments.values()))[:2]
+    top = min(y for _, _, y, _ in segments.values())
+    height = sum(h for _, _, _, h in segments.values())
+    return (f"<rect class='overview-chart-partial-outline' x='{x:.1f}' y='{top:.2f}' "
+            f"width='{width:.1f}' height='{height:.2f}' aria-hidden='true'/>")
+
+
 def _chart_axis_labels(
     positions: list[float], texts: list[str], *, font_size: float, chart_width: float,
     gap: float = 6.0,
@@ -1824,7 +1852,7 @@ def _overview_trend_chart(
     # full bar represents every event, while the segments retain their
     # canonical outcome composition.
     maximum = max((sum(counts) for counts in values), default=1) or 1
-    tick_step = max(1, math.ceil(maximum / 4))
+    tick_step = _nice_tick_step(maximum)
     scale_maximum = tick_step * 4
     chart_width, chart_height = (360, 220) if _compact else (1200, 260) if _wide else (720, 260)
     left, right, top, bottom = 42, 12, 20, 38
@@ -1872,7 +1900,10 @@ def _overview_trend_chart(
                 f"width='{segment_width:.1f}' height='{height:.2f}' aria-hidden='true'>"
                 f"<title>{html.escape(title)}</title></rect>"
             )
-        group_title = f"{bucket_label} · Total: {stack_total}"
+        in_progress = _bucket_in_progress(item.get("bucket"), bucket, time_zone)
+        if in_progress:
+            group_bars.append(_partial_outline(segments))
+        group_title = f"{bucket_label}{' (in progress)' if in_progress else ''} · Total: {stack_total}"
         if series_titles:
             group_title += " · " + " · ".join(series_titles)
         group_title += f" · {time_zone}"
@@ -1881,7 +1912,7 @@ def _overview_trend_chart(
             bucket_label, [(name, label, count) for count, (name, label, _) in zip(counts, series)], stack_total,
         )
         bars.append(
-            f"<g class='overview-chart-group' role='img' tabindex='0'{strip_data} aria-label='{html.escape(group_title, quote=True)}'>"
+            f"<g class='overview-chart-group{' is-partial' if in_progress else ''}' role='img' tabindex='0'{strip_data} aria-label='{html.escape(group_title, quote=True)}'>"
             f"<title>{html.escape(group_title)}</title>{''.join(group_bars)}</g>"
         )
     axis_texts = [_overview_chart_bucket_label(item.get("bucket"), bucket, time_zone) for item in trend]
@@ -1922,9 +1953,22 @@ def _overview_trend_chart(
     )
 
 
+def _download_marker_texts(item: dict[str, Any]) -> list[str]:
+    """The visible marker texts of one App downloads bucket (wide chart)."""
+    markers = [marker for marker in item.get("release_markers") or [] if isinstance(marker, dict)]
+    texts = []
+    if len(markers) == 1:
+        texts.append(f"New release · {markers[0].get('label') or markers[0].get('tag') or 'release'}")
+    elif markers:
+        texts.append(f"New releases · {len(markers)}")
+    if item.get("contains_discontinuity") or item.get("state") == "discontinuity":
+        texts.append("Data boundary")
+    return texts
+
+
 def _overview_download_marker(
     item: dict[str, Any], center: float, top: float, plot_height: float,
-    chart_bucket: str, time_zone: str, *, _compact: bool = False,
+    chart_bucket: str, time_zone: str, *, _compact: bool = False, show_text: bool = True,
 ) -> str:
     markers = [marker for marker in item.get("release_markers") or [] if isinstance(marker, dict)]
     observed_label = _overview_chart_bucket_label(
@@ -1936,10 +1980,8 @@ def _overview_download_marker(
         if len(markers) == 1:
             marker = markers[0]
             label = str(marker.get("label") or marker.get("tag") or "release")
-            visible = "New release" if _compact else f"New release · {label}"
             detail = f"New release: {label}"
         else:
-            visible = f"New releases · {len(markers)}"
             detail = "New releases: " + ", ".join(
                 str(marker.get("label") or marker.get("tag") or "release")
                 for marker in markers
@@ -1949,15 +1991,15 @@ def _overview_download_marker(
         parts.append(
             f"<g class='overview-chart-download-release' role='img' aria-label='{html.escape(title, quote=True)}'>"
             f"<line x1='{center + 1.5:.1f}' x2='{center + 1.5:.1f}' y1='{top:.1f}' y2='{top + plot_height:.1f}'/>"
-            f"<text x='{center:.1f}' y='{top - (24 if item.get('contains_discontinuity') or item.get('state') == 'discontinuity' else 8):.1f}' text-anchor='middle'>{html.escape(visible)}</text>"
-            f"<title>{html.escape(title)}</title></g>"
+            # The bare line keeps its name in the title when the text is hidden.
+            + (f"<text x='{center:.1f}' y='{top - (24 if item.get('contains_discontinuity') or item.get('state') == 'discontinuity' else 8):.1f}' text-anchor='middle'>{html.escape(_download_marker_texts(item)[0])}</text>" if show_text else "")
+            + f"<title>{html.escape(title)}</title></g>"
         )
     if item.get("contains_discontinuity") or item.get("state") == "discontinuity":
         reason = {
             "counter_decrease": "download counter decreased",
             "population_change": "asset or release population changed",
         }.get(str(item.get("discontinuity_reason") or ""), "the interval cannot be compared")
-        visible = "Data boundary"
         retained = int(item.get("discontinuity_count") or 0)
         retained_note = f" · {retained} data boundary retained" if retained == 1 else (
             f" · {retained} data boundaries retained" if retained > 1 else ""
@@ -1967,8 +2009,8 @@ def _overview_download_marker(
         parts.append(
             f"<g class='overview-chart-download-boundary' role='img' aria-label='{html.escape(title, quote=True)}'>"
             f"<line x1='{center - 1.5:.1f}' x2='{center - 1.5:.1f}' y1='{top:.1f}' y2='{top + plot_height:.1f}'/>"
-            f"<text x='{center:.1f}' y='{top - 8:.1f}' text-anchor='middle'>{html.escape(visible)}</text>"
-            f"<title>{html.escape(title)}</title></g>"
+            + (f"<text x='{center:.1f}' y='{top - 8:.1f}' text-anchor='middle'>Data boundary</text>" if show_text else "")
+            + f"<title>{html.escape(title)}</title></g>"
         )
     if not parts:
         return ""
@@ -1999,15 +2041,19 @@ def _app_download_counts(trend: list[dict[str, Any]]) -> list[tuple[int | None, 
     return values
 
 
-def _sparkline(points: list[int]) -> str:
-    """Glance-size trend: no axes, 1.5 px line, faint fill (dashboard-design)."""
+def _sparkline(points: list[int], *, partial_last: bool = False) -> str:
+    """Glance-size trend: no axes, 1.5 px line, faint fill (dashboard-design).
+    ``partial_last`` dashes the segment into a bucket that has not ended."""
     if len(points) < 2:
         return ""
     top = max(points) or 1
     step = 100 / (len(points) - 1)
-    line = " ".join(f"{index * step:.1f},{28 - 26 * value / top:.1f}" for index, value in enumerate(points))
+    coords = [f"{index * step:.1f},{28 - 26 * value / top:.1f}" for index, value in enumerate(points)]
+    line = " ".join(coords)
+    solid = " ".join(coords[:-1]) if partial_last else line
+    tail = f"<polyline class='is-partial' points='{' '.join(coords[-2:])}'/>" if partial_last else ""
     return ("<svg class='overview-kpi-spark' viewBox='0 0 100 30' preserveAspectRatio='none' aria-hidden='true'>"
-            f"<polygon points='0,30 {line} 100,30'/><polyline points='{line}'/></svg>")
+            f"<polygon points='0,30 {line} 100,30'/><polyline points='{solid}'/>{tail}</svg>")
 
 
 def _overview_kpi(label: str, value: str, *, aside: str = "", sub: str = "", danger: bool = False,
@@ -2044,14 +2090,14 @@ def _overview_downloads_chart(
     }.get(period, "the selected period")
     values = _app_download_counts(trend)
     maximum = max((sum(value for value in series if value is not None) for series in values), default=1) or 1
-    scale_maximum = max(4, math.ceil(maximum * 1.2))
+    # The same round four-step axis as the map trend charts.
+    tick_step = _nice_tick_step(maximum)
+    scale_maximum = tick_step * 4
     chart_width, chart_height = (360, 220) if _compact else (720, 260)
     left, top, bottom = 38, 42, 34
     plot_height = chart_height - top - bottom
-    slot = (chart_width - left - 12) / max(len(values), 1)
-    tick_step = max(1, (scale_maximum + 3) // 4)
     grid = []
-    for amount in sorted(set(range(0, scale_maximum + 1, tick_step)) | {scale_maximum}):
+    for amount in range(0, scale_maximum + 1, tick_step):
         tick_y = top + plot_height * (1 - amount / scale_maximum)
         grid.append(
             f"<line class='overview-chart-grid' x1='{left}' x2='{chart_width-12}' "
@@ -2062,40 +2108,31 @@ def _overview_downloads_chart(
     bars: list[str] = []
     labels: list[str] = []
     plot_width = chart_width - left - 12
-    position_times = [
-        _parse_timestamp(item.get("observed_at") or item.get("bucket"))
-        for item in trend
-    ]
-    valid_position_times = [value for value in position_times if value is not None]
-    position_start = min(valid_position_times) if valid_position_times else None
-    position_end = max(valid_position_times) if valid_position_times else None
-    position_span = (
-        position_end - position_start
-        if position_start is not None and position_end is not None
-        else None
-    )
-    edge_inset = min(slot / 2, plot_width / 2)
-    timeline_width = max(0.0, plot_width - edge_inset * 2)
+    # Bars stand on one regular bucket grid like the map charts: placed by
+    # bucket start (not observation time), so a missing bucket stays an empty
+    # slot and is never drawn as a zero.
+    bucket_times = [_parse_timestamp(item.get("bucket")) for item in trend]
+    slot_indexes = list(range(len(trend)))
+    known = [value for value in bucket_times if value is not None]
+    if len(known) == len(trend) and len(trend) > 1:
+        step = {"hour": 3600, "day": 86400, "week": 7 * 86400}.get(chart_bucket, 30.44 * 86400)
+        # Pairwise rounding keeps uneven months and DST days on consecutive slots.
+        slot_indexes = [0]
+        for a, b in zip(bucket_times, bucket_times[1:]):
+            slot_indexes.append(slot_indexes[-1] + max(1, round((b - a).total_seconds() / step)))
+    slot = plot_width / (max(slot_indexes, default=0) + 1)
 
     def position_center(index: int) -> float:
-        """Use ordered hourly slots; exact observation time stays metadata."""
-        if chart_bucket == "hour":
-            return left + (index + 0.5) * slot
-        observed_at = position_times[index]
-        if position_start is None or position_span is None or observed_at is None:
-            return left + (index + 0.5) * slot
-        if position_span.total_seconds() <= 0:
-            return left + plot_width / 2
-        fraction = (observed_at - position_start).total_seconds() / position_span.total_seconds()
-        return left + edge_inset + max(0.0, min(1.0, fraction)) * timeline_width
+        return left + (slot_indexes[index] + 0.5) * slot
 
     series = (
         (".dmg downloads", "overview-chart-download-dmg"),
         (".zip downloads", "overview-chart-download-zip"),
     )
+    marker_text_end = -math.inf
     for index, (counts, item) in enumerate(zip(values, trend)):
         center = position_center(index)
-        bar_width = min(44, slot * 0.58)
+        bar_width = min(slot * 0.72, 64 if _compact else 86)
         x = center - bar_width / 2
         y = top + plot_height
         clip_id = f"overview-download-bar-clip-{'mobile-' if _compact else ''}{index}"
@@ -2120,8 +2157,10 @@ def _overview_downloads_chart(
             )
             zero_title = f"{label}: 0 · {zero_description} {_overview_chart_bucket_label(observed_at, chart_bucket, time_zone)} · {time_zone}"
             zero_titles.append(zero_title + legacy_note + partial_note)
+        in_progress = _bucket_in_progress(item.get("bucket"), chart_bucket, time_zone)
         group_title = (
             f"{_overview_chart_bucket_label(item.get('bucket'), chart_bucket, time_zone)}"
+            f"{' (in progress)' if in_progress else ''}"
             f" · Observed increase: {stack_total}"
             + "".join(
                 f" · {label}: {count}" for (label, _), count in zip(series, counts) if count
@@ -2138,7 +2177,7 @@ def _overview_downloads_chart(
             stack_total if all(count is not None for count in counts) else None,
         )
         group_accessibility = (
-            " class='overview-chart-group' role='img' tabindex='0'" + strip_data + " aria-label='"
+            f" class='overview-chart-group{' is-partial' if in_progress else ''}' role='img' tabindex='0'" + strip_data + " aria-label='"
             + html.escape(group_title, quote=True)
             + "'"
         )
@@ -2173,13 +2212,21 @@ def _overview_downloads_chart(
                 f"width='{segment_width:.1f}' height='{height:.2f}' aria-hidden='true'>"
                 f"<title>{html.escape(title)}</title></rect>"
             )
+        if in_progress:
+            bars.append(_partial_outline(segments))
         bars.append("</g>")
+        # Visible marker text only on the desktop chart and only clear of the
+        # previous text; every marker keeps its line, title and accessible name.
+        half_width = max((len(text) * 10 * 0.62 for text in _download_marker_texts(item)), default=0) / 2
+        show_text = not _compact and center - half_width >= marker_text_end + 8
         marker = _overview_download_marker(
             item, center, top, plot_height, chart_bucket, time_zone,
-            _compact=_compact,
+            _compact=_compact, show_text=show_text,
         )
         if marker:
             bars.append(marker)
+            if show_text and half_width:
+                marker_text_end = center + half_width
     centers = [position_center(index) for index in range(len(values))]
     axis_texts = [_overview_chart_bucket_label(item.get("bucket"), chart_bucket, time_zone) for item in trend]
     for index, anchor in _chart_axis_labels(
@@ -2876,16 +2923,19 @@ def overview_page(
                     completed = _optional_nonnegative_int(source.get(keys[0]))
                     failed = _optional_nonnegative_int(source.get(keys[1]))
                     # The sparkline follows the tile's number: successful results only.
+                    trend_rows = [item for item in source.get("trend") or [] if isinstance(item, dict)]
                     points = [sum(max(0, int(item.get(field) or 0)) for css, _, field in series
                                   if css in ("success", "custom", "download-success"))
-                              for item in source.get("trend") or [] if isinstance(item, dict)]
+                              for item in trend_rows]
+                    partial_last = bool(trend_rows) and _bucket_in_progress(
+                        trend_rows[-1].get("bucket"), str(source.get("bucket") or bucket), time_zone)
                     # data-stat hooks keep the numbers addressable for freshness and tests.
                     tile = _overview_kpi(
                         label, f"{completed:,}" if completed is not None else "—", stat=keys[0],
                         aside_html=f"<strong data-stat='{keys[2]}'>{html.escape(_format_rate(source.get(keys[2])))}</strong>" if source.get(keys[2]) is not None else "",
                         sub_html=(f"<strong data-stat='{keys[1]}'>{failed:,}</strong> failed" if failed is not None
                                   else f"<strong data-stat='{keys[1]}'>—</strong> failed"),
-                        danger=bool(failed), spark=_sparkline(points),
+                        danger=bool(failed), spark=_sparkline(points, partial_last=partial_last),
                     )
                 cells.append(f"<div data-source-panel='{name}'{'' if name == 'all' else ' hidden'}>{tile}</div>")
             return "<div class='overview-kpi-cell'>" + "".join(cells) + "</div>"
@@ -2940,12 +2990,15 @@ def overview_page(
 
     # --- Headline tiles: one card, hairline dividers (dashboard-design) -------
     if downloads_available and download_has_data:
-        app_counts = _app_download_counts([item for item in downloads.get("trend") or [] if isinstance(item, dict)])
+        download_trend = [item for item in downloads.get("trend") or [] if isinstance(item, dict)]
+        app_counts = _app_download_counts(download_trend)
         dmg, zip_ = _sum_known(app_counts, 0), _sum_known(app_counts, 1)
         headline_tiles.append("<div class='overview-kpi-cell'>" + _overview_kpi(
             "App downloads", "—" if dmg is None and zip_ is None else f"{(dmg or 0) + (zip_ or 0):,}",
-            aside=f".dmg {dmg:,}" if dmg is not None else "", sub=f".zip {zip_:,}" if zip_ is not None else "",
-            spark=_sparkline([sum(value or 0 for value in row) for row in app_counts]),
+            # Owner 2026-11-03: the .dmg and .zip split shares one line under the number.
+            sub=" · ".join(f"{name} {count:,}" for name, count in ((".dmg", dmg), (".zip", zip_)) if count is not None),
+            spark=_sparkline([sum(value or 0 for value in row) for row in app_counts], partial_last=bool(download_trend) and _bucket_in_progress(
+                download_trend[-1].get("bucket"), str(downloads.get("bucket") or "hour"), time_zone)),
         ) + "</div>")
     funnel = overview.get("funnel")
     if isinstance(funnel, dict) and funnel.get("available") is not False and "stages" in funnel:
@@ -3067,6 +3120,7 @@ def missing_reports_page(
     notice = _missing_report_notice(
         review_action, notice_event_id, csrf_token, return_to="/admin/review/missing-reports",
     )
+    summary = ""
     if payload is None:
         body = _unavailable_card("Missing reports", "missing-reports")
     else:
@@ -3096,16 +3150,16 @@ def missing_reports_page(
             f"<ul class='overview-attention-list'>{items}</ul>{pagination}" if rows
             else _empty_state("empty", "Nothing to review.")
         )
-        body = "<section class='admin-card installation-kpis' aria-label='Missing report summary'>" + _metric_row([
-            _metric_tile("Missing reports", total, scope="now"),
-        ], label="Missing report summary") + "</section>" + _section_card(
+        # Same shape as Identity review: the count in the heading, one card.
+        summary = f"<p class='page-meta'>{_scope_chip('now')}<span>{_count_label(total, 'report')}</span></p>"
+        body = _section_card(
             "Reports", list_markup, card_id="missing-report-list", css="overview-attention-panel",
         )
     content = f"""
       {_admin_header(user, csrf_token, active='overview')}
       <main class='dashboard missing-reports-page' id='main-content'>
         <p class='back-link'><a href='/admin'>{_admin_icon('arrow-left')} Dashboard</a></p>
-        <div class='heading-row'><div><h1>Missing reports</h1></div></div>
+        <div class='heading-row'><div><h1>Missing reports</h1></div>{summary}</div>
         {notice}{body}
       </main>
       <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_diagnostics_script()}</script>
@@ -7135,7 +7189,7 @@ def device_detail_page(
       </main>
       <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_diagnostics_script()}</script>
     """
-    return _layout(f"{model} {variant}", content, sections={"device": device, "diagnostics": operations, "resolved": resolved_operations})
+    return _layout(model + (f" {variant}" if variant != "—" else ""), content, sections={"device": device, "diagnostics": operations, "resolved": resolved_operations})
 
 
 def diagnostics_page(
@@ -9754,8 +9808,6 @@ button,input,select,textarea{font-size:var(--admin-type-control-size);line-heigh
 .overview-chart-wrap{max-width:780px;margin:0 auto}
 .overview-download-panel{padding-top:16px;padding-bottom:16px}
 .overview-download-panel .section-heading{margin-bottom:6px}
-.overview-chart-download-dmg{fill:var(--interactive);background:var(--interactive)}
-.overview-chart-download-zip{fill:var(--status-success-text);background:var(--status-success-text)}
 .overview-chart-download-marker line{stroke-width:2;stroke-dasharray:4 3}.overview-chart-download-marker text{stroke:none;font-size:10px;font-weight:700}.overview-chart-download-release line{stroke:var(--interactive)}.overview-chart-download-release text{fill:var(--interactive)}.overview-chart-download-boundary line{stroke:var(--secondary)}.overview-chart-download-boundary text{fill:var(--secondary)}
 .overview-trend-chart{display:block;width:100%;height:260px;max-width:760px;min-height:0;margin:0 auto}
 .overview-trend-mobile{display:none}
@@ -10368,13 +10420,13 @@ ADMIN_STYLES += """
 .admin-legend li{display:inline-flex;align-items:center;gap:6px}
 .admin-legend i{display:inline-block;width:12px;height:12px;border:1px solid var(--border);border-radius:3px}
 .admin-legend strong{color:var(--graphite);font-weight:600;font-variant-numeric:tabular-nums}
-/* Chart palette (owner decision 2026-10-05): one definition. */
-.overview-chart-success{fill:var(--sky);background:var(--sky)}
-.overview-chart-custom{fill:var(--lichen-dark);background:var(--lichen-dark)}
+/* Chart palette, one definition (owner 2026-11-03): healthy series recede in pale tones, problems keep their full tone, updates are hatched. */
+.overview-chart-success,.overview-chart-download-success,.overview-chart-download-dmg{fill:color-mix(in srgb,var(--sky) 72%,var(--surface));background:color-mix(in srgb,var(--sky) 72%,var(--surface))}
+.overview-chart-download-zip{fill:color-mix(in srgb,var(--sky) 40%,var(--surface));background:color-mix(in srgb,var(--sky) 40%,var(--surface))}
+.overview-chart-custom{fill:var(--lichen);background:var(--lichen)}
 .overview-chart-failed{fill:var(--danger);background:var(--danger)}
 .overview-chart-update{fill:var(--stone-dark);background:var(--stone-dark)}
 .overview-chart-update-failed{fill:var(--danger)}
-.overview-chart-download-success{fill:var(--sky);background:var(--sky)}
 .overview-chart-download-failed{fill:var(--danger);background:var(--danger)}
 .admin-legend i.overview-chart-update-failed{border-color:var(--danger);background:repeating-linear-gradient(45deg,var(--danger) 0 4px,var(--surface) 4px 6px)}
 .admin-legend i.overview-chart-update{border-color:var(--stone-dark);background:repeating-linear-gradient(45deg,var(--stone-dark) 0 4px,var(--surface) 4px 6px)}
@@ -10842,7 +10894,6 @@ main.first-run-page>.web-installer-grid{gap:var(--admin-card-gap)}main.first-run
 .overview-source-label{display:none}
 @media(min-width:1024px){.overview-source-switch button{width:auto;gap:6px;padding:0 12px}.overview-source-label{display:inline}}
 @media(max-width:760px){.overview-period-form:has(.overview-source-switch) label{flex:1 1 auto;min-width:0}}
-/* Chart totals: one badge, successful / failed / rate. */
 """
 # Signed-in pages link one cacheable stylesheet; the content hash in the name
 # changes whenever the CSS changes (served by the admin map-assets route).
@@ -10877,10 +10928,6 @@ th,td{border-bottom-color:var(--admin-line)}
 .admin-section-nav a.active{border:0;background:var(--surface);color:var(--graphite);font-weight:600;box-shadow:var(--admin-shadow-card)}
 /* Scope stays visible, as quiet text instead of a pill */
 .admin-scope-chip,.admin-scope-chip[data-scope]{min-height:0;padding:0;border:0;background:none;color:var(--secondary);font-weight:500}
-/* Card totals: plain numbers, no chip */
-/* Healthy series recede (pale with a solid cap), problems keep their full tone */
-.overview-chart-success,.overview-chart-download-success{fill:color-mix(in srgb,var(--sky) 72%,var(--surface));background:color-mix(in srgb,var(--sky) 72%,var(--surface))}
-.overview-chart-custom{fill:color-mix(in srgb,var(--lichen-dark) 75%,var(--surface));background:color-mix(in srgb,var(--lichen-dark) 75%,var(--surface))}
 /* Dashboard headline tiles: one card, hairline dividers */
 .overview-kpi-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));grid-auto-flow:column;margin:0 0 var(--admin-card-gap);padding:0}
 .overview-kpi-cell{min-width:0;padding:8px;border-right:1px solid var(--admin-line)}.overview-kpi-cell:last-child{border-right:0}
@@ -10896,6 +10943,9 @@ a.overview-kpi:focus-visible{outline:var(--admin-focus-ring);outline-offset:-2px
 .overview-kpi-spark{display:block;width:100%;height:28px;margin-top:auto;padding-top:8px}
 .overview-kpi-spark polyline{fill:none;stroke:var(--sky);stroke-width:1.5;vector-effect:non-scaling-stroke}
 .overview-kpi-spark polygon{fill:color-mix(in srgb,var(--sky) 14%,transparent)}
+/* A bucket still in progress is dashed: its bar outlined, its sparkline segment broken. */
+.overview-kpi-spark polyline.is-partial{stroke-dasharray:3 2}
+.overview-chart-partial-outline{fill:none;stroke:var(--secondary);stroke-width:1.5;stroke-dasharray:4 3;pointer-events:none}
 @media(max-width:900px){.overview-kpi-strip{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr))}.overview-kpi-cell{border-bottom:1px solid var(--admin-line)}.overview-kpi-cell:nth-child(2n),.overview-kpi-cell:last-child{border-right:0}.overview-kpi-cell:last-child:nth-child(odd){grid-column:1/-1;border-bottom:0}}
 """
 

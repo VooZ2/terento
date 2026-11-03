@@ -194,7 +194,7 @@ class MissingDiagnosticReviewTests(unittest.TestCase):
         # total is explicit with pagination to the rest (ADM-11).
         self.assertEqual(body.count("aria-label='Dismiss review item'"), 7)
         self.assertIn("data-stat", body) if False else None
-        self.assertIn('>57<', body)
+        self.assertIn('57 reports', body)
         self.assertIn('1–50 of 57', body)
         self.assertIn("href='/admin/review/missing-reports?offset=50'", body)
         self.assertIn('No device report · not counted in Failed', body)
