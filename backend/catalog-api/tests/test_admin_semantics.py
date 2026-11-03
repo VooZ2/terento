@@ -387,8 +387,8 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("overview-trend-title", overview)
         self.assertEqual(overview.count("Trend data is unavailable for this period."), 1)
         main = overview.split("id='main-content'", 1)[1]
-        self.assertLess(main.index("overview-primary-grid"), main.index("overview-attention-title"))
-        self.assertLess(main.index("overview-attention-title"), main.index("overview-activity-title"))
+        self.assertLess(main.index("overview-attention-title"), main.index("overview-primary-grid"))
+        self.assertLess(main.index("overview-primary-grid"), main.index("overview-activity-title"))
         self.assertIn("overview-composition-grid", main)
         self.assertNotIn("overview-tertiary-grid", main)
 
@@ -471,11 +471,12 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         day = render("24h", 1)
         month = render("30d", 30)
         for body, count, scope in ((day, 1, "Last 24 hours"), (month, 30, "Last 30 days")):
-            heads = "".join(section.split("</header>", 1)[0] for section in body.split("<section")[1:3])
+            heads = "".join(section.split("</header>", 1)[0] for section in body.split("<section")[1:]
+                            if "id='overview-trend-title'" in section or "id='overview-download-trend-title'" in section)
             # Header totals follow the selected period and say so visibly (ADM-04/05).
             self.assertIn(f"data-stat='completedInstallCount'>{count}</strong>", heads)
             self.assertIn(f"data-stat='completedDownloadCount'>{count}</strong>", heads)
-            self.assertIn(f">{scope}</span>", heads)
+            self.assertIn(f" selected>{scope}</option>", body)
             # Map chart cards carry no All time line (owner decision 2026-10-06).
             for card in ("overview-trend-title", "overview-download-trend-title"):
                 self.assertNotIn("class='overview-all-time'", body.split(f"id='{card}'", 1)[1].split("</section>", 1)[0])
@@ -831,7 +832,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("viewBox='0 0 720 260'", body)
         self.assertIn("overview-chart-panel", body)
         self.assertIn("<h2 id='overview-activity-title'>Activity</h2>", body)
-        self.assertIn(">Downloads</h2>", body)
+        self.assertIn(">Map downloads</h2>", body)
         self.assertIn(">Installs</h2>", body)
         self.assertNotIn("<section class='overview-panel overview-download-panel'", body)
         self.assertNotIn("<small>Updates</small>", body)
@@ -3089,16 +3090,17 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         main = body.split("<main",1)[1]
         for text in ("Downloads", "Installs", "Updates", ">Providers</h2>", "Top countries", ">Top maps</h2>", ">Countries</h2>", ">Events <"):
             self.assertIn(text, main)
-        # Reading order: tiles, countries, providers, top maps, events, then the
-        # charts at the very bottom (owner decision 2026-10-06).
+        # Reading order: tiles, the trend charts, then countries, providers,
+        # top maps and events (owner decision 2026-11-03).
         order = [main.index(marker) for marker in (
-            "id='map-statistics-filters'", "id='map-statistics-metrics'", "id='map-statistics-coverage'",
-            "id='map-statistics-provider-table'", "id='maps-by-provider'", "id='map-statistics-event-detail'",
+            "id='map-statistics-filters'", "id='map-statistics-metrics'",
             "class='overview-primary-grid map-statistics-trends'", "id='map-download-trend-title'",
+            "id='map-statistics-coverage'", "id='map-statistics-provider-table'", "id='maps-by-provider'",
+            "id='map-statistics-event-detail'",
         )]
         self.assertEqual(order, sorted(order))
         self.assertTrue(main.split("</main>", 1)[0].rstrip().endswith("</section>"))
-        self.assertGreater(main.index("map-statistics-trends"), main.index("</details></section>"))
+        self.assertLess(main.index("map-statistics-trends"), main.index("</details></section>"))
         # The Countries card has no visible country/install count line.
         self.assertNotIn("map-statistics-world-map-status", body)
         self.assertNotIn("countries ·", body)

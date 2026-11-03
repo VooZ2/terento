@@ -98,7 +98,8 @@ class DashboardPresentationTests(unittest.TestCase):
         self.assertNotIn("overview-tiles", body)
         installs = body.split("id='overview-trend-title'", 1)[1].split("</section>", 1)[0]
         head = installs.split("</header>", 1)[0]
-        self.assertIn("data-scope='period'>Last 7 days</span>", head)
+        # The period lives in the picker; cards repeat no period chip.
+        self.assertNotIn("data-scope='period'", head)
         # One badge, numbers only (owner 2026-10-11): successful / failed / rate.
         self.assertIn("<span class='overview-card-total overview-card-result'>"
                       "<strong data-stat='completedInstallCount'>12</strong><span class='sr-only'> successful,</span>"
@@ -179,15 +180,16 @@ class DashboardPresentationTests(unittest.TestCase):
         self.assertNotIn(".overview-attention-empty{align-self:start}", ADMIN_STYLES)
 
     def test_dashboard_rows_pair_cards_of_similar_height(self):
-        # Owner 2026-10-11: Needs attention beside Activity, First run beside
-        # App downloads; cards in a row stretch to one height.
+        # Owner 2026-11-03: Needs attention beside First run, then the charts,
+        # then Activity beside App downloads; cards in a row stretch to one height.
         body = self.render(funnel=_funnel(**self.FIRST_RUN), downloads={
             "hasData": True, "dmgTotal": 3, "zipTotal": 1, "bucket": "day", "trend": [
                 {"bucket": "2026-10-01T00:00:00Z", "observed_at": "2026-10-01T00:00:00Z",
                  "state": "observed_increase", "dmg_count": 1, "zip_count": 0}]})
-        grid = body.split("<div class='overview-composition-grid'>", 1)[1].split("</main>", 1)[0]
+        grid = body.split("<div class='overview-composition-grid overview-review-grid'>", 1)[1].split("</main>", 1)[0]
         order = [grid.index(f"id='{card}-title'") for card in
-                 ("overview-attention", "overview-activity", "overview-funnel", "overview-downloads")]
+                 ("overview-attention", "overview-funnel", "overview-download-trend", "overview-trend",
+                  "overview-activity", "overview-downloads")]
         self.assertEqual(order, sorted(order))
         self.assertIn(".overview-composition-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));"
                       "align-items:stretch;", ADMIN_STYLES)

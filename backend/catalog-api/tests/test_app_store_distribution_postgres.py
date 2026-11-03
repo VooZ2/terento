@@ -83,7 +83,7 @@ class AppStoreDistributionTests(PGliteTestCase):
         for stat, value in (("app-attempts", 2), ("appstore-attempts", 2), ("appstore-successful", 1),
                             ("appstore-failed", 1), ("all-attempts", 4), ("all-successful", 3)):
             self.assertIn(f"data-stat='{stat}'>{value}</span>", card)
-        self.assertIn("<span class='sr-only'>App Store</span>", card)
+        self.assertIn("<span class='source-count-label'>App Store</span>", card)
 
     def test_maps_and_dashboard_parts_add_up_to_the_app_total(self):
         self.seed()

@@ -13,7 +13,7 @@
     const bounds = L.latLngBounds([0, 0], [height, width]);
     const map = L.map(container, {
       crs: L.CRS.Simple, minZoom: -4, maxZoom: 4, zoomSnap: 0,
-      scrollWheelZoom: true, attributionControl: true, zoomControl: false,
+      scrollWheelZoom: false, attributionControl: true, zoomControl: false,
       maxBounds: bounds.pad(.3), maxBoundsViscosity: .8
     });
     L.svgOverlay(svg, bounds, {interactive: true}).addTo(map);

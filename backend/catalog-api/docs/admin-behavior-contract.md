@@ -293,18 +293,22 @@ duplicate Review navigation item.
 
 Dashboard must answer whether anything is wrong, what happened in the selected
 period, whether activity is changing, and what to inspect next. It has no
-summary tile row: the Downloads and Installs chart cards share the first row.
-Each chart card holds exactly three things (owner decision 2026-10-06): a
-header with the period scope chip and, top right, the period totals as one
+summary tile row: Needs attention and First run share the first row, then the
+Map downloads and Installs chart cards share the second (owner decision
+2026-11-03). Each chart card holds exactly three things (owner decision 2026-10-06): a
+header with its title and, top right, the period totals as one
 numbers-only badge `successful / failed / success rate` (owner decision
 2026-10-11; failed in the danger tone only when positive, the words only for
-screen readers; Installs counts fresh installs only); the chart; and a legend
-naming each series by colour without counts. One `All`/`App`/`App Store`/`Web` switch beside the
+screen readers; Installs counts fresh installs only, so update segments are
+hatched: stone for succeeded, danger for failed); the chart; and a legend
+naming each series by colour without counts. Successful bars use the quiet
+`--sky` tone so failures stand out. One `All`/`App`/`App Store`/`Web` switch beside the
 period picker, in the picker's height, swaps both chart cards at once (owner
 decisions 2026-10-10 and 2026-10-11; All is the default and the choice
 survives a period change): the chart and its header totals. The switch shows
-Font Awesome icons only (layer-group All, laptop App, app-store-ios App Store,
-globe Web; the names are for screen readers). App and App Store split the
+Font Awesome icons (layer-group All, laptop App, app-store-ios App Store,
+globe Web) with their names visible from 1024 px and for screen readers below
+(owner decision 2026-11-03). App and App Store split the
 app-only statistic below into the directly downloaded app and the Mac App Store
 build (owner request 2026-10-30;
 [`STATISTICS_CONTRACT.md`](../../../contracts/STATISTICS_CONTRACT.md), App and
@@ -323,18 +327,20 @@ explanatory text is shown in these cards; all-time totals live on Maps. Header t
 population, so they agree. A legend elsewhere shows a count only where it adds
 information no total shows (the Maps Custom .img install split and the App
 downloads period increases). The Needs attention header shows its `Now` total
-as one chip (`—` when any row is unavailable). Below the
-charts, Needs attention and Activity share a row, then First run and App
-downloads share the next row (owner decision 2026-10-11, swapping Activity and
-First run); cards in a row stretch to one height, the First run previous-period
-line closes its card at the bottom like the App downloads All time line, and
+as one neutral chip (`—` when any row is unavailable). Below the charts,
+Activity and App downloads share the last row (owner decision 2026-11-03);
+cards in a row stretch to one height, the First run previous-period
+line closes its card at the bottom, and
 when one card is omitted the last one spans the row, so no Dashboard row leaves
-an empty grid cell at ≥1024 px. The narrow order is Downloads, Installs, Needs
-attention, Activity, First run, then App downloads.
+an empty grid cell at ≥1024 px. The narrow order is Needs attention, First run,
+Map downloads, Installs, Activity, then App downloads; in one column Activity
+shows its five newest rows without an inner scroll, and View all opens the rest.
 
 Every number shows its scope as visible text (`Today`, `Last 24 hours`,
 `Last 7 days`, `Last 30 days`, `All time` or `Now`); hover-only scope is not
-used. Every Admin period picker (the Dashboard period dropdown and the Maps time
+used. On the Dashboard the period picker names the selected period once and
+cards carry a scope chip only when it differs (`Now`, `All time`; owner
+decision 2026-11-03). Every Admin period picker (the Dashboard period dropdown and the Maps time
 range) offers, in this order, Today, Last 24 hours, Last 7 days, Last 30 days and
 All time (owner request 2026-10-07); Today covers the current day from midnight
 in the selected Admin time zone up to now. The Dashboard and First run use the
@@ -525,7 +531,9 @@ Needs attention covers unresolved work across all dates in six review queues
 (owner decision 2026-10-06), in this order, each row with an icon, label, count
 and arrow: Open problems, GitHub issues, Identity review, Publication review,
 Missing reports and Support reports, followed by one System checks row (owner
-decision 2026-10-06). System checks appears only when Health has Failed or
+decision 2026-10-06). Row counts and the header total are neutral; System
+checks is the one urgent row, with its icon and count in the danger tone
+(owner decision 2026-11-03). System checks appears only when Health has Failed or
 Degraded checks; its count is those checks (the same states Health lists under
 Issues) excluding the Catalogs check, because provider problems stay on
 Providers. It links to `/admin/system-health?status=FAILED`, or
@@ -806,17 +814,18 @@ updates, finished relay jobs as downloads), in every tile, card and trend.
 Event detail lists app reports only, so the Web view omits it.
 
 Maps reads top to bottom: the filter bar; Downloads, Installs and Updates tiles
-for the selected period (each with failed count and rate); then Countries (world
-map) and Top countries; then Providers; then Top maps; then the collapsed Events
-disclosure; and last, at the very bottom, the Downloads and Installs trend cards,
-laid out like the Dashboard charts (the period successful / failed / success
-rate badge at the top right, a legend without numbers, nothing under the legend)
-(owner decision 2026-10-06). The Countries
+for the selected period (each with failed count and rate); then the Downloads
+and Installs trend cards, laid out like the Dashboard charts (the period
+successful / failed / success rate badge at the top right, a legend without
+numbers, nothing under the legend); then Countries (world map) and Top
+countries; then Providers; then Top maps; and last the collapsed Events
+disclosure (owner decision 2026-11-03, replacing trends at the bottom). The
+Maps source switch shows the source names beside the icons from 1024 px. The Countries
 card carries no visible country/install count line; the world map's accessible
 name states when coverage is empty or partially unavailable. Russia, where maps
 are never offered, is hatched grey instead of shaded as zero installs; its
 tooltip shows only the country name, with no explanatory text. The map opens at
-the whole world; zoom in works, zoom out stops at the whole world and its
+the whole world; zoom in works with +, double-click or pinch (the mouse wheel scrolls the page; owner decision 2026-11-03), zoom out stops at the whole world and its
 button is off there. The controls are only +, − and Reset map, with no zoom
 percentage (owner decisions 2026-10-10). Top maps names are
 plain text with the provider and last-install date below, not links; Top
@@ -1001,7 +1010,8 @@ The model detail adds a separate Updates card and Update history, scoped to all
 retained nonlocal reports for that exact identity. The Installs and Updates
 cards share one design (same classes, label and value sizes), carry no `All
 time` chip, have one row per source in the switch order (App, App Store, Web,
-then All; owner decisions 2026-10-11 and 2026-10-30), and show plain
+then All; owner decisions 2026-10-11 and 2026-10-30), each row marked by its
+icon and visible source name (owner decision 2026-11-03), and show plain
 Successful, Failed and Not started counts
 without links (owner decision 2026-10-06); the Update history outcome filters
 open the matching records. The Administration card has two separated sections,
@@ -1088,7 +1098,8 @@ failed`). On this page the word is **Issues**: the Issues card groups package
 issues by recorded reason; other pages keep Open problems and Package problems.
 Each group shows its package count, one Recheck (a single-package group
 rechecks that package; a larger group's `Recheck affected` and the card's
-`Recheck affected packages` recheck every affected package) and at most five
+`Recheck affected packages`, a secondary button so `Check provider health`
+stays the page's one primary action, recheck every affected package) and at most five
 rows with Recheck, Open source and Copy details, plus `Show all N in Packages`.
 Packages is the one package list: search, Issues/Available filter (Issues is
 preselected when issues exist), pagination, and a per-row `⋯` menu with
