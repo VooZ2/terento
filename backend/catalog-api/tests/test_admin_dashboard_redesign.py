@@ -218,6 +218,9 @@ class DashboardPresentationTests(unittest.TestCase):
         self.assertIn("<span>.dmg</span></li>", legend)
         self.assertNotIn("<strong>", legend)
         self.assertNotIn("overview-card-totals", body)
+        tile = next(cell for cell in body.split("<div class='overview-kpi-cell'>") if "<span>App downloads</span>" in cell)
+        self.assertIn("<span class='overview-kpi-aside'></span>", tile)
+        self.assertIn("<span class='overview-kpi-sub'>.dmg 5 · .zip 2</span>", tile)
         row = {"provider_id": "p", "event_type": "INSTALL_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 3}
         maps = map_statistics_page({"rows": [row], "summary": _map_statistics_summary([row])},
                                    [{"id": "p", "name": "Provider"}], {"username": "operator"}, "csrf").decode()

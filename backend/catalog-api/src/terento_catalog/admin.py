@@ -2944,7 +2944,8 @@ def overview_page(
         dmg, zip_ = _sum_known(app_counts, 0), _sum_known(app_counts, 1)
         headline_tiles.append("<div class='overview-kpi-cell'>" + _overview_kpi(
             "App downloads", "—" if dmg is None and zip_ is None else f"{(dmg or 0) + (zip_ or 0):,}",
-            aside=f".dmg {dmg:,}" if dmg is not None else "", sub=f".zip {zip_:,}" if zip_ is not None else "",
+            # Owner 2026-11-03: the .dmg and .zip split shares one line under the number.
+            sub=" · ".join(f"{name} {count:,}" for name, count in ((".dmg", dmg), (".zip", zip_)) if count is not None),
             spark=_sparkline([sum(value or 0 for value in row) for row in app_counts]),
         ) + "</div>")
     funnel = overview.get("funnel")
