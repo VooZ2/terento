@@ -52,11 +52,8 @@ cannot establish the France failure's cause.
 
 Install successes/failures and update successes/failures have distinct chart
 series and labels. Chart colours follow the single rule in the statistics
-contract (owner decision 2026-10-05): provider fresh install successful uses
-Interactive Primary (slate), custom `.img` fresh install successful its own
-Lichen-dark series and legend entry, install failed solid red (destructive
-text), update successful solid Stone Dark with no outline (Warm Stone alone is
-2.69:1 on white), and update failed red diagonal stripes in bars and legends.
+contract (owner decisions 2026-10-05 and 2026-11-03): pale healthy series,
+full-tone failures, hatched updates.
 Stacked segments touch with no separator line, so each bar reads as one solid
 column; every series has a legend
 entry (counts follow the Dashboard legend rule), and each bucket is one keyboard
@@ -316,7 +313,13 @@ chart cards. Each chart card holds a header with its title only, the chart,
 and a legend naming each series by colour without counts (Installs counts fresh
 installs only, so update segments are hatched: stone for succeeded, danger for
 failed). Successful bars use the quiet
-`--sky` tone so failures stand out. One `All`/`App`/`App Store`/`Web` switch beside the
+`--sky` tone so failures stand out. Every Dashboard chart, App downloads
+included, puts its bars on one even bucket grid (a missing bucket stays an
+empty slot, never a drawn zero), uses a four-step axis with round steps (3,
+20, 40, never 19 or 37), and draws the bucket still in progress dashed, as do
+the headline sparklines (owner QA 2026-11-03). App downloads marker text shows
+only on the wide chart and only where it does not collide; on phones the
+marker lines keep their names in titles. One `All`/`App`/`App Store`/`Web` switch beside the
 period picker, in the picker's height, swaps both chart cards at once (owner
 decisions 2026-10-10 and 2026-10-11; All is the default and the choice
 survives a period change) and the matching headline tiles. The switch shows

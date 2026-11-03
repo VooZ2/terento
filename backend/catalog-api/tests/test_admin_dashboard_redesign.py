@@ -9,8 +9,11 @@ from http.server import ThreadingHTTPServer
 from urllib.parse import urlencode
 
 from api_test_fixtures import FakeProviderDatabase
+from datetime import datetime, timedelta, timezone
+
 from terento_catalog.admin import (
     ADMIN_STYLES, _map_statistics_summary, _sparkline, _overview_period_script, _provider_problem_state,
+    _nice_tick_step, _overview_downloads_chart, _overview_trend_chart,
     first_run_page, map_statistics_page, overview_page,
 )
 from terento_catalog.http_api import CatalogService, make_handler
@@ -480,6 +483,49 @@ class DashboardPresentationTests(unittest.TestCase):
         self.assertFalse(unknown["problem"])
 
 
+class ChartQaTests(unittest.TestCase):
+    """Owner QA 2026-11-03: round axes, a dashed bucket in progress and App
+    downloads drawn like the map charts."""
+
+    def test_axis_steps_are_round(self):
+        self.assertEqual([_nice_tick_step(value) * 4 for value in (4, 9, 76, 147)], [4, 12, 80, 160])
+
+    def test_bucket_in_progress_is_dashed_and_named(self):
+        now = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+        trend = [{"bucket": (now - timedelta(hours=1)).isoformat(), "success_count": 2},
+                 {"bucket": now.isoformat(), "success_count": 1}]
+        chart = _overview_trend_chart(trend, "hour")
+        self.assertEqual(chart.count("overview-chart-group is-partial"), 2)  # the last bar, desktop and mobile
+        self.assertIn("(in progress) · Total: 1", chart)
+        self.assertNotIn("(in progress) · Total: 2", chart)
+        spark = _sparkline([2, 1], partial_last=True)
+        self.assertIn("<polyline points='0.0,2.0'/><polyline class='is-partial' points='0.0,2.0 100.0,15.0'/>", spark)
+        self.assertNotIn("is-partial", _sparkline([2, 1]))
+        self.assertIn(".overview-kpi-spark polyline.is-partial{stroke-dasharray:3 2}", ADMIN_STYLES)
+
+    def test_app_downloads_share_the_bucket_grid_and_pale_palette(self):
+        import xml.etree.ElementTree as ET
+
+        # Weekly buckets with one week missing: three bars on four even slots,
+        # placed by bucket start even when the last observation is recent.
+        trend = [{"bucket": f"2026-10-{day:02d}T00:00:00Z", "observed_at": f"2026-10-{day + 6:02d}T23:00:00Z",
+                  "dmg_count": 3, "zip_count": 1, "release_markers": [{"label": f"rc.{day}"}]}
+                 for day in (5, 12, 26)]
+        trend[-1]["observed_at"] = "2026-10-26T01:00:00Z"
+        body = _overview_downloads_chart({"hasData": True, "bucket": "week", "trend": trend}, period="30d")
+        desktop = ET.fromstring(body[body.index("<svg"):body.index("</svg>") + 6])
+        xs = [float(rect.get("x")) for rect in desktop.iter("rect") if rect.get("class") == "overview-chart-download-dmg"]
+        slot = (720 - 38 - 12) / 4
+        self.assertEqual([round(x, 1) for x in xs], [round(38 + (index + 0.5) * slot - min(slot * 0.72, 86) / 2, 1)
+                                                     for index in (0, 1, 3)])
+        mobile = body[body.rindex("<svg"):body.rindex("</svg>")]
+        # Phone: marker lines keep their titles, no visible text to collide.
+        self.assertIn("<title>New release: rc.5", mobile)
+        self.assertNotRegex(mobile, r"<text[^>]*>New release")
+        self.assertIn(".overview-chart-success,.overview-chart-download-success,.overview-chart-download-dmg{fill:color-mix(in srgb,var(--sky) 72%,var(--surface))", ADMIN_STYLES)
+        self.assertIn(".overview-chart-download-zip{fill:color-mix(in srgb,var(--sky) 40%,var(--surface))", ADMIN_STYLES)
+        self.assertNotIn("var(--status-success-text);background:var(--status-success-text)}", ADMIN_STYLES)
+
 class CountingDatabase(FakeProviderDatabase):
     def __init__(self) -> None:
         super().__init__()
@@ -586,7 +632,8 @@ class DashboardHttpTests(unittest.TestCase):
     def test_missing_reports_list_and_dismiss_return_to_the_list(self):
         response, body = self.request("GET", "/admin/review/missing-reports?offset=0")
         self.assertEqual(response.status, 200)
-        self.assertIn("<h1>Missing reports</h1>", body)
+        self.assertIn("<h1>Missing reports</h1></div><p class='page-meta'>", body)
+        self.assertNotIn("Missing report summary", body)
         self.assertEqual(self.database.missing_calls, [(50, 0)])
         response, _ = self.request(
             "POST", "/admin/review/missing-diagnostics/dismiss",

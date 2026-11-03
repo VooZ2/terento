@@ -1278,7 +1278,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             float(bars[0].attrib["y"]),
             places=1,
         )
-        self.assertAlmostEqual(sum(float(bar.attrib["height"]) for bar in bars), 184 * 4 / 5, places=1)
+        self.assertAlmostEqual(sum(float(bar.attrib["height"]) for bar in bars), 184, places=1)  # round axis: 4 fills the four 1-steps
         self.assertIn("<clipPath id='overview-download-bar-clip-0'>", body)
 
     def test_download_chart_uses_selected_period_bucket_and_label(self):
