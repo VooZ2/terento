@@ -10,7 +10,7 @@ from urllib.parse import urlencode
 
 from api_test_fixtures import FakeProviderDatabase
 from terento_catalog.admin import (
-    ADMIN_STYLES, _overview_period_script, _provider_problem_state, first_run_page, overview_page,
+    ADMIN_STYLES, _sparkline, _overview_period_script, _provider_problem_state, first_run_page, overview_page,
 )
 from terento_catalog.http_api import CatalogService, make_handler
 
@@ -100,16 +100,17 @@ class DashboardPresentationTests(unittest.TestCase):
         head = installs.split("</header>", 1)[0]
         # The period lives in the picker; cards repeat no period chip.
         self.assertNotIn("data-scope='period'", head)
-        # One badge, numbers only (owner 2026-10-11): successful / failed / rate.
-        self.assertIn("<span class='overview-card-total overview-card-result'>"
-                      "<strong data-stat='completedInstallCount'>12</strong><span class='sr-only'> successful,</span>"
-                      "<span class='overview-card-total-separator' aria-hidden='true'>/</span>"
-                      "<strong class='admin-error-counter is-positive' data-stat='failedInstallCount'>2</strong>"
-                      "<span class='sr-only'> failed,</span>"
-                      "<span class='overview-card-total-separator' aria-hidden='true'>/</span>"
-                      "<strong data-stat='installSuccessRate'>85.7%</strong><span class='sr-only'> success rate</span>",
-                      head)
-        self.assertNotIn("<small>", head)
+        # Owner 2026-11-03: the period totals live once, in the headline
+        # tiles (successful, rate, failed in the danger tone); the chart card
+        # header holds only its title.
+        self.assertNotIn("data-stat=", head)
+        strip = body.split("class='admin-card overview-kpi-strip'", 1)[1].split("</section>", 1)[0]
+        installs_cell = next(cell for cell in strip.split("<div class='overview-kpi-cell'>") if "<span>Installs</span>" in cell)
+        installs_tile = installs_cell.split("data-source-panel='app'", 1)[1].split("data-source-panel='appstore'", 1)[0]
+        for fragment in ("<span>Installs</span>", "<strong data-stat='installSuccessRate'>85.7%</strong>",
+                         "data-stat='completedInstallCount'>12</strong>",
+                         "<span class='overview-kpi-sub is-danger'><strong data-stat='failedInstallCount'>2</strong> failed"):
+            self.assertIn(fragment, installs_tile)
         self.assertNotIn("admin-icon", head)
         # One All/App/App Store/Web icon switch beside the period picker swaps
         # both chart cards; All is shown first (owner decisions 2026-10-11 and
@@ -138,6 +139,14 @@ class DashboardPresentationTests(unittest.TestCase):
             rest = card.split("</ul>", 1)[1].replace("</div>", "").strip()
             self.assertTrue(rest.startswith("<div data-source-panel='appstore' hidden>"), rest[:80])
 
+    def test_sparkline_scales_to_its_own_peak_and_skips_single_points(self):
+        self.assertEqual(_sparkline([]), "")
+        self.assertEqual(_sparkline([5]), "")
+        line = _sparkline([0, 10, 5])
+        # x spans 0..100; the peak touches y=2, zero sits on y=28.
+        self.assertIn("points='0.0,28.0 50.0,2.0 100.0,15.0'", line)
+        self.assertIn("aria-hidden='true'", line)
+
     def test_needs_attention_lists_only_nonzero_rows_and_a_total(self):
         body = self.render(supportReports={"openCount": 2}, mapsUnknown={"modelCount": 4})
         attention = body.split("id='overview-attention-title'", 1)[1].split("</section>", 1)[0]
@@ -161,7 +170,9 @@ class DashboardPresentationTests(unittest.TestCase):
         self.assertIn("href='/admin/support-reports'", attention)
         head = attention.split("</header>", 1)[0]
         # The header total is exactly the sum of the rendered category rows.
-        self.assertIn(f"data-stat='attentionTotal'>{sum(rows)}</strong><small>Total</small>", head)
+        # The total is the Needs attention headline tile (owner 2026-11-03).
+        self.assertNotIn("attentionTotal", head)
+        self.assertIn(f"data-stat='attentionTotal'>{sum(rows)}</strong>", body)
 
     def test_needs_attention_with_nothing_open_says_so_in_the_middle(self):
         # Owner 2026-10-10: cards in a Dashboard row share one height, so an
@@ -171,7 +182,7 @@ class DashboardPresentationTests(unittest.TestCase):
         body = self.render(review=zero_review, supportReports={"openCount": 0})
         attention = body.split("id='overview-attention-title'", 1)[1].split("</section>", 1)[0]
         self.assertNotIn("overview-attention-row", attention)
-        self.assertIn("data-stat='attentionTotal'>0</strong>", attention)
+        self.assertIn("data-stat='attentionTotal'>0</strong>", body)
         self.assertTrue(attention.endswith(
             "</header><p class='admin-empty overview-empty-state' data-state='empty'><span>Nothing to review.</span></p>"))
         self.assertIn("overview-panel overview-attention-panel overview-attention-empty", body)
@@ -213,8 +224,10 @@ class DashboardPresentationTests(unittest.TestCase):
         card = body.split("id='overview-funnel-title'", 1)[1].split("</section>", 1)[0]
         head = card.split("</header>", 1)[0]
         self.assertIn("<a class='admin-card-action section-link' href='/admin/first-run?period=7d'>View all", head)
-        for value, noun in (("5", "Opened"), ("4", "Connected"), ("3", "Allowed")):
-            self.assertIn(f"<span class='overview-card-total'><strong>{value}</strong><small>{noun}</small></span>", head)
+        # The journey totals moved to the First run headline tile (owner 2026-11-03).
+        strip = body.split("class='admin-card overview-kpi-strip'", 1)[1].split("</section>", 1)[0]
+        for fragment in ("<span>First run</span>", "60% allowed", ">5</strong>", "4 connected"):
+            self.assertIn(fragment, strip)
         self.assertIn("<a href='/admin/first-run?period=7d#first-run-not-connected' "
                       "aria-label='Never connected: 1. Mostly: No watch plugged in (1)'>", card)
         self.assertIn("<span class='overview-attention-label'>Never connected"

@@ -1984,6 +1984,45 @@ def _sum_known(values: list[tuple[int | None, ...]], index: int) -> int | None:
     return sum(known) if known else None
 
 
+def _app_download_counts(trend: list[dict[str, Any]]) -> list[tuple[int | None, ...]]:
+    """(.dmg, .zip) observed increase per bucket; unknown stays None."""
+    values = []
+    for item in trend:
+        counts = []
+        for key in ("dmg_count", "zip_count"):
+            value = item.get(key)
+            try:
+                counts.append(int(value) if value is not None and int(value) >= 0 else None)
+            except (TypeError, ValueError):
+                counts.append(None)
+        values.append(tuple(counts))
+    return values
+
+
+def _sparkline(points: list[int]) -> str:
+    """Glance-size trend: no axes, 1.5 px line, faint fill (dashboard-design)."""
+    if len(points) < 2:
+        return ""
+    top = max(points) or 1
+    step = 100 / (len(points) - 1)
+    line = " ".join(f"{index * step:.1f},{28 - 26 * value / top:.1f}" for index, value in enumerate(points))
+    return ("<svg class='overview-kpi-spark' viewBox='0 0 100 30' preserveAspectRatio='none' aria-hidden='true'>"
+            f"<polygon points='0,30 {line} 100,30'/><polyline points='{line}'/></svg>")
+
+
+def _overview_kpi(label: str, value: str, *, aside: str = "", sub: str = "", danger: bool = False,
+                  spark: str = "", href: str = "", stat: str = "", sub_html: str = "", aside_html: str = "") -> str:
+    """One Dashboard headline tile: label and a short fact, the value, one
+    short line and an optional sparkline."""
+    tag, attributes = ("a", f" href='{html.escape(href, quote=True)}'") if href else ("div", "")
+    return (
+        f"<{tag} class='overview-kpi'{attributes}><span class='overview-kpi-head'><span>{html.escape(label)}</span>"
+        f"<span class='overview-kpi-aside'>{aside_html or html.escape(aside)}</span></span>"
+        f"<strong class='overview-kpi-value'{f' data-stat={chr(39)}{stat}{chr(39)}' if stat else ''}>{html.escape(value)}</strong>"
+        f"<span class='overview-kpi-sub{' is-danger' if danger else ''}'>{sub_html or html.escape(sub)}</span>{spark}</{tag}>"
+    )
+
+
 def _overview_downloads_chart(
     downloads: dict[str, Any], time_zone: str = "UTC", *, period: str = "24h",
     _compact: bool = False,
@@ -2003,16 +2042,7 @@ def _overview_downloads_chart(
         "30d": "the last 30 days",
         "all": "all time",
     }.get(period, "the selected period")
-    values = []
-    for item in trend:
-        counts = []
-        for key in ("dmg_count", "zip_count"):
-            value = item.get(key)
-            try:
-                counts.append(int(value) if value is not None and int(value) >= 0 else None)
-            except (TypeError, ValueError):
-                counts.append(None)
-        values.append(tuple(counts))
+    values = _app_download_counts(trend)
     maximum = max((sum(value for value in series if value is not None) for series in values), default=1) or 1
     scale_maximum = max(4, math.ceil(maximum * 1.2))
     chart_width, chart_height = (360, 220) if _compact else (720, 260)
@@ -2656,15 +2686,9 @@ def _funnel_summary_card(funnel: dict[str, Any] | None, period: str) -> str:
         return _unavailable_card("First run", "overview-funnel")
     summary = _funnel_summary(_funnel_display(funnel))
     page = "/admin/first-run?" + urlencode({"period": period})
-    totals = ""
     if not summary["sessions"]:
         body = _empty_state("empty", "No first-run sessions in this period.")
     else:
-        totals = _card_totals([
-            (f"<strong>{value:,}</strong>" if value is not None else "<strong>—</strong>", noun)
-            for value, noun in ((summary["sessions"], "Opened"), (summary["connected"], "Connected"),
-                                (summary["approved"], "Allowed"))
-        ], label="First run totals")
         rows = "".join(
             _attention_row(label, count, f"{page}#{anchor}", icon, detail=detail)
             for label, count, anchor, icon, detail in summary["rows"]
@@ -2678,7 +2702,7 @@ def _funnel_summary_card(funnel: dict[str, Any] | None, period: str) -> str:
                      f"{previous['sessions']:,} opened · {previous['connected']:,} connected · "
                      f"{previous['approved']:,} allowed</p>")
     return _section_card(
-        "First run", body, card_id="overview-funnel", totals=totals,
+        "First run", body, card_id="overview-funnel",
         action=(page, "View all"),
         css="overview-panel",
     )
@@ -2822,8 +2846,6 @@ def overview_page(
         review_notice + attention_status
         + ("<ul class='overview-attention-rows'>" + "".join(attention_rows) + "</ul>" if any(attention_rows) else ""),
         card_id="overview-attention", scope="now",
-        totals=_card_totals([(f"<strong data-stat='attentionTotal'>{attention_total if attention_total is not None else '—'}</strong>", "Total")],
-                            label="Needs attention total") if review_available else "",
         css="overview-panel overview-attention-panel" + (" overview-attention-empty" if attention_total == 0 else ""),
     )
 
@@ -2865,16 +2887,42 @@ def overview_page(
             hidden = lambda name: "" if name == "all" else " hidden"
             return _section_card(
                 title, "".join(f"<div data-source-panel='{name}'{hidden(name)}>{body}</div>" for name, body, _ in rendered),
-                card_id=card_id,
-                totals="<div class='overview-card-totals overview-source-head'>" + "".join(
-                    f"<span class='overview-source-totals' data-source-panel='{name}'{hidden(name)}>{totals}</span>"
-                    for name, _, totals in rendered) + "</div>",
-                css="overview-panel overview-chart-panel",
+                card_id=card_id, css="overview-panel overview-chart-panel",
             )
+
+        def headline(kind: str) -> str:
+            """The kind's headline tile for every source; the switch shows one."""
+            label = "Map downloads" if kind == "downloads" else "Installs"
+            keys = (("completedDownloadCount", "failedDownloadCount", "downloadSuccessRate") if kind == "downloads"
+                    else ("completedInstallCount", "failedInstallCount", "installSuccessRate"))
+            cells = []
+            for name, source in (("all", all_sources), ("app", direct), ("appstore", app_store), ("web", web)):
+                if source.get("available") is False:
+                    tile = _overview_kpi(label, "—", sub="Unavailable")
+                else:
+                    series = (_DOWNLOAD_CHART_SERIES if kind == "downloads"
+                              else _WEB_INSTALL_CHART_SERIES if source is web else _INSTALL_CHART_SERIES)
+                    completed = _optional_nonnegative_int(source.get(keys[0]))
+                    failed = _optional_nonnegative_int(source.get(keys[1]))
+                    points = [sum(max(0, int(item.get(field) or 0)) for _, _, field in series)
+                              for item in source.get("trend") or [] if isinstance(item, dict)]
+                    # data-stat hooks keep the numbers addressable for freshness and tests.
+                    tile = _overview_kpi(
+                        label, f"{completed:,}" if completed is not None else "—", stat=keys[0],
+                        aside_html=f"<strong data-stat='{keys[2]}'>{html.escape(_format_rate(source.get(keys[2])))}</strong>" if completed else "",
+                        sub_html=(f"<strong data-stat='{keys[1]}'>{failed:,}</strong> failed" if failed is not None
+                                  else f"<strong data-stat='{keys[1]}'>—</strong> failed"),
+                        danger=bool(failed), spark=_sparkline(points),
+                    )
+                cells.append(f"<div data-source-panel='{name}'{'' if name == 'all' else ' hidden'}>{tile}</div>")
+            return "<div class='overview-kpi-cell'>" + "".join(cells) + "</div>"
+
 
         downloads_chart = switched_card("Map downloads", "downloads", "overview-download-trend", "overview-downloads")
         installs_chart = switched_card("Installs", "installs", "overview-trend", "overview-installs")
+        headline_tiles = [headline("downloads"), headline("installs")]
     else:
+        headline_tiles = []
         downloads_chart = _unavailable_card("Map downloads", "overview-download-trend")
         installs_chart = _unavailable_card("Installs", "overview-trend")
 
@@ -2916,6 +2964,32 @@ def overview_page(
         downloads_section = ""
 
     funnel_section = _funnel_summary_card(overview.get("funnel"), period) if "funnel" in overview else ""
+
+    # --- Headline tiles: one card, hairline dividers (dashboard-design) -------
+    if downloads_available and download_has_data:
+        app_counts = _app_download_counts([item for item in downloads.get("trend") or [] if isinstance(item, dict)])
+        dmg, zip_ = _sum_known(app_counts, 0), _sum_known(app_counts, 1)
+        headline_tiles.append("<div class='overview-kpi-cell'>" + _overview_kpi(
+            "App downloads", "—" if dmg is None and zip_ is None else f"{(dmg or 0) + (zip_ or 0):,}",
+            aside=f".dmg {dmg:,}" if dmg is not None else "", sub=f".zip {zip_:,}" if zip_ is not None else "",
+            spark=_sparkline([sum(value or 0 for value in row) for row in app_counts]),
+        ) + "</div>")
+    funnel = overview.get("funnel")
+    if isinstance(funnel, dict) and funnel.get("available") is not False and "stages" in funnel:
+        journey = _funnel_summary(_funnel_display(funnel))
+        sessions, connected, approved = journey.get("sessions"), journey.get("connected"), journey.get("approved")
+        headline_tiles.append("<div class='overview-kpi-cell'>" + _overview_kpi(
+            "First run", f"{sessions:,}" if sessions is not None else "—",
+            aside=f"{round(100 * approved / sessions)}% allowed" if sessions and approved is not None else "",
+            sub=f"{connected:,} connected" if connected is not None else "",
+            href="/admin/first-run?" + urlencode({"period": period}),
+        ) + "</div>")
+    headline_tiles.append("<div class='overview-kpi-cell'>" + _overview_kpi(
+        "Needs attention", f"{attention_total:,}" if attention_total is not None else "—", aside="Now", stat="attentionTotal",
+        sub="open items", href="#overview-attention",
+    ) + "</div>")
+    headline_strip = ("<section class='admin-card overview-kpi-strip' aria-label='Headline numbers'>"
+                      + "".join(headline_tiles) + "</section>")
     active_source = {"all": " class='active'"}
     source_switch = (
         "<span class='overview-source-switch' role='group' aria-label='Downloads and Installs source'>"
@@ -2931,6 +3005,7 @@ def overview_page(
       {_admin_header(user, csrf_token, active='overview')}
       <main class='dashboard overview-page' id='main-content'>
         <div class='heading-row overview-heading'><div><h1>Dashboard</h1></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin' data-time-zone='{html.escape(time_zone, quote=True)}'>{source_switch}<label><span class='sr-only'>Time period</span><select id='overview-period' data-admin-dropdown name='period'>{period_options}</select></label></form></div>
+        {headline_strip}
         <div class='overview-composition-grid overview-review-grid'>{attention_section}{funnel_section}</div>
         <div class='overview-primary-grid'>{downloads_chart}{installs_chart}</div>
         <div class='overview-composition-grid'>{activity_section}{downloads_section}</div>
@@ -10808,6 +10883,59 @@ main.first-run-page>.web-installer-grid{gap:var(--admin-card-gap)}main.first-run
 """
 # Signed-in pages link one cacheable stylesheet; the content hash in the name
 # changes whenever the CSS changes (served by the admin map-assets route).
+# Admin skin (owner decision 2026-11-03, dashboard-design skill): one sans
+# (Inter) with tight tabular numbers, white cards with a hairline and a soft
+# shadow on the Off-White canvas, segmented controls on a grey track, sentence
+# case table headers, scope as quiet text and pale healthy chart series.
+ADMIN_STYLES += """
+:root{--admin-line:rgb(0 0 0/.075);--admin-shadow-card:0 1px 2px rgb(0 0 0/.04),0 1px 1px rgb(0 0 0/.02);--admin-track:rgb(0 0 0/.045);
+  --admin-type-page-title-size:26px;--admin-type-page-title-line:1.15;--admin-type-section-title-size:15px;--admin-type-section-title-line:20px;
+  --admin-type-body-size:14px;--admin-type-body-line:20px;--admin-type-kpi-value-size:30px;--admin-type-kpi-value-line:36px;
+  --admin-type-table-header-size:12.5px;--admin-type-label-size:13px;--admin-type-label-line:18px;--radius-card:16px}
+body{font-feature-settings:"tnum" 1,"cv11" 1}
+h1{font-weight:650;letter-spacing:-.025em}
+h2,.section-heading h2{font-weight:650;letter-spacing:-.01em}
+:is(.admin-card,.overview-panel,.admin-metric-row>.admin-metric:not(.installation-kpis *):not(.admin-kpi-panel *)){border-color:var(--admin-line);box-shadow:var(--admin-shadow-card)}
+.table-wrap{border-color:var(--admin-line);box-shadow:var(--admin-shadow-card)}
+thead th{font-size:var(--admin-type-table-header-size);font-weight:550;letter-spacing:0;text-transform:none;color:var(--secondary);box-shadow:0 1px 0 var(--admin-line)}
+th,td{border-bottom-color:var(--admin-line)}
+.admin-metric-label{color:var(--secondary);font-size:var(--admin-type-label-size)}
+.admin-metric-value{font-weight:600;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+/* Segmented controls: grey track, the active segment a white tile */
+:is(.quick-filter-group,.overview-source-switch){padding:3px;gap:2px;border:0;border-radius:11px;background:var(--admin-track)}
+.quick-filter{border:0;border-radius:8px;color:var(--secondary);min-height:calc(var(--admin-control-height) - 6px)}
+:is(.quick-filter,.overview-source-switch button).active{border:0;background:var(--surface);color:var(--graphite);font-weight:600;box-shadow:var(--admin-shadow-card)}
+.admin-section-nav{gap:2px}
+/* Filter rows sit on the canvas: no tray behind the segmented track */
+.filter-bar{padding:0;background:none;border:0}
+.admin-section-nav a{border:0;border-radius:9px}
+.admin-section-nav a.active{border:0;background:var(--surface);color:var(--graphite);font-weight:600;box-shadow:var(--admin-shadow-card)}
+/* Scope stays visible, as quiet text instead of a pill */
+.admin-scope-chip,.admin-scope-chip[data-scope]{min-height:0;padding:0;border:0;background:none;color:var(--secondary);font-weight:500}
+/* Card totals: plain numbers, no chip */
+.overview-card-total{height:auto;padding:0;border:0;background:none;font-size:13px}
+.overview-card-total strong{font-size:15px;font-weight:600;letter-spacing:-.01em}
+/* Healthy series recede (pale with a solid cap), problems keep their full tone */
+.overview-chart-success,.overview-chart-download-success{fill:color-mix(in srgb,var(--sky) 72%,#fff);background:color-mix(in srgb,var(--sky) 72%,#fff)}
+.overview-chart-custom{fill:color-mix(in srgb,var(--lichen-dark) 75%,#fff);background:color-mix(in srgb,var(--lichen-dark) 75%,#fff)}
+/* Dashboard headline tiles: one card, hairline dividers */
+.overview-kpi-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));grid-auto-flow:column;margin:0 0 var(--admin-card-gap);padding:0}
+.overview-kpi-cell{min-width:0;padding:8px;border-right:1px solid var(--admin-line)}.overview-kpi-cell:last-child{border-right:0}
+.overview-kpi-cell>[hidden]{display:none}
+.overview-kpi{display:flex;flex-direction:column;height:100%;padding:12px 14px 10px;border-radius:12px;color:var(--graphite);text-decoration:none}
+a.overview-kpi:hover{background:color-mix(in srgb,var(--surface-muted) 70%,transparent)}
+a.overview-kpi:focus-visible{outline:var(--admin-focus-ring);outline-offset:-2px}
+.overview-kpi-head{display:flex;justify-content:space-between;gap:8px;color:#4A5253;font-size:14px}
+.overview-kpi-aside{color:var(--secondary);font-size:12px;font-weight:550;white-space:nowrap}.overview-kpi-aside strong,.overview-kpi-sub strong{font-weight:inherit}
+.overview-kpi-value{margin-top:4px;font-size:32px;font-weight:600;line-height:1.15;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.overview-kpi-sub{color:var(--secondary);font-size:12px;font-weight:550}.overview-kpi-sub.is-danger{color:var(--danger)}
+.overview-kpi-spark{display:block;width:100%;height:28px;margin-top:auto;padding-top:8px}
+.overview-kpi-spark polyline{fill:none;stroke:var(--sky);stroke-width:1.5;vector-effect:non-scaling-stroke}
+.overview-kpi-spark polygon{fill:color-mix(in srgb,var(--sky) 14%,transparent)}
+@media(max-width:900px){.overview-kpi-strip{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr))}.overview-kpi-cell{border-bottom:1px solid var(--admin-line)}.overview-kpi-cell:nth-child(2n),.overview-kpi-cell:last-child{border-right:0}.overview-kpi-cell:last-child:nth-child(odd){grid-column:1/-1;border-bottom:0}}
+"""
+
+
 ADMIN_STYLESHEET_PATH = "/admin/map-assets/admin." + hashlib.sha256(ADMIN_STYLES.encode("utf-8")).hexdigest()[:16] + ".css"
 
 def _error(message: str | None) -> str:
