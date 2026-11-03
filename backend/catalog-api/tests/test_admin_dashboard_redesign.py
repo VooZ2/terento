@@ -225,6 +225,27 @@ class DashboardPresentationTests(unittest.TestCase):
         trends = maps.split("class='overview-primary-grid map-statistics-trends'", 1)[1].split("</section>\n", 1)[0]
         self.assertNotIn("data-stat=", trends)
 
+    def test_headline_tiles_follow_their_number_and_say_when_unavailable(self):
+        body = self.render(data={
+            "hasData": True, "completedInstallCount": 0, "failedInstallCount": 2, "installSuccessRate": 0.0,
+            "completedDownloadCount": 4, "failedDownloadCount": 0, "downloadSuccessRate": 100.0,
+            "recentActivity": [], "bucket": "day", "trend": [
+                {"bucket": "2026-10-01T00:00:00Z", "success_count": 0, "failed_count": 2,
+                 "download_success_count": 4, "download_failed_count": 0},
+                {"bucket": "2026-10-02T00:00:00Z", "success_count": 0, "failed_count": 0,
+                 "download_success_count": 1, "download_failed_count": 9}],
+        }, funnel={"available": False})
+        strip = body.split("class='admin-card overview-kpi-strip'", 1)[1].split("</section>", 1)[0]
+        cell = lambda label: next(c for c in strip.split("<div class='overview-kpi-cell'>") if f"<span>{label}</span>" in c)
+        # 0 successful of 2 still shows its 0% rate.
+        self.assertIn("<strong data-stat='installSuccessRate'>0%</strong>", cell("Installs"))
+        # The sparkline follows the successful number, not failures (4 then 1).
+        downloads = cell("Map downloads").split("data-source-panel='app'", 1)[1].split("data-source-panel=", 1)[0]
+        self.assertIn(_sparkline([4, 1]), downloads)
+        self.assertIn("<strong class='overview-kpi-value'>—</strong><span class='overview-kpi-sub'>Unavailable</span>",
+                      cell("First run"))
+        self.assertIn('@media(max-width:900px){.overview-kpi-head{flex-direction:column;gap:2px}', ADMIN_STYLES)
+
     FIRST_RUN = dict(
         sessions=5, connected=4, never_connected=1, no_usb=1, approved=3, pending=1, remote=4,
         catalog_update=1, device_storage=1, journey_approved=3,

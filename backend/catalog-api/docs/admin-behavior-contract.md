@@ -302,12 +302,15 @@ Dashboard must answer whether anything is wrong, what happened in the selected
 period, whether activity is changing, and what to inspect next. It opens with
 one headline card of tiles divided by hairlines (owner decision 2026-11-03,
 dashboard-design skill, replacing "no summary tile row"): Map downloads and
-Installs (successful as the value, success rate top right, `N failed` below in
-the danger tone only when positive, a sparkline of the period's buckets; one
-tile per source, swapped by the source switch), App downloads (the period's
-.dmg plus .zip increase, each named), First run (opened sessions, % allowed,
-connected) and Needs attention (the `Now` total, `—` when any row is
-unavailable). These tiles are the only place the period totals appear. Then
+Installs (successful as the value, success rate top right whenever it is
+known, including 0%, `N failed` below in the danger tone only when positive, a
+sparkline of the period's successful results per bucket; one tile per source,
+swapped by the source switch), App downloads (the period's .dmg plus .zip
+increase, each named), First run (opened sessions, % allowed, connected; `—`
+and `Unavailable` when the funnel cannot be read) and Needs attention (the
+`Now` total, `—` when any row is unavailable). Below 900 px the tiles form two
+columns and each tile puts its top-right fact under the label, so the values
+in a row line up. These tiles are the only place the period totals appear. Then
 Needs attention and First run share a row, then the Map downloads and Installs
 chart cards. Each chart card holds a header with its title only, the chart,
 and a legend naming each series by colour without counts (Installs counts fresh

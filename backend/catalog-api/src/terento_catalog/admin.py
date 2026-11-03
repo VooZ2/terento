@@ -2875,12 +2875,14 @@ def overview_page(
                               else _WEB_INSTALL_CHART_SERIES if source is web else _INSTALL_CHART_SERIES)
                     completed = _optional_nonnegative_int(source.get(keys[0]))
                     failed = _optional_nonnegative_int(source.get(keys[1]))
-                    points = [sum(max(0, int(item.get(field) or 0)) for _, _, field in series)
+                    # The sparkline follows the tile's number: successful results only.
+                    points = [sum(max(0, int(item.get(field) or 0)) for css, _, field in series
+                                  if css in ("success", "custom", "download-success"))
                               for item in source.get("trend") or [] if isinstance(item, dict)]
                     # data-stat hooks keep the numbers addressable for freshness and tests.
                     tile = _overview_kpi(
                         label, f"{completed:,}" if completed is not None else "—", stat=keys[0],
-                        aside_html=f"<strong data-stat='{keys[2]}'>{html.escape(_format_rate(source.get(keys[2])))}</strong>" if completed else "",
+                        aside_html=f"<strong data-stat='{keys[2]}'>{html.escape(_format_rate(source.get(keys[2])))}</strong>" if source.get(keys[2]) is not None else "",
                         sub_html=(f"<strong data-stat='{keys[1]}'>{failed:,}</strong> failed" if failed is not None
                                   else f"<strong data-stat='{keys[1]}'>—</strong> failed"),
                         danger=bool(failed), spark=_sparkline(points),
@@ -2955,6 +2957,8 @@ def overview_page(
             sub=f"{connected:,} connected" if connected is not None else "",
             href="/admin/first-run?" + urlencode({"period": period}),
         ) + "</div>")
+    elif "funnel" in overview:
+        headline_tiles.append("<div class='overview-kpi-cell'>" + _overview_kpi("First run", "—", sub="Unavailable") + "</div>")
     headline_tiles.append("<div class='overview-kpi-cell'>" + _overview_kpi(
         "Needs attention", f"{attention_total:,}" if attention_total is not None else "—", aside="Now", stat="attentionTotal",
         sub="open items", href="#overview-attention",
@@ -10885,6 +10889,7 @@ th,td{border-bottom-color:var(--admin-line)}
 a.overview-kpi:hover{background:color-mix(in srgb,var(--surface-muted) 70%,transparent)}
 a.overview-kpi:focus-visible{outline:var(--admin-focus-ring);outline-offset:-2px}
 .overview-kpi-head{display:flex;justify-content:space-between;gap:8px;color:color-mix(in srgb,var(--graphite) 82%,var(--surface));font-size:14px}
+@media(max-width:900px){.overview-kpi-head{flex-direction:column;gap:2px}.overview-kpi-aside:empty::after{content:"\\a0"}}
 .overview-kpi-aside{color:var(--secondary);font-size:12px;font-weight:550;white-space:nowrap}.overview-kpi-aside strong,.overview-kpi-sub strong{font-weight:inherit}
 .overview-kpi-value{margin-top:4px;font-size:32px;font-weight:600;line-height:1.15;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
 .overview-kpi-sub{color:var(--secondary);font-size:12px;font-weight:550}.overview-kpi-sub.is-danger{color:var(--danger)}
