@@ -10888,7 +10888,7 @@ main.first-run-page>.web-installer-grid{gap:var(--admin-card-gap)}main.first-run
 # shadow on the Off-White canvas, segmented controls on a grey track, sentence
 # case table headers, scope as quiet text and pale healthy chart series.
 ADMIN_STYLES += """
-:root{--admin-line:rgb(0 0 0/.075);--admin-shadow-card:0 1px 2px rgb(0 0 0/.04),0 1px 1px rgb(0 0 0/.02);--admin-track:rgb(0 0 0/.045);
+:root{--admin-line:color-mix(in srgb,var(--graphite) 7.5%,transparent);--admin-shadow-card:0 1px 2px color-mix(in srgb,var(--graphite) 4%,transparent),0 1px 1px color-mix(in srgb,var(--graphite) 2%,transparent);--admin-track:color-mix(in srgb,var(--graphite) 4.5%,transparent);
   --admin-type-page-title-size:26px;--admin-type-page-title-line:1.15;--admin-type-section-title-size:15px;--admin-type-section-title-line:20px;
   --admin-type-body-size:14px;--admin-type-body-line:20px;--admin-type-kpi-value-size:30px;--admin-type-kpi-value-line:36px;
   --admin-type-table-header-size:12.5px;--admin-type-label-size:13px;--admin-type-label-line:18px;--radius-card:16px}
@@ -10916,8 +10916,8 @@ th,td{border-bottom-color:var(--admin-line)}
 .overview-card-total{height:auto;padding:0;border:0;background:none;font-size:13px}
 .overview-card-total strong{font-size:15px;font-weight:600;letter-spacing:-.01em}
 /* Healthy series recede (pale with a solid cap), problems keep their full tone */
-.overview-chart-success,.overview-chart-download-success{fill:color-mix(in srgb,var(--sky) 72%,#fff);background:color-mix(in srgb,var(--sky) 72%,#fff)}
-.overview-chart-custom{fill:color-mix(in srgb,var(--lichen-dark) 75%,#fff);background:color-mix(in srgb,var(--lichen-dark) 75%,#fff)}
+.overview-chart-success,.overview-chart-download-success{fill:color-mix(in srgb,var(--sky) 72%,var(--surface));background:color-mix(in srgb,var(--sky) 72%,var(--surface))}
+.overview-chart-custom{fill:color-mix(in srgb,var(--lichen-dark) 75%,var(--surface));background:color-mix(in srgb,var(--lichen-dark) 75%,var(--surface))}
 /* Dashboard headline tiles: one card, hairline dividers */
 .overview-kpi-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));grid-auto-flow:column;margin:0 0 var(--admin-card-gap);padding:0}
 .overview-kpi-cell{min-width:0;padding:8px;border-right:1px solid var(--admin-line)}.overview-kpi-cell:last-child{border-right:0}
@@ -10925,7 +10925,7 @@ th,td{border-bottom-color:var(--admin-line)}
 .overview-kpi{display:flex;flex-direction:column;height:100%;padding:12px 14px 10px;border-radius:12px;color:var(--graphite);text-decoration:none}
 a.overview-kpi:hover{background:color-mix(in srgb,var(--surface-muted) 70%,transparent)}
 a.overview-kpi:focus-visible{outline:var(--admin-focus-ring);outline-offset:-2px}
-.overview-kpi-head{display:flex;justify-content:space-between;gap:8px;color:#4A5253;font-size:14px}
+.overview-kpi-head{display:flex;justify-content:space-between;gap:8px;color:color-mix(in srgb,var(--graphite) 82%,var(--surface));font-size:14px}
 .overview-kpi-aside{color:var(--secondary);font-size:12px;font-weight:550;white-space:nowrap}.overview-kpi-aside strong,.overview-kpi-sub strong{font-weight:inherit}
 .overview-kpi-value{margin-top:4px;font-size:32px;font-weight:600;line-height:1.15;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
 .overview-kpi-sub{color:var(--secondary);font-size:12px;font-weight:550}.overview-kpi-sub.is-danger{color:var(--danger)}
