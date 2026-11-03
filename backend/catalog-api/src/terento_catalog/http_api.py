@@ -3474,6 +3474,13 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             self.send_header("Access-Control-Allow-Origin", "*")
             self.send_header("X-Content-Type-Options", "nosniff")
             self.send_header("Referrer-Policy", "no-referrer")
+            self.send_header("Strict-Transport-Security", "max-age=31536000")
+            self.send_header("X-Frame-Options", "DENY")
+            # Admin HTML sends its own nonce CSP; a second CSP header would intersect and block it.
+            if not content_type.startswith("text/html"):
+                self.send_header(
+                    "Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'"
+                )
 
         def log_message(self, format: str, *args: Any) -> None:
             LOGGER.info("%s - %s", self.address_string(), format % args)

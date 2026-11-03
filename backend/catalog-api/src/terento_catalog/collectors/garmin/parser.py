@@ -9,6 +9,14 @@ from urllib.parse import urljoin
 
 
 CATEGORY_SOURCE_URL = "https://www.garmin.com/en-US/c/wearables-smartwatches/"
+# Owner decision 2026-11-02: Edge cycling computers are catalogued from
+# Garmin's cycling category. Only Edge products are kept from it; radars,
+# lights, pedals and sensors in the same category are not devices Terento
+# writes maps to.
+CYCLING_CATEGORY_SOURCE_URL = (
+    "https://www.garmin.com/en-US/c/sports-fitness/"
+    "cycling-bike-computers-bike-radar-power-meter-headlights/"
+)
 MANUFACTURER = "Garmin"
 OFFICIAL_MEDIA_HOSTS = {"res.garmin.com"}
 
@@ -100,6 +108,12 @@ def parse_category_products(document: dict[str, Any]) -> list[GarminProduct]:
             "Garmin category response has no concrete product records"
         )
     return parsed
+
+
+def is_edge_product(product: GarminProduct) -> bool:
+    """Return whether a cycling-category product is an Edge cycling computer."""
+
+    return canonical_text(product.name).startswith("edge ")
 
 
 def normalize_products(products: list[GarminProduct]) -> list[NormalizedGarminDevice]:

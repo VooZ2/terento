@@ -10,10 +10,12 @@ from urllib.request import Request, urlopen
 from ...models import CollectedDevice
 from .parser import (
     CATEGORY_SOURCE_URL,
+    CYCLING_CATEGORY_SOURCE_URL,
     GarminCatalogParserError,
     GarminProduct,
     normalize_product,
     normalize_products,
+    is_edge_product,
     parse_category_products,
     parse_product_page,
 )
@@ -23,6 +25,10 @@ LOGGER = logging.getLogger(__name__)
 
 GARMIN_PRODUCTS_URL = (
     "https://www.garmin.com/c/api/getCategoryProducts?categoryKey=10002"
+    "&locale=en-US&storeCode=US&appName=www-category-pages"
+)
+GARMIN_CYCLING_PRODUCTS_URL = (
+    "https://www.garmin.com/c/api/getCategoryProducts?categoryKey=Cycling"
     "&locale=en-US&storeCode=US&appName=www-category-pages"
 )
 
@@ -60,14 +66,45 @@ class GarminCollector:
     fetcher: Fetcher | None = None
     category_source_url: str = CATEGORY_SOURCE_URL
     products_url: str = GARMIN_PRODUCTS_URL
+    cycling_category_source_url: str = CYCLING_CATEGORY_SOURCE_URL
+    # None skips the Edge scan (tests of the watch category alone).
+    cycling_products_url: str | None = GARMIN_CYCLING_PRODUCTS_URL
     enrich_part_numbers: bool = True
 
     def collect(self) -> GarminCollectionResult:
         fetcher = self.fetcher or Fetcher()
         document = fetcher.fetch_json(self.products_url)
         products = parse_category_products(document)
-        normalized = normalize_products(products)
         warnings: list[str] = []
+        category_by_product = {
+            product.source_id: self.category_source_url for product in products
+        }
+        if self.cycling_products_url is not None:
+            # The watch category stays the required source. A failed Edge scan
+            # is a warning, so the run is PARTIAL: watch rows still update,
+            # and no row is counted as missed or retired from retail.
+            try:
+                cycling = [
+                    product
+                    for product in parse_category_products(
+                        fetcher.fetch_json(self.cycling_products_url)
+                    )
+                    if is_edge_product(product)
+                ]
+                if not cycling:
+                    raise GarminCatalogParserError(
+                        "Garmin cycling category has no Edge products"
+                    )
+            except (OSError, GarminCatalogParserError, ValueError) as exc:
+                warning = f"Edge category unavailable: {exc}"
+                warnings.append(warning)
+                LOGGER.warning(warning)
+                cycling = []
+            for product in cycling:
+                if product.source_id not in category_by_product:
+                    category_by_product[product.source_id] = self.cycling_category_source_url
+                    products.append(product)
+        normalized = normalize_products(products)
 
         part_numbers: dict[str, str | None] = {}
         specifications: dict[str, dict] = {}
@@ -125,7 +162,7 @@ class GarminCollector:
                     ),
                     retail_skus=tuple(sorted({sku for spec in product_specs for sku in spec.get('retail_skus', [])})),
                     product_url=device.product_url,
-                    source_url=self.category_source_url,
+                    source_url=category_by_product[source_product.source_id],
                     source_image_url=device.source_image_url,
                 )
             )

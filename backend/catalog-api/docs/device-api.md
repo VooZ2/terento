@@ -2,15 +2,20 @@
 
 ## Source and scope
 
-The source is Garmin's official [smartwatch category](https://www.garmin.com/en-US/c/wearables-smartwatches/) and the official
-category JSON endpoint used by that page. The collector runs weekly on Monday
+The sources are Garmin's official [smartwatch category](https://www.garmin.com/en-US/c/wearables-smartwatches/) and, for Edge
+cycling computers only, Garmin's official [cycling category](https://www.garmin.com/en-US/c/sports-fitness/cycling-bike-computers-bike-radar-power-meter-headlights/)
+(owner decision 2026-11-02), each read through the official category JSON
+endpoint used by that page. The collector runs weekly on Monday
 at 03:00 UTC after the map-collection phase (currently the reference provider
 collector; future provider collectors run through their reviewed adapters). It
 never scrapes or fetches external sources during an API request.
 
-The source category is the initial scope for Garmin watch/wearable discovery.
-The collector does not expand into unrelated automotive, marine, cycling,
-handheld, dog, or other product categories. Garmin's retail category is not a
+From the cycling category the collector keeps only Edge products; radars,
+lights, power meters, pedals and sensors are not catalogued. The smartwatch
+category is the required source: if it fails the run fails. A failed or empty
+Edge scan is a warning, so the run is `PARTIAL`, watch rows still update and
+no row is counted as missed. The collector does not expand into automotive,
+marine, handheld, dog, or other product categories. Garmin's retail category is not a
 complete historical device database, so known older models may be inserted
 from separately reviewed sources.
 
@@ -18,6 +23,7 @@ The current official JSON request is:
 
 ```text
 https://www.garmin.com/c/api/getCategoryProducts?categoryKey=10002&locale=en-US&storeCode=US&appName=www-category-pages
+https://www.garmin.com/c/api/getCategoryProducts?categoryKey=Cycling&locale=en-US&storeCode=US&appName=www-category-pages
 ```
 
 This is an implementation detail of Garmin's own category page, so a changed
@@ -66,8 +72,9 @@ select candidates by itself. A single variant may be selected only when
 current connected-device facts independently establish it; otherwise, retain
 all remaining candidates. Thus conflicting variant hints with all-Yes
 candidates still produce `APPROVED`. Edge is not permanently excluded: an
-Edge base model absent from the catalog is `PENDING`, while a future catalogued
-Edge model with Maps=Yes may be authorized by the same rules. Safe Update
+Edge base model absent from the catalog is `PENDING`, and the MTP Edge rows of
+migrations 090 and 091 (Maps=Yes) are authorized by the same rules; the older
+Edge generations of migration 091 have Maps Unknown and stay `PENDING`. Safe Update
 refreshes the policy at start and before its first write.
 
 The historical registry in `terento_catalog.historical_devices` is versioned

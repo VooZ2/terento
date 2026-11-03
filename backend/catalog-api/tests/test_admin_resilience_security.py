@@ -149,6 +149,7 @@ class AdminHttpResilienceTests(unittest.TestCase):
     def test_response_nonce_replaces_only_the_template_placeholder(self):
         response, body = self.request("/admin/campaign-links")
         self.assertEqual(response.status, 200)
+        self.assertEqual(len(response.headers.get_all("Content-Security-Policy")), 1)
         nonce = re.search(r"script-src 'nonce-([^']+)'", response.headers["Content-Security-Policy"]).group(1)
         self.assertNotIn(_ADMIN_NONCE_PLACEHOLDER, body)
         tags = re.findall(r"<script\b[^>]*>", body, re.IGNORECASE)

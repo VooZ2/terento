@@ -297,6 +297,12 @@ class HTTPAPITests(unittest.TestCase):
             self.assertEqual(response.status, 200)
             self.assertEqual(json.loads(body), {"status": "ok"})
             self.assertEqual(response.headers["Cache-Control"], "no-store")
+            self.assertEqual(response.headers["Strict-Transport-Security"], "max-age=31536000")
+            self.assertEqual(response.headers["X-Frame-Options"], "DENY")
+            self.assertEqual(
+                response.headers.get_all("Content-Security-Policy"),
+                ["default-src 'none'; frame-ancestors 'none'"],
+            )
 
         self.assertEqual(self.database.compatibility_rows, original_rows)
         self.assertEqual(self.database.sql_statements, ["SELECT 1", "SELECT 1"])
