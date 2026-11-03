@@ -80,7 +80,7 @@ class InstallationProblemParityTests(PGliteTestCase):
             open_problem_count=self.service.installation_problem_count(f"canonical:{FENIX_8}"),
         ).decode()
         self.assertEqual(int(KPI.search(detail).group(1)), dashboard)
-        self.assertIn("2 installation problems need review.", detail)
+        self.assertIn("<strong>2 open problems</strong>", detail)
 
     def test_attention_read_lists_exactly_the_dashboard_open_problems(self):
         self.seed_audit_scenario()

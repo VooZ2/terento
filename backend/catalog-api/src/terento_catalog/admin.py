@@ -375,7 +375,7 @@ def _source_count_grid(
         body.append(
             f"<div class='source-count-row source-count-{source}' role='row'>"
             f"<span role='rowheader' class='source-count-source'>{_admin_icon('source-' + source)}"
-            f"<span class='sr-only'>{_SOURCE_LABELS[source]}</span></span>" + "".join(cells) + "</div>"
+            f"<span class='source-count-label'>{_SOURCE_LABELS[source]}</span></span>" + "".join(cells) + "</div>"
         )
     return (f"<div class='source-count-grid' role='table' aria-label='{html.escape(label, quote=True)}' "
             f"style='--source-count-columns:{len(columns)}'>" + head + "".join(body) + "</div>")
@@ -1816,6 +1816,7 @@ def _overview_trend_chart(
     variant = "mobile" if _compact else "wide" if _wide else "desktop"
     chart_key = re.sub(r"[^a-z0-9-]", "-", (chart_id or metric).lower()) + "-" + variant
     pattern_id = f"update-failed-{chart_key}"
+    update_pattern_id = f"update-{chart_key}"
     values = []
     for item in trend:
         values.append(tuple(max(0, int(item.get(field) or 0)) for _, _, field in series))
@@ -1863,7 +1864,8 @@ def _overview_trend_chart(
             if geometry is None:
                 continue
             segment_x, segment_width, y, height = geometry
-            style = f" style='fill:url(#{pattern_id})'" if name == "update-failed" else ""
+            style = {"update-failed": f" style='fill:url(#{pattern_id})'",
+                     "update": f" style='fill:url(#{update_pattern_id})'"}.get(name, "")
             group_bars.append(
                 f"<rect class='overview-chart-{name}'{style} data-stack-index='{series_index}' "
                 f"data-stack-total='{stack_total}' x='{segment_x:.1f}' y='{y:.2f}' "
@@ -1892,7 +1894,8 @@ def _overview_trend_chart(
         )
     svg = (
         f"<svg class='overview-trend-chart overview-trend-{variant}' viewBox='0 0 {chart_width} {chart_height}' role='group' aria-label='{chart_label}'>"
-        f"<defs><pattern id='{pattern_id}' width='7' height='7' patternUnits='userSpaceOnUse' patternTransform='rotate(45)'><rect width='7' height='7' fill='var(--danger)'/><path d='M0 0V7' stroke='var(--surface)' stroke-width='3'/></pattern></defs>{''.join(grid)}{''.join(bars)}{''.join(labels)}</svg>"
+        f"<defs><pattern id='{pattern_id}' width='7' height='7' patternUnits='userSpaceOnUse' patternTransform='rotate(45)'><rect width='7' height='7' fill='var(--danger)'/><path d='M0 0V7' stroke='var(--surface)' stroke-width='3'/></pattern>"
+        f"<pattern id='{update_pattern_id}' width='7' height='7' patternUnits='userSpaceOnUse' patternTransform='rotate(45)'><rect width='7' height='7' fill='var(--stone-dark)'/><path d='M0 0V7' stroke='var(--surface)' stroke-width='3'/></pattern></defs>{''.join(grid)}{''.join(bars)}{''.join(labels)}</svg>"
     )
     if _compact or _wide:
         return svg
@@ -2325,10 +2328,12 @@ _ATTENTION_ROWS = (
 
 def _attention_row(
     label: str, count: int | None, href: str, icon: str, *, unavailable: bool = False, detail: str = "",
+    urgent: bool = False,
 ) -> str:
     """Needs attention row: icon, label (with an optional muted detail line),
     count (or —) and an arrow. A measured zero has nothing to act on, so it
-    renders no row."""
+    renders no row. Counts are neutral; only an ``urgent`` row (System checks)
+    takes the danger tone, so the eye lands on it first."""
     if not unavailable and count == 0:
         return ""
     if unavailable or count is None:
@@ -2337,7 +2342,7 @@ def _attention_row(
         aria = f"{label}: unavailable"
     else:
         value = f"{count:,}"
-        state = "active"
+        state = "urgent" if urgent else "active"
         aria = f"{label}: {count}"
     if detail:
         aria += f". {detail}"
@@ -2673,7 +2678,7 @@ def _funnel_summary_card(funnel: dict[str, Any] | None, period: str) -> str:
                      f"{previous['sessions']:,} opened · {previous['connected']:,} connected · "
                      f"{previous['approved']:,} allowed</p>")
     return _section_card(
-        "First run", body, card_id="overview-funnel", scope=period, totals=totals,
+        "First run", body, card_id="overview-funnel", totals=totals,
         action=(page, "View all"),
         css="overview-panel",
     )
@@ -2794,6 +2799,7 @@ def overview_page(
         attention_counts.append(len(system_issues))
         attention_rows.append(_attention_row(
             "System checks", len(system_issues), f"/admin/system-health?status={system_filter}", "circle-exclamation",
+            urgent=True,
         ))
     attention_total = (
         sum(attention_counts) if all(value is not None for value in attention_counts) else None
@@ -2816,8 +2822,7 @@ def overview_page(
         review_notice + attention_status
         + ("<ul class='overview-attention-rows'>" + "".join(attention_rows) + "</ul>" if any(attention_rows) else ""),
         card_id="overview-attention", scope="now",
-        totals=_card_totals([(_admin_error_counter(attention_total, available=attention_total is not None,
-                                                   data_stat="attentionTotal"), "Total")],
+        totals=_card_totals([(f"<strong data-stat='attentionTotal'>{attention_total if attention_total is not None else '—'}</strong>", "Total")],
                             label="Needs attention total") if review_available else "",
         css="overview-panel overview-attention-panel" + (" overview-attention-empty" if attention_total == 0 else ""),
     )
@@ -2860,17 +2865,17 @@ def overview_page(
             hidden = lambda name: "" if name == "all" else " hidden"
             return _section_card(
                 title, "".join(f"<div data-source-panel='{name}'{hidden(name)}>{body}</div>" for name, body, _ in rendered),
-                card_id=card_id, scope=period,
+                card_id=card_id,
                 totals="<div class='overview-card-totals overview-source-head'>" + "".join(
                     f"<span class='overview-source-totals' data-source-panel='{name}'{hidden(name)}>{totals}</span>"
                     for name, _, totals in rendered) + "</div>",
                 css="overview-panel overview-chart-panel",
             )
 
-        downloads_chart = switched_card("Downloads", "downloads", "overview-download-trend", "overview-downloads")
+        downloads_chart = switched_card("Map downloads", "downloads", "overview-download-trend", "overview-downloads")
         installs_chart = switched_card("Installs", "installs", "overview-trend", "overview-installs")
     else:
-        downloads_chart = _unavailable_card("Downloads", "overview-download-trend")
+        downloads_chart = _unavailable_card("Map downloads", "overview-download-trend")
         installs_chart = _unavailable_card("Installs", "overview-trend")
 
     # --- Activity -------------------------------------------------------------
@@ -2881,7 +2886,7 @@ def overview_page(
     else:
         recent_content = "<ul class='overview-activity-list'>" + "".join(_overview_map_activity_row(item) for item in recent) + "</ul>"
     activity_section = _section_card(
-        "Activity", recent_content, card_id="overview-activity", scope=period,
+        "Activity", recent_content, card_id="overview-activity",
         action=(map_statistics_href, "View all"), css="overview-panel overview-activity-panel",
     )
 
@@ -2904,7 +2909,7 @@ def overview_page(
             f"<p class='overview-all-time overview-download-all-time'>{_scope_chip('all')}"
             f"<span>.dmg <strong>{download_total('dmgTotal')}</strong> · .zip <strong>{download_total('zipTotal')}</strong></span>"
             f"<span class='overview-chart-note'>Last update {_timestamp_markup(download_last_update) if download_last_update is not None else '—'}</span></p>",
-            card_id="overview-downloads", scope=period,
+            card_id="overview-downloads",
             css="overview-panel overview-download-panel",
         )
     else:
@@ -2917,7 +2922,7 @@ def overview_page(
         + "".join(
             f"<button type='button'{active_source.get(name, '')} data-source-switch='{name}' "
             f"aria-pressed='{str(name == 'all').lower()}' aria-label='{label}'>"
-            f"{_admin_icon('source-' + name)}</button>"
+            f"{_admin_icon('source-' + name)}<span class='overview-source-label' aria-hidden='true'>{label}</span></button>"
             for name, label in _SOURCE_LABELS.items()
         )
         + "</span>"
@@ -2926,8 +2931,9 @@ def overview_page(
       {_admin_header(user, csrf_token, active='overview')}
       <main class='dashboard overview-page' id='main-content'>
         <div class='heading-row overview-heading'><div><h1>Dashboard</h1></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin' data-time-zone='{html.escape(time_zone, quote=True)}'>{source_switch}<label><span class='sr-only'>Time period</span><select id='overview-period' data-admin-dropdown name='period'>{period_options}</select></label></form></div>
+        <div class='overview-composition-grid overview-review-grid'>{attention_section}{funnel_section}</div>
         <div class='overview-primary-grid'>{downloads_chart}{installs_chart}</div>
-        <div class='overview-composition-grid'>{attention_section}{activity_section}{funnel_section}{downloads_section}</div>
+        <div class='overview-composition-grid'>{activity_section}{downloads_section}</div>
       </main>
       <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_overview_period_script()}{_overview_source_switch_script()}</script>
     """
@@ -3040,9 +3046,9 @@ def missing_reports_page(
             f"<ul class='overview-attention-list'>{items}</ul>{pagination}" if rows
             else _empty_state("empty", "Nothing to review.")
         )
-        body = _metric_row([
+        body = "<section class='admin-card installation-kpis' aria-label='Missing report summary'>" + _metric_row([
             _metric_tile("Missing reports", total, scope="now"),
-        ], label="Missing report summary") + _section_card(
+        ], label="Missing report summary") + "</section>" + _section_card(
             "Reports", list_markup, card_id="missing-report-list", css="overview-attention-panel",
         )
     content = f"""
@@ -3862,7 +3868,7 @@ def _source_switch(active: str, *, label: str) -> str:
     ``source``; the Dashboard variant swaps pre-rendered panels instead."""
     buttons = "".join(
         f"<button type='submit' name='source' value='{name}'{_ACTIVE_CLASS if name == active else ''} "
-        f"aria-pressed='{str(name == active).lower()}' aria-label='{name_label}'>{_admin_icon('source-' + name)}</button>"
+        f"aria-pressed='{str(name == active).lower()}' aria-label='{name_label}'>{_admin_icon('source-' + name)}<span class='overview-source-label' aria-hidden='true'>{name_label}</span></button>"
         for name, name_label in _SOURCE_LABELS.items()
     )
     return f"<span class='overview-source-switch' role='group' aria-label='{html.escape(label, quote=True)}'>{buttons}</span>"
@@ -4782,7 +4788,7 @@ def provider_detail_page(
         css="provider-problems-card",
     ).replace(
         "</header>",
-        (_provider_action_button(provider_id, 'rechecks', 'Recheck affected packages', disabled=status == 'RETIRED') if groups else "") + "</header>",
+        (_provider_action_button(provider_id, 'rechecks', 'Recheck affected packages', secondary=True, disabled=status == 'RETIRED') if groups else "") + "</header>",
         1,
     )
     collection_summary = (
@@ -5180,10 +5186,10 @@ def map_statistics_page(
         <form class='filter-bar map-statistics-filter-bar' id='map-statistics-filters' role='search' method='get' action='/admin/map-statistics'><input type='hidden' name='timeZone' id='map-statistics-timezone' value='{html.escape(chart_time_zone, quote=True)}'><input type='hidden' name='source' value='{source}'>{_source_switch(source, label='Maps source')}{statistics_period_filter}<label><span class='sr-only'>Provider</span><select id='map-statistics-provider' data-admin-dropdown name='provider'><option value=''>All providers</option>{provider_options}</select></label><details class='admin-disclosure filter-disclosure' id='map-statistics-more-filters'><summary>More filters</summary><div class='disclosure-body'><label><span class='sr-only'>Map ID</span><input id='map-statistics-map' name='map' type='search' placeholder='Map ID'></label><label><span class='sr-only'>Region</span><input id='map-statistics-region' name='region' type='search' placeholder='Region'></label><label><span class='sr-only'>Event type</span><select id='map-statistics-event' data-admin-dropdown name='eventType'><option value=''>All events</option>{''.join(f"<option value='{code}'>{label}</option>" for code, label in _EVENT_TYPE_LABELS.items() if code.endswith(('SUCCEEDED', 'FAILED')))}{''.join(f"<option value='{code}'>{label}</option>" for code, label in _EVENT_TYPE_LABELS.items() if not code.endswith(('SUCCEEDED', 'FAILED')))}</select></label><label><span class='sr-only'>Outcome</span><select id='map-statistics-outcome' data-admin-dropdown name='outcome'><option value=''>All outcomes</option><option value='SUCCEEDED'>Succeeded</option><option value='FAILED'>Failed</option><option value='UNKNOWN'>Unknown</option></select></label><button type='submit'>Apply</button></div></details><p class='results-count' id='map-statistics-status' aria-live='polite'>{event_status}</p>{"<a class='secondary-button filter-clear' href='/admin/map-statistics?period=all'>Clear</a>" if has_active_filters else ""}</form>
         {metrics_section if has_all_time_data else ""}
         {empty_notice}
-        {"" if not has_event_data else coverage + provider_table + ranking + events}
         {trends}
+        {"" if not has_event_data else coverage + provider_table + ranking + events}
       </main>
-      <link rel="stylesheet" href="/admin/map-assets/leaflet-1.9.4.css"><link rel="stylesheet" href="/admin/map-assets/coverage-map-v1.css"><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/leaflet-1.9.4.js"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/coverage-map-v1.js?v=20261010-not-offered-1"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="{WORLD_MAP_SCRIPT_PATH}"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}">window.terentoMapStatistics = {_admin_json(statistics)};window.terentoAdminProviders = {_admin_json(providers)};window.terentoMapStatisticsFilters = {_admin_json(selected)};window.terentoWorldMapCountryAliases = {_admin_json(WORLD_MAP_COUNTRY_ALIASES)};{_map_statistics_script()}</script>
+      <link rel="stylesheet" href="/admin/map-assets/leaflet-1.9.4.css"><link rel="stylesheet" href="/admin/map-assets/coverage-map-v1.css"><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/leaflet-1.9.4.js"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="/admin/map-assets/coverage-map-v1.js?v=20261103-no-wheel-1"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}" src="{WORLD_MAP_SCRIPT_PATH}"></script><script nonce="{_ADMIN_NONCE_PLACEHOLDER}">window.terentoMapStatistics = {_admin_json(statistics)};window.terentoAdminProviders = {_admin_json(providers)};window.terentoMapStatisticsFilters = {_admin_json(selected)};window.terentoWorldMapCountryAliases = {_admin_json(WORLD_MAP_COUNTRY_ALIASES)};{_map_statistics_script()}</script>
     """
     # Maps shows provider names only (filter options); provider health and
     # collection clocks are not part of this page's freshness revision.
@@ -6906,7 +6912,7 @@ def device_detail_page(
         if publication.get("published") else ""
     )
     alert = (
-        f"<aside class='model-review-alert' role='status'><span><strong>{open_errors} installation {'problem needs' if open_errors == 1 else 'problems need'} review.</strong> Resolved failures remain in the historical failed count.</span><a href='#installations' data-filter-open-errors>Review open problems</a></aside>"
+        f"<aside class='model-review-alert' role='status'><span title='Resolved failures remain in the historical failed count.'><strong>{open_errors} open {'problem' if open_errors == 1 else 'problems'}</strong></span><a href='#installations' data-filter-open-errors>Review open problems</a></aside>"
         if open_errors else ""
     )
 
@@ -10064,7 +10070,7 @@ button:active:not(:disabled),.copy-button:active{transform:scale(.96)}
 .map-activity-neutral .overview-activity-label{color:var(--secondary)}
 .activity-source-web,.activity-source-appstore{display:inline-flex;margin-left:2px;color:var(--secondary)}.activity-source-web .admin-icon,.activity-source-appstore .admin-icon{width:13px;height:13px}
 .history-source-web{display:inline-flex;align-items:center;gap:4px;color:var(--secondary)}.history-source-web .admin-icon{width:13px;height:13px}
-.source-count-grid{display:grid;margin:4px 0 14px}.source-count-row{display:grid;grid-template-columns:44px repeat(var(--source-count-columns),minmax(0,1fr));align-items:center;padding:10px 0;border-top:1px solid color-mix(in srgb,var(--border) 75%,transparent)}.source-count-head{padding:0 0 8px;border-top:0;color:var(--secondary);font-size:12px;font-weight:650}.source-count-row>span:not(.source-count-source){text-align:right}.source-count-row .numeric{font-size:14px;font-weight:650;color:var(--graphite)}.source-count-row .numeric.is-positive{color:var(--danger)}.source-count-source{display:inline-flex;color:var(--graphite)}.source-count-source .admin-icon{width:18px;height:18px}.source-count-all{border-top-width:2px}.source-count-all .numeric{font-weight:750}
+.source-count-grid{display:grid;margin:4px 0 14px}.source-count-row{display:grid;grid-template-columns:minmax(88px,max-content) repeat(var(--source-count-columns),minmax(0,1fr));align-items:center;padding:10px 0;border-top:1px solid color-mix(in srgb,var(--border) 75%,transparent)}.source-count-head{padding:0 0 8px;border-top:0;color:var(--secondary);font-size:12px;font-weight:650}.source-count-row>span:not(.source-count-source){text-align:right}.source-count-row .numeric{font-size:14px;font-weight:650;color:var(--graphite)}.source-count-row .numeric.is-positive{color:var(--danger)}.source-count-row>.source-count-source{display:inline-flex;align-items:center;gap:8px;color:var(--graphite);font-size:13px;font-weight:600}.source-count-source .admin-icon{width:18px;height:18px}.source-count-all{border-top-width:2px}.source-count-all .numeric{font-weight:750}
 @media(max-width:480px){.map-activity-row{grid-template-columns:minmax(0,1fr)}.map-activity-row>time{grid-column:1;grid-row:3;margin-left:21px}.map-activity-row .download-history>summary{grid-template-columns:minmax(0,1fr)}.map-activity-row .download-history>summary>time{grid-column:1;grid-row:3;margin-left:21px}.map-activity-row>.map-activity-copy{grid-row:1}}
 
 /* Map statistics compact summary, popularity views, and table alignment. */
@@ -10208,12 +10214,12 @@ details.provider-card.admin-disclosure>*:not(summary){margin:0 14px 14px}
 .map-statistics-provider-table .admin-table th,.map-statistics-provider-table .admin-table td{padding-inline:7px}
 .map-statistics-provider-table .admin-table td{white-space:normal;overflow-wrap:anywhere}
 .map-statistics-provider-table .admin-table .column-date{width:142px;overflow-wrap:normal;white-space:nowrap}
-/* Rows: Needs attention | Activity, then First run | App downloads. Cards in a row stretch to one height; a lone last card spans the row so no grid cell stays empty. */
-/* First run beside App downloads: its previous-period line closes the card at the bottom, like the App downloads All time line. */
+/* Rows: Needs attention | First run, then Map downloads | Installs, then Activity | App downloads. Cards in a row stretch to one height; a lone last card spans the row so no grid cell stays empty. */
+/* First run beside Needs attention: its previous-period line closes the card at the bottom. */
 .overview-composition-grid>#overview-funnel{display:flex;flex-direction:column}.overview-composition-grid>#overview-funnel>.admin-card-note{margin-top:auto;padding-top:10px}
 .overview-composition-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch;gap:16px;margin-top:16px}
 .overview-composition-grid>.overview-panel{min-width:0;margin:0}.overview-composition-grid>.overview-panel:last-child:nth-child(odd){grid-column:1/-1}
-.overview-heading+.overview-primary-grid{margin-top:0}
+.overview-heading+.overview-primary-grid,.overview-heading+.overview-composition-grid{margin-top:0}
 .overview-activity-list{min-height:0;max-block-size:350px;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding-inline-end:6px}
 .map-activity-row>time{grid-row:1}
 @media(max-width:480px){.overview-activity-item{grid-template-columns:minmax(0,1fr)}.overview-activity-item>time{grid-column:1;grid-row:auto;margin-left:21px}}
@@ -10233,7 +10239,7 @@ details.provider-card.admin-disclosure>*:not(summary){margin:0 14px 14px}
   .model-evidence-history .mobile-record-table tbody td:first-child,.model-evidence-history .mobile-record-table tbody td:has(button){grid-column:1/-1}
   .model-evidence-history .mobile-record-table td button{width:100%;min-height:44px}
 }
-@media(max-width:900px){.overview-composition-grid{grid-template-columns:minmax(0,1fr)}.model-evidence-grid{grid-template-columns:minmax(0,1fr)}.diagnostic-secondary-grid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:900px){.overview-activity-list{max-block-size:none;overflow:visible;padding-inline-end:0}.overview-activity-list>li:nth-child(n+6){display:none}.overview-composition-grid{grid-template-columns:minmax(0,1fr)}.model-evidence-grid{grid-template-columns:minmax(0,1fr)}.diagnostic-secondary-grid{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:760px){
   .admin-section-nav{display:flex;flex-direction:column;align-items:stretch;gap:4px;width:100%}
   .admin-nav-group{display:flex;flex-direction:column;align-items:stretch;gap:4px;width:100%}
@@ -10265,8 +10271,7 @@ ADMIN_STYLES += """
 .admin-card-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 12px}
 .admin-card-head>h2,.admin-card-head>h3{margin:0;color:var(--graphite);font:600 17px/24px var(--font-ui)}
 .admin-card-head>.admin-card-action,.admin-card-head>button{margin-left:auto}
-.admin-card-head>button[data-provider-action]{min-height:var(--admin-control-height);padding:8px 12px;border:0;border-radius:var(--radius-control);background:var(--interactive);color:var(--interactive-primary-text);font-weight:700}
-.admin-card-head>button[data-provider-action]:hover{background:var(--interactive-hover)}
+.admin-card-head>button[data-provider-action]{min-height:var(--admin-control-height);padding:8px 12px;font-weight:700}
 .admin-metric-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:16px}
 .admin-card .admin-metric-row,.heading-row+.admin-metric-row{margin-top:0}
 .admin-metric{display:flex;flex-direction:column;gap:4px;min-width:0;padding:14px 16px;border:1px solid var(--border);border-radius:var(--radius-card);background:var(--surface);color:var(--graphite);text-decoration:none}
@@ -10313,7 +10318,7 @@ ADMIN_STYLES += """
 .overview-attention-row>a:focus-visible{outline:var(--admin-focus-ring);outline-offset:-3px}
 .overview-attention-row>a>.admin-icon:first-child{width:16px;height:16px;color:var(--secondary)}
 .overview-attention-row strong{font-variant-numeric:tabular-nums;font-weight:600}
-.overview-attention-row[data-state="active"]>a>.admin-icon:first-child,.overview-attention-row[data-state="active"] strong{color:var(--danger)}
+.overview-attention-row[data-state="urgent"]>a>.admin-icon:first-child,.overview-attention-row[data-state="urgent"] strong{color:var(--danger)}
 .overview-attention-row[data-state="unavailable"] strong{color:var(--secondary)}
 .overview-attention-item .admin-pill{align-self:start}
 .overview-all-time{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:10px 0 0;color:var(--secondary);font-size:13px}
@@ -10324,14 +10329,15 @@ ADMIN_STYLES += """
 .admin-legend i{display:inline-block;width:12px;height:12px;border:1px solid var(--border);border-radius:3px}
 .admin-legend strong{color:var(--graphite);font-weight:600;font-variant-numeric:tabular-nums}
 /* Chart palette (owner decision 2026-10-05): one definition. */
-.overview-chart-success{fill:var(--interactive);background:var(--interactive)}
+.overview-chart-success{fill:var(--sky);background:var(--sky)}
 .overview-chart-custom{fill:var(--lichen-dark);background:var(--lichen-dark)}
 .overview-chart-failed{fill:var(--danger);background:var(--danger)}
 .overview-chart-update{fill:var(--stone-dark);background:var(--stone-dark)}
 .overview-chart-update-failed{fill:var(--danger)}
-.overview-chart-download-success{fill:var(--interactive);background:var(--interactive)}
+.overview-chart-download-success{fill:var(--sky);background:var(--sky)}
 .overview-chart-download-failed{fill:var(--danger);background:var(--danger)}
 .admin-legend i.overview-chart-update-failed{border-color:var(--danger);background:repeating-linear-gradient(45deg,var(--danger) 0 4px,var(--surface) 4px 6px)}
+.admin-legend i.overview-chart-update{border-color:var(--stone-dark);background:repeating-linear-gradient(45deg,var(--stone-dark) 0 4px,var(--surface) 4px 6px)}
 .overview-chart-group:focus{outline:none}
 .overview-chart-group:focus-visible rect{stroke:var(--graphite);stroke-width:2}
 """
@@ -10408,6 +10414,7 @@ ADMIN_STYLES += """
 main.dashboard:not(.overview-page)>:not(.heading-row,.back-link,.model-page-header,.provider-action-bar,h1){margin-bottom:0}
 main.dashboard:not(.overview-page)>:not(.heading-row,.back-link,.model-page-header,.provider-action-bar,h1)+*,
 main.overview-page>.overview-primary-grid+.overview-composition-grid,
+main.overview-page>.overview-composition-grid+.overview-primary-grid,
 .model-evidence-grid>.model-evidence-history>*+*{margin-top:var(--admin-card-gap)}
 :is(.overview-primary-grid,.overview-composition-grid,.model-evidence-grid,.model-evidence-summary,.model-information-columns,.map-statistics-coverage-layout,.provider-dashboard-grid,.provider-state-grid,.provider-technical-grid,.support-report-grid,.support-report-main,.support-report-side,.diagnostic-secondary-grid){gap:var(--admin-card-gap)}
 main.dashboard :is(.overview-primary-grid,.overview-composition-grid,.model-evidence-grid,.model-evidence-summary,.model-information-columns,.map-statistics-coverage-layout,.provider-dashboard-grid,.provider-state-grid,.provider-technical-grid,.support-report-grid,.support-report-main,.support-report-side,.diagnostic-secondary-grid)>*{margin-top:0;margin-bottom:0}
@@ -10417,7 +10424,7 @@ main.dashboard :is(.overview-primary-grid,.overview-composition-grid,.model-evid
   :root{--admin-card-gap:16px}
   main.overview-page{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--admin-card-gap)}
   .overview-page>.overview-heading{margin:0}
-  main.overview-page>.overview-primary-grid+.overview-composition-grid{margin-top:0}
+  main.overview-page>.overview-primary-grid+.overview-composition-grid,main.overview-page>.overview-composition-grid+.overview-primary-grid{margin-top:0}
   .admin-kpi-grid,.installation-kpis,.model-statistics,.diagnostic-model-metrics,.provider-metrics{gap:12px}
 }
 """
@@ -10793,6 +10800,8 @@ main.first-run-page>.web-installer-grid{gap:var(--admin-card-gap)}main.first-run
 .overview-source-switch button:focus-visible{outline:var(--admin-focus-ring);outline-offset:1px}
 .overview-source-switch button{display:inline-flex;align-items:center;justify-content:center;width:42px;padding:0}
 .overview-source-switch .admin-icon{width:16px;height:16px}
+.overview-source-label{display:none}
+@media(min-width:1024px){.overview-source-switch button{width:auto;gap:6px;padding:0 12px}.overview-source-label{display:inline}}
 @media(max-width:760px){.overview-period-form:has(.overview-source-switch) label{flex:1 1 auto;min-width:0}}
 /* Chart totals: one badge, successful / failed / rate. */
 .overview-card-result{gap:6px}.overview-card-total-separator{color:var(--secondary);font-size:14px;line-height:22px}

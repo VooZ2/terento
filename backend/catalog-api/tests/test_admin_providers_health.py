@@ -390,6 +390,8 @@ class HealthPageTests(unittest.TestCase):
         card = attention(HEALTH)
         self.assertIn("<span class='overview-attention-label'>System checks</span><strong>1</strong>", card)
         self.assertIn("href='/admin/system-health?status=FAILED' aria-label='System checks: 1'", card)
+        # System checks is the one urgent row; review counts stay neutral.
+        self.assertIn("<li class='overview-attention-row' data-state='urgent'><a href='/admin/system-health?status=FAILED'", card)
         self.assertNotIn("Provider problems", card)
         self.assertIn("data-stat='attentionTotal'>4</strong>", card)
         labels = re.findall(r"<span class='overview-attention-label'>([^<]+)</span>", card)

@@ -359,12 +359,9 @@ class TodayPickerMarkupTests(unittest.TestCase):
 
     def test_dashboard_scope_chips_name_today(self):
         body = dashboard("today")
-        self.assertIn("<span class='admin-scope-chip' data-scope='period'>Today</span>", body)
-        self.assertNotIn("Last 24 hours</span>", body)
-        for card in ("overview-download-trend", "overview-trend", "overview-activity", "overview-funnel", "overview-downloads"):
-            with self.subTest(card=card):
-                section = body.split(f"id='{card}'", 1)[1].split("</section>", 1)[0]
-                self.assertIn("data-scope='period'>Today</span>", section)
+        # The picker names the period once; the cards repeat no period chip.
+        self.assertIn("<option value='today' selected>Today</option>", body)
+        self.assertNotIn("data-scope='period'", body)
         self.assertIn("/admin/map-statistics?period=today", body)
 
     def test_app_downloads_chart_names_today(self):
