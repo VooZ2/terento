@@ -2203,8 +2203,8 @@ def _overview_downloads_chart(
         + _overview_downloads_chart(downloads, time_zone, period=period, _compact=True)
         + _chart_value_strip()
         + _chart_legend(
-            [("download-dmg", ".dmg", _sum_known(values, 0)), ("download-zip", ".zip", _sum_known(values, 1))],
-            label="Terento app download legend and period increases",
+            [("download-dmg", ".dmg", _LEGEND_NAME_ONLY), ("download-zip", ".zip", _LEGEND_NAME_ONLY)],
+            label="Terento app download legend",
         )
         + "</div>"
     )
@@ -2736,33 +2736,6 @@ def first_run_page(
     return _layout("First run", content, sections={"funnel": revision})
 
 
-def _card_totals(items: list[tuple[str, str]], *, label: str) -> str:
-    """Compact value + noun chips that close a card header (Dashboard totals)."""
-    return (
-        f"<div class='overview-card-totals' role='group' aria-label='{html.escape(label, quote=True)}'>"
-        + "".join(f"<span class='overview-card-total'>{value}<small>{html.escape(noun)}</small></span>"
-                  for value, noun in items)
-        + "</div>"
-    )
-
-
-def _period_totals(data: dict[str, Any], completed: str, failed: str, rate: str, *, label: str) -> str:
-    """Chart card period totals as one badge, numbers only (owner 2026-10-11):
-    successful / failed (danger when positive) / success rate. The words stay
-    for screen readers."""
-    completed_value = _optional_nonnegative_int(data.get(completed))
-    separator = "<span class='overview-card-total-separator' aria-hidden='true'>/</span>"
-    return (
-        f"<div class='overview-card-totals' role='group' aria-label='{html.escape(label, quote=True)}'>"
-        "<span class='overview-card-total overview-card-result'>"
-        f"<strong data-stat='{completed}'>{f'{completed_value:,}' if completed_value is not None else '—'}</strong>"
-        "<span class='sr-only'> successful,</span>" + separator
-        + _admin_error_counter(data.get(failed), data_stat=failed) + "<span class='sr-only'> failed,</span>" + separator
-        + f"<strong data-stat='{rate}'>{html.escape(_format_rate(data.get(rate)))}</strong>"
-        "<span class='sr-only'> success rate</span></span></div>"
-    )
-
-
 def overview_page(
     overview: dict[str, Any], user: dict[str, Any], csrf_token: str,
     *, review_action: str = "", review_event_id: str = "",
@@ -2859,21 +2832,19 @@ def overview_page(
     trend = list(data.get("trend") or [])
     bucket = str(data.get("bucket") or "day")
     if data_available:
-        def chart(source: dict[str, Any], kind: str, chart_id: str) -> tuple[str, str]:
+        def chart(source: dict[str, Any], kind: str, chart_id: str) -> str:
             if source.get("available") is False:
-                return _empty_state("unavailable", "Could not load this chart."), ""
+                return _empty_state("unavailable", "Could not load this chart.")
             if kind == "downloads":
-                keys = ("completedDownloadCount", "failedDownloadCount", "downloadSuccessRate")
-                activity = (source.get(keys[0]) or 0) + (source.get(keys[1]) or 0)
+                activity = (source.get("completedDownloadCount") or 0) + (source.get("failedDownloadCount") or 0)
             else:
-                keys = ("completedInstallCount", "failedInstallCount", "installSuccessRate")
-                activity = (source.get(keys[0]) or 0) + (source.get(keys[1]) or 0) + (source.get("mapUpdateCount") or 0)
+                activity = ((source.get("completedInstallCount") or 0) + (source.get("failedInstallCount") or 0)
+                            + (source.get("mapUpdateCount") or 0))
             metric = "web-installs" if source is web and kind == "installs" else kind
-            body = _overview_trend_chart(
+            return _overview_trend_chart(
                 list(source.get("trend") or []), str(source.get("bucket") or "day"), time_zone, metric=metric,
                 chart_id=chart_id, counted=frozenset(), has_activity=bool(activity),
             )
-            return body, _period_totals(source, *keys, label=f"{kind.title()} in this period")
 
         def switched_card(title: str, kind: str, card_id: str, chart_id: str) -> str:
             """All/App/App Store/Web (owner decisions 2026-10-10, 2026-10-11
@@ -2883,10 +2854,10 @@ def overview_page(
             records only. One switch next to the period picker swaps both cards."""
             panels = (("all", all_sources, chart_id + "-all"), ("app", direct, chart_id),
                       ("appstore", app_store, chart_id + "-appstore"), ("web", web, chart_id + "-web"))
-            rendered = [(name, *chart(source, kind, panel_chart_id)) for name, source, panel_chart_id in panels]
+            rendered = [(name, chart(source, kind, panel_chart_id)) for name, source, panel_chart_id in panels]
             hidden = lambda name: "" if name == "all" else " hidden"
             return _section_card(
-                title, "".join(f"<div data-source-panel='{name}'{hidden(name)}>{body}</div>" for name, body, _ in rendered),
+                title, "".join(f"<div data-source-panel='{name}'{hidden(name)}>{body}</div>" for name, body in rendered),
                 card_id=card_id, css="overview-panel overview-chart-panel",
             )
 
@@ -2952,7 +2923,7 @@ def overview_page(
     elif download_has_data:
         downloads_section = _section_card(
             "App downloads",
-            # Legend: period increases; one compact All time line: totals.
+            # Legend names the series (the tile holds the period increases); one All time line: totals.
             f"{_overview_downloads_chart(downloads, time_zone, period=period)}"
             f"<p class='overview-all-time overview-download-all-time'>{_scope_chip('all')}"
             f"<span>.dmg <strong>{download_total('dmgTotal')}</strong> · .zip <strong>{download_total('zipTotal')}</strong></span>"
@@ -5201,10 +5172,8 @@ def map_statistics_page(
                                   counted=frozenset(),
                                   has_activity=bool((summary.get('completedDownloads') or 0) + (summary.get('failedDownloads') or 0))),
             card_id="map-download-trend",
-            # Same chart cards as the Dashboard: period totals top right, a
-            # legend without numbers (owner decision 2026-10-06).
-            totals=_period_totals(summary, "completedDownloads", "failedDownloads", "downloadSuccessRate",
-                                  label="Downloads in this period") if has_event_data else "",
+            # Same chart cards as the Dashboard: title only, totals live in the
+            # tiles above, a legend without numbers (owner decision 2026-11-03).
             css="overview-panel overview-chart-panel",
         )
         + _section_card(
@@ -5212,8 +5181,6 @@ def map_statistics_page(
             _overview_trend_chart(trend, bucket, chart_time_zone, chart_id='maps-installs', counted=frozenset(),
                                   has_activity=bool((summary.get('completedInstalls') or 0) + (summary.get('failedInstalls') or 0) + (summary.get('mapUpdates') or 0))),
             card_id="map-install-trend",
-            totals=_period_totals(summary, "completedInstalls", "failedInstalls", "installSuccessRate",
-                                  label="Installs in this period") if has_event_data else "",
             css="overview-panel overview-chart-panel",
         )
         + "</section>"
@@ -6987,7 +6954,7 @@ def device_detail_page(
         if publication.get("published") else ""
     )
     alert = (
-        f"<aside class='model-review-alert' role='status'><span title='Resolved failures remain in the historical failed count.'><strong>{open_errors} open {'problem' if open_errors == 1 else 'problems'}</strong></span><a href='#installations' data-filter-open-errors>Review open problems</a></aside>"
+        f"<aside class='model-review-alert' role='status'><span>{_admin_icon('x-circle')}<strong>{open_errors} open {'problem' if open_errors == 1 else 'problems'}</strong></span><a href='#installations' data-filter-open-errors>Review open problems</a></aside>"
         if open_errors else ""
     )
 
@@ -10381,12 +10348,6 @@ ADMIN_STYLES += """
 .provider-row-menu-body{position:absolute;z-index:5;right:0;display:grid;gap:6px;min-width:200px;padding:8px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface);box-shadow:0 4px 16px color-mix(in srgb,var(--graphite) 14%,transparent);text-align:start}
 @media(max-width:760px){.provider-problem-list>.provider-problem{grid-template-columns:minmax(0,1fr)}}
 .admin-metric-failed{white-space:nowrap}.admin-metric-failed.is-positive{color:var(--danger);font-weight:600}
-.overview-card-totals{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px;margin-inline-start:auto}
-.overview-card-total{display:inline-flex;align-items:baseline;gap:4px;box-sizing:border-box;height:24px;padding:0 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface-muted);font-size:var(--admin-type-label-size);line-height:22px}
-.overview-card-total strong{color:var(--graphite);font-size:16px;line-height:22px;font-weight:700;font-variant-numeric:tabular-nums}
-.overview-card-total strong.is-positive{color:var(--danger)}
-.overview-card-total small{color:var(--secondary);font-size:var(--admin-type-support-size);line-height:22px}
-@media(max-width:560px){.overview-card-totals{flex-basis:100%;justify-content:flex-start;margin-inline-start:0}}
 .overview-attention-rows{display:grid;gap:2px;margin:0;padding:0;list-style:none}
 .overview-attention-row>a{display:grid;grid-template-columns:18px minmax(0,1fr) auto 14px;align-items:center;gap:10px;min-height:40px;padding:6px 8px;border-radius:var(--radius-control);color:var(--graphite);text-decoration:none}
 .overview-attention-row>a:hover{background:var(--surface-muted)}
@@ -10865,7 +10826,6 @@ main.first-run-page>.web-installer-grid{gap:var(--admin-card-gap)}main.first-run
 .web-installer-tests{margin:20px 0 0;font-size:12px}
 .overview-chart-panel .overview-empty-state{justify-content:center;padding:32px 0;text-align:center}
 .overview-attention-empty{display:flex;flex-direction:column}.overview-attention-empty>.overview-empty-state{flex:1;display:flex;align-items:center;justify-content:center;padding:32px 0}
-.overview-source-totals,.overview-source-head .overview-card-totals{display:contents}.overview-source-totals[hidden]{display:none}
 /* One App/Web switch beside the period picker, in the picker's height (owner 2026-10-11). */
 .overview-period-form:has(.overview-source-switch){display:flex;align-items:center;gap:8px}
 .installation-heading-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}.installation-heading-tools .page-meta{margin:0}.installation-source-form{display:flex;margin:0}.installation-reported-web{display:inline-flex;align-items:center;gap:4px}.installation-reported-web .activity-source-web{margin-left:0}.installation-reported-web .activity-source-app{display:inline-flex;color:var(--secondary)}.installation-reported-web .activity-source-app .admin-icon{width:13px;height:13px}@media(max-width:760px){.installation-heading-tools{justify-content:flex-start}}
@@ -10879,7 +10839,6 @@ main.first-run-page>.web-installer-grid{gap:var(--admin-card-gap)}main.first-run
 @media(min-width:1024px){.overview-source-switch button{width:auto;gap:6px;padding:0 12px}.overview-source-label{display:inline}}
 @media(max-width:760px){.overview-period-form:has(.overview-source-switch) label{flex:1 1 auto;min-width:0}}
 /* Chart totals: one badge, successful / failed / rate. */
-.overview-card-result{gap:6px}.overview-card-total-separator{color:var(--secondary);font-size:14px;line-height:22px}
 """
 # Signed-in pages link one cacheable stylesheet; the content hash in the name
 # changes whenever the CSS changes (served by the admin map-assets route).
@@ -10897,6 +10856,8 @@ h1{font-weight:650;letter-spacing:-.025em}
 h2,.section-heading h2{font-weight:650;letter-spacing:-.01em}
 :is(.admin-card,.overview-panel,.admin-metric-row>.admin-metric:not(.installation-kpis *):not(.admin-kpi-panel *)){border-color:var(--admin-line);box-shadow:var(--admin-shadow-card)}
 .table-wrap{border-color:var(--admin-line);box-shadow:var(--admin-shadow-card)}
+#web-installer-problems .admin-timestamp{white-space:nowrap}
+.model-review-alert{border-color:var(--admin-line);background:var(--surface);box-shadow:var(--admin-shadow-card)}.model-review-alert>span{display:inline-flex;align-items:center;gap:8px}.model-review-alert>span .admin-icon{color:var(--danger)}
 thead th{font-size:var(--admin-type-table-header-size);font-weight:550;letter-spacing:0;text-transform:none;color:var(--secondary);box-shadow:0 1px 0 var(--admin-line)}
 th,td{border-bottom-color:var(--admin-line)}
 .admin-metric-label{color:var(--secondary);font-size:var(--admin-type-label-size)}
@@ -10913,8 +10874,6 @@ th,td{border-bottom-color:var(--admin-line)}
 /* Scope stays visible, as quiet text instead of a pill */
 .admin-scope-chip,.admin-scope-chip[data-scope]{min-height:0;padding:0;border:0;background:none;color:var(--secondary);font-weight:500}
 /* Card totals: plain numbers, no chip */
-.overview-card-total{height:auto;padding:0;border:0;background:none;font-size:13px}
-.overview-card-total strong{font-size:15px;font-weight:600;letter-spacing:-.01em}
 /* Healthy series recede (pale with a solid cap), problems keep their full tone */
 .overview-chart-success,.overview-chart-download-success{fill:color-mix(in srgb,var(--sky) 72%,var(--surface));background:color-mix(in srgb,var(--sky) 72%,var(--surface))}
 .overview-chart-custom{fill:color-mix(in srgb,var(--lichen-dark) 75%,var(--surface));background:color-mix(in srgb,var(--lichen-dark) 75%,var(--surface))}
