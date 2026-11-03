@@ -10,7 +10,8 @@ from urllib.parse import urlencode
 
 from api_test_fixtures import FakeProviderDatabase
 from terento_catalog.admin import (
-    ADMIN_STYLES, _sparkline, _overview_period_script, _provider_problem_state, first_run_page, overview_page,
+    ADMIN_STYLES, _map_statistics_summary, _sparkline, _overview_period_script, _provider_problem_state,
+    first_run_page, map_statistics_page, overview_page,
 )
 from terento_catalog.http_api import CatalogService, make_handler
 
@@ -204,6 +205,46 @@ class DashboardPresentationTests(unittest.TestCase):
         self.assertEqual(order, sorted(order))
         self.assertIn(".overview-composition-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));"
                       "align-items:stretch;", ADMIN_STYLES)
+
+    def test_period_totals_are_not_repeated_outside_the_tiles(self):
+        # Owner 2026-11-03: totals appear once, in the tiles. The App downloads
+        # legend only names .dmg and .zip; Maps chart cards carry the title only.
+        body = self.render(downloads={
+            "hasData": True, "dmgTotal": 3, "zipTotal": 1, "bucket": "day", "trend": [
+                {"bucket": "2026-10-01T00:00:00Z", "observed_at": "2026-10-01T00:00:00Z",
+                 "state": "observed_increase", "dmg_count": 5, "zip_count": 2}]})
+        card = body.split("id='overview-downloads-title'", 1)[1].split("</section>", 1)[0]
+        legend = card.split("<ul class='overview-chart-legend", 1)[1].split("</ul>", 1)[0]
+        self.assertIn("<span>.dmg</span></li>", legend)
+        self.assertNotIn("<strong>", legend)
+        self.assertNotIn("overview-card-totals", body)
+        row = {"provider_id": "p", "event_type": "INSTALL_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 3}
+        maps = map_statistics_page({"rows": [row], "summary": _map_statistics_summary([row])},
+                                   [{"id": "p", "name": "Provider"}], {"username": "operator"}, "csrf").decode()
+        self.assertIn("data-stat='completedInstalls'>3</strong>", maps)
+        trends = maps.split("class='overview-primary-grid map-statistics-trends'", 1)[1].split("</section>\n", 1)[0]
+        self.assertNotIn("data-stat=", trends)
+
+    def test_headline_tiles_follow_their_number_and_say_when_unavailable(self):
+        body = self.render(data={
+            "hasData": True, "completedInstallCount": 0, "failedInstallCount": 2, "installSuccessRate": 0.0,
+            "completedDownloadCount": 4, "failedDownloadCount": 0, "downloadSuccessRate": 100.0,
+            "recentActivity": [], "bucket": "day", "trend": [
+                {"bucket": "2026-10-01T00:00:00Z", "success_count": 0, "failed_count": 2,
+                 "download_success_count": 4, "download_failed_count": 0},
+                {"bucket": "2026-10-02T00:00:00Z", "success_count": 0, "failed_count": 0,
+                 "download_success_count": 1, "download_failed_count": 9}],
+        }, funnel={"available": False})
+        strip = body.split("class='admin-card overview-kpi-strip'", 1)[1].split("</section>", 1)[0]
+        cell = lambda label: next(c for c in strip.split("<div class='overview-kpi-cell'>") if f"<span>{label}</span>" in c)
+        # 0 successful of 2 still shows its 0% rate.
+        self.assertIn("<strong data-stat='installSuccessRate'>0%</strong>", cell("Installs"))
+        # The sparkline follows the successful number, not failures (4 then 1).
+        downloads = cell("Map downloads").split("data-source-panel='app'", 1)[1].split("data-source-panel=", 1)[0]
+        self.assertIn(_sparkline([4, 1]), downloads)
+        self.assertIn("<strong class='overview-kpi-value'>—</strong><span class='overview-kpi-sub'>Unavailable</span>",
+                      cell("First run"))
+        self.assertIn('@media(max-width:900px){.overview-kpi-head{flex-direction:column;gap:2px}', ADMIN_STYLES)
 
     FIRST_RUN = dict(
         sessions=5, connected=4, never_connected=1, no_usb=1, approved=3, pending=1, remote=4,

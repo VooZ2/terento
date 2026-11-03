@@ -99,10 +99,7 @@ const tightCardGaps=(page,width)=>page.evaluate(cardGap=>{
    }
    if(name==='overview'){
     assert.equal(await page.locator('.overview-tiles, .overview-page>.admin-metric-row').count(),0,'Dashboard has no summary tile row');
-    const totals=await page.locator('.overview-card-totals').evaluateAll(es=>es.map(e=>({card:e.closest('section').id,icons:e.querySelectorAll('.admin-icon').length,values:[...e.querySelectorAll('strong')].map(s=>getComputedStyle(s).fontSize)})));
-    assert.deepEqual(totals.map(t=>t.card),['overview-download-trend','overview-trend','overview-attention'],'Downloads, Installs and Needs attention headers carry the totals');
-    assert(totals.every(t=>t.icons===0),'Header totals carry no icons');
-    assert.equal(new Set(totals.flatMap(t=>t.values)).size,1,'Header totals share one numeric size');
+    assert.equal(await page.locator('.overview-card-totals').count(),0,'Period totals appear only in the headline tiles (owner decision 2026-11-03)');
     if(width>900){const heads=await page.locator('#overview-download-trend .admin-card-head, #overview-trend .admin-card-head, #overview-attention .admin-card-head, #overview-activity .admin-card-head').evaluateAll(es=>es.map(e=>Math.round(e.getBoundingClientRect().height)));assert(heads[0]===heads[1]&&heads[2]===heads[3],'Card headers in a row share one height');}
     assert.equal(await page.locator('.overview-download-panel').count(),1,'App downloads chart remains visible');
     assert.equal(await page.locator('.overview-download-panel h2').innerText(),'App downloads');
@@ -226,7 +223,7 @@ const tightCardGaps=(page,width)=>page.evaluate(cardGap=>{
     assert.equal(await page.locator('#map-rows tr').count(),10,'Top countries shows up to ten ranked countries');
     assert.equal(await page.locator("#map-statistics-metrics [data-stat='failedInstalls']").innerText(),'10','Maps excludes non-canonical fresh failures');
     assert.equal(await page.locator('main .admin-scope-chip').count(),0,'Maps carries no scope chips; the filter bar names the period (owner decision 2026-10-06)');
-    assert.equal(await page.locator('.map-statistics-trends .admin-card-head .overview-card-totals').count()===2,true,'Maps chart cards show period totals like the Dashboard');
+    assert.equal(await page.locator('.map-statistics-trends .overview-card-totals').count(),0,'Maps chart cards carry the title only; the tiles hold the totals');
     assert.equal(await page.locator('#map-rows tr:not([hidden])').count()>=Math.min(10,await page.locator('#map-rows tr').count()),true,'Top countries shows at least ten countries');
     assert.equal(await page.locator('[data-provider-stream]').count(),3,'Providers switches one stream at a time');
     if(width>760){const date=page.locator('#provider-statistic-rows td.column-date').first();assert.equal(await date.evaluate(e=>getComputedStyle(e).whiteSpace),'nowrap','Last install stays one line');}
