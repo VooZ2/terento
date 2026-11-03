@@ -34,6 +34,10 @@
   }
 
   @assets path *.css *.js *.svg *.png *.ico *.woff2 *.webmanifest *.xml
+
+  # Admin on api.terento.app loads the brand fonts cross-origin; its CSP font-src already allows this host.
+  @brandFonts path /assets/fonts/*.woff2
+  header @brandFonts Access-Control-Allow-Origin "https://api.terento.app"
   header @assets Cache-Control "public, max-age=604800"
 
   @updateManifest path /updates/macos-arm64.json
