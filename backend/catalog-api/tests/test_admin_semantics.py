@@ -471,9 +471,8 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         day = render("24h", 1)
         month = render("30d", 30)
         for body, count, scope in ((day, 1, "Last 24 hours"), (month, 30, "Last 30 days")):
-            heads = "".join(section.split("</header>", 1)[0] for section in body.split("<section")[1:]
-                            if "id='overview-trend-title'" in section or "id='overview-download-trend-title'" in section)
-            # Header totals follow the selected period and say so visibly (ADM-04/05).
+            heads = body.split("class='admin-card overview-kpi-strip'", 1)[1].split("</section>", 1)[0]
+            # Headline totals follow the selected period and say so visibly (ADM-04/05).
             self.assertIn(f"data-stat='completedInstallCount'>{count}</strong>", heads)
             self.assertIn(f"data-stat='completedDownloadCount'>{count}</strong>", heads)
             self.assertIn(f" selected>{scope}</option>", body)

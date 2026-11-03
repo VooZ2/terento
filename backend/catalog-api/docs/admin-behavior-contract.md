@@ -291,21 +291,35 @@ duplicate Review navigation item.
 
 ### Dashboard and Needs attention
 
+Admin look (owner decision 2026-11-03, dashboard-design skill): Inter for UI
+and numbers (tight, tabular), white cards with a hairline and a soft shadow on
+the Off-White canvas, segmented controls on a grey track with the active
+segment as a white tile, no tray behind filter rows, sentence-case table
+headers, scope and card totals as quiet text rather than pills, and pale
+healthy chart series so failures carry the strongest tone.
+
 Dashboard must answer whether anything is wrong, what happened in the selected
-period, whether activity is changing, and what to inspect next. It has no
-summary tile row: Needs attention and First run share the first row, then the
-Map downloads and Installs chart cards share the second (owner decision
-2026-11-03). Each chart card holds exactly three things (owner decision 2026-10-06): a
-header with its title and, top right, the period totals as one
-numbers-only badge `successful / failed / success rate` (owner decision
-2026-10-11; failed in the danger tone only when positive, the words only for
-screen readers; Installs counts fresh installs only, so update segments are
-hatched: stone for succeeded, danger for failed); the chart; and a legend
-naming each series by colour without counts. Successful bars use the quiet
+period, whether activity is changing, and what to inspect next. It opens with
+one headline card of tiles divided by hairlines (owner decision 2026-11-03,
+dashboard-design skill, replacing "no summary tile row"): Map downloads and
+Installs (successful as the value, success rate top right whenever it is
+known, including 0%, `N failed` below in the danger tone only when positive, a
+sparkline of the period's successful results per bucket; one tile per source,
+swapped by the source switch), App downloads (the period's .dmg plus .zip
+increase, each named), First run (opened sessions, % allowed, connected; `—`
+and `Unavailable` when the funnel cannot be read) and Needs attention (the
+`Now` total, `—` when any row is unavailable). Below 900 px the tiles form two
+columns and each tile puts its top-right fact under the label, so the values
+in a row line up. These tiles are the only place the period totals appear. Then
+Needs attention and First run share a row, then the Map downloads and Installs
+chart cards. Each chart card holds a header with its title only, the chart,
+and a legend naming each series by colour without counts (Installs counts fresh
+installs only, so update segments are hatched: stone for succeeded, danger for
+failed). Successful bars use the quiet
 `--sky` tone so failures stand out. One `All`/`App`/`App Store`/`Web` switch beside the
 period picker, in the picker's height, swaps both chart cards at once (owner
 decisions 2026-10-10 and 2026-10-11; All is the default and the choice
-survives a period change): the chart and its header totals. The switch shows
+survives a period change) and the matching headline tiles. The switch shows
 Font Awesome icons (layer-group All, laptop App, app-store-ios App Store,
 globe Web) with their names visible from 1024 px and for screen readers below
 (owner decision 2026-11-03). App and App Store split the
@@ -323,11 +337,11 @@ row the globe icon after its label, and a web row has
 no update-diagnostics link. A web row whose watch matches no single catalog
 model shows the model name the watch reported as plain text (no model link;
 it is not counted for any model). No All time line, purpose breakdown or other
-explanatory text is shown in these cards; all-time totals live on Maps. Header totals and charts use the same period
+explanatory text is shown in these cards; all-time totals live on Maps. Headline tiles and charts use the same period
 population, so they agree. A legend elsewhere shows a count only where it adds
-information no total shows (the Maps Custom .img install split and the App
-downloads period increases). The Needs attention header shows its `Now` total
-as one neutral chip (`—` when any row is unavailable). Below the charts,
+information no total shows (the Maps Custom .img install split); the App
+downloads legend names `.dmg` and `.zip` only, because the headline tile
+carries their period increases. Below the charts,
 Activity and App downloads share the last row (owner decision 2026-11-03);
 cards in a row stretch to one height, the First run previous-period
 line closes its card at the bottom, and
@@ -350,13 +364,13 @@ when the browser zone differs from the zone it was rendered in. The Dashboard de
 hours and the Maps default stays All time; an unknown Dashboard period falls
 back to Last 24 hours. Card titles
 are one or two words. App downloads means Terento application downloads (GitHub
-`.dmg` and `.zip`, never map downloads), shows its
-period increases in the legend and its all-time totals and last update in one
+`.dmg` and `.zip`, never map downloads), names both in the legend and
+shows its all-time totals and last update in one
 `All time` line, and is omitted when no usable counter or trend data exists.
 The Dashboard First run card is a short review that says whether the First run
-page is worth opening (owner decisions 2026-10-10). Its header shows the
-journey totals as chips: `Opened` (the period's distinct sessions),
-`Connected` and `Allowed` (`—` when the read model does not report it). Below,
+page is worth opening (owner decisions 2026-10-10). Its journey totals
+(`Opened`, the period's distinct sessions; `Connected`; `Allowed`, `—` when the
+read model does not report it) are the First run headline tile. In the card,
 in the Needs attention row style, one row per loss above zero: `Never
 connected` (`neverConnectedSessionCount`, with `Mostly: <reason> (N)` from Why
 not connected), `Connected but not allowed` (connected minus allowed, with the
@@ -749,6 +763,9 @@ Empty installation history omits unusable filters, table, and pagination. Above
 report), Updates, Administration, Device information, and Technical
 details form the left column while Installation history and, below it, Update
 history use the right column.
+With open problems, an `N open problems` notice (x-circle icon, Review open
+problems link that filters Installation history) follows Updates as a white card
+like the others, without a tinted tray or tooltip.
 Update history uses the Installation history layout: its `Update history` title
 sits outside the card in the same section heading, with no scope chip, followed
 by the same quick-filter bar in the Installation history order (All, Failed,
@@ -815,8 +832,8 @@ Event detail lists app reports only, so the Web view omits it.
 
 Maps reads top to bottom: the filter bar; Downloads, Installs and Updates tiles
 for the selected period (each with failed count and rate); then the Downloads
-and Installs trend cards, laid out like the Dashboard charts (the period
-successful / failed / success rate badge at the top right, a legend without
+and Installs trend cards, laid out like the Dashboard charts (a header with the
+title only, because the tiles above hold the totals, a legend without
 numbers, nothing under the legend); then Countries (world map) and Top
 countries; then Providers; then Top maps; and last the collapsed Events
 disclosure (owner decision 2026-11-03, replacing trends at the bottom). The

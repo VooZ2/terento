@@ -10,7 +10,8 @@ from urllib.parse import urlencode
 
 from api_test_fixtures import FakeProviderDatabase
 from terento_catalog.admin import (
-    ADMIN_STYLES, _overview_period_script, _provider_problem_state, first_run_page, overview_page,
+    ADMIN_STYLES, _map_statistics_summary, _sparkline, _overview_period_script, _provider_problem_state,
+    first_run_page, map_statistics_page, overview_page,
 )
 from terento_catalog.http_api import CatalogService, make_handler
 
@@ -100,16 +101,17 @@ class DashboardPresentationTests(unittest.TestCase):
         head = installs.split("</header>", 1)[0]
         # The period lives in the picker; cards repeat no period chip.
         self.assertNotIn("data-scope='period'", head)
-        # One badge, numbers only (owner 2026-10-11): successful / failed / rate.
-        self.assertIn("<span class='overview-card-total overview-card-result'>"
-                      "<strong data-stat='completedInstallCount'>12</strong><span class='sr-only'> successful,</span>"
-                      "<span class='overview-card-total-separator' aria-hidden='true'>/</span>"
-                      "<strong class='admin-error-counter is-positive' data-stat='failedInstallCount'>2</strong>"
-                      "<span class='sr-only'> failed,</span>"
-                      "<span class='overview-card-total-separator' aria-hidden='true'>/</span>"
-                      "<strong data-stat='installSuccessRate'>85.7%</strong><span class='sr-only'> success rate</span>",
-                      head)
-        self.assertNotIn("<small>", head)
+        # Owner 2026-11-03: the period totals live once, in the headline
+        # tiles (successful, rate, failed in the danger tone); the chart card
+        # header holds only its title.
+        self.assertNotIn("data-stat=", head)
+        strip = body.split("class='admin-card overview-kpi-strip'", 1)[1].split("</section>", 1)[0]
+        installs_cell = next(cell for cell in strip.split("<div class='overview-kpi-cell'>") if "<span>Installs</span>" in cell)
+        installs_tile = installs_cell.split("data-source-panel='app'", 1)[1].split("data-source-panel='appstore'", 1)[0]
+        for fragment in ("<span>Installs</span>", "<strong data-stat='installSuccessRate'>85.7%</strong>",
+                         "data-stat='completedInstallCount'>12</strong>",
+                         "<span class='overview-kpi-sub is-danger'><strong data-stat='failedInstallCount'>2</strong> failed"):
+            self.assertIn(fragment, installs_tile)
         self.assertNotIn("admin-icon", head)
         # One All/App/App Store/Web icon switch beside the period picker swaps
         # both chart cards; All is shown first (owner decisions 2026-10-11 and
@@ -138,6 +140,14 @@ class DashboardPresentationTests(unittest.TestCase):
             rest = card.split("</ul>", 1)[1].replace("</div>", "").strip()
             self.assertTrue(rest.startswith("<div data-source-panel='appstore' hidden>"), rest[:80])
 
+    def test_sparkline_scales_to_its_own_peak_and_skips_single_points(self):
+        self.assertEqual(_sparkline([]), "")
+        self.assertEqual(_sparkline([5]), "")
+        line = _sparkline([0, 10, 5])
+        # x spans 0..100; the peak touches y=2, zero sits on y=28.
+        self.assertIn("points='0.0,28.0 50.0,2.0 100.0,15.0'", line)
+        self.assertIn("aria-hidden='true'", line)
+
     def test_needs_attention_lists_only_nonzero_rows_and_a_total(self):
         body = self.render(supportReports={"openCount": 2}, mapsUnknown={"modelCount": 4})
         attention = body.split("id='overview-attention-title'", 1)[1].split("</section>", 1)[0]
@@ -161,7 +171,9 @@ class DashboardPresentationTests(unittest.TestCase):
         self.assertIn("href='/admin/support-reports'", attention)
         head = attention.split("</header>", 1)[0]
         # The header total is exactly the sum of the rendered category rows.
-        self.assertIn(f"data-stat='attentionTotal'>{sum(rows)}</strong><small>Total</small>", head)
+        # The total is the Needs attention headline tile (owner 2026-11-03).
+        self.assertNotIn("attentionTotal", head)
+        self.assertIn(f"data-stat='attentionTotal'>{sum(rows)}</strong>", body)
 
     def test_needs_attention_with_nothing_open_says_so_in_the_middle(self):
         # Owner 2026-10-10: cards in a Dashboard row share one height, so an
@@ -171,7 +183,7 @@ class DashboardPresentationTests(unittest.TestCase):
         body = self.render(review=zero_review, supportReports={"openCount": 0})
         attention = body.split("id='overview-attention-title'", 1)[1].split("</section>", 1)[0]
         self.assertNotIn("overview-attention-row", attention)
-        self.assertIn("data-stat='attentionTotal'>0</strong>", attention)
+        self.assertIn("data-stat='attentionTotal'>0</strong>", body)
         self.assertTrue(attention.endswith(
             "</header><p class='admin-empty overview-empty-state' data-state='empty'><span>Nothing to review.</span></p>"))
         self.assertIn("overview-panel overview-attention-panel overview-attention-empty", body)
@@ -194,6 +206,46 @@ class DashboardPresentationTests(unittest.TestCase):
         self.assertIn(".overview-composition-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));"
                       "align-items:stretch;", ADMIN_STYLES)
 
+    def test_period_totals_are_not_repeated_outside_the_tiles(self):
+        # Owner 2026-11-03: totals appear once, in the tiles. The App downloads
+        # legend only names .dmg and .zip; Maps chart cards carry the title only.
+        body = self.render(downloads={
+            "hasData": True, "dmgTotal": 3, "zipTotal": 1, "bucket": "day", "trend": [
+                {"bucket": "2026-10-01T00:00:00Z", "observed_at": "2026-10-01T00:00:00Z",
+                 "state": "observed_increase", "dmg_count": 5, "zip_count": 2}]})
+        card = body.split("id='overview-downloads-title'", 1)[1].split("</section>", 1)[0]
+        legend = card.split("<ul class='overview-chart-legend", 1)[1].split("</ul>", 1)[0]
+        self.assertIn("<span>.dmg</span></li>", legend)
+        self.assertNotIn("<strong>", legend)
+        self.assertNotIn("overview-card-totals", body)
+        row = {"provider_id": "p", "event_type": "INSTALL_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 3}
+        maps = map_statistics_page({"rows": [row], "summary": _map_statistics_summary([row])},
+                                   [{"id": "p", "name": "Provider"}], {"username": "operator"}, "csrf").decode()
+        self.assertIn("data-stat='completedInstalls'>3</strong>", maps)
+        trends = maps.split("class='overview-primary-grid map-statistics-trends'", 1)[1].split("</section>\n", 1)[0]
+        self.assertNotIn("data-stat=", trends)
+
+    def test_headline_tiles_follow_their_number_and_say_when_unavailable(self):
+        body = self.render(data={
+            "hasData": True, "completedInstallCount": 0, "failedInstallCount": 2, "installSuccessRate": 0.0,
+            "completedDownloadCount": 4, "failedDownloadCount": 0, "downloadSuccessRate": 100.0,
+            "recentActivity": [], "bucket": "day", "trend": [
+                {"bucket": "2026-10-01T00:00:00Z", "success_count": 0, "failed_count": 2,
+                 "download_success_count": 4, "download_failed_count": 0},
+                {"bucket": "2026-10-02T00:00:00Z", "success_count": 0, "failed_count": 0,
+                 "download_success_count": 1, "download_failed_count": 9}],
+        }, funnel={"available": False})
+        strip = body.split("class='admin-card overview-kpi-strip'", 1)[1].split("</section>", 1)[0]
+        cell = lambda label: next(c for c in strip.split("<div class='overview-kpi-cell'>") if f"<span>{label}</span>" in c)
+        # 0 successful of 2 still shows its 0% rate.
+        self.assertIn("<strong data-stat='installSuccessRate'>0%</strong>", cell("Installs"))
+        # The sparkline follows the successful number, not failures (4 then 1).
+        downloads = cell("Map downloads").split("data-source-panel='app'", 1)[1].split("data-source-panel=", 1)[0]
+        self.assertIn(_sparkline([4, 1]), downloads)
+        self.assertIn("<strong class='overview-kpi-value'>—</strong><span class='overview-kpi-sub'>Unavailable</span>",
+                      cell("First run"))
+        self.assertIn('@media(max-width:900px){.overview-kpi-head{flex-direction:column;gap:2px}', ADMIN_STYLES)
+
     FIRST_RUN = dict(
         sessions=5, connected=4, never_connected=1, no_usb=1, approved=3, pending=1, remote=4,
         catalog_update=1, device_storage=1, journey_approved=3,
@@ -213,8 +265,10 @@ class DashboardPresentationTests(unittest.TestCase):
         card = body.split("id='overview-funnel-title'", 1)[1].split("</section>", 1)[0]
         head = card.split("</header>", 1)[0]
         self.assertIn("<a class='admin-card-action section-link' href='/admin/first-run?period=7d'>View all", head)
-        for value, noun in (("5", "Opened"), ("4", "Connected"), ("3", "Allowed")):
-            self.assertIn(f"<span class='overview-card-total'><strong>{value}</strong><small>{noun}</small></span>", head)
+        # The journey totals moved to the First run headline tile (owner 2026-11-03).
+        strip = body.split("class='admin-card overview-kpi-strip'", 1)[1].split("</section>", 1)[0]
+        for fragment in ("<span>First run</span>", "60% allowed", ">5</strong>", "4 connected"):
+            self.assertIn(fragment, strip)
         self.assertIn("<a href='/admin/first-run?period=7d#first-run-not-connected' "
                       "aria-label='Never connected: 1. Mostly: No watch plugged in (1)'>", card)
         self.assertIn("<span class='overview-attention-label'>Never connected"
