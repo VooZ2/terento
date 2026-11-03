@@ -37,6 +37,12 @@ secrets have been removed; these workflows use only the scoped environment keys.
 The update manifest is deliberately sent with `Cache-Control: no-store` so an
 old app-update response cannot remain cached after a release.
 
+Brand fonts under `/assets/fonts/*.woff2` send
+`Access-Control-Allow-Origin: https://api.terento.app` so Terento Admin, which
+references them from the API origin, can load them; no other origin is allowed.
+Cloudflare may keep a font copy without that header for up to the seven-day
+asset cache lifetime unless the cached font URLs are purged after deploy.
+
 ### IndexNow key provisioning
 
 The public Caddy image contains no IndexNow key. The owner provisions the same

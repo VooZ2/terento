@@ -313,6 +313,13 @@ class DiscoverabilityTests(unittest.TestCase):
         self.assertIn('@agentSkill path /.well-known/agent-skills/*/SKILL.md', caddy)
         self.assertIn('Content-Type "text/markdown; charset=utf-8"', caddy)
 
+    def test_brand_fonts_allow_admin_origin_only(self):
+        caddy = (ROOT / 'site-deploy/Caddyfile').read_text()
+        self.assertIn('@brandFonts path /assets/fonts/*.woff2', caddy)
+        self.assertIn('header @brandFonts Access-Control-Allow-Origin "https://api.terento.app"', caddy)
+        api = (ROOT / 'backend/catalog-api/src/terento_catalog/http_api.py').read_text()
+        self.assertIn('font-src https://terento.app;', api)
+
     def test_public_json_is_available_but_not_indexable(self):
         site = (ROOT / 'site-deploy/Caddyfile').read_text()
         self.assertIn('@machineMetadata path *.json', site)
