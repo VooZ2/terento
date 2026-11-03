@@ -383,7 +383,9 @@ class HealthPageTests(unittest.TestCase):
             body = overview_page({"period": "24h", "data": {"hasData": False}, "providers": HEALTH["providers"],
                                   "review": review, "supportReports": {"openCount": 1}, "system": system},
                                  {"username": "operator"}, "csrf").decode()
-            return body.split("id='overview-attention-title'", 1)[1].split("</section>", 1)[0]
+            # The card plus its headline tile, which carries the total (owner 2026-11-03).
+            strip = body.split("class='admin-card overview-kpi-strip'", 1)[1].split("</section>", 1)[0]
+            return body.split("id='overview-attention-title'", 1)[1].split("</section>", 1)[0] + strip
 
         # HEALTH: Database failed, Catalogs failed (a provider problem, which
         # stays on Providers) -> one System checks issue.
