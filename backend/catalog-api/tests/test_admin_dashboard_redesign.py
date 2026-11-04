@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import threading
 import unittest
 from http.client import HTTPConnection
@@ -95,6 +96,17 @@ class DashboardPresentationTests(unittest.TestCase):
         }
         payload.update(overview)
         return overview_page(payload, {"username": "operator", "admin_review_summary": review}, "csrf").decode()
+
+    def test_all_time_dashboard_passes_the_map_start_to_app_downloads(self):
+        months = ["2026-08-01T00:00:00Z", "2026-09-01T00:00:00Z"]
+        page = self.render(
+            period="all",
+            all={"bucket": "month", "trend": [{"bucket": month, "success_count": 1} for month in months]},
+            downloads={"hasData": True, "dmgTotal": 3, "zipTotal": 1, "bucket": "month",
+                       "trend": [{"bucket": months[1], "dmg_count": 3, "zip_count": 1}]},
+        )
+        card = page[page.index("id='overview-downloads'"):]
+        self.assertIn(">Aug 2026</text>", card[:card.index("</svg>")])
 
     def test_card_headers_carry_period_totals_and_the_legend_names_series(self):
         body = self.render()
@@ -567,6 +579,22 @@ class ChartQaTests(unittest.TestCase):
         self.assertIn("New release: Terento 1.1.0 (build 46)", desktop)
         self.assertIn(".overview-chart-download-marker line{stroke-width:1.5}", ADMIN_STYLES)
         self.assertNotRegex(ADMIN_STYLES, r"overview-chart-download-marker line\{[^}]*dasharray")
+
+    def test_all_time_app_downloads_start_with_the_map_charts(self):
+        # Map charts start in August; GitHub snapshots only in September. The
+        # empty August slot keeps every month on the map charts' x position.
+        months = ["2026-08-01T00:00:00Z", "2026-09-01T00:00:00Z", "2026-10-01T00:00:00Z", "2026-11-01T00:00:00Z"]
+        maps = _overview_trend_chart([{"bucket": month, "success_count": 2} for month in months], "month")
+        downloads = {"hasData": True, "bucket": "month", "trend": [
+            {"bucket": month, "dmg_count": 3, "zip_count": 1} for month in months[1:]]}
+        aligned = _overview_downloads_chart(downloads, period="all", grid_start=months[0])
+        for body in (maps, aligned):
+            desktop = body[body.index("<svg"):body.index("</svg>")]
+            self.assertIn(">Aug 2026</text>", desktop)
+        x = lambda body, css: re.findall(rf"<rect class='{css}'[^>]* x='([\d.]+)'", body[body.index("<svg"):body.index("</svg>")])
+        self.assertEqual(x(aligned, "overview-chart-download-dmg"), x(maps, "overview-chart-success")[1:])
+        # Without the map start the chart keeps its own first bucket.
+        self.assertNotIn(">Aug 2026<", _overview_downloads_chart(downloads, period="all"))
 
     def test_axis_labels_keep_one_even_step(self):
         # 25 hourly slots on a phone: the edge label never leaves a wider gap.
