@@ -412,8 +412,10 @@ The GitHub read model uses these meanings:
 
 GitHub download trends use the same bucket rule as the map trends, so one
 Dashboard period selects one grid for every chart: Today and 24 hours hourly,
-seven days daily, 30 days weekly, and all time adaptive by the observed span since the first
-retained snapshot (up to 14 days daily, 15–60 days weekly, longer monthly).
+seven days daily, 30 days weekly. All time is adaptive by the observed span
+since the first retained snapshot (up to 14 days daily, 15–60 days weekly,
+longer monthly) when read alone; the Dashboard passes its map charts' All time
+grid instead, so its three charts share one time axis (owner QA 2026-11-04).
 
 For the hourly (Today and 24-hour) trend read model, `hour_start` is the
 canonical hourly floor of an observation. The exact `observed_at` remains

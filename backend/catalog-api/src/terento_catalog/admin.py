@@ -1737,16 +1737,23 @@ def _bucket_in_progress(value: Any, bucket: str, time_zone: str = "UTC") -> bool
     return start is not None and _next_overview_bucket(start, bucket, time_zone=time_zone) > datetime.now(timezone.utc)
 
 
-def _partial_outline(segments: dict[int, tuple[float, float, float, float]]) -> str:
-    """One dashed outline around a whole bar still in progress; the segments
-    keep their colours and touch without a separator."""
+def _bar_outline(segments: dict[int, tuple[float, float, float, float]], css_class: str) -> str:
+    """One outline around a whole stacked bar: the dashed bucket in progress
+    and the selection frame; the segments keep their colours and touch
+    without a separator."""
     if not segments:
         return ""
     x, width = next(iter(segments.values()))[:2]
     top = min(y for _, _, y, _ in segments.values())
     height = sum(h for _, _, _, h in segments.values())
-    return (f"<rect class='overview-chart-partial-outline' x='{x:.1f}' y='{top:.2f}' "
-            f"width='{width:.1f}' height='{height:.2f}' aria-hidden='true'/>")
+    # A path, not a rect: the bar's segments stay its only rects.
+    return (f"<path class='{css_class}' d='M{x:.1f} {top:.2f}h{width:.1f}v{height:.2f}h{-width:.1f}Z' "
+            f"aria-hidden='true'/>")
+
+
+def _bar_outlines(segments: dict[int, tuple[float, float, float, float]], in_progress: bool) -> str:
+    return ((_bar_outline(segments, "overview-chart-partial-outline") if in_progress else "")
+            + _bar_outline(segments, "overview-chart-select-outline"))
 
 
 def _chart_axis_labels(
@@ -1765,18 +1772,22 @@ def _chart_axis_labels(
     step = 1
     while step < count and step * spacing < widest + gap:
         step += 1
-    placed: list[tuple[int, str, float, float]] = []
-    for index in range(count - 1, -1, -step):
-        x, width = positions[index], widths[index]
-        anchor, start, end = "middle", x - width / 2, x + width / 2
-        if start < 0:
-            anchor, start, end = "start", x, x + width
-        if end > chart_width:
-            anchor, start, end = "end", x - width, x
-        if placed and end + gap > placed[-1][2]:
-            continue  # an edge-anchored label would touch its neighbour
-        placed.append((index, anchor, start, end))
-    return [(index, anchor) for index, anchor, _, _ in reversed(placed)]
+    while True:
+        placed: list[tuple[int, str, float, float]] = []
+        for index in range(count - 1, -1, -step):
+            x, width = positions[index], widths[index]
+            anchor, start, end = "middle", x - width / 2, x + width / 2
+            if start < 0:
+                anchor, start, end = "start", x, x + width
+            if end > chart_width:
+                anchor, start, end = "end", x - width, x
+            if placed and end + gap > placed[-1][2]:
+                break  # an edge-anchored label would touch its neighbour
+            placed.append((index, anchor, start, end))
+        else:
+            return [(index, anchor) for index, anchor, _, _ in reversed(placed)]
+        # A dropped label would leave an uneven gap: widen the step instead.
+        step += 1
 
 
 _INSTALL_CHART_SERIES = (
@@ -1901,15 +1912,14 @@ def _overview_trend_chart(
                 f"<title>{html.escape(title)}</title></rect>"
             )
         in_progress = _bucket_in_progress(item.get("bucket"), bucket, time_zone)
-        if in_progress:
-            group_bars.append(_partial_outline(segments))
+        group_bars.append(_bar_outlines(segments, in_progress))
         group_title = f"{bucket_label}{' (in progress)' if in_progress else ''} · Total: {stack_total}"
         if series_titles:
             group_title += " · " + " · ".join(series_titles)
         group_title += f" · {time_zone}"
         # One keyboard stop per bucket; the segments are presentational.
         strip_data = _chart_value_attributes(
-            bucket_label, [(name, label, count) for count, (name, label, _) in zip(counts, series)], stack_total,
+            f"{bucket_label}{' (in progress)' if in_progress else ''}", [(name, label, count) for count, (name, label, _) in zip(counts, series)], stack_total,
         )
         bars.append(
             f"<g class='overview-chart-group{' is-partial' if in_progress else ''}' role='img' tabindex='0'{strip_data} aria-label='{html.escape(group_title, quote=True)}'>"
@@ -1958,7 +1968,11 @@ def _download_marker_texts(item: dict[str, Any]) -> list[str]:
     markers = [marker for marker in item.get("release_markers") or [] if isinstance(marker, dict)]
     texts = []
     if len(markers) == 1:
-        texts.append(f"New release · {markers[0].get('label') or markers[0].get('tag') or 'release'}")
+        # The version only (full label in the title), so the newest release
+        # usually fits beside its neighbours.
+        name = str(markers[0].get("label") or markers[0].get("tag") or "")
+        version = re.search(r"\d+\.\d+\.\d+(?:-[a-z]+\.\d+)?|(?:beta|rc)\.\d+", name)
+        texts.append(f"New release · {version.group(0)}" if version else "New release")
     elif markers:
         texts.append(f"New releases · {len(markers)}")
     if item.get("contains_discontinuity") or item.get("state") == "discontinuity":
@@ -2094,7 +2108,10 @@ def _overview_downloads_chart(
     tick_step = _nice_tick_step(maximum)
     scale_maximum = tick_step * 4
     chart_width, chart_height = (360, 220) if _compact else (720, 260)
-    left, top, bottom = 38, 42, 34
+    # The map charts' plot area; only the wide chart with visible marker text
+    # reserves room above it.
+    has_marker_text = not _compact and any(_download_marker_texts(item) for item in trend)
+    left, top, bottom = 42, 42 if has_marker_text else 20, 38
     plot_height = chart_height - top - bottom
     grid = []
     for amount in range(0, scale_maximum + 1, tick_step):
@@ -2106,6 +2123,7 @@ def _overview_downloads_chart(
             f"text-anchor='end'>{amount}</text>"
         )
     bars: list[str] = []
+    markers: list[str] = []
     labels: list[str] = []
     plot_width = chart_width - left - 12
     # Bars stand on one regular bucket grid like the map charts: placed by
@@ -2133,9 +2151,6 @@ def _overview_downloads_chart(
     for index, (counts, item) in enumerate(zip(values, trend)):
         center = position_center(index)
         bar_width = min(slot * 0.72, 64 if _compact else 86)
-        x = center - bar_width / 2
-        y = top + plot_height
-        clip_id = f"overview-download-bar-clip-{'mobile-' if _compact else ''}{index}"
         observed_at = item.get("observed_at") or item.get("bucket")
         legacy_note = (
             " · legacy observed counter delta · population comparability unconfirmed"
@@ -2171,7 +2186,8 @@ def _overview_downloads_chart(
             group_title += " · " + interval_title
         # One keyboard stop per bucket; the segments are presentational.
         strip_data = _chart_value_attributes(
-            _overview_chart_bucket_label(item.get("bucket"), chart_bucket, time_zone),
+            _overview_chart_bucket_label(item.get("bucket"), chart_bucket, time_zone)
+            + (" (in progress)" if in_progress else ""),
             [(css_class.removeprefix("overview-chart-"), label.removesuffix(" downloads"), count)
              for (label, css_class), count in zip(series, counts)],
             stack_total if all(count is not None for count in counts) else None,
@@ -2182,11 +2198,7 @@ def _overview_downloads_chart(
             + "'"
         )
         group_title_markup = f"<title>{html.escape(group_title)}</title>"
-        bars.append(
-            f"<defs><clipPath id='{clip_id}'><rect x='{x:.1f}' "
-            f"y='{top:.1f}' width='{bar_width:.1f}' height='{plot_height:.1f}' rx='3'></rect></clipPath></defs>"
-            f"<g clip-path='url(#{clip_id})'{group_accessibility}>{group_title_markup}"
-        )
+        bars.append(f"<g{group_accessibility}>{group_title_markup}")
         segments = _overview_stacked_segments(
             tuple(counts), center, bar_width, top + plot_height, plot_height, scale_maximum,
             minimum=_CHART_MIN_SEGMENT_COMPACT if _compact else _CHART_MIN_SEGMENT,
@@ -2212,8 +2224,7 @@ def _overview_downloads_chart(
                 f"width='{segment_width:.1f}' height='{height:.2f}' aria-hidden='true'>"
                 f"<title>{html.escape(title)}</title></rect>"
             )
-        if in_progress:
-            bars.append(_partial_outline(segments))
+        bars.append(_bar_outlines(segments, in_progress))
         bars.append("</g>")
         # Visible marker text only on the desktop chart and only clear of the
         # previous text; every marker keeps its line, title and accessible name.
@@ -2224,7 +2235,7 @@ def _overview_downloads_chart(
             _compact=_compact, show_text=show_text,
         )
         if marker:
-            bars.append(marker)
+            markers.append(marker)
             if show_text and half_width:
                 marker_text_end = center + half_width
     centers = [position_center(index) for index in range(len(values))]
@@ -2240,7 +2251,8 @@ def _overview_downloads_chart(
         f"<svg class='overview-trend-chart overview-trend-{'mobile' if _compact else 'desktop'}' "
         f"viewBox='0 0 {chart_width} {chart_height}' role='group' "
         f"aria-label='Terento app downloads: observed counter increases between checks over {period_label}'>"
-        f"{''.join(grid)}{''.join(bars)}{''.join(labels)}</svg>"
+        # Markers sit behind the bars, so their lines never cross a bar.
+        f"{''.join(grid)}{''.join(markers)}{''.join(bars)}{''.join(labels)}</svg>"
     )
     if _compact:
         return svg
@@ -9808,7 +9820,7 @@ button,input,select,textarea{font-size:var(--admin-type-control-size);line-heigh
 .overview-chart-wrap{max-width:780px;margin:0 auto}
 .overview-download-panel{padding-top:16px;padding-bottom:16px}
 .overview-download-panel .section-heading{margin-bottom:6px}
-.overview-chart-download-marker line{stroke-width:2;stroke-dasharray:4 3}.overview-chart-download-marker text{stroke:none;font-size:10px;font-weight:700}.overview-chart-download-release line{stroke:var(--interactive)}.overview-chart-download-release text{fill:var(--interactive)}.overview-chart-download-boundary line{stroke:var(--secondary)}.overview-chart-download-boundary text{fill:var(--secondary)}
+.overview-chart-download-marker line{stroke-width:1.5}.overview-chart-download-marker text{stroke:none;font-size:10px;font-weight:700}.overview-chart-download-release line{stroke:var(--interactive)}.overview-chart-download-release text{fill:var(--interactive)}.overview-chart-download-boundary line{stroke:var(--secondary)}.overview-chart-download-boundary text{fill:var(--secondary)}
 .overview-trend-chart{display:block;width:100%;height:260px;max-width:760px;min-height:0;margin:0 auto}
 .overview-trend-mobile{display:none}
 /* A full-width chart card fills its width with the wide variant (owner 2026-10-11: no narrow chart in a wide card). */
@@ -10431,7 +10443,8 @@ ADMIN_STYLES += """
 .admin-legend i.overview-chart-update-failed{border-color:var(--danger);background:repeating-linear-gradient(45deg,var(--danger) 0 4px,var(--surface) 4px 6px)}
 .admin-legend i.overview-chart-update{border-color:var(--stone-dark);background:repeating-linear-gradient(45deg,var(--stone-dark) 0 4px,var(--surface) 4px 6px)}
 .overview-chart-group:focus{outline:none}
-.overview-chart-group:focus-visible rect{stroke:var(--graphite);stroke-width:2}
+.overview-chart-select-outline{fill:none;stroke:none;pointer-events:none}
+.overview-chart-group:focus-visible .overview-chart-select-outline{stroke:var(--graphite);stroke-width:2}
 """
 
 # Support reports (contracts/SUPPORT_REPORT_CONTRACT.md).
@@ -10496,7 +10509,8 @@ ADMIN_STYLES += """
   [data-mobile-collapse][data-mobile-collapsed]>:not(.admin-card-head){display:none}
   [data-mobile-collapse][data-mobile-collapsed]>.admin-card-head{margin-bottom:0}
 }
-.overview-trend-chart .overview-chart-group.is-selected rect{stroke:var(--graphite);stroke-width:2}
+.overview-trend-chart .overview-chart-group.is-selected .overview-chart-select-outline{stroke:var(--graphite);stroke-width:2}
+.overview-chart-group.is-partial .overview-chart-select-outline{stroke-dasharray:4 3}
 /* Card spacing belongs to the containing layout, not both grid and card (admin-behavior-contract.md,
    Responsive and layout invariants). Separate cards, tables and sections keep one vertical gap:
    --admin-card-gap, 24px, 16px at 700px and narrower. A filter bar directly above its own table keeps

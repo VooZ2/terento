@@ -168,6 +168,8 @@ class CatalogAPITests(unittest.TestCase):
             self.assertEqual(database.overview_map_requests[-1][1], "all")
             self.assertIn("value='all' selected", body.decode())
             self.assertEqual(database.overview_download_requests[-1], ("all", "UTC"))
+            # App downloads take the map charts' All time grid (one time axis).
+            self.assertEqual(database.overview_download_grids[-1], "hour")
             self.assertLess(
                 database.overview_map_requests[-1][0],
                 database.overview_map_requests[-2][0],
