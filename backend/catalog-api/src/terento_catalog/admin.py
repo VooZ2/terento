@@ -2085,8 +2085,11 @@ def _overview_kpi(label: str, value: str, *, aside: str = "", sub: str = "", dan
 
 def _overview_downloads_chart(
     downloads: dict[str, Any], time_zone: str = "UTC", *, period: str = "24h",
-    _compact: bool = False,
+    grid_start: Any = None, _compact: bool = False,
 ) -> str:
+    """``grid_start`` is the first bucket of the map charts beside it: earlier
+    buckets without download data stay empty labelled slots, so All time bars
+    line up with the map charts."""
     trend = [item for item in downloads.get("trend") or [] if isinstance(item, dict)]
     if not trend:
         return "<p class='overview-empty-state'>No GitHub download data yet.</p>"
@@ -2138,6 +2141,12 @@ def _overview_downloads_chart(
         slot_indexes = [0]
         for a, b in zip(bucket_times, bucket_times[1:]):
             slot_indexes.append(slot_indexes[-1] + max(1, round((b - a).total_seconds() / step)))
+    lead_times: list[datetime] = []
+    first_bucket, start = (bucket_times[0] if len(known) == len(trend) else None), _parse_timestamp(grid_start)
+    while start is not None and first_bucket is not None and start < first_bucket and len(lead_times) < 400:
+        lead_times.append(start)
+        start = _next_overview_bucket(start, chart_bucket, time_zone=time_zone)
+    slot_indexes = [index + len(lead_times) for index in slot_indexes]
     slot = plot_width / (max(slot_indexes, default=0) + 1)
 
     def position_center(index: int) -> float:
@@ -2238,8 +2247,10 @@ def _overview_downloads_chart(
             markers.append(marker)
             if show_text and half_width:
                 marker_text_end = center + half_width
-    centers = [position_center(index) for index in range(len(values))]
-    axis_texts = [_overview_chart_bucket_label(item.get("bucket"), chart_bucket, time_zone) for item in trend]
+    centers = [left + (index + 0.5) * slot for index in range(len(lead_times))]
+    centers += [position_center(index) for index in range(len(values))]
+    axis_texts = [_overview_chart_bucket_label(value.isoformat(), chart_bucket, time_zone) for value in lead_times]
+    axis_texts += [_overview_chart_bucket_label(item.get("bucket"), chart_bucket, time_zone) for item in trend]
     for index, anchor in _chart_axis_labels(
         centers, axis_texts, font_size=13 if _compact else 11, chart_width=chart_width,
     ):
@@ -2259,7 +2270,7 @@ def _overview_downloads_chart(
     return (
         "<div class='overview-chart-wrap'>"
         + svg
-        + _overview_downloads_chart(downloads, time_zone, period=period, _compact=True)
+        + _overview_downloads_chart(downloads, time_zone, period=period, grid_start=grid_start, _compact=True)
         + _chart_value_strip()
         + _chart_legend(
             [("download-dmg", ".dmg", _LEGEND_NAME_ONLY), ("download-zip", ".zip", _LEGEND_NAME_ONLY)],
@@ -2975,6 +2986,10 @@ def overview_page(
 
     # --- Terento app downloads (GitHub) ---------------------------------------
     downloads_available = downloads.get("available") is not False
+    # All time starts where the default (All) map charts start (owner QA 2026-11-04).
+    download_grid_start = next((
+        item.get("bucket") for item in all_sources.get("trend") or [] if isinstance(item, dict)
+    ), None) if period == "all" and all_sources.get("bucket") == downloads.get("bucket") else None
     download_has_data = bool(downloads.get("hasData")) and (downloads.get("dmgTotal") is not None or downloads.get("zipTotal") is not None or bool(downloads.get("trend")))
     download_last_update = downloads.get("lastSuccessfulObservedAt", downloads.get("lastObservedAt"))
 
@@ -2988,7 +3003,7 @@ def overview_page(
         downloads_section = _section_card(
             "App downloads",
             # Legend names the series (the tile holds the period increases); one All time line: totals.
-            f"{_overview_downloads_chart(downloads, time_zone, period=period)}"
+            f"{_overview_downloads_chart(downloads, time_zone, period=period, grid_start=download_grid_start)}"
             f"<p class='overview-all-time overview-download-all-time'>{_scope_chip('all')}"
             f"<span>.dmg <strong>{download_total('dmgTotal')}</strong> · .zip <strong>{download_total('zipTotal')}</strong></span>"
             f"<span class='overview-chart-note'>Last update {_timestamp_markup(download_last_update) if download_last_update is not None else '—'}</span></p>",

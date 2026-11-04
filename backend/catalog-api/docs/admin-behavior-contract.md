@@ -319,8 +319,9 @@ empty slot, never a drawn zero), uses a four-step axis with round steps (3,
 20, 40, never 19 or 37), and marks the bucket still in progress with one
 dashed outline around the whole bar (its segments keep their full tone and no
 separator) and a dashed last sparkline segment (owner QA 2026-11-03). App
-downloads uses the map charts' plot area and, for All time, their bucket grid,
-draws no clip around its bars, and reserves room above the plot only on the
+downloads uses the map charts' plot area and, for All time, their bucket grid
+starting at the default map charts' first bucket (months before the first
+GitHub snapshot stay empty labelled slots, so bars line up), draws no clip around its bars, and reserves room above the plot only on the
 wide chart with visible marker text. A tapped, clicked or focused bar gets one
 frame around the whole bar, never a stroke per segment; on the bar in progress
 that frame stays dashed and the value strip date reads `(in progress)`. App
