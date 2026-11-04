@@ -11,7 +11,7 @@ Terento è progettato per gli smartwatch Garmin con supporto alle mappe. Qui sot
 
 Se il tuo modello non è nell’elenco, non significa che non sia supportato — potrebbe semplicemente non esserci ancora un’installazione riuscita condivisa per quel modello e quella variante esatti.
 
-**39** modelli con installazioni riuscite**346** installazioni riusciteUltima installazione riuscita 1 novembre 2026
+**39** modelli con installazioni riuscite**351** installazioni riusciteUltima installazione riuscita 3 novembre 2026
 
 Come funziona questo elenco
 
@@ -125,6 +125,26 @@ Ultima installazione riuscita 20 ottobre 2026
 
 fēnix
 
+### fēnix 8 51 mm, AMOLED
+
+11 installazioni riuscite
+
+App 10 Web 1
+
+Ultima installazione riuscita 2 novembre 2026
+
+epix
+
+### epix Pro (Gen 2) 47 mm, AMOLED
+
+10 installazioni riuscite
+
+App 6 Web 4
+
+Ultima installazione riuscita 3 novembre 2026
+
+fēnix
+
 ### fēnix 9 Pro 47 mm, AMOLED
 
 10 installazioni riuscite
@@ -142,26 +162,6 @@ fēnix
 App 9
 
 Ultima installazione riuscita 23 ottobre 2026
-
-fēnix
-
-### fēnix 8 51 mm, AMOLED
-
-9 installazioni riuscite
-
-App 8 Web 1
-
-Ultima installazione riuscita 23 ottobre 2026
-
-epix
-
-### epix Pro (Gen 2) 47 mm, AMOLED
-
-8 installazioni riuscite
-
-App 6 Web 2
-
-Ultima installazione riuscita 14 ottobre 2026
 
 fēnix
 
@@ -263,6 +263,16 @@ App 4
 
 Ultima installazione riuscita 23 settembre 2026
 
+Enduro
+
+### Enduro 4 MIP, Solar
+
+3 installazioni riuscite
+
+App 3
+
+Ultima installazione riuscita 2 novembre 2026
+
 fēnix
 
 ### fēnix 5 Plus Historical
@@ -312,16 +322,6 @@ Enduro
 App 2
 
 Ultima installazione riuscita 13 ottobre 2026
-
-Enduro
-
-### Enduro 4 MIP, Solar
-
-2 installazioni riuscite
-
-App 2
-
-Ultima installazione riuscita 23 ottobre 2026
 
 fēnix
 

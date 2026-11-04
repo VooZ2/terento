@@ -162,6 +162,38 @@
       "lastSuccessfulInstallation": "2026-10-20T16:15:40+00:00"
     },
     {
+      "model": "fēnix 8 · 51 mm, AMOLED",
+      "variant": "51 mm, AMOLED",
+      "caseSizeMm": 51,
+      "displayType": "AMOLED",
+      "screenTechnology": "AMOLED",
+      "solar": null,
+      "inReach": null,
+      "family": "fenix",
+      "familyName": "fēnix",
+      "imageUrl": "https://res.garmin.com/en/products/010-02905-20/g/cf-lg.jpg",
+      "successfulInstallations": 11,
+      "appSuccessfulInstallations": 10,
+      "webSuccessfulInstallations": 1,
+      "lastSuccessfulInstallation": "2026-11-02T16:32:00+00:00"
+    },
+    {
+      "model": "epix Pro (Gen 2) · 47 mm, AMOLED",
+      "variant": "47 mm, AMOLED",
+      "caseSizeMm": 47,
+      "displayType": null,
+      "screenTechnology": "AMOLED",
+      "solar": null,
+      "inReach": null,
+      "family": "epix",
+      "familyName": "epix",
+      "imageUrl": "https://res.garmin.com/en/products/010-02803-10/v/cf-lg.jpg",
+      "successfulInstallations": 10,
+      "appSuccessfulInstallations": 6,
+      "webSuccessfulInstallations": 4,
+      "lastSuccessfulInstallation": "2026-11-03T08:38:35+00:00"
+    },
+    {
       "model": "fēnix 9 Pro · 47 mm",
       "variant": "47 mm",
       "caseSizeMm": 47,
@@ -192,38 +224,6 @@
       "appSuccessfulInstallations": 9,
       "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-10-23T10:45:39+00:00"
-    },
-    {
-      "model": "fēnix 8 · 51 mm, AMOLED",
-      "variant": "51 mm, AMOLED",
-      "caseSizeMm": 51,
-      "displayType": "AMOLED",
-      "screenTechnology": "AMOLED",
-      "solar": null,
-      "inReach": null,
-      "family": "fenix",
-      "familyName": "fēnix",
-      "imageUrl": "https://res.garmin.com/en/products/010-02905-20/g/cf-lg.jpg",
-      "successfulInstallations": 9,
-      "appSuccessfulInstallations": 8,
-      "webSuccessfulInstallations": 1,
-      "lastSuccessfulInstallation": "2026-10-23T11:39:11+00:00"
-    },
-    {
-      "model": "epix Pro (Gen 2) · 47 mm, AMOLED",
-      "variant": "47 mm, AMOLED",
-      "caseSizeMm": 47,
-      "displayType": null,
-      "screenTechnology": "AMOLED",
-      "solar": null,
-      "inReach": null,
-      "family": "epix",
-      "familyName": "epix",
-      "imageUrl": "https://res.garmin.com/en/products/010-02803-10/v/cf-lg.jpg",
-      "successfulInstallations": 8,
-      "appSuccessfulInstallations": 6,
-      "webSuccessfulInstallations": 2,
-      "lastSuccessfulInstallation": "2026-10-14T06:30:56+00:00"
     },
     {
       "model": "fēnix 7 Pro · Historical",
@@ -386,6 +386,22 @@
       "lastSuccessfulInstallation": "2026-09-23T18:33:25+00:00"
     },
     {
+      "model": "Enduro 4",
+      "variant": null,
+      "caseSizeMm": null,
+      "displayType": null,
+      "screenTechnology": "MIP",
+      "solar": true,
+      "inReach": null,
+      "family": "enduro",
+      "familyName": "Enduro",
+      "imageUrl": "https://res.garmin.com/en/products/010-04799-00/g/cf-lg.jpg",
+      "successfulInstallations": 3,
+      "appSuccessfulInstallations": 3,
+      "webSuccessfulInstallations": 0,
+      "lastSuccessfulInstallation": "2026-11-02T20:18:27+00:00"
+    },
+    {
       "model": "fēnix 5 Plus · Historical",
       "variant": "Historical",
       "caseSizeMm": null,
@@ -464,22 +480,6 @@
       "appSuccessfulInstallations": 2,
       "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-10-13T08:47:02+00:00"
-    },
-    {
-      "model": "Enduro 4",
-      "variant": null,
-      "caseSizeMm": null,
-      "displayType": null,
-      "screenTechnology": "MIP",
-      "solar": true,
-      "inReach": null,
-      "family": "enduro",
-      "familyName": "Enduro",
-      "imageUrl": "https://res.garmin.com/en/products/010-04799-00/g/cf-lg.jpg",
-      "successfulInstallations": 2,
-      "appSuccessfulInstallations": 2,
-      "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-10-23T09:00:18+00:00"
     },
     {
       "model": "fēnix 6X Pro · Historical",
@@ -626,5 +626,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-11-01T21:54:30.068229+00:00"
+  "generatedAt": "2026-11-04T12:02:12.152295+00:00"
 }
