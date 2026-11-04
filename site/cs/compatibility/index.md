@@ -11,7 +11,7 @@ Terento je navrženo pro hodinky Garmin s podporou map. Níže jsou uvedeny konk
 
 Pokud zde svůj model nevidíte, neznamená to, že není podporován — pro daný model a variantu zatím možná nebyla sdílena žádná úspěšná instalace.
 
-**39** modely s úspěšnými instalacemi**346** úspěšných instalacíPoslední úspěšná instalace 1. listopadu 2026
+**39** modely s úspěšnými instalacemi**351** úspěšných instalacíPoslední úspěšná instalace 3. listopadu 2026
 
 Jak tento seznam funguje
 
@@ -125,6 +125,26 @@ Poslední úspěšná instalace 20. října 2026
 
 fēnix
 
+### fēnix 8 51 mm, AMOLED
+
+11 úspěšných instalací
+
+App 10 Web 1
+
+Poslední úspěšná instalace 2. listopadu 2026
+
+epix
+
+### epix Pro (Gen 2) 47 mm, AMOLED
+
+10 úspěšných instalací
+
+App 6 Web 4
+
+Poslední úspěšná instalace 3. listopadu 2026
+
+fēnix
+
 ### fēnix 9 Pro 47 mm, AMOLED
 
 10 úspěšných instalací
@@ -142,26 +162,6 @@ fēnix
 App 9
 
 Poslední úspěšná instalace 23. října 2026
-
-fēnix
-
-### fēnix 8 51 mm, AMOLED
-
-9 úspěšných instalací
-
-App 8 Web 1
-
-Poslední úspěšná instalace 23. října 2026
-
-epix
-
-### epix Pro (Gen 2) 47 mm, AMOLED
-
-8 úspěšných instalací
-
-App 6 Web 2
-
-Poslední úspěšná instalace 14. října 2026
 
 fēnix
 
@@ -263,6 +263,16 @@ App 4
 
 Poslední úspěšná instalace 23. září 2026
 
+Enduro
+
+### Enduro 4 MIP, Solar
+
+3 úspěšných instalací
+
+App 3
+
+Poslední úspěšná instalace 2. listopadu 2026
+
 fēnix
 
 ### fēnix 5 Plus Historical
@@ -312,16 +322,6 @@ Enduro
 App 2
 
 Poslední úspěšná instalace 13. října 2026
-
-Enduro
-
-### Enduro 4 MIP, Solar
-
-2 úspěšných instalací
-
-App 2
-
-Poslední úspěšná instalace 23. října 2026
 
 fēnix
 
