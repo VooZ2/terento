@@ -914,8 +914,12 @@ class Database:
         time_zone: str = "UTC",
         now: datetime | None = None,
         period: str = "24h",
+        all_time_grid: str | None = None,
     ) -> dict[str, Any]:
         """Return cumulative totals and observed increases between checks.
+
+        ``all_time_grid`` puts All time on the Dashboard map charts' bucket
+        grid instead of the grid of this read model's own observed span.
 
         The first observation is a baseline. Counter decreases and confirmed
         release or asset-population changes are discontinuities. Legacy rows
@@ -986,7 +990,9 @@ class Database:
             if isinstance(row.get("observed_at"), datetime)
         ]
         authoritative_markers = [dict(row) for row in release_markers]
-        if period == "all" and observations:
+        if period == "all" and all_time_grid in {"day", "week", "month"}:
+            bucket = all_time_grid
+        elif period == "all" and observations:
             bucket = all_time_bucket(now - observations[0]["observed_at"].astimezone(timezone.utc))
         period_observations = [row for row in observations if row["observed_at"] >= start]
         first_period_index = observations.index(period_observations[0]) if period_observations else len(observations)

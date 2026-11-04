@@ -994,8 +994,11 @@ class CatalogService:
             "timeZone": time_zone,
             "since": since,
             "data": data,
+            # All time App downloads share the map charts' grid (one Dashboard
+            # time axis); the other periods already use one bucket rule.
             "downloads": section("downloads", lambda: self.database.github_downloads_snapshot(
                 time_zone=time_zone, period=period,
+                all_time_grid=data.get("bucket") if isinstance(data, dict) else None,
             ), dict(unavailable)),
             "providers": providers,
             "system": section("system", system_health, dict(unavailable)),

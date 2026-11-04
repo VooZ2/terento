@@ -1199,7 +1199,8 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
                 },
             ],
         })
-        self.assertIn("New release · beta.15 · build 37", body)
+        self.assertIn(">New release · beta.15</text>", body)  # version only; full label in the title
+        self.assertIn("New release: beta.15 · build 37", body)
         self.assertIn("New releases · 2", body)
         self.assertIn("beta.16 · build 38", body)
         self.assertIn("Data boundary", body)
@@ -1278,8 +1279,9 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             float(bars[0].attrib["y"]),
             places=1,
         )
-        self.assertAlmostEqual(sum(float(bar.attrib["height"]) for bar in bars), 184, places=1)  # round axis: 4 fills the four 1-steps
-        self.assertIn("<clipPath id='overview-download-bar-clip-0'>", body)
+        # Round axis: 4 fills the four 1-steps of the map charts' plot area.
+        self.assertAlmostEqual(sum(float(bar.attrib["height"]) for bar in bars), 202, places=1)
+        self.assertNotIn("clipPath", body)  # a clip would cut the bar outlines' sides
 
     def test_download_chart_uses_selected_period_bucket_and_label(self):
         body = _overview_downloads_chart({
