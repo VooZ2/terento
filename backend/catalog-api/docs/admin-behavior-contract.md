@@ -318,9 +318,18 @@ included, puts its bars on one even bucket grid (a missing bucket stays an
 empty slot, never a drawn zero), uses a four-step axis with round steps (3,
 20, 40, never 19 or 37), and marks the bucket still in progress with one
 dashed outline around the whole bar (its segments keep their full tone and no
-separator) and a dashed last sparkline segment (owner QA 2026-11-03). App downloads marker text shows
-only on the wide chart and only where it does not collide; on phones the
-marker lines keep their names in titles. One `All`/`App`/`App Store`/`Web` switch beside the
+separator) and a dashed last sparkline segment (owner QA 2026-11-03). App
+downloads uses the map charts' plot area and, for All time, their bucket grid,
+draws no clip around its bars, and reserves room above the plot only on the
+wide chart with visible marker text. A tapped, clicked or focused bar gets one
+frame around the whole bar, never a stroke per segment; on the bar in progress
+that frame stays dashed and the value strip date reads `(in progress)`. App
+downloads release and data-boundary lines are solid and drawn behind the bars,
+so dashes mean only a bucket in progress; one release shows its version
+(`New release · 1.1.0`), several their count, and the exact labels stay in the
+titles (owner QA 2026-11-04). Marker text shows only on the wide chart and only
+where it does not collide; on phones the marker lines keep their names in
+titles. One `All`/`App`/`App Store`/`Web` switch beside the
 period picker, in the picker's height, swaps both chart cards at once (owner
 decisions 2026-10-10 and 2026-10-11; All is the default and the choice
 survives a period change) and the matching headline tiles. The switch shows
@@ -543,7 +552,9 @@ true height is below that floor for each of its non-zero segments grows to
 exactly the floor, and exact values always remain in the bucket label and value
 strip. X axis: every bucket is labelled when the labels fit, otherwise every
 second bucket (or the smallest regular step that fits on the compact chart),
-always including the most recent bucket and never overlapping.
+always including the most recent bucket and never overlapping; when an
+edge-anchored label would collide, the step widens instead of dropping one
+label, so the labelled gaps stay even.
 
 Needs attention covers unresolved work across all dates in six review queues
 (owner decision 2026-10-06), in this order, each row with an icon, label, count

@@ -13,7 +13,7 @@ from datetime import datetime, timedelta, timezone
 
 from terento_catalog.admin import (
     ADMIN_STYLES, _map_statistics_summary, _sparkline, _overview_period_script, _provider_problem_state,
-    _nice_tick_step, _overview_downloads_chart, _overview_trend_chart,
+    _chart_axis_labels, _nice_tick_step, _overview_downloads_chart, _overview_trend_chart,
     first_run_page, map_statistics_page, overview_page,
 )
 from terento_catalog.http_api import CatalogService, make_handler
@@ -503,9 +503,9 @@ class ChartQaTests(unittest.TestCase):
         # Hourly App downloads use the same grid: a missing hour is an empty slot.
         hourly = _overview_downloads_chart({"hasData": True, "bucket": "hour", "trend": [
             {"bucket": f"2026-09-11T{hour}:00:00Z", "dmg_count": 1, "zip_count": 0} for hour in (10, 12)]})
-        slot = (720 - 38 - 12) / 3
+        slot = (720 - 42 - 12) / 3
         self.assertIn(f"<rect class='overview-chart-download-dmg' data-stack-index='0' data-stack-total='1' "
-                      f"x='{38 + 2.5 * slot - min(slot * 0.72, 86) / 2:.1f}'", hourly)
+                      f"x='{42 + 2.5 * slot - min(slot * 0.72, 86) / 2:.1f}'", hourly)
         self.assertNotIn("(in progress) · Total: 2", chart)
         spark = _sparkline([2, 1], partial_last=True)
         self.assertIn("<polyline points='0.0,2.0'/><polyline class='is-partial' points='0.0,2.0 100.0,15.0'/>", spark)
@@ -524,8 +524,8 @@ class ChartQaTests(unittest.TestCase):
         body = _overview_downloads_chart({"hasData": True, "bucket": "week", "trend": trend}, period="30d")
         desktop = ET.fromstring(body[body.index("<svg"):body.index("</svg>") + 6])
         xs = [float(rect.get("x")) for rect in desktop.iter("rect") if rect.get("class") == "overview-chart-download-dmg"]
-        slot = (720 - 38 - 12) / 4
-        self.assertEqual([round(x, 1) for x in xs], [round(38 + (index + 0.5) * slot - min(slot * 0.72, 86) / 2, 1)
+        slot = (720 - 42 - 12) / 4
+        self.assertEqual([round(x, 1) for x in xs], [round(42 + (index + 0.5) * slot - min(slot * 0.72, 86) / 2, 1)
                                                      for index in (0, 1, 3)])
         mobile = body[body.rindex("<svg"):body.rindex("</svg>")]
         # Phone: marker lines keep their titles, no visible text to collide.
@@ -534,6 +534,47 @@ class ChartQaTests(unittest.TestCase):
         self.assertIn(".overview-chart-success,.overview-chart-download-success,.overview-chart-download-dmg{fill:color-mix(in srgb,var(--sky) 72%,var(--surface))", ADMIN_STYLES)
         self.assertIn(".overview-chart-download-zip{fill:color-mix(in srgb,var(--sky) 40%,var(--surface))", ADMIN_STYLES)
         self.assertNotIn("var(--status-success-text);background:var(--status-success-text)}", ADMIN_STYLES)
+
+    def test_live_qa_2026_11_04_one_frame_one_plot_area_and_quiet_markers(self):
+        import re as regex
+        now = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+        hours = [now - timedelta(hours=1), now]
+        trend = [{"bucket": hour.isoformat(), "success_count": 3, "failed_count": 1} for hour in hours]
+        chart = _overview_trend_chart(trend, "hour")
+        downloads = _overview_downloads_chart({"hasData": True, "bucket": "hour", "trend": [
+            {"bucket": hour.isoformat(), "dmg_count": 3, "zip_count": 1} for hour in hours]})
+        for body in (chart, downloads):
+            desktop = body[body.index("<svg"):body.index("</svg>")]
+            # One selection frame per bar (not a stroke per segment); the bar in
+            # progress keeps its dashed outline, and the value strip names it.
+            self.assertEqual(desktop.count("overview-chart-select-outline"), 2)
+            self.assertEqual(desktop.count("overview-chart-partial-outline"), 1)
+            self.assertIn(" (in progress)&quot;", desktop)
+            # Same plot area as the map charts: no clip, left 42, baseline 222, top 20.
+            self.assertNotIn("clipPath", desktop)
+            self.assertIn("<line class='overview-chart-grid' x1='42' x2='708' y1='222.0'", desktop)
+            self.assertIn("y1='20.0' y2='20.0'", desktop)
+        self.assertIn(".overview-chart-group.is-partial .overview-chart-select-outline{stroke-dasharray:4 3}", ADMIN_STYLES)
+        # Release and boundary lines are solid and sit behind the bars; the
+        # single release shows its version only.
+        marked = _overview_downloads_chart({"hasData": True, "bucket": "week", "trend": [
+            {"bucket": "2026-10-26T00:00:00Z", "dmg_count": 3, "zip_count": 1, "state": "discontinuity",
+             "discontinuity_reason": "population_change",
+             "release_markers": [{"label": "Terento 1.1.0 (build 46)", "tag": "v1.1.0-build46"}]}]}, period="30d")
+        desktop = marked[marked.index("<svg"):marked.index("</svg>")]
+        self.assertLess(desktop.index("overview-chart-download-marker"), desktop.index("overview-chart-group"))
+        self.assertIn(">New release · 1.1.0</text>", desktop)
+        self.assertIn("New release: Terento 1.1.0 (build 46)", desktop)
+        self.assertIn(".overview-chart-download-marker line{stroke-width:1.5}", ADMIN_STYLES)
+        self.assertNotRegex(ADMIN_STYLES, r"overview-chart-download-marker line\{[^}]*dasharray")
+
+    def test_axis_labels_keep_one_even_step(self):
+        # 25 hourly slots on a phone: the edge label never leaves a wider gap.
+        positions = [42 + (index + 0.5) * 12.24 for index in range(25)]
+        texts = [f"{hour % 24:02d}:00" for hour in range(11, 36)]
+        indexes = [index for index, _ in _chart_axis_labels(positions, texts, font_size=13, chart_width=360)]
+        self.assertEqual(indexes[-1], 24)
+        self.assertEqual(len({b - a for a, b in zip(indexes, indexes[1:])}), 1)
 
 class CountingDatabase(FakeProviderDatabase):
     def __init__(self) -> None:

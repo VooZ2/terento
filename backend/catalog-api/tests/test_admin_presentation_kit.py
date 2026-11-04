@@ -322,7 +322,9 @@ class AdminChartValueStripTests(unittest.TestCase):
         page = _layout("Test", "<main id='main-content'></main>").decode()
         self.assertIn("data-chart-values-strip", script)
         self.assertRegex(page, r'<script nonce="[^"]+">[^<]*\(\(\) => \{[\s\S]*closest\(\'\.overview-chart-group\[data-chart-values\]\'\)')
-        self.assertIn(".overview-trend-chart .overview-chart-group.is-selected rect{stroke:var(--graphite);stroke-width:2}", ADMIN_STYLES)
+        # One frame around the whole selected bar, never one per segment.
+        self.assertIn(".overview-trend-chart .overview-chart-group.is-selected .overview-chart-select-outline{stroke:var(--graphite);stroke-width:2}", ADMIN_STYLES)
+        self.assertNotIn("is-selected rect{", ADMIN_STYLES)
 
 
 class AdminMapsMobileTests(unittest.TestCase):
