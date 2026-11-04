@@ -11,7 +11,7 @@ Terento jest przeznaczone dla zegarków Garmin obsługujących mapy. Poniżej po
 
 Brak Twojego modelu na liście nie oznacza, że nie jest obsługiwany — być może nie otrzymaliśmy jeszcze udanej instalacji dla dokładnie tego modelu i wariantu.
 
-**39** modele z udanymi instalacjami**351** udane instalacjeOstatnia udana instalacja 3 listopada 2026
+**39** modele z udanymi instalacjami**352** udane instalacjeOstatnia udana instalacja 4 listopada 2026
 
 Jak działa ta lista
 
@@ -27,11 +27,11 @@ fēnix
 
 ### fēnix 8 47 mm, AMOLED
 
-57 udanych instalacji
+58 udanych instalacji
 
-App 57
+App 57 Web 1
 
-Ostatnia udana instalacja 31 października 2026
+Ostatnia udana instalacja 4 listopada 2026
 
 Forerunner
 
