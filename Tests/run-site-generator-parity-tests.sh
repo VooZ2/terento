@@ -129,4 +129,21 @@ if [ "$before" != "$after" ]; then
   exit 1
 fi
 
+# The scheduled compatibility refresh runs only build-compatibility-pages.py.
+# It must write exactly what the full site build writes, or every refresh PR
+# fails this parity test (2026-11-02..04: compatibility-locales.js cache version).
+compatibility="site/compatibility/index.html
+site/de/compatibility/index.html
+site/fr/compatibility/index.html
+site/pl/compatibility/index.html
+site/cs/compatibility/index.html
+site/it/compatibility/index.html"
+before="$(cksum $compatibility)"
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/build-compatibility-pages.py >/dev/null
+after="$(cksum $compatibility)"
+if [ "$before" != "$after" ]; then
+  echo "Compatibility refresh generator output differs from the full site build." >&2
+  exit 1
+fi
+
 echo "Guide and public-link generator parity passed for all six locales."

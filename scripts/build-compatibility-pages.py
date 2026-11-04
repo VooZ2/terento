@@ -15,7 +15,12 @@ ROOT = Path(__file__).resolve().parents[1]
 SCHEMA = runpy.run_path(str(ROOT / "scripts/page_schema.py"))
 SNAPSHOT_PATH = ROOT / "site/compatibility/public-models.snapshot.json"
 LOCALES = ("en", "de", "fr", "pl", "cs", "it")
-ASSET_VERSION = "20261102-compatibility-heading-v1"
+# The compatibility script cache versions have one owner: normalize-public-shell.py
+# runs after this generator in the full site build, while the scheduled snapshot
+# refresh runs only this generator. Both must write the same query strings.
+SHELL = runpy.run_path(str(ROOT / "scripts/normalize-public-shell.py"))
+ASSET_VERSION = SHELL["COMPATIBILITY_VERSION"]
+LOCALES_ASSET_VERSION = SHELL["COMPATIBILITY_LOCALES_VERSION"]
 FALLBACK_IMAGE_URL = "/assets/generic-garmin-watch.png?v=20260826-1"
 
 
@@ -305,7 +310,7 @@ def render_page(source: str, locale: str, snapshot: dict) -> str:
     if count != 1:
         raise ValueError(f"{page_path(locale)}: compatibility community CTA not found")
     source = re.sub(r'/compatibility/compatibility-data\.js\?v=[^" ]+', f'/compatibility/compatibility-data.js?v={ASSET_VERSION}', source)
-    source = re.sub(r'/compatibility/compatibility-locales\.js\?v=[^" ]+', f'/compatibility/compatibility-locales.js?v={ASSET_VERSION}', source)
+    source = re.sub(r'/compatibility/compatibility-locales\.js\?v=[^" ]+', f'/compatibility/compatibility-locales.js?v={LOCALES_ASSET_VERSION}', source)
     source = re.sub(r'/compatibility/compatibility\.js\?v=[^" ]+', f'/compatibility/compatibility.js?v={ASSET_VERSION}', source)
     source = re.sub(r'(<p class="compatibility-error"[^>]*>)[^<]*(</p>)', rf'\g<1>{esc(copy["error"])}\g<2>', source, count=1)
     # One web-page + breadcrumb JSON-LD block (no device list: the snapshot is not a support list).
