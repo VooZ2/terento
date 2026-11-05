@@ -13,6 +13,10 @@ as a side effect of unrelated work.
   second primary CTA.
 - Preserve the existing light/dark hierarchy. Do not use light Sky, Lichen,
   or Warm Stone as normal-size text on Alpine Off-White.
+- UI icons are original Lucide 0.460.0 outline SVGs (24 px grid, 1.75 px
+  stroke, `currentColor`), inlined with `aria-hidden` and listed in
+  `THIRD_PARTY_NOTICES.md`; never hand-draw or redraw an icon. Brand logos
+  (GitHub, Apple, Garmin) are the only exception.
 - Maintain visible keyboard focus and reduced-motion behavior.
 - Localization must preserve meaning and hierarchy, not merely literal word
   length.
@@ -45,7 +49,7 @@ preserve the same meaning in each locale.
 - `successfulInstallations` counts app and web-installer successes. Each card
   shows that total and its split (`appSuccessfulInstallations`,
   `webSuccessfulInstallations`; a snapshot or payload without them counts every
-  success as app), with the Font Awesome `laptop` and `globe` icons; a part with
+  success as app), with the Lucide `laptop` and `globe` outline icons; a part with
   zero is hidden. Card counts below 100 are exact; from 100 they are rounded down
   to the hundred with a plus (`1,200+`, plural form). The summary line, filters
   and sorting keep exact counts.

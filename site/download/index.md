@@ -1,37 +1,42 @@
 ---
-title: "Download Terento for Mac — Third-Party Maps for Garmin"
+title: "Download Terento for Mac: Free Maps for Garmin"
 canonical: https://terento.app/download/
 ---
 
-Terento
+# Download Terento for Mac
 
-# Download Terento
+A free, open-source app that installs free maps on Garmin watches and Edge bike computers with map support.
 
-A native Mac app for installing and managing third-party maps on Garmin smartwatches with map support.
+[Download for Mac](https://github.com/VooZ2/terento/releases/download/v1.1.0-build46/Terento-1.1.0-macOS-arm64.dmg)
 
-- Free
-- Notarized
-- Apple Silicon
+Mac App Store Coming soon
 
-[Download DMG Recommended](https://github.com/VooZ2/terento/releases/download/v1.1.0-build46/Terento-1.1.0-macOS-arm64.dmg) [Download ZIP](https://github.com/VooZ2/terento/releases/download/v1.1.0-build46/Terento-1.1.0-macOS-arm64.zip) [View release notes](https://github.com/VooZ2/terento/releases/tag/v1.1.0-build46)
+Latest version **v1.1.0**, released 27 October 2026. [What’s new](https://github.com/VooZ2/terento/releases/tag/v1.1.0-build46)
 
-Latest: **v1.1.0** Released 27 October 2026
+No Apple Silicon Mac? [Use the web installer](https://terento.app/install/) in Chrome, Microsoft Edge, Opera or Brave on a Mac. Linux is still in testing: read the [Linux guide](https://terento.app/guides/install-garmin-maps-linux/).
 
 Terento showing a connected Garmin watch on macOS
 
-Before you install
+## What you need
 
-## Check the essentials first.
-
-## Requirements
-
+- A Mac with Apple Silicon
 - macOS 13 or later
-- Apple Silicon Mac
-- Garmin smartwatch with map support
-[Read the Mac installation guide](https://terento.app/guides/install-garmin-maps-mac/) [No Apple Silicon Mac? Use the web installer](https://terento.app/install/) [On Linux? Read the Linux guide](https://terento.app/guides/install-garmin-maps-linux/) [Garmin Edge? Read the Edge guide](https://terento.app/guides/install-garmin-maps-edge-mac/)
-
-## Release status
-
-This is the current Terento release. It supports maps from every provider in the catalog. The Compatibility page shows exact models and variants with successful shared installations. A model missing from the list is not an unsupported-device claim.
-
+- A USB data cable, not a charge-only one
+- A Garmin watch or Garmin Edge bike computer
 [Check compatibility](https://terento.app/compatibility/)
+
+## After you download
+
+1. Open Terento
+
+Open the downloaded file and drag Terento to Applications.
+
+2. Connect your Garmin
+
+Use a USB data cable and unlock the watch or Edge.
+
+3. Pick a map
+
+Choose a map and a region, then install it.
+
+Step by step: the [Garmin watch guide](https://terento.app/guides/install-garmin-maps-mac/) and the [Garmin Edge guide](https://terento.app/guides/install-garmin-maps-edge-mac/).

@@ -3,13 +3,11 @@ title: "Montres Garmin et Edge : installations réussies — Terento"
 canonical: https://terento.app/fr/compatibility/
 ---
 
-Compatibilité
-
 # Compatibilité des montres et compteurs Edge Garmin
 
-Terento est conçu pour les montres Garmin et les compteurs vélo Garmin Edge récents prenant en charge les cartes. Vous trouverez ci-dessous les modèles et variantes exacts pour lesquels au moins une installation de carte tierce a réussi. La liste s’allonge à mesure que de nouvelles installations réussies sont partagées.
+Terento fonctionne avec les montres Garmin et les compteurs vélo Garmin Edge récents compatibles cartes. Voici les modèles exacts sur lesquels quelqu’un a déjà installé une carte avec Terento. La liste s’allonge à chaque installation partagée.
 
-L’absence de votre modèle dans la liste ne signifie pas qu’il n’est pas pris en charge — il se peut simplement qu’aucune installation réussie n’ait encore été partagée pour ce modèle et cette variante précis.
+L’absence de votre modèle ne veut pas dire qu’il ne fonctionne pas. Personne n’a peut-être encore partagé d’installation réussie avec ce modèle.
 
 **40** modèles avec des installations réussies**356** installations réussiesDernière installation réussie 5 novembre 2026
 
@@ -423,11 +421,9 @@ App 1
 
 Dernière installation réussie 7 octobre 2026
 
-Résultats de la communauté
-
 ## Votre Garmin n’apparaît pas ?
 
-Si votre montre Garmin ou votre compteur Edge prend en charge les cartes, vous pouvez tout de même essayer Terento. Cette liste s’allonge à mesure que des installations réussies sont partagées pour d’autres modèles et variantes exacts.
+Si votre montre Garmin ou votre compteur Edge prend en charge les cartes, vous pouvez quand même essayer Terento. Chaque installation réussie partagée ajoute votre modèle à cette liste.
 
-[Vous installez des cartes tierces pour la première fois ? Lisez le guide Mac](https://terento.app/fr/guides/install-garmin-maps-mac/) [Pas de Mac Apple Silicon ? Utilisez l’installateur web](https://terento.app/fr/install/)
+[Première fois ? Lisez le guide Mac](https://terento.app/fr/guides/install-garmin-maps-mac/) [Pas de Mac Apple Silicon ? Utilisez l’installateur web](https://terento.app/fr/install/)
 [Télécharger](https://terento.app/fr/download/)

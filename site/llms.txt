@@ -1,6 +1,6 @@
 # Terento
 
-> Install and manage third-party maps on Garmin watches and Edge bike computers with map support using Terento, a free macOS app for Apple Silicon.
+> Install free OpenTopoMap, Freizeitkarte and other OpenStreetMap maps on Garmin watches and Edge bike computers. Free Mac app or web installer.
 
 Canonical website: https://terento.app/
 
@@ -16,15 +16,15 @@ This supplemental index does not replace the website, robots.txt, or sitemap.
 
 ## Public pages
 
-- [Terento — Third-Party Maps for Garmin on Mac](https://terento.app/): Install and manage third-party maps on Garmin watches and Edge bike computers with map support using Terento, a free macOS app for Apple Silicon.
-- [About Terento — Free, Open-Source Garmin Maps for Mac](https://terento.app/about/): Learn why Terento exists: a free, open-source macOS app for installing and managing third-party maps on Garmin smartwatches and Edge bike computers.
-- [Download Terento for Mac — Third-Party Maps for Garmin](https://terento.app/download/): Download the free, notarized Terento app for Apple Silicon Macs to install and manage third-party maps on Garmin watches and Edge bike computers with map support.
+- [Terento — Free Maps for Garmin Watches and Edge](https://terento.app/): Install free OpenTopoMap, Freizeitkarte and other OpenStreetMap maps on Garmin watches and Edge bike computers. Free Mac app or web installer.
+- [About Terento: Free, Open-Source Garmin Maps](https://terento.app/about/): Why a Garmin hiker built Terento: a free, open-source way to get free maps onto Garmin watches and Edge bike computers. No account, no fees.
+- [Download Terento for Mac: Free Maps for Garmin](https://terento.app/download/): Free, open-source Mac app for Apple Silicon (macOS 13+). Install, update and remove free maps on Garmin watches and Edge bike computers.
 - [Garmin Watch & Edge Compatibility: Successful Installs — Terento](https://terento.app/compatibility/): Terento is designed for Garmin smartwatches and newer Edge bike computers with map support. See exact models and variants with successful map installs.
-- [Install Third-Party Garmin Maps on Mac — Terento](https://terento.app/guides/install-garmin-maps-mac/): Install third-party maps on a Garmin watch with map support from an Apple Silicon Mac: connect it, choose a map or your own .img file, and install.
-- [Garmin Watch Not Showing Up on Mac? Troubleshooting — Terento](https://terento.app/guides/troubleshooting/): Garmin watch or Edge not showing up on your Mac? Fix USB mode (MTP), Garmin Express using the device, low storage and failed map downloads.
-- [Install Garmin Maps on Linux from Chrome — Terento](https://terento.app/guides/install-garmin-maps-linux/): Install free OpenStreetMap maps on a Garmin watch from Linux in Chrome, Microsoft Edge, Opera or Brave: add one udev rule, connect the watch, send the map.
-- [Install Maps on Garmin Edge from a Mac — Terento](https://terento.app/guides/install-garmin-maps-edge-mac/): Garmin Edge 1050, 840 or 540 not showing up on your Mac? Install free OpenStreetMap maps or your own map file on newer Edge bike computers with Terento.
-- [Compare Free Garmin Maps: OpenTopoMap vs Freizeitkarte — Terento](https://terento.app/map-styles/): See how OpenTopoMap, Freizeitkarte, MapRando, BBBike and OSMapaPL Garmin maps draw popular hikes, trails and cities before you install one.
+- [Install Free Maps on a Garmin Watch from a Mac — Terento](https://terento.app/guides/install-garmin-maps-mac/): Put free OpenStreetMap maps or your own map file on a Garmin watch from an Apple Silicon Mac. No Garmin Express or BaseCamp needed.
+- [Garmin Not Showing Up on Mac? Map Fixes — Terento](https://terento.app/guides/troubleshooting/): Garmin watch or Edge not showing up on your Mac, or the map is missing? Fixes for USB mode, Garmin Express, downloads and installs.
+- [Install Garmin Watch Maps on Linux in Chrome — Terento](https://terento.app/guides/install-garmin-maps-linux/): Install free OpenStreetMap maps on a Garmin watch from Linux in Chrome, Microsoft Edge, Opera or Brave. One udev rule, no app.
+- [Install Free Maps on Garmin Edge from a Mac — Terento](https://terento.app/guides/install-garmin-maps-edge-mac/): Put free OpenStreetMap maps on a Garmin Edge such as Edge 540, 840 or 1050 from an Apple Silicon Mac, then turn the map on.
+- [Free Garmin Maps: OpenTopoMap, Freizeitkarte and more](https://terento.app/map-styles/): Compare free topo maps for Garmin watches and Edge bike computers: OpenTopoMap, Freizeitkarte, MapRando, BBBike and OSMapaPL, side by side in one place.
 
 ## Web installer
 

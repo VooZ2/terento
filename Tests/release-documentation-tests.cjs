@@ -442,36 +442,12 @@ for (const locale of ["en", "de", "fr", "pl", "cs", "it"]) {
     `site/${prefix}guides/install-garmin-maps-mac/index.html: guide review date must not be older than the release date`,
   );
   const compatibilityMarkers = {
-    en: [
-      /at least one successful shared installation/i,
-      /list grows as more successful installations are shared/i,
-      /missing model does not mean it is unsupported/i,
-    ],
-    de: [
-      /mindestens einer erfolgreich geteilten Installation/i,
-      /Liste wächst/i,
-      /Modell fehlt.*nicht.*unterstützt/i,
-    ],
-    fr: [
-      /au moins une installation réussie partagée/i,
-      /liste s’allonge/i,
-      /absence d’un modèle.*ne signifie pas/i,
-    ],
-    pl: [
-      /co najmniej jedną udaną.*udostępnioną instalacją/i,
-      /Lista rośnie/i,
-      /Brak modelu nie oznacza/i,
-    ],
-    cs: [
-      /alespoň jednou úspěšnou sdílenou instalací/i,
-      /Seznam se rozšiřuje/i,
-      /model není.*neznamená/i,
-    ],
-    it: [
-      /almeno un’installazione riuscita condivisa/i,
-      /L’elenco cresce/i,
-      /modello non è nell’elenco.*non significa/i,
-    ],
+    en: [/lists the models with successful installations/i, /missing model isn’t necessarily unsupported/i],
+    de: [/Modelle mit erfolgreichen Installationen/i, /fehlt ein Modell, heißt das nicht unbedingt/i],
+    fr: [/modèles avec des installations réussies/i, /modèle absent n’est pas forcément incompatible/i],
+    pl: [/modele z udanymi instalacjami/i, /brak modelu nie oznacza/i],
+    cs: [/modely s úspěšnými instalacemi/i, /chybějící model nemusí znamenat/i],
+    it: [/modelli con installazioni riuscite/i, /modello assente non è per forza non supportato/i],
   }[locale];
   for (const marker of compatibilityMarkers) {
     assert.match(guide, marker, `site/${prefix}guides/install-garmin-maps-mac: compatibility copy drift`);

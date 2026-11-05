@@ -1,23 +1,17 @@
 ---
-title: "Montre Garmin non détectée sur Mac ? Dépannage — Terento"
+title: "Garmin non détecté sur Mac ? Aide cartes — Terento"
 canonical: https://terento.app/fr/guides/troubleshooting/
 ---
-
-Dépannage
 
 # Résoudre les problèmes de montre Garmin et de cartes sur Mac
 
 Trouvez votre problème, d’une montre Garmin que le Mac ne détecte pas à un téléchargement de carte qui échoue, et suivez les étapes courtes. Si rien ne fonctionne, envoyez un rapport pour que nous puissions l’examiner.
-
-Garmin Edge
 
 ## Garmin Edge non détecté sur Mac
 
 Les compteurs vélo Garmin Edge récents qui prennent en charge les cartes se connectent au Mac comme les montres Garmin actuelles : la plupart des étapes de cette page valent donc aussi pour un Edge. Utilisez un câble USB de données, quittez Garmin Express et attendez jusqu’à 2 minutes. Les anciens Edge qui apparaissent comme un disque dans le Finder fonctionnent autrement.
 
 [Lire le guide Garmin Edge](https://terento.app/fr/guides/install-garmin-maps-edge-mac/)
-
-Connexion
 
 ## Problèmes de connexion de la montre Garmin
 
@@ -71,8 +65,6 @@ Débranchez la montre, attendez quelques secondes et reconnectez-la : la connexi
 1. Si Terento installait, mettait à jour ou supprimait une carte, ouvrez « Manage maps » après la reconnexion et vérifiez le résultat avant de réessayer.
 2. Redémarrez la montre si cela se reproduit.
 
-Vérifications
-
 ## Vérifications de la montre et des cartes
 
 ### Installation de cartes indisponible pour ce modèle Garmin
@@ -98,8 +90,6 @@ Si Terento ne peut pas charger la liste actuelle des cartes, vérifiez votre con
 1. Si cette version de Terento est trop ancienne pour la liste actuelle et que Terento indique qu’une version plus récente est disponible, installez la mise à jour.
 2. Tant que Terento affiche une ancienne liste enregistrée, l’installation et la mise à jour des cartes du catalogue restent indisponibles jusqu’à ce que la liste actuelle puisse être vérifiée.
 
-Téléchargements et espace
-
 ## Téléchargement des cartes et espace libre
 
 ### Échec du téléchargement de la carte Garmin
@@ -124,8 +114,6 @@ Choisissez une région plus petite ou supprimez une carte dont vous n’avez plu
 2. Ouvrez « Manage maps » et supprimez une carte dont vous n’avez plus besoin.
 3. Une mise à jour demande de l’espace supplémentaire pendant la vérification de la nouvelle carte. Libérez de l’espace si une mise à jour ne peut pas démarrer.
 
-Installation et mises à jour
-
 ## Installation, mise à jour et suppression des cartes
 
 ### Échec de l’installation de la carte : carte restante sur la montre
@@ -144,8 +132,6 @@ C’est attendu dans la version actuelle : la mise à jour ou la suppression d�
 1. Ne débranchez pas la montre pendant que Terento travaille.
 2. Attendez que Terento indique que c’est terminé.
 3. Si Terento signale un échec, reconnectez la montre et vérifiez « Manage maps » avant de réessayer.
-
-Toujours bloqué ?
 
 ## Obtenir de l’aide
 

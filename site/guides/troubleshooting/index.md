@@ -1,23 +1,17 @@
 ---
-title: "Garmin Watch Not Showing Up on Mac? Troubleshooting — Terento"
+title: "Garmin Not Showing Up on Mac? Map Fixes — Terento"
 canonical: https://terento.app/guides/troubleshooting/
 ---
-
-Troubleshooting
 
 # Fix Garmin watch and map problems on Mac
 
 Find the problem you see, from a Garmin watch that doesn’t show up on your Mac to a map download that fails, and follow the short steps. If nothing helps, send a report so we can take a look.
-
-Garmin Edge
 
 ## Garmin Edge not showing up on Mac
 
 Newer Garmin Edge bike computers with map support connect to a Mac the same way current Garmin watches do, so most steps on this page work for an Edge too: use a USB data cable, quit Garmin Express and wait up to 2 minutes. Older Edge models that show up as a drive in Finder work differently.
 
 [Read the Garmin Edge guide](https://terento.app/guides/install-garmin-maps-edge-mac/)
-
-Connection
 
 ## Garmin watch connection problems
 
@@ -71,8 +65,6 @@ Unplug the watch, wait a few seconds and connect it again: the connection was lo
 1. If Terento was installing, updating or removing a map, open “Manage maps” after reconnecting and check the result before you try again.
 2. Restart the watch if it keeps happening.
 
-Checks
-
 ## Watch and map checks
 
 ### Map installation not available for this Garmin model
@@ -98,8 +90,6 @@ If Terento can’t load the current map list, check your internet connection and
 1. If this version of Terento is too old for the current map list and Terento says a newer version is available, install the update.
 2. While Terento shows an older saved map list, installing and updating catalog maps stays unavailable until the current list can be checked.
 
-Downloads and space
-
 ## Map downloads and free space
 
 ### Garmin map download failed
@@ -124,8 +114,6 @@ Choose a smaller region or remove a map you no longer need: Terento checks the w
 2. Open “Manage maps” and remove a map you no longer need.
 3. An update needs extra space while the new map is checked. Free up space if an update can’t start.
 
-Installing and updating
-
 ## Map installs, updates and removals
 
 ### Map installation failed: leftover map on the watch
@@ -144,8 +132,6 @@ This is expected in the current version: updating or removing a map can stay at 
 1. Don’t unplug the watch while Terento is working.
 2. Wait until Terento says it is done.
 3. If Terento reports a failure, connect the watch again and check “Manage maps” before you try again.
-
-Still stuck?
 
 ## Getting help
 

@@ -42,8 +42,13 @@ def esc(value: str) -> str:
     return html.escape(value, quote=True)
 
 
+def social_image(config: dict, page: dict) -> str:
+    """A page may carry its own 1200×630 PNG (Map Styles shows the styles); others share the site image."""
+    return page.get("socialImage", config["socialImage"])
+
+
 def social_image_alt(config: dict, page: dict) -> str:
-    value = config["socialImageAlt"]
+    value = page.get("socialImageAlt", config["socialImageAlt"])
     if isinstance(value, dict):
         return value.get(page["locale"], value.get("en", ""))
     return value
@@ -52,7 +57,7 @@ def social_image_alt(config: dict, page: dict) -> str:
 def page_metadata_block(config: dict, page: dict) -> str:
     base = config["baseUrl"].rstrip("/")
     canonical = f"{base}{page['path']}"
-    image = f"{base}{config['socialImage']}"
+    image = f"{base}{social_image(config, page)}"
     locale = config["locales"][page["locale"]]
     lines = [
         f'    <meta name="description" content="{esc(page["description"])}">',
@@ -150,15 +155,15 @@ def meta_content(source: str, selector: str) -> list[str]:
 
 def validate_rendered(config: dict) -> list[str]:
     errors: list[str] = []
-    image_path = ROOT / "site" / config["socialImage"].lstrip("/")
-    try:
-        dimensions = png_dimensions(image_path)
-    except (OSError, ValueError) as error:
-        errors.append(str(error))
-        dimensions = None
     expected_dimensions = (config["socialImageWidth"], config["socialImageHeight"])
-    if dimensions != expected_dimensions:
-        errors.append(f"social image dimensions {dimensions} != {expected_dimensions}")
+    for image in sorted({social_image(config, page) for page in config["pages"]}):
+        try:
+            dimensions = png_dimensions(ROOT / "site" / image.lstrip("/"))
+        except (OSError, ValueError) as error:
+            errors.append(str(error))
+            dimensions = None
+        if dimensions != expected_dimensions:
+            errors.append(f"{image}: social image dimensions {dimensions} != {expected_dimensions}")
 
     for page in config["pages"]:
         path = ROOT / page["file"]
@@ -193,7 +198,7 @@ def validate_rendered(config: dict) -> list[str]:
         twitter_titles = meta_content(source, r'name="twitter:title"')
         if [html.unescape(value) for value in og_titles] != [page["title"]] or [html.unescape(value) for value in twitter_titles] != [page["title"]]:
             errors.append(f"{page['path']}: title, og:title, and twitter:title are not identical")
-        image_url = f'{config["baseUrl"]}{config["socialImage"]}'
+        image_url = f'{config["baseUrl"]}{social_image(config, page)}'
         og_images = meta_content(source, r'property="og:image"')
         twitter_images = meta_content(source, r'name="twitter:image"')
         if og_images != [image_url] or twitter_images != [image_url]:

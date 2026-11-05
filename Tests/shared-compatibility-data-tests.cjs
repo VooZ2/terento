@@ -108,7 +108,7 @@ assert.doesNotMatch(compatibilitySource, /statusCodes|createStatusBadge|evidence
 assert.match(compatibilitySource, /preserveExistingResults/);
 
 const home = read("site/index.html");
-assert.match(home, /Garmin watches and Edge bike computers with map support/);
+assert.match(home, /Edge bike computers with map support/);
 assert.match(home, /at least one successful shared installation/);
 assert.match(home, /not necessarily unsupported/);
 

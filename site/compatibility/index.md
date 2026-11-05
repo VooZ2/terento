@@ -3,13 +3,11 @@ title: "Garmin Watch & Edge Compatibility: Successful Installs — Terento"
 canonical: https://terento.app/compatibility/
 ---
 
-Compatibility
-
 # Garmin watch and Edge compatibility
 
-Terento is designed for Garmin smartwatches and newer Garmin Edge bike computers with map support. Below are exact models and variants where at least one third-party map installation has completed successfully. The list grows as more successful installations are shared.
+Terento works with Garmin watches and newer Garmin Edge bike computers with map support. Below are the exact models where people have already installed a map with Terento. The list grows as more installs are shared.
 
-Not seeing your model does not mean it is unsupported — we may simply not have a successful shared installation for that exact model and variant yet.
+Not seeing your model? That doesn’t mean it won’t work. It may be that no one has shared a successful install from it yet.
 
 **40** models with successful installs**356** successful installsLatest successful install November 5, 2026
 
@@ -423,11 +421,9 @@ App 1
 
 Latest successful install October 7, 2026
 
-Community results
-
 ## Don’t see your Garmin here?
 
-If your Garmin smartwatch or Edge bike computer supports maps, you can still try Terento. This list grows as successful installations are shared from more exact models and variants.
+If your Garmin watch or Edge bike computer supports maps, you can still try Terento. Each successful install you share adds your model to this list.
 
-[First time installing third-party maps? Read the Mac guide](https://terento.app/guides/install-garmin-maps-mac/) [No Apple Silicon Mac? Use the web installer](https://terento.app/install/)
+[First time? Read the Mac install guide](https://terento.app/guides/install-garmin-maps-mac/) [No Apple Silicon Mac? Use the web installer](https://terento.app/install/)
 [Download](https://terento.app/download/)

@@ -1,36 +1,42 @@
 ---
-title: "Pobierz Terento na Maca — Mapy innych firm dla Garmina"
+title: "Pobierz Terento na Maca: darmowe mapy dla Garmina"
 canonical: https://terento.app/pl/download/
 ---
 
-Terento
+# Pobierz Terento na Maca
 
-# Pobierz Terento
+Darmowa aplikacja open source, która instaluje darmowe mapy na zegarkach Garmin i licznikach rowerowych Edge z obsługą map.
 
-Natywna aplikacja na Maca do instalowania i zarządzania mapami innych firm na zegarkach Garmin obsługujących mapy.
+[Pobierz na Maca](https://github.com/VooZ2/terento/releases/download/v1.1.0-build46/Terento-1.1.0-macOS-arm64.dmg)
 
-- Bezpłatna
-- Notaryzowana
-- Apple Silicon
-[Pobierz DMG Zalecane](https://github.com/VooZ2/terento/releases/download/v1.1.0-build46/Terento-1.1.0-macOS-arm64.dmg) [Pobierz ZIP](https://github.com/VooZ2/terento/releases/download/v1.1.0-build46/Terento-1.1.0-macOS-arm64.zip) [Informacje o wydaniu](https://github.com/VooZ2/terento/releases/tag/v1.1.0-build46)
+Mac App Store Wkrótce
 
-Najnowsza wersja: **v1.1.0** Wydana 27 października 2026
+Najnowsza wersja **v1.1.0**, wydana 27 października 2026. [Co nowego](https://github.com/VooZ2/terento/releases/tag/v1.1.0-build46)
+
+Nie masz Maca z Apple Silicon? [Użyj instalatora webowego](https://terento.app/pl/install/) w Chrome, Microsoft Edge, Operze lub Brave na Macu. Linux jest jeszcze w fazie testów: zobacz [przewodnik dla Linuksa](https://terento.app/pl/guides/install-garmin-maps-linux/).
 
 Terento pokazuje podłączony zegarek Garmin w macOS
 
-Przed instalacją
+## Czego potrzebujesz
 
-## Sprawdź najważniejsze informacje.
-
-## Wymagania
-
-- macOS 13 lub nowszy
 - Mac z Apple Silicon
-- Zegarek Garmin obsługujący mapy
-[Przeczytaj instrukcję instalacji na Macu](https://terento.app/pl/guides/install-garmin-maps-mac/) [Nie masz Maca z Apple Silicon? Użyj instalatora webowego](https://terento.app/pl/install/) [Linux? Przeczytaj przewodnik dla Linuksa](https://terento.app/pl/guides/install-garmin-maps-linux/) [Garmin Edge? Przeczytaj poradnik dla Edge](https://terento.app/pl/guides/install-garmin-maps-edge-mac/)
-
-## Status wersji
-
-To aktualna wersja Terento. Obsługuje mapy wszystkich dostawców z katalogu. Strona zgodności pokazuje dokładne modele i warianty z udanymi, udostępnionymi instalacjami. Brak modelu nie oznacza, że urządzenie nie jest obsługiwane.
-
+- macOS 13 lub nowszy
+- Kabel USB do transmisji danych, nie tylko do ładowania
+- Zegarek Garmin lub licznik rowerowy Garmin Edge
 [Sprawdź kompatybilność](https://terento.app/pl/compatibility/)
+
+## Po pobraniu
+
+1. Otwórz Terento
+
+Otwórz pobrany plik i przeciągnij Terento do folderu Aplikacje.
+
+2. Podłącz urządzenie Garmin
+
+Użyj kabla USB do transmisji danych i odblokuj zegarek lub Edge.
+
+3. Wybierz mapę
+
+Wybierz mapę i region, a potem ją zainstaluj.
+
+Krok po kroku: [poradnik dla zegarków Garmin](https://terento.app/pl/guides/install-garmin-maps-mac/) i [poradnik dla Garmin Edge](https://terento.app/pl/guides/install-garmin-maps-edge-mac/).

@@ -1,0 +1,764 @@
+{
+  "en": {
+    "h1": "Free maps for your Garmin",
+    "lead": "OpenTopoMap, Freizeitkarte, MapRando, BBBike and OSMapaPL are free topographic maps made from OpenStreetMap, for Garmin watches and Edge bike computers. See how each one draws the same place, then install the one that fits your trips.",
+    "picker_label": "Maps on this page",
+    "image_alt": "The {name} map of the High Tatras",
+    "fields": {
+      "covers": "Covers",
+      "contours": "Contour lines",
+      "updates": "Updates",
+      "licence": "Licence"
+    },
+    "maps": {
+      "opentopomap": {
+        "look": "A topographic map with shaded relief, so ridges and valleys stand out, and detailed roads and paths.",
+        "covers": "Countries and regions worldwide.",
+        "contours": "An optional add-on you choose when installing, offered for most regions. It uses extra storage.",
+        "updates": "New editions a few times a year.",
+        "licence": "Map data © OpenStreetMap contributors (ODbL). Map style © OpenTopoMap (CC BY-SA).",
+        "row": [
+          "Worldwide",
+          "Optional add-on",
+          "Hiking in the mountains"
+        ]
+      },
+      "freizeitkarte": {
+        "look": "A bright leisure map with walking and cycling routes, places to visit, bus stops and train stations.",
+        "covers": "Countries across Europe, including the Canary Islands, the Azores and Madeira.",
+        "contours": "Included.",
+        "updates": "New editions every two to three months.",
+        "licence": "Map data © OpenStreetMap contributors (ODbL). Map © Freizeitkarte (FZK project).",
+        "row": [
+          "Europe",
+          "Included",
+          "Walks, bike rides and days out"
+        ]
+      },
+      "maprando": {
+        "look": "A hiking map that also draws the small paths beyond the main trails. Some labels are in French.",
+        "covers": "Countries and regions in Europe, the Americas, Africa, Asia and Australia. Some countries are split into regions or states.",
+        "updates": "New editions bring in OpenStreetMap changes.",
+        "licence": "Map data © OpenStreetMap contributors (ODbL). MapRando by Alexis Lecanu.",
+        "row": [
+          "Many countries worldwide",
+          "Not listed",
+          "Small trails on foot"
+        ]
+      },
+      "bbbike": {
+        "look": "Regional maps in three styles.",
+        "variants": [
+          [
+            "Ontrail",
+            "Compact maps with smaller roads and paths that save space on your device. Supports navigation along mapped roads and paths."
+          ],
+          [
+            "OpenTopoMap look",
+            "Trails, paths and land cover in the familiar OpenTopoMap look, without contour lines."
+          ],
+          [
+            "Classic",
+            "The original BBBike style, still offered for a few regions."
+          ]
+        ],
+        "covers": "Regions worldwide, including countries no other map here covers.",
+        "updates": "Every week.",
+        "licence": "Map data © OpenStreetMap contributors (ODbL). Garmin maps by BBBike; the OpenTopoMap look is CC BY-SA.",
+        "row": [
+          "Worldwide",
+          "Not in the OpenTopoMap look",
+          "Cycling, streets and cycle paths"
+        ]
+      },
+      "osmapa": {
+        "look": "A detailed map of Poland in three styles: with Polish letters, without them, or a lighter, smaller map.",
+        "covers": "Poland, with or without the border areas.",
+        "contours": "A separate package.",
+        "licence": "Map data © OpenStreetMap contributors (ODbL). OSMapaPL by OSMapa volunteers.",
+        "row": [
+          "Poland",
+          "Separate package",
+          "Hiking and cycling in Poland"
+        ]
+      }
+    },
+    "table_title": "The maps at a glance",
+    "table_head": [
+      "Map",
+      "Covers",
+      "Contour lines",
+      "Best for"
+    ],
+    "install_title": "Install a map",
+    "install_text": "Terento is free. Use the Mac app on a Mac with Apple Silicon, or the web installer in Chrome, Microsoft Edge, Opera or Brave.",
+    "install_button": "Download for Mac",
+    "install_web": "Open the web installer",
+    "install_guides": "Step by step: the {mac_guide} and the {edge_guide}.",
+    "links": {
+      "download": "Download",
+      "web": "web installer",
+      "mac_guide": "Garmin watch guide",
+      "edge_guide": "Garmin Edge guide",
+      "compat": "Compatibility page"
+    },
+    "faq_title": "Questions about the free maps",
+    "faq": [
+      [
+        "Are these maps free?",
+        "Yes. Every map here is free and made from OpenStreetMap by community projects. Terento, the app that installs them, is free and open source too."
+      ],
+      [
+        "Do they work on Garmin Edge bike computers?",
+        "Yes, on newer Edge bike computers with map support, such as the Edge 540, 840 and 1050, and on Garmin watches with map support. The {compat} lists the models people have installed maps on."
+      ],
+      [
+        "Will a free map replace my Garmin maps?",
+        "No. The new map is added next to the maps already on your device. Your original Garmin maps are never changed or removed, and you can turn each map on or off in the device’s map settings."
+      ],
+      [
+        "Do the maps show contour lines?",
+        "Freizeitkarte includes them. OpenTopoMap offers them as an optional add-on, and OSMapaPL as a separate package. The BBBike OpenTopoMap look has none."
+      ],
+      [
+        "How do I install one?",
+        "{download} Terento for a Mac with Apple Silicon, or use the {web} in a Chromium browser. Connect your watch or Edge, choose a map and a region, and install. The {mac_guide} and the {edge_guide} walk you through it."
+      ]
+    ]
+  },
+  "de": {
+    "h1": "Kostenlose Karten für deinen Garmin",
+    "lead": "OpenTopoMap, Freizeitkarte, MapRando, BBBike und OSMapaPL sind kostenlose topografische Karten aus OpenStreetMap für Garmin-Uhren und Edge-Radcomputer. Sieh dir an, wie jede denselben Ort darstellt, und installiere die, die zu deinen Touren passt.",
+    "picker_label": "Karten auf dieser Seite",
+    "image_alt": "Die Karte {name} der Hohen Tatra",
+    "fields": {
+      "covers": "Gebiet",
+      "contours": "Höhenlinien",
+      "updates": "Updates",
+      "licence": "Lizenz"
+    },
+    "maps": {
+      "opentopomap": {
+        "look": "Eine topografische Karte mit Geländeschummerung, damit Grate und Täler hervortreten, und detaillierten Straßen und Wegen.",
+        "covers": "Länder und Regionen weltweit.",
+        "contours": "Ein optionales Extra, das du bei der Installation wählst, für die meisten Regionen verfügbar. Es braucht zusätzlichen Speicher.",
+        "updates": "Neue Ausgaben einige Male im Jahr.",
+        "licence": "Kartendaten © OpenStreetMap-Mitwirkende (ODbL). Kartenstil © OpenTopoMap (CC BY-SA).",
+        "row": [
+          "Weltweit",
+          "Optionales Extra",
+          "Wandern in den Bergen"
+        ]
+      },
+      "freizeitkarte": {
+        "look": "Eine helle Freizeitkarte mit Wander- und Radrouten, Ausflugszielen, Bushaltestellen und Bahnhöfen.",
+        "covers": "Länder in ganz Europa, auch die Kanaren, die Azoren und Madeira.",
+        "contours": "Enthalten.",
+        "updates": "Neue Ausgaben alle zwei bis drei Monate.",
+        "licence": "Kartendaten © OpenStreetMap-Mitwirkende (ODbL). Karte © Freizeitkarte (FZK-Projekt).",
+        "row": [
+          "Europa",
+          "Enthalten",
+          "Spaziergänge, Radtouren und Ausflüge"
+        ]
+      },
+      "maprando": {
+        "look": "Eine Wanderkarte, die auch kleine Pfade abseits der Hauptwege zeigt. Einige Beschriftungen sind auf Französisch.",
+        "covers": "Länder und Regionen in Europa, Amerika, Afrika, Asien und Australien. Manche Länder sind in Regionen oder Bundesstaaten aufgeteilt.",
+        "updates": "Neue Ausgaben übernehmen Änderungen aus OpenStreetMap.",
+        "licence": "Kartendaten © OpenStreetMap-Mitwirkende (ODbL). MapRando von Alexis Lecanu.",
+        "row": [
+          "Viele Länder weltweit",
+          "Keine Angabe",
+          "Kleine Pfade zu Fuß"
+        ]
+      },
+      "bbbike": {
+        "look": "Regionalkarten in drei Stilen.",
+        "variants": [
+          [
+            "Ontrail",
+            "Kompakte Karten mit kleineren Straßen und Wegen, die Speicher auf deinem Gerät sparen. Unterstützt die Navigation entlang kartierter Straßen und Wege."
+          ],
+          [
+            "OpenTopoMap-Stil",
+            "Wege, Pfade und Bodenbedeckung im bekannten OpenTopoMap-Stil, ohne Höhenlinien."
+          ],
+          [
+            "Klassisch",
+            "Der ursprüngliche BBBike-Stil, für einige Regionen weiterhin verfügbar."
+          ]
+        ],
+        "covers": "Regionen weltweit, auch Länder, die keine andere Karte hier abdeckt.",
+        "updates": "Jede Woche.",
+        "licence": "Kartendaten © OpenStreetMap-Mitwirkende (ODbL). Garmin-Karten von BBBike; der OpenTopoMap-Stil steht unter CC BY-SA.",
+        "row": [
+          "Weltweit",
+          "Nicht im OpenTopoMap-Stil",
+          "Radfahren, Straßen und Radwege"
+        ]
+      },
+      "osmapa": {
+        "look": "Eine detaillierte Karte von Polen in drei Stilen: mit polnischen Sonderzeichen, ohne sie oder als leichtere, kleinere Karte.",
+        "covers": "Polen, mit oder ohne Grenzgebiete.",
+        "contours": "Als eigenes Paket.",
+        "licence": "Kartendaten © OpenStreetMap-Mitwirkende (ODbL). OSMapaPL von OSMapa-Freiwilligen.",
+        "row": [
+          "Polen",
+          "Eigenes Paket",
+          "Wandern und Radfahren in Polen"
+        ]
+      }
+    },
+    "table_title": "Die Karten im Überblick",
+    "table_head": [
+      "Karte",
+      "Gebiet",
+      "Höhenlinien",
+      "Am besten für"
+    ],
+    "install_title": "Eine Karte installieren",
+    "install_text": "Terento ist kostenlos. Nutze die Mac-App auf einem Mac mit Apple Silicon oder den Web-Installer in Chrome, Microsoft Edge, Opera oder Brave.",
+    "install_button": "Für Mac laden",
+    "install_web": "Web-Installer öffnen",
+    "install_guides": "Schritt für Schritt: die {mac_guide} und die {edge_guide}.",
+    "links": {
+      "download": "Lade",
+      "web": "Web-Installer",
+      "mac_guide": "Anleitung für Garmin-Uhren",
+      "edge_guide": "Anleitung für Garmin Edge",
+      "compat": "Kompatibilitätsseite"
+    },
+    "faq_title": "Fragen zu den kostenlosen Karten",
+    "faq": [
+      [
+        "Sind diese Karten kostenlos?",
+        "Ja. Jede Karte hier ist kostenlos und wird von Community-Projekten aus OpenStreetMap erstellt. Auch Terento, die App, die sie installiert, ist kostenlos und Open Source."
+      ],
+      [
+        "Funktionieren sie auf Garmin-Edge-Radcomputern?",
+        "Ja, auf neueren Edge-Radcomputern mit Kartenunterstützung wie Edge 540, 840 und 1050 sowie auf Garmin-Uhren mit Kartenunterstützung. Die {compat} listet die Modelle, auf denen bereits Karten installiert wurden."
+      ],
+      [
+        "Ersetzt eine kostenlose Karte meine Garmin-Karten?",
+        "Nein. Die neue Karte kommt zu den Karten hinzu, die schon auf deinem Gerät sind. Deine originalen Garmin-Karten werden nie geändert oder entfernt, und du kannst jede Karte in den Karteneinstellungen des Geräts ein- oder ausschalten."
+      ],
+      [
+        "Zeigen die Karten Höhenlinien?",
+        "Freizeitkarte enthält sie. OpenTopoMap bietet sie als optionales Extra an, OSMapaPL als eigenes Paket. Der OpenTopoMap-Stil von BBBike hat keine."
+      ],
+      [
+        "Wie installiere ich eine Karte?",
+        "{download} Terento für einen Mac mit Apple Silicon herunter oder nutze den {web} in einem Chromium-Browser. Verbinde deine Uhr oder deinen Edge, wähle Karte und Region und installiere. Die {mac_guide} und die {edge_guide} führen dich durch."
+      ]
+    ]
+  },
+  "fr": {
+    "h1": "Cartes gratuites pour votre Garmin",
+    "lead": "OpenTopoMap, Freizeitkarte, MapRando, BBBike et OSMapaPL sont des cartes topographiques gratuites issues d’OpenStreetMap, pour les montres Garmin et les compteurs vélo Edge. Voyez comment chacune représente le même lieu, puis installez celle qui convient à vos sorties.",
+    "picker_label": "Cartes de cette page",
+    "image_alt": "La carte {name} des Hautes Tatras",
+    "fields": {
+      "covers": "Couverture",
+      "contours": "Courbes de niveau",
+      "updates": "Mises à jour",
+      "licence": "Licence"
+    },
+    "maps": {
+      "opentopomap": {
+        "look": "Une carte topographique avec relief ombré, pour bien voir crêtes et vallées, et des routes et chemins détaillés.",
+        "covers": "Pays et régions du monde entier.",
+        "contours": "Une option à choisir lors de l’installation, proposée pour la plupart des régions. Elle prend de la place en plus.",
+        "updates": "Nouvelles éditions quelques fois par an.",
+        "licence": "Données © contributeurs OpenStreetMap (ODbL). Style de carte © OpenTopoMap (CC BY-SA).",
+        "row": [
+          "Monde entier",
+          "En option",
+          "Randonnée en montagne"
+        ]
+      },
+      "freizeitkarte": {
+        "look": "Une carte de loisirs claire avec itinéraires à pied et à vélo, lieux à visiter, arrêts de bus et gares.",
+        "covers": "Pays de toute l’Europe, y compris les Canaries, les Açores et Madère.",
+        "contours": "Incluses.",
+        "updates": "Nouvelles éditions tous les deux à trois mois.",
+        "licence": "Données © contributeurs OpenStreetMap (ODbL). Carte © Freizeitkarte (projet FZK).",
+        "row": [
+          "Europe",
+          "Incluses",
+          "Balades, vélo et sorties"
+        ]
+      },
+      "maprando": {
+        "look": "Une carte de randonnée qui montre aussi les petits sentiers hors des grands itinéraires. Certains libellés sont en français.",
+        "covers": "Pays et régions d’Europe, des Amériques, d’Afrique, d’Asie et d’Australie. Certains pays sont découpés en régions ou en États.",
+        "updates": "Les nouvelles éditions intègrent les changements d’OpenStreetMap.",
+        "licence": "Données © contributeurs OpenStreetMap (ODbL). MapRando par Alexis Lecanu.",
+        "row": [
+          "De nombreux pays",
+          "Non précisé",
+          "Petits sentiers à pied"
+        ]
+      },
+      "bbbike": {
+        "look": "Des cartes régionales en trois styles.",
+        "variants": [
+          [
+            "Ontrail",
+            "Des cartes compactes avec petites routes et chemins, qui économisent la place sur l’appareil. Navigation possible le long des routes et chemins cartographiés."
+          ],
+          [
+            "Style OpenTopoMap",
+            "Sentiers, chemins et occupation du sol dans le style OpenTopoMap, sans courbes de niveau."
+          ],
+          [
+            "Classique",
+            "Le style BBBike d’origine, toujours proposé pour quelques régions."
+          ]
+        ],
+        "covers": "Des régions du monde entier, y compris des pays qu’aucune autre carte ne couvre ici.",
+        "updates": "Chaque semaine.",
+        "licence": "Données © contributeurs OpenStreetMap (ODbL). Cartes Garmin par BBBike ; le style OpenTopoMap est sous CC BY-SA.",
+        "row": [
+          "Monde entier",
+          "Pas dans le style OpenTopoMap",
+          "Vélo, rues et pistes cyclables"
+        ]
+      },
+      "osmapa": {
+        "look": "Une carte détaillée de la Pologne en trois styles : avec les lettres polonaises, sans elles, ou une carte plus légère et plus petite.",
+        "covers": "La Pologne, avec ou sans les zones frontalières.",
+        "contours": "Dans un paquet séparé.",
+        "licence": "Données © contributeurs OpenStreetMap (ODbL). OSMapaPL par les bénévoles d’OSMapa.",
+        "row": [
+          "Pologne",
+          "Paquet séparé",
+          "Randonnée et vélo en Pologne"
+        ]
+      }
+    },
+    "table_title": "Les cartes en un coup d’œil",
+    "table_head": [
+      "Carte",
+      "Couverture",
+      "Courbes de niveau",
+      "Idéale pour"
+    ],
+    "install_title": "Installer une carte",
+    "install_text": "Terento est gratuit. Utilisez l’app sur un Mac avec puce Apple, ou l’installateur web dans Chrome, Microsoft Edge, Opera ou Brave.",
+    "install_button": "Télécharger pour Mac",
+    "install_web": "Ouvrir l’installateur web",
+    "install_guides": "Pas à pas : le {mac_guide} et le {edge_guide}.",
+    "links": {
+      "download": "Téléchargez",
+      "web": "installateur web",
+      "mac_guide": "guide montres Garmin",
+      "edge_guide": "guide Garmin Edge",
+      "compat": "page Compatibilité"
+    },
+    "faq_title": "Questions sur les cartes gratuites",
+    "faq": [
+      [
+        "Ces cartes sont-elles gratuites ?",
+        "Oui. Chaque carte présentée ici est gratuite et créée à partir d’OpenStreetMap par des projets communautaires. Terento, l’app qui les installe, est aussi gratuite et open source."
+      ],
+      [
+        "Fonctionnent-elles sur les compteurs vélo Garmin Edge ?",
+        "Oui, sur les compteurs Edge récents compatibles avec les cartes, comme les Edge 540, 840 et 1050, et sur les montres Garmin compatibles avec les cartes. La {compat} liste les modèles sur lesquels des cartes ont été installées."
+      ],
+      [
+        "Une carte gratuite remplace-t-elle mes cartes Garmin ?",
+        "Non. La nouvelle carte s’ajoute à celles déjà présentes sur l’appareil. Vos cartes Garmin d’origine ne sont jamais modifiées ni supprimées, et vous pouvez activer ou désactiver chaque carte dans les réglages de carte de l’appareil."
+      ],
+      [
+        "Les cartes affichent-elles les courbes de niveau ?",
+        "Freizeitkarte les inclut. OpenTopoMap les propose en option, et OSMapaPL dans un paquet séparé. Le style OpenTopoMap de BBBike n’en a pas."
+      ],
+      [
+        "Comment en installer une ?",
+        "{download} Terento pour un Mac avec puce Apple, ou utilisez l’{web} dans un navigateur Chromium. Connectez votre montre ou votre Edge, choisissez une carte et une région, puis installez. Le {mac_guide} et le {edge_guide} vous guident."
+      ]
+    ]
+  },
+  "pl": {
+    "h1": "Darmowe mapy na Twojego Garmina",
+    "lead": "OpenTopoMap, Freizeitkarte, MapRando, BBBike i OSMapaPL to darmowe mapy topograficzne z OpenStreetMap na zegarki Garmin i liczniki rowerowe Edge. Zobacz, jak każda przedstawia to samo miejsce, i zainstaluj tę, która pasuje do Twoich wycieczek.",
+    "picker_label": "Mapy na tej stronie",
+    "image_alt": "Mapa {name} Tatr Wysokich",
+    "fields": {
+      "covers": "Zasięg",
+      "contours": "Poziomice",
+      "updates": "Aktualizacje",
+      "licence": "Licencja"
+    },
+    "maps": {
+      "opentopomap": {
+        "look": "Mapa topograficzna z cieniowaniem rzeźby terenu, na której wyraźnie widać grzbiety i doliny, ze szczegółowymi drogami i ścieżkami.",
+        "covers": "Kraje i regiony na całym świecie.",
+        "contours": "Opcjonalny dodatek wybierany podczas instalacji, dostępny dla większości regionów. Zajmuje dodatkowe miejsce.",
+        "updates": "Nowe wydania kilka razy w roku.",
+        "licence": "Dane mapy © autorzy OpenStreetMap (ODbL). Styl mapy © OpenTopoMap (CC BY-SA).",
+        "row": [
+          "Cały świat",
+          "Opcjonalny dodatek",
+          "Wędrówki w górach"
+        ]
+      },
+      "freizeitkarte": {
+        "look": "Jasna mapa turystyczna z trasami pieszymi i rowerowymi, miejscami wartymi odwiedzenia, przystankami autobusowymi i stacjami kolejowymi.",
+        "covers": "Kraje całej Europy, także Wyspy Kanaryjskie, Azory i Madera.",
+        "contours": "W zestawie.",
+        "updates": "Nowe wydania co dwa do trzech miesięcy.",
+        "licence": "Dane mapy © autorzy OpenStreetMap (ODbL). Mapa © Freizeitkarte (projekt FZK).",
+        "row": [
+          "Europa",
+          "W zestawie",
+          "Spacery, rower i wycieczki"
+        ]
+      },
+      "maprando": {
+        "look": "Mapa do wędrówek, która pokazuje też małe ścieżki poza głównymi szlakami. Niektóre opisy są po francusku.",
+        "covers": "Kraje i regiony w Europie, obu Amerykach, Afryce, Azji i Australii. Niektóre kraje są podzielone na regiony lub stany.",
+        "updates": "Nowe wydania uwzględniają zmiany w OpenStreetMap.",
+        "licence": "Dane mapy © autorzy OpenStreetMap (ODbL). MapRando autorstwa Alexisa Lecanu.",
+        "row": [
+          "Wiele krajów świata",
+          "Brak informacji",
+          "Małe ścieżki piesze"
+        ]
+      },
+      "bbbike": {
+        "look": "Mapy regionów w trzech stylach.",
+        "variants": [
+          [
+            "Ontrail",
+            "Kompaktowe mapy z mniejszymi drogami i ścieżkami, które oszczędzają pamięć urządzenia. Nawigacja po drogach i ścieżkach zaznaczonych na mapie."
+          ],
+          [
+            "Styl OpenTopoMap",
+            "Szlaki, ścieżki i pokrycie terenu w znanym stylu OpenTopoMap, bez poziomic."
+          ],
+          [
+            "Klasyczny",
+            "Pierwotny styl BBBike, nadal dostępny dla kilku regionów."
+          ]
+        ],
+        "covers": "Regiony na całym świecie, także kraje, których nie obejmuje tu żadna inna mapa.",
+        "updates": "Co tydzień.",
+        "licence": "Dane mapy © autorzy OpenStreetMap (ODbL). Mapy Garmin od BBBike; styl OpenTopoMap na licencji CC BY-SA.",
+        "row": [
+          "Cały świat",
+          "Nie w stylu OpenTopoMap",
+          "Rower, ulice i drogi rowerowe"
+        ]
+      },
+      "osmapa": {
+        "look": "Szczegółowa mapa Polski w trzech stylach: z polskimi znakami, bez nich lub lżejsza, mniejsza mapa.",
+        "covers": "Polska, z terenami przygranicznymi lub bez nich.",
+        "contours": "Jako osobny pakiet.",
+        "licence": "Dane mapy © autorzy OpenStreetMap (ODbL). OSMapaPL tworzona przez wolontariuszy OSMapa.",
+        "row": [
+          "Polska",
+          "Osobny pakiet",
+          "Piesze i rowerowe wycieczki po Polsce"
+        ]
+      }
+    },
+    "table_title": "Mapy w skrócie",
+    "table_head": [
+      "Mapa",
+      "Zasięg",
+      "Poziomice",
+      "Najlepsza do"
+    ],
+    "install_title": "Zainstaluj mapę",
+    "install_text": "Terento jest darmowe. Użyj aplikacji na Macu z Apple Silicon albo instalatora webowego w Chrome, Microsoft Edge, Operze lub Brave.",
+    "install_button": "Pobierz na Maca",
+    "install_web": "Otwórz instalator webowy",
+    "install_guides": "Krok po kroku: {mac_guide} i {edge_guide}.",
+    "links": {
+      "download": "Pobierz",
+      "web": "instalatora webowego",
+      "mac_guide": "poradnik dla zegarków Garmin",
+      "edge_guide": "poradnik dla Garmin Edge",
+      "compat": "Strona zgodności"
+    },
+    "faq_title": "Pytania o darmowe mapy",
+    "faq": [
+      [
+        "Czy te mapy są darmowe?",
+        "Tak. Każda mapa na tej stronie jest darmowa i powstaje z OpenStreetMap w projektach społecznościowych. Terento, aplikacja, która je instaluje, również jest darmowa i ma otwarty kod."
+      ],
+      [
+        "Czy działają na licznikach rowerowych Garmin Edge?",
+        "Tak, na nowszych licznikach Edge z obsługą map, takich jak Edge 540, 840 i 1050, oraz na zegarkach Garmin z obsługą map. {compat} wymienia modele, na których zainstalowano już mapy."
+      ],
+      [
+        "Czy darmowa mapa zastąpi moje mapy Garmin?",
+        "Nie. Nowa mapa zostaje dodana obok map, które już są na urządzeniu. Oryginalne mapy Garmin nigdy nie są zmieniane ani usuwane, a każdą mapę możesz włączyć lub wyłączyć w ustawieniach map urządzenia."
+      ],
+      [
+        "Czy mapy pokazują poziomice?",
+        "Freizeitkarte ma je w zestawie. OpenTopoMap oferuje je jako opcjonalny dodatek, a OSMapaPL jako osobny pakiet. Styl OpenTopoMap od BBBike ich nie ma."
+      ],
+      [
+        "Jak zainstalować mapę?",
+        "{download} Terento na Maca z Apple Silicon albo użyj {web} w przeglądarce Chromium. Podłącz zegarek lub Edge, wybierz mapę i region, a następnie zainstaluj. Krok po kroku przeprowadzą Cię {mac_guide} i {edge_guide}."
+      ]
+    ]
+  },
+  "cs": {
+    "h1": "Mapy zdarma pro váš Garmin",
+    "lead": "OpenTopoMap, Freizeitkarte, MapRando, BBBike a OSMapaPL jsou bezplatné topografické mapy z OpenStreetMap pro hodinky Garmin a cyklopočítače Edge. Podívejte se, jak každá zobrazuje stejné místo, a nainstalujte tu, která sedí vašim výletům.",
+    "picker_label": "Mapy na této stránce",
+    "image_alt": "Mapa {name} Vysokých Tater",
+    "fields": {
+      "covers": "Pokrytí",
+      "contours": "Vrstevnice",
+      "updates": "Aktualizace",
+      "licence": "Licence"
+    },
+    "maps": {
+      "opentopomap": {
+        "look": "Topografická mapa se stínováním terénu, na které vyniknou hřebeny a údolí, a s podrobnými silnicemi a cestami.",
+        "covers": "Země a regiony po celém světě.",
+        "contours": "Volitelný doplněk, který zvolíte při instalaci, nabízený pro většinu regionů. Zabere místo navíc.",
+        "updates": "Nová vydání několikrát ročně.",
+        "licence": "Mapová data © přispěvatelé OpenStreetMap (ODbL). Styl mapy © OpenTopoMap (CC BY-SA).",
+        "row": [
+          "Celý svět",
+          "Volitelný doplněk",
+          "Turistika v horách"
+        ]
+      },
+      "freizeitkarte": {
+        "look": "Světlá mapa pro volný čas s pěšími a cyklistickými trasami, místy k návštěvě, autobusovými zastávkami a nádražími.",
+        "covers": "Země celé Evropy, včetně Kanárských ostrovů, Azor a Madeiry.",
+        "contours": "Součástí mapy.",
+        "updates": "Nová vydání každé dva až tři měsíce.",
+        "licence": "Mapová data © přispěvatelé OpenStreetMap (ODbL). Mapa © Freizeitkarte (projekt FZK).",
+        "row": [
+          "Evropa",
+          "Součástí mapy",
+          "Procházky, kolo a výlety"
+        ]
+      },
+      "maprando": {
+        "look": "Turistická mapa, která ukazuje i malé pěšiny mimo hlavní trasy. Některé popisky jsou ve francouzštině.",
+        "covers": "Země a regiony v Evropě, Americe, Africe, Asii a Austrálii. Některé země jsou rozdělené na regiony nebo státy.",
+        "updates": "Nová vydání přinášejí změny z OpenStreetMap.",
+        "licence": "Mapová data © přispěvatelé OpenStreetMap (ODbL). MapRando od Alexise Lecanu.",
+        "row": [
+          "Mnoho zemí světa",
+          "Neuvedeno",
+          "Malé pěšiny"
+        ]
+      },
+      "bbbike": {
+        "look": "Regionální mapy ve třech stylech.",
+        "variants": [
+          [
+            "Ontrail",
+            "Kompaktní mapy s menšími silnicemi a cestami, které šetří místo v zařízení. Navigace po zmapovaných silnicích a cestách."
+          ],
+          [
+            "Styl OpenTopoMap",
+            "Stezky, cesty a pokryv krajiny ve známém stylu OpenTopoMap, bez vrstevnic."
+          ],
+          [
+            "Klasický",
+            "Původní styl BBBike, stále nabízený pro několik regionů."
+          ]
+        ],
+        "covers": "Regiony po celém světě, včetně zemí, které tu žádná jiná mapa nepokrývá.",
+        "updates": "Každý týden.",
+        "licence": "Mapová data © přispěvatelé OpenStreetMap (ODbL). Mapy Garmin od BBBike; styl OpenTopoMap je pod CC BY-SA.",
+        "row": [
+          "Celý svět",
+          "Ne ve stylu OpenTopoMap",
+          "Kolo, ulice a cyklostezky"
+        ]
+      },
+      "osmapa": {
+        "look": "Podrobná mapa Polska ve třech stylech: s polskými znaky, bez nich, nebo lehčí a menší mapa.",
+        "covers": "Polsko, s příhraničními oblastmi nebo bez nich.",
+        "contours": "Jako samostatný balíček.",
+        "licence": "Mapová data © přispěvatelé OpenStreetMap (ODbL). OSMapaPL od dobrovolníků OSMapa.",
+        "row": [
+          "Polsko",
+          "Samostatný balíček",
+          "Pěší a cyklistické výlety po Polsku"
+        ]
+      }
+    },
+    "table_title": "Mapy v přehledu",
+    "table_head": [
+      "Mapa",
+      "Pokrytí",
+      "Vrstevnice",
+      "Nejlepší pro"
+    ],
+    "install_title": "Nainstalujte mapu",
+    "install_text": "Terento je zdarma. Použijte aplikaci na Macu s Apple Silicon, nebo webový instalátor v Chrome, Microsoft Edge, Opeře či Brave.",
+    "install_button": "Stáhnout pro Mac",
+    "install_web": "Otevřít webový instalátor",
+    "install_guides": "Krok za krokem: {mac_guide} a {edge_guide}.",
+    "links": {
+      "download": "Stáhněte",
+      "web": "webový instalátor",
+      "mac_guide": "návod pro hodinky Garmin",
+      "edge_guide": "návod pro Garmin Edge",
+      "compat": "Stránka kompatibility"
+    },
+    "faq_title": "Otázky k bezplatným mapám",
+    "faq": [
+      [
+        "Jsou tyto mapy zdarma?",
+        "Ano. Každá mapa na této stránce je zdarma a komunitní projekty ji vytvářejí z OpenStreetMap. Terento, aplikace, která je instaluje, je také zdarma a s otevřeným kódem."
+      ],
+      [
+        "Fungují na cyklopočítačích Garmin Edge?",
+        "Ano, na novějších cyklopočítačích Edge s podporou map, například Edge 540, 840 a 1050, a na hodinkách Garmin s podporou map. {compat} uvádí modely, na které už lidé mapy nainstalovali."
+      ],
+      [
+        "Nahradí bezplatná mapa moje mapy Garmin?",
+        "Ne. Nová mapa se přidá vedle map, které už v zařízení jsou. Původní mapy Garmin se nikdy nemění ani neodstraňují a každou mapu můžete zapnout nebo vypnout v nastavení map zařízení."
+      ],
+      [
+        "Zobrazují mapy vrstevnice?",
+        "Freizeitkarte je obsahuje. OpenTopoMap je nabízí jako volitelný doplněk a OSMapaPL jako samostatný balíček. Styl OpenTopoMap od BBBike je nemá."
+      ],
+      [
+        "Jak mapu nainstaluji?",
+        "{download} si Terento pro Mac s Apple Silicon, nebo použijte {web} v prohlížeči Chromium. Připojte hodinky nebo Edge, vyberte mapu a region a nainstalujte. Krok za krokem vás provedou {mac_guide} a {edge_guide}."
+      ]
+    ]
+  },
+  "it": {
+    "h1": "Mappe gratuite per il tuo Garmin",
+    "lead": "OpenTopoMap, Freizeitkarte, MapRando, BBBike e OSMapaPL sono mappe topografiche gratuite create da OpenStreetMap, per orologi Garmin e ciclocomputer Edge. Guarda come ognuna disegna lo stesso luogo, poi installa quella adatta alle tue uscite.",
+    "picker_label": "Mappe in questa pagina",
+    "image_alt": "La mappa {name} degli Alti Tatra",
+    "fields": {
+      "covers": "Copertura",
+      "contours": "Curve di livello",
+      "updates": "Aggiornamenti",
+      "licence": "Licenza"
+    },
+    "maps": {
+      "opentopomap": {
+        "look": "Una mappa topografica con rilievo ombreggiato, per distinguere bene creste e valli, e strade e sentieri dettagliati.",
+        "covers": "Paesi e regioni di tutto il mondo.",
+        "contours": "Un’aggiunta facoltativa da scegliere durante l’installazione, disponibile per la maggior parte delle regioni. Occupa spazio in più.",
+        "updates": "Nuove edizioni alcune volte l’anno.",
+        "licence": "Dati © contributori di OpenStreetMap (ODbL). Stile della mappa © OpenTopoMap (CC BY-SA).",
+        "row": [
+          "Tutto il mondo",
+          "Aggiunta facoltativa",
+          "Escursioni in montagna"
+        ]
+      },
+      "freizeitkarte": {
+        "look": "Una mappa per il tempo libero chiara, con percorsi a piedi e in bici, luoghi da visitare, fermate degli autobus e stazioni.",
+        "covers": "Paesi di tutta Europa, comprese le Canarie, le Azzorre e Madeira.",
+        "contours": "Incluse.",
+        "updates": "Nuove edizioni ogni due o tre mesi.",
+        "licence": "Dati © contributori di OpenStreetMap (ODbL). Mappa © Freizeitkarte (progetto FZK).",
+        "row": [
+          "Europa",
+          "Incluse",
+          "Passeggiate, bici e gite"
+        ]
+      },
+      "maprando": {
+        "look": "Una mappa per escursioni che mostra anche i sentieri minori oltre a quelli principali. Alcune etichette sono in francese.",
+        "covers": "Paesi e regioni in Europa, nelle Americhe, in Africa, in Asia e in Australia. Alcuni paesi sono divisi in regioni o stati.",
+        "updates": "Le nuove edizioni includono le modifiche di OpenStreetMap.",
+        "licence": "Dati © contributori di OpenStreetMap (ODbL). MapRando di Alexis Lecanu.",
+        "row": [
+          "Molti paesi del mondo",
+          "Non indicato",
+          "Sentieri minori a piedi"
+        ]
+      },
+      "bbbike": {
+        "look": "Mappe regionali in tre stili.",
+        "variants": [
+          [
+            "Ontrail",
+            "Mappe compatte con strade e sentieri minori che risparmiano spazio sul dispositivo. Navigazione lungo strade e sentieri presenti sulla mappa."
+          ],
+          [
+            "Stile OpenTopoMap",
+            "Sentieri, percorsi e copertura del suolo nel noto stile OpenTopoMap, senza curve di livello."
+          ],
+          [
+            "Classico",
+            "Lo stile BBBike originale, ancora disponibile per alcune regioni."
+          ]
+        ],
+        "covers": "Regioni di tutto il mondo, compresi paesi che nessun’altra mappa copre qui.",
+        "updates": "Ogni settimana.",
+        "licence": "Dati © contributori di OpenStreetMap (ODbL). Mappe Garmin di BBBike; lo stile OpenTopoMap è CC BY-SA.",
+        "row": [
+          "Tutto il mondo",
+          "Non nello stile OpenTopoMap",
+          "Bici, strade e piste ciclabili"
+        ]
+      },
+      "osmapa": {
+        "look": "Una mappa dettagliata della Polonia in tre stili: con le lettere polacche, senza, oppure una mappa più leggera e più piccola.",
+        "covers": "La Polonia, con o senza le zone di confine.",
+        "contours": "In un pacchetto separato.",
+        "licence": "Dati © contributori di OpenStreetMap (ODbL). OSMapaPL dei volontari di OSMapa.",
+        "row": [
+          "Polonia",
+          "Pacchetto separato",
+          "Escursioni a piedi e in bici in Polonia"
+        ]
+      }
+    },
+    "table_title": "Le mappe in breve",
+    "table_head": [
+      "Mappa",
+      "Copertura",
+      "Curve di livello",
+      "Ideale per"
+    ],
+    "install_title": "Installa una mappa",
+    "install_text": "Terento è gratuito. Usa l’app su un Mac con Apple Silicon, oppure l’installer web in Chrome, Microsoft Edge, Opera o Brave.",
+    "install_button": "Scarica per Mac",
+    "install_web": "Apri l’installer web",
+    "install_guides": "Passo dopo passo: la {mac_guide} e la {edge_guide}.",
+    "links": {
+      "download": "Scarica",
+      "web": "installer web",
+      "mac_guide": "guida per orologi Garmin",
+      "edge_guide": "guida per Garmin Edge",
+      "compat": "pagina Compatibilità"
+    },
+    "faq_title": "Domande sulle mappe gratuite",
+    "faq": [
+      [
+        "Queste mappe sono gratuite?",
+        "Sì. Ogni mappa qui è gratuita e viene creata da OpenStreetMap da progetti della comunità. Anche Terento, l’app che le installa, è gratuita e open source."
+      ],
+      [
+        "Funzionano sui ciclocomputer Garmin Edge?",
+        "Sì, sui ciclocomputer Edge più recenti con supporto per le mappe, come Edge 540, 840 e 1050, e sugli orologi Garmin con supporto per le mappe. La {compat} elenca i modelli su cui sono già state installate mappe."
+      ],
+      [
+        "Una mappa gratuita sostituisce le mie mappe Garmin?",
+        "No. La nuova mappa si aggiunge a quelle già presenti sul dispositivo. Le mappe Garmin originali non vengono mai modificate né rimosse, e puoi attivare o disattivare ogni mappa nelle impostazioni mappa del dispositivo."
+      ],
+      [
+        "Le mappe mostrano le curve di livello?",
+        "Freizeitkarte le include. OpenTopoMap le offre come aggiunta facoltativa e OSMapaPL in un pacchetto separato. Lo stile OpenTopoMap di BBBike non le ha."
+      ],
+      [
+        "Come ne installo una?",
+        "{download} Terento per un Mac con Apple Silicon, oppure usa l’{web} in un browser Chromium. Collega l’orologio o l’Edge, scegli una mappa e una regione e installa. La {mac_guide} e la {edge_guide} ti accompagnano passo per passo."
+      ]
+    ]
+  }
+}

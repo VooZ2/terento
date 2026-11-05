@@ -121,7 +121,7 @@ for (const locale of locales) {
     visibleFaq(homeData.source, home),
     `${home}: FAQ JSON-LD must match visible FAQ exactly`
   );
-  assert.match(faq.mainEntity[1].acceptedAnswer.text, /simple|einfach|simple|proste|jednoduch|semplice/i, `${home}: BaseCamp schema answer explains simple map management`);
+  assert.match(faq.mainEntity[1].acceptedAnswer.text, /BaseCamp/, `${home}: BaseCamp schema answer says neither Garmin app is needed`);
   assert.doesNotMatch(faq.mainEntity[3].acceptedAnswer.text, /beta|bêta|betę|betu/i, `${home}: update schema answer avoids beta-specific wording`);
   assert.match(faq.mainEntity[2].acceptedAnswer.text, /\.img|compatible|kompatib|zgodn|kompatibil|support/i, `${home}: own-map schema answer explains compatible local import`);
   assert.match(faq.mainEntity[3].name, /update|aktual|mise à jour|à jour|nowsz|novější|più recent|aggiorn/i, `${home}: update FAQ question`);

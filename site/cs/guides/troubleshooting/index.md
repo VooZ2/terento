@@ -1,23 +1,17 @@
 ---
-title: "Mac nevidí hodinky Garmin? Řešení potíží — Terento"
+title: "Mac nevidí Garmin? Pomoc s mapami — Terento"
 canonical: https://terento.app/cs/guides/troubleshooting/
 ---
-
-Řešení potíží
 
 # Řešení potíží s hodinkami Garmin a mapami na Macu
 
 Najděte svou potíž – od hodinek Garmin, které Mac nevidí, po nezdařené stažení mapy – a postupujte podle krátkých kroků. Pokud nic nepomůže, pošlete zprávu, abychom se na to mohli podívat.
-
-Garmin Edge
 
 ## Mac nevidí Garmin Edge
 
 Novější cyklopočítače Garmin Edge s podporou map se k Macu připojují stejně jako současné hodinky Garmin, takže většina kroků na této stránce platí i pro Edge: použijte USB kabel pro přenos dat, ukončete Garmin Express a počkejte až 2 minuty. Starší modely Edge, které se ve Finderu zobrazí jako disk, fungují jinak.
 
 [Přečíst průvodce pro Garmin Edge](https://terento.app/cs/guides/install-garmin-maps-edge-mac/)
-
-Připojení
 
 ## Potíže s připojením hodinek Garmin
 
@@ -71,8 +65,6 @@ Hodinky odpojte, počkejte několik sekund a znovu je připojte: připojení se 
 1. Pokud Terento právě instalovalo, aktualizovalo nebo odstraňovalo mapu, po připojení otevřete „Manage maps“ a před dalším pokusem zkontrolujte výsledek.
 2. Pokud se to opakuje, restartujte hodinky.
 
-Kontroly
-
 ## Kontrola hodinek a map
 
 ### Instalace map není pro tento model Garmin dostupná
@@ -98,8 +90,6 @@ Pokud Terento nemůže načíst aktuální seznam map, zkontrolujte připojení 
 1. Pokud je tato verze Terento pro aktuální seznam map příliš stará a Terento hlásí novější verzi, nainstalujte aktualizaci.
 2. Dokud Terento zobrazuje starší uložený seznam map, instalace a aktualizace map z katalogu zůstávají nedostupné, dokud nelze ověřit aktuální seznam.
 
-Stahování a místo
-
 ## Stahování map a volné místo
 
 ### Stažení mapy Garmin se nezdařilo
@@ -124,8 +114,6 @@ Vyberte menší oblast nebo odstraňte mapu, kterou už nepotřebujete: Terento 
 2. Otevřete „Manage maps“ a odstraňte mapu, kterou už nepotřebujete.
 3. Aktualizace potřebuje během kontroly nové mapy místo navíc. Pokud se aktualizace nemůže spustit, uvolněte místo.
 
-Instalace a aktualizace
-
 ## Instalace, aktualizace a odstranění map
 
 ### Instalace mapy selhala: v hodinkách zůstal zbytek mapy
@@ -144,8 +132,6 @@ V aktuální verzi je to očekávané: při aktualizaci nebo odstranění mapy m
 1. Neodpojujte hodinky, zatímco Terento pracuje.
 2. Počkejte, až Terento oznámí dokončení.
 3. Pokud Terento ohlásí chybu, připojte hodinky znovu a před dalším pokusem zkontrolujte „Manage maps“.
-
-Stále nic?
 
 ## Získání pomoci
 

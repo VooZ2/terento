@@ -1,12 +1,12 @@
 # Rechtliche Hinweise
 
-Terento ist eine kostenlose, quelloffene macOS-App zum Installieren und Verwalten von Karten anderer Anbieter auf Garmin-Smartwatches. Mit dem Web-Installer lassen sich Karten auch aus Google Chrome, Microsoft Edge, Opera oder Brave installieren. Diese Hinweise gelten für die App, den Web-Installer und diese Website.
+Terento ist eine kostenlose, quelloffene macOS-App zum Installieren und Verwalten von Karten anderer Anbieter auf Garmin-Uhren und Edge-Fahrradcomputern. Mit dem Web-Installer lassen sich Karten auch aus Google Chrome, Microsoft Edge, Opera oder Brave installieren. Diese Hinweise gelten für die App, den Web-Installer und diese Website.
 
 ## Das Projekt
 
 Terento ist ein unabhängiges Projekt einer Privatperson. Mehr über den Entwickler erfährst du unter [Über uns](/de/about/). Kontakt: [hello@terento.app](mailto:hello@terento.app).
 
-Die App ist für Macs mit Apple Silicon. Der Web-Installer braucht Google Chrome, Microsoft Edge, Opera oder Brave auf einem Mac oder Linux-Computer; unter Linux wird er noch getestet. Die Kompatibilität wird für jedes genaue Uhrenmodell und jede Variante geprüft. Sieh vor der Nutzung unter [Kompatibilität](/de/compatibility/) nach. Spenden sind freiwillig und schalten keine Funktionen, Karten oder Anbieter frei.
+Die App ist für Macs mit Apple Silicon. Der Web-Installer braucht Google Chrome, Microsoft Edge, Opera oder Brave auf einem Mac oder Linux-Computer; unter Linux wird er noch getestet. Die Kompatibilität wird für jedes genaue Gerätemodell und jede Variante geprüft. Sieh vor der Nutzung unter [Kompatibilität](/de/compatibility/) nach. Spenden sind freiwillig und schalten keine Funktionen, Karten oder Anbieter frei.
 
 ## Software und Drittanbieter-Lizenzen
 
@@ -19,6 +19,8 @@ Die Softwarelizenz gewährt keine Markenrechte an Terento. Veränderte Versionen
 ## Kartenlizenzen
 
 Karten stammen von [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [Freizeitkarte](https://www.freizeitkarte-osm.de/), [OpenTopoMap](https://garmin.opentopomap.org/), [BBBike](https://garmin.bbbike.org) und [OSMapaPL](https://osmapa-garmin.las.org.pl/). Es gelten die jeweiligen Lizenzen und die [OpenStreetMap-Namensnennung](https://www.openstreetmap.org/copyright). Für selbst importierte Karten gelten deren jeweilige Bedingungen.
+
+Die Kartenbilder auf dieser Website, auch auf den Uhr- und Edge-Bildschirmen, zeigen diese Karten. Kartendaten © [OpenStreetMap-Mitwirkende](https://www.openstreetmap.org/copyright).
 
 Terento erstellt oder lizenziert diese Karten nicht neu, betreibt keine Kartenbibliothek und spiegelt keine Anbieterdateien. In der App werden Katalogkarten vom ursprünglichen Anbieter auf deinen Mac und anschließend auf deine Uhr übertragen. Beim Web-Installer lädt der Terento-Server die gewählte Karte vom ursprünglichen Anbieter und gibt sie an deinen Browser weiter. Diese Kopie dient nur deiner Anfrage und wird gelöscht, sobald dein Browser sie hat, oder nach zwei Stunden, wenn sie nicht abgeholt wird. Für die Seite [Kartenstile](/de/map-styles/) lädt der Terento-Server ausgewählte Katalogkarten vorübergehend vom ursprünglichen Anbieter, erstellt daraus kleine Vorschaubilder und löscht die Kartendateien anschließend. Vorschauen nennen den Anbieter und OpenStreetMap.
 

@@ -1,12 +1,12 @@
 <!doctype html>
 <html lang="de" data-language="de" data-page="troubleshooting">
   <head>
-    <script defer src="/site-shell.js?v=20261029-web-installer-public-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20261102-design-audit-v4">
+    <script defer src="/site-shell.js?v=20261105-copy-command-v1"></script>
+    <link rel="stylesheet" href="/styles.css?v=20261105-type-scale-v1">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
-    <meta name="description" content="Garmin-Uhr oder Edge wird am Mac nicht erkannt? Hilfe zu USB-Modus (MTP), blockierendem Garmin Express, wenig Speicher und fehlgeschlagenen Downloads.">
+    <meta name="description" content="Garmin-Uhr oder Edge wird am Mac nicht erkannt oder die Karte fehlt? Hilfe zu USB-Modus, Garmin Express, Downloads und Installation.">
     <meta name="robots" content="index,follow">
     <link rel="canonical" href="https://terento.app/de/guides/troubleshooting/">
     <link rel="alternate" hreflang="en" href="https://terento.app/guides/troubleshooting/">
@@ -18,8 +18,8 @@
     <link rel="alternate" hreflang="x-default" href="https://terento.app/guides/troubleshooting/">
     <meta property="og:type" content="article">
     <meta property="og:site_name" content="Terento">
-    <meta property="og:title" content="Garmin-Uhr wird am Mac nicht erkannt? Fehlerbehebung — Terento">
-    <meta property="og:description" content="Garmin-Uhr oder Edge wird am Mac nicht erkannt? Hilfe zu USB-Modus (MTP), blockierendem Garmin Express, wenig Speicher und fehlgeschlagenen Downloads.">
+    <meta property="og:title" content="Garmin am Mac nicht erkannt? Hilfe zu Karten — Terento">
+    <meta property="og:description" content="Garmin-Uhr oder Edge wird am Mac nicht erkannt oder die Karte fehlt? Hilfe zu USB-Modus, Garmin Express, Downloads und Installation.">
     <meta property="og:url" content="https://terento.app/de/guides/troubleshooting/">
     <meta property="og:image" content="https://terento.app/assets/social/terento-og.png">
     <meta property="og:image:type" content="image/png">
@@ -28,10 +28,10 @@
     <meta property="og:image:alt" content="Terento zeigt eine verbundene Garmin-Smartwatch unter macOS">
     <meta property="og:locale" content="de_DE">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Garmin-Uhr wird am Mac nicht erkannt? Fehlerbehebung — Terento">
-    <meta name="twitter:description" content="Garmin-Uhr oder Edge wird am Mac nicht erkannt? Hilfe zu USB-Modus (MTP), blockierendem Garmin Express, wenig Speicher und fehlgeschlagenen Downloads.">
+    <meta name="twitter:title" content="Garmin am Mac nicht erkannt? Hilfe zu Karten — Terento">
+    <meta name="twitter:description" content="Garmin-Uhr oder Edge wird am Mac nicht erkannt oder die Karte fehlt? Hilfe zu USB-Modus, Garmin Express, Downloads und Installation.">
     <meta name="twitter:image" content="https://terento.app/assets/social/terento-og.png">
-    <title>Garmin-Uhr wird am Mac nicht erkannt? Fehlerbehebung — Terento</title>
+    <title>Garmin am Mac nicht erkannt? Hilfe zu Karten — Terento</title>
 
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#222A2B">
 
@@ -41,7 +41,7 @@
     <link rel="mask-icon" href="/safari-pinned-tab.svg?v=20260820-4" color="#7898A8">
     <link rel="manifest" href="/manifest.webmanifest">
     <script defer src="/language.js?v=20260926-static-shell-v1"></script>
-    <script defer src="/privacy-consent.js?v=20260905-campaign-url-only-v1"></script>
+    <script defer src="/privacy-consent.js?v=20261105-outbound-links"></script>
     <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -136,7 +136,6 @@
       <article class="guide-article">
         <header class="guide-intro">
           <div class="shell">
-            <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>Fehlerbehebung</p>
             <h1>Probleme mit Garmin-Uhr und Karten am Mac lösen</h1>
             <p class="guide-lede">Finde dein Problem – von einer Garmin-Uhr, die der Mac nicht erkennt, bis zu einem fehlgeschlagenen Karten-Download – und folge den kurzen Schritten. Wenn nichts hilft, sende einen Bericht, damit wir es uns ansehen können.</p>
             <nav class="troubleshooting-toc" aria-label="Auf dieser Seite"><div class="troubleshooting-toc-group"><p class="troubleshooting-toc-title">Verbindungsprobleme mit der Garmin-Uhr</p><ul><li><a href="#connect-watch" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin-Uhr wird am Mac nicht erkannt</a></li><li><a href="#garmin-busy" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin Express oder eine andere App blockiert die Uhr</a></li><li><a href="#multiple-garmin" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Mehrere Garmin-Geräte verbunden</a></li><li><a href="#usb-mode" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin-Uhr nicht erkannt: USB-Modus (MTP)</a></li><li><a href="#connection-timeout" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin-Uhr erkannt, aber nicht bereit</a></li><li><a href="#watch-not-responding" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin-Uhr reagiert nicht mehr</a></li></ul></div><div class="troubleshooting-toc-group"><p class="troubleshooting-toc-title">Uhren- und Kartenprüfungen</p><ul><li><a href="#model-not-enabled" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Karteninstallation für dieses Garmin-Modell nicht verfügbar</a></li><li><a href="#couldnt-check" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Terento konnte deine Garmin-Uhr nicht prüfen</a></li><li><a href="#catalog-unavailable" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin-Kartenliste lädt nicht oder Terento braucht ein Update</a></li></ul></div><div class="troubleshooting-toc-group"><p class="troubleshooting-toc-title">Karten-Downloads und freier Speicher</p><ul><li><a href="#download-failed" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin-Karte: Download fehlgeschlagen</a></li><li><a href="#mac-storage" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Nicht genug Speicher auf dem Mac für den Karten-Download</a></li><li><a href="#watch-storage" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Nicht genug Speicher für Garmin-Karten auf der Uhr</a></li></ul></div><div class="troubleshooting-toc-group"><p class="troubleshooting-toc-title">Karten installieren, aktualisieren und entfernen</p><ul><li><a href="#leftover-map" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Karteninstallation fehlgeschlagen: Kartenrest auf der Uhr</a></li><li><a href="#update-remove" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Karten-Update oder Entfernen dauert lange</a></li></ul></div><div class="troubleshooting-toc-group"><p class="troubleshooting-toc-title">Hilfe bekommen</p><ul><li><a href="#send-report" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Problem mit Terento melden</a></li></ul></div></nav>
@@ -145,15 +144,15 @@
 
         <div class="shell guide-content">
           <section class="guide-preflight" id="garmin-edge" aria-labelledby="garmin-edge-title">
-            <div class="guide-section-heading"><p class="eyebrow">Garmin Edge</p><h2 id="garmin-edge-title">Garmin Edge wird am Mac nicht erkannt</h2></div>
+            <div class="guide-section-heading"><h2 id="garmin-edge-title">Garmin Edge wird am Mac nicht erkannt</h2></div>
             <div class="guide-preflight-copy">
               <p>Neuere Garmin-Edge-Radcomputer mit Kartenunterstützung verbinden sich mit dem Mac genauso wie aktuelle Garmin-Uhren. Die meisten Schritte auf dieser Seite gelten deshalb auch für einen Edge: USB-Datenkabel nutzen, Garmin Express beenden und bis zu 2 Minuten warten. Ältere Edge-Modelle, die im Finder als Laufwerk erscheinen, funktionieren anders.</p>
-              <a class="text-link" href="/de/guides/install-garmin-maps-edge-mac/" data-umami-event="guide-link-click" data-umami-event-location="troubleshooting-edge">Anleitung für Garmin Edge lesen <span aria-hidden="true">→</span></a>
+              <a class="text-link" href="/de/guides/install-garmin-maps-edge-mac/" data-umami-event="guide-link-click" data-umami-event-location="troubleshooting-edge">Anleitung für Garmin Edge lesen</a>
             </div>
           </section>
 
           <section class="troubleshooting" id="topic-connection" aria-labelledby="topic-connection-title">
-            <div class="guide-section-heading"><p class="eyebrow">Verbindung</p><h2 id="topic-connection-title">Verbindungsprobleme mit der Garmin-Uhr</h2></div>
+            <div class="guide-section-heading"><h2 id="topic-connection-title">Verbindungsprobleme mit der Garmin-Uhr</h2></div>
             <div class="troubleshooting-list"><section class="troubleshooting-item" id="connect-watch" aria-labelledby="connect-watch-title">
               <h3 id="connect-watch-title">Garmin-Uhr wird am Mac nicht erkannt</h3>
               <p>Verbinde die Uhr direkt mit deinem Mac über ein USB-Kabel mit Datenübertragung, entsperre sie und warte bis zu 2 Minuten: Terento findet sie automatisch.</p>
@@ -181,7 +180,7 @@
             </section></div>
           </section>
           <section class="troubleshooting" id="topic-checks" aria-labelledby="topic-checks-title">
-            <div class="guide-section-heading"><p class="eyebrow">Prüfungen</p><h2 id="topic-checks-title">Uhren- und Kartenprüfungen</h2></div>
+            <div class="guide-section-heading"><h2 id="topic-checks-title">Uhren- und Kartenprüfungen</h2></div>
             <div class="troubleshooting-list"><section class="troubleshooting-item" id="model-not-enabled" aria-labelledby="model-not-enabled-title">
               <h3 id="model-not-enabled-title">Karteninstallation für dieses Garmin-Modell nicht verfügbar</h3>
               <p>Terento installiert Karten nur auf Garmin-Uhren mit Kartenunterstützung, die in Terento freigegeben sind. Du kannst die Uhr trotzdem verbinden und die Karten durchsuchen.</p>
@@ -197,7 +196,7 @@
             </section></div>
           </section>
           <section class="troubleshooting" id="topic-storage" aria-labelledby="topic-storage-title">
-            <div class="guide-section-heading"><p class="eyebrow">Downloads und Speicher</p><h2 id="topic-storage-title">Karten-Downloads und freier Speicher</h2></div>
+            <div class="guide-section-heading"><h2 id="topic-storage-title">Karten-Downloads und freier Speicher</h2></div>
             <div class="troubleshooting-list"><section class="troubleshooting-item" id="download-failed" aria-labelledby="download-failed-title">
               <h3 id="download-failed-title">Garmin-Karte: Download fehlgeschlagen</h3>
               <p>Prüfe deine Internetverbindung und versuche es später erneut: Terento lädt jede Karte direkt vom Kartenanbieter, und Anbieter sind manchmal langsam oder vorübergehend nicht erreichbar.</p>
@@ -213,7 +212,7 @@
             </section></div>
           </section>
           <section class="troubleshooting" id="topic-maps" aria-labelledby="topic-maps-title">
-            <div class="guide-section-heading"><p class="eyebrow">Installieren und aktualisieren</p><h2 id="topic-maps-title">Karten installieren, aktualisieren und entfernen</h2></div>
+            <div class="guide-section-heading"><h2 id="topic-maps-title">Karten installieren, aktualisieren und entfernen</h2></div>
             <div class="troubleshooting-list"><section class="troubleshooting-item" id="leftover-map" aria-labelledby="leftover-map-title">
               <h3 id="leftover-map-title">Karteninstallation fehlgeschlagen: Kartenrest auf der Uhr</h3>
               <p>Entferne den Kartenrest in „Manage maps“ und installiere die Karte dann erneut. Bricht eine Installation nach Beginn des Kopierens ab, kann ein Teil der Karte auf der Uhr bleiben, und Terento entfernt ihn nicht automatisch.</p>
@@ -225,7 +224,7 @@
             </section></div>
           </section>
           <section class="troubleshooting" id="topic-help" aria-labelledby="topic-help-title">
-            <div class="guide-section-heading"><p class="eyebrow">Weiterhin Probleme?</p><h2 id="topic-help-title">Hilfe bekommen</h2></div>
+            <div class="guide-section-heading"><h2 id="topic-help-title">Hilfe bekommen</h2></div>
             <div class="troubleshooting-list"><section class="troubleshooting-item" id="send-report" aria-labelledby="send-report-title">
               <h3 id="send-report-title">Problem mit Terento melden</h3>
               <p>Wähle im Fehlerbildschirm „Report issue“: Terento öffnet GitHub mit dem Bericht, den es auf deinem Mac gespeichert hat, bereits ausgefüllt.</p>
@@ -233,7 +232,7 @@
             </section></div>
           </section>
 
-          <p class="troubleshooting-guide-link">Neu bei Terento? <a class="text-link" href="/de/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="troubleshooting-bottom">Mac-Installationsanleitung lesen <span aria-hidden="true">→</span></a></p>
+          <p class="troubleshooting-guide-link">Neu bei Terento? <a class="text-link" href="/de/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="troubleshooting-bottom">Mac-Installationsanleitung lesen</a></p>
         </div>
       </article>
     </main>
@@ -244,13 +243,16 @@
             <img src="/assets/logo-white.svg" alt="" width="32" height="32">
             <span>Terento</span>
           </a>
-          <div class="footer-meta"><a class="footer-status footer-project-link" data-shell-copy="status" data-project-link href="https://github.com/VooZ2/terento" target="_blank" rel="noopener noreferrer">Open-Source-Projekt</a><a class="footer-support-link" data-shell-copy="support" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">Support Terento</a></div>
+          <p class="footer-tagline" data-shell-copy="tagline">Kostenlose Karten für deine Garmin-Uhr oder deinen Edge.</p>
+          <div class="footer-actions">
+          <a class="footer-support-link" data-support-link href="https://buymeacoffee.com/vooz2" target="_blank" rel="noopener noreferrer"><svg class="footer-support-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg><span data-shell-copy="support">Spenden</span><span class="footer-support-via">Buy Me a Coffee</span></a>
+          <a class="footer-project-link" data-project-link href="https://github.com/VooZ2/terento" target="_blank" rel="noopener noreferrer"><svg class="footer-support-icon" viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg><span data-shell-copy="status">Quellcode</span><span class="footer-support-via">GitHub</span></a>
+          </div>
         </div>
         <nav class="footer-nav" data-shell-aria="footer" aria-label="Footer-Navigation">
-          <a href="/de/#faq" data-shell-copy="faq" data-shell-route="faq" data-umami-event="faq-link-click" data-umami-event-location="footer-nav">FAQ</a><a href="/de/guides/troubleshooting/" data-shell-copy="troubleshooting" data-shell-route="troubleshooting" aria-current="page" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Fehlerbehebung</a>
-          <a data-shell-copy="web_installer" href="/de/install/" data-umami-event="web-installer-link-click" data-umami-event-location="footer-nav">Web-Installer</a>
-          <a data-shell-copy="legal" href="/legal/" data-umami-event="legal-link-click" data-umami-event-location="footer-nav">Rechtliches</a>
-          <a data-shell-copy="privacy" href="/privacy/" data-umami-event="privacy-link-click" data-umami-event-location="footer-nav">Datenschutz</a>
+          <div class="footer-column"><h2 class="footer-heading" data-shell-copy="col_install">Installieren</h2><a href="/de/download/" data-shell-copy="download" data-shell-route="download" data-umami-event="download-cta-click" data-umami-event-location="footer-nav">Download</a><a data-shell-copy="web_installer" href="/de/install/" data-umami-event="web-installer-link-click" data-umami-event-location="footer-nav">Web-Installer</a><a href="/de/map-styles/" data-shell-copy="styles" data-shell-route="styles" data-umami-event="maps-link-click" data-umami-event-location="footer-nav">Karten</a><a href="/de/compatibility/" data-shell-copy="compatibility" data-shell-route="compatibility" data-umami-event="compatibility-link-click" data-umami-event-location="footer-nav">Kompatibilität</a></div>
+          <div class="footer-column"><h2 class="footer-heading" data-shell-copy="col_help">Hilfe</h2><a href="/de/guides/install-garmin-maps-mac/" data-shell-copy="guide_watch" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Anleitung für Uhren</a><a href="/de/guides/install-garmin-maps-edge-mac/" data-shell-copy="guide_edge" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Anleitung für Edge</a><a href="/de/guides/install-garmin-maps-linux/" data-shell-copy="guide_linux" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Anleitung für Linux</a><a href="/de/guides/troubleshooting/" data-shell-copy="troubleshooting" data-shell-route="troubleshooting" aria-current="page" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Fehlerbehebung</a><a href="/de/#faq" data-shell-copy="faq" data-shell-route="faq" data-umami-event="faq-link-click" data-umami-event-location="footer-nav">FAQ</a></div>
+          <div class="footer-column"><h2 class="footer-heading" data-shell-copy="col_project">Projekt</h2><a href="/de/about/" data-shell-copy="about" data-shell-route="about" data-umami-event="navigation-link-click" data-umami-event-location="footer-nav">Über uns</a><a data-shell-copy="legal" href="/legal/" data-umami-event="legal-link-click" data-umami-event-location="footer-nav">Rechtliches</a><a data-shell-copy="privacy" href="/privacy/" data-umami-event="privacy-link-click" data-umami-event-location="footer-nav">Datenschutz</a></div>
         </nav>
       </div>
       <div class="shell footer-bottom"><p>© 2026 Terento Project</p></div>

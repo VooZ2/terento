@@ -1,69 +1,68 @@
 ---
-title: "Install Third-Party Garmin Maps on Mac — Terento"
+title: "Install Free Maps on a Garmin Watch from a Mac — Terento"
 canonical: https://terento.app/guides/install-garmin-maps-mac/
 ---
 
-Mac installation guide
+# Install free maps on your Garmin watch from a Mac
 
-# Install third-party maps on your Garmin watch in three simple steps
-
-Connect your watch, choose a map, and let Terento handle the installation — without manual file transfers.
-
-macOS 13+Apple SiliconGarmin watch with map support
+Terento puts free OpenStreetMap maps, or your own map file, on a Garmin watch with map support. You don’t copy any files yourself, and your Garmin maps stay as they are.
 
 [Download](https://terento.app/download/)
 
-A quick check
+Using Linux? [Install maps from your browser](https://terento.app/guides/install-garmin-maps-linux/).
 
-## Before you start
+## What you need
 
-- Apple Silicon Mac
-- macOS 13 or later
-- Garmin smartwatch with map support
+- Apple Silicon Mac with macOS 13 or later
+- Garmin watch with map support
 - USB cable that supports data transfer
 
-The Compatibility page shows exact Garmin models and variants with at least one successful shared installation. The list grows as more successful installations are shared. A missing model does not mean it is unsupported; it may simply not have a successful shared installation for that exact model and variant yet. Terento is intended for Garmin smartwatches with map support. After connection, Terento checks the detected device and tells you whether installation can safely continue.
+After you connect, Terento checks the watch and tells you whether it can install maps. [Compatibility](https://terento.app/compatibility/) lists the models with successful installations; a missing model isn’t necessarily unsupported.
 
-[See current compatibility evidence](https://terento.app/compatibility/)
+## Install a map
 
-The workflow
+1. Download and open Terento
 
-## Install in three steps
+[Download Terento](https://terento.app/download/), drag it from the disk image to Applications and open it there. The first time, macOS asks whether to open an app downloaded from the internet: choose Open.
 
-1. Connect
+2. Connect your watch
 
-Connect your watch with a USB data cable. Terento recognizes it and checks whether you can continue safely.
+Quit Garmin Express if it’s open. Unlock the watch and connect it to your Mac with a USB data cable, not a charge-only cable. If macOS asks whether to allow the accessory to connect, choose Allow. Terento finds the watch within 1–2 minutes and checks whether it can install maps.
 
 [Garmin watch not showing up on Mac](https://terento.app/guides/troubleshooting/#connect-watch)
 
 Terento showing a connected Garmin watch and device detection status
 Terento recognizes the connected Garmin watch before installation.
 
-2. Install
+3. Choose a map
 
-Choose a map from the catalog or upload your own compatible .img file. Terento handles the installation for you.
+Pick a map from the catalog or add your own compatible .img file. [Compare map styles](https://terento.app/map-styles/) to see how each map draws roads and trails.
 
 1. Choose from the catalog
 
 Choose a provider and a region from the catalog.
 
-2. Upload your own map
+2. Add your own map
 
 Add a compatible .img map from your Mac.
 
 Terento showing third-party map providers, regions and available Garmin storage
 Choose a map from the catalog or add your own compatible file.
 
-3. Done
+4. Install
 
-When Terento confirms the installation is complete, safely disconnect the watch and check that the map is available.
+Start the installation and keep the watch connected until Terento says the map is ready. Then disconnect the watch.
 
 Terento showing a completed map installation on a Garmin watch
 Keep the watch connected until transfer and verification are complete.
 
-Need a hand?
+## Show the map on your watch
 
-## If something does not work
+Disconnect the watch, open its map settings and turn the new map on. If it isn’t listed, restart the watch. If several maps cover the same area, turn off the ones you don’t want to see.
+
+Still can’t see it? Email [hello@terento.app](mailto:hello@terento.app?subject=Terento%20installation%20issue) with your exact watch model, map region and what happened.
+
+## If something doesn’t work
 
 ### Terento does not detect the watch
 
@@ -77,20 +76,8 @@ Temporarily unavailable maps stay visible. Read the reason shown beside the map.
 
 On the failed installation screen, choose “Report issue”. Terento opens GitHub with the report already filled in. Review it before posting: GitHub issues are public. For help by email, include your watch model, map region and what happened. More help: [Map installation failed: leftover map on the watch](https://terento.app/guides/troubleshooting/#leftover-map), [How to report a problem with Terento](https://terento.app/guides/troubleshooting/#send-report).
 
-### The map was installed but is not visible
-
-Reconnect or restart the watch and check its map settings. If the map still does not appear, email support with your exact watch model, map region, and what happened. [hello@terento.app](mailto:hello@terento.app?subject=Terento%20installation%20issue)
-
 [See all troubleshooting steps](https://terento.app/guides/troubleshooting/)
 
-After installing
-
-## First launch and uninstalling
-
-### First launch
-
-Drag Terento from the downloaded DMG to Applications and open it there. Terento is notarized by Apple; the first time, macOS asks whether to open an app downloaded from the internet, so choose Open. On a Mac laptop, if macOS asks whether to allow the accessory to connect, choose Allow.
-
-### Uninstall Terento
+## Uninstall Terento
 
 Quit Terento and move it from Applications to the Trash. Maps already on your watch stay there. Terento keeps its records of the maps it installed in ~/Library/Application Support/Terento: keep that folder if you may install Terento again, so it can still update and remove those maps. To remove everything, also delete that folder, ~/Library/Caches/Terento, ~/Library/Logs/Terento and ~/Library/Preferences/app.terento.mac.plist.

@@ -1,23 +1,17 @@
 ---
-title: "Mac nie widzi zegarka Garmin? Rozwiązywanie problemów — Terento"
+title: "Mac nie widzi Garmina? Pomoc z mapami — Terento"
 canonical: https://terento.app/pl/guides/troubleshooting/
 ---
-
-Rozwiązywanie problemów
 
 # Rozwiązywanie problemów z zegarkiem Garmin i mapami na Macu
 
 Znajdź swój problem – od zegarka Garmin, którego Mac nie widzi, po nieudane pobieranie mapy – i wykonaj krótkie kroki. Jeśli nic nie pomaga, wyślij raport, abyśmy mogli się temu przyjrzeć.
-
-Garmin Edge
 
 ## Mac nie widzi Garmin Edge
 
 Nowsze liczniki rowerowe Garmin Edge z obsługą map łączą się z Makiem tak samo jak obecne zegarki Garmin, więc większość kroków na tej stronie działa też dla Edge: użyj kabla USB do przesyłania danych, zamknij Garmin Express i poczekaj do 2 minut. Starsze modele Edge, które pojawiają się w Finderze jako dysk, działają inaczej.
 
 [Przeczytaj poradnik dla Garmin Edge](https://terento.app/pl/guides/install-garmin-maps-edge-mac/)
-
-Połączenie
 
 ## Problemy z połączeniem zegarka Garmin
 
@@ -71,8 +65,6 @@ Odłącz zegarek, odczekaj kilka sekund i podłącz go ponownie: połączenie zo
 1. Jeśli Terento instalowało, aktualizowało lub usuwało mapę, po ponownym podłączeniu otwórz „Manage maps” i sprawdź wynik, zanim spróbujesz ponownie.
 2. Uruchom zegarek ponownie, jeśli sytuacja się powtarza.
 
-Sprawdzanie
-
 ## Sprawdzanie zegarka i map
 
 ### Instalacja map niedostępna dla tego modelu Garmin
@@ -98,8 +90,6 @@ Jeśli Terento nie może wczytać aktualnej listy map, sprawdź połączenie z i
 1. Jeśli ta wersja Terento jest zbyt stara dla aktualnej listy map, a Terento informuje o nowszej wersji, zainstaluj aktualizację.
 2. Dopóki Terento pokazuje starszą zapisaną listę map, instalowanie i aktualizowanie map z katalogu pozostaje niedostępne, aż będzie można sprawdzić aktualną listę.
 
-Pobieranie i miejsce
-
 ## Pobieranie map i wolne miejsce
 
 ### Nie udało się pobrać mapy Garmin
@@ -124,8 +114,6 @@ Wybierz mniejszy region albo usuń mapę, której już nie potrzebujesz: Terento
 2. Otwórz „Manage maps” i usuń mapę, której już nie potrzebujesz.
 3. Aktualizacja wymaga dodatkowego miejsca podczas sprawdzania nowej mapy. Zwolnij miejsce, jeśli aktualizacja nie może się rozpocząć.
 
-Instalacja i aktualizacje
-
 ## Instalowanie, aktualizowanie i usuwanie map
 
 ### Instalacja mapy nie powiodła się: pozostałość mapy na zegarku
@@ -144,8 +132,6 @@ W obecnej wersji jest to oczekiwane: podczas aktualizacji lub usuwania mapy wska
 1. Nie odłączaj zegarka, gdy Terento pracuje.
 2. Poczekaj, aż Terento poinformuje o zakończeniu.
 3. Jeśli Terento zgłosi błąd, podłącz zegarek ponownie i sprawdź „Manage maps”, zanim spróbujesz ponownie.
-
-Nadal masz problem?
 
 ## Pomoc
 

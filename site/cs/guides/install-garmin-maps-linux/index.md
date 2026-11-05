@@ -1,21 +1,21 @@
 ---
-title: "Instalace map Garmin v Linuxu z Chrome — Terento"
+title: "Mapy do hodinek Garmin v Linuxu z Chrome — Terento"
 canonical: https://terento.app/cs/guides/install-garmin-maps-linux/
 ---
-
-Průvodce pro Linux
 
 # Instalace map Garmin v Linuxu
 
 V Linuxu webový instalátor Terento nahraje bezplatné mapy do hodinek Garmin s podporou map přímo z prohlížeče. Linux nejdřív potřebuje jedno pravidlo oprávnění, aby prohlížeč mohl hodinky používat přes USB.
+
+[Otevřít webový instalátor](https://terento.app/cs/install/)
+
+Máte Mac? Přečtěte si průvodce pro [hodinky Garmin](https://terento.app/cs/guides/install-garmin-maps-mac/) nebo [Garmin Edge](https://terento.app/cs/guides/install-garmin-maps-edge-mac/).
 
 ## Co potřebujete
 
 - Chrome, Microsoft Edge, Operu nebo Brave na počítači s Linuxem. Firefox se nemůže připojit k zařízením USB.
 - Datový kabel USB, ne kabel jen pro nabíjení.
 - Odemčené hodinky Garmin s podporou map.
-
-Tři kroky
 
 ## Instalace mapy z prohlížeče
 
@@ -29,13 +29,11 @@ echo 'SUBSYSTEM=="usb", ATTR{idVendor}=="091e", MODE="0660", GROUP="plugdev", TA
 
 2. Otevřete webový instalátor a připojte
 
-Otevřete webový instalátor, zvolte „Připojte hodinky“ a pak položku se slovem „Garmin“ v názvu. Seznam může minutu nebo dvě zůstat prázdný, než se hodinky připraví.
+[Otevřete webový instalátor](https://terento.app/cs/install/), zvolte „Připojte hodinky“ a pak položku se slovem „Garmin“ v názvu. Seznam může minutu nebo dvě zůstat prázdný, než se hodinky připraví.
 
 3. Vyberte mapy a nainstalujte
 
 Vyberte zemi nebo oblast a zvolte „Instalovat mapy“. Nechte kartu otevřenou a hodinky připojené, dokud nebude vše hotovo.
-
-Řešení potíží
 
 ## Když to nefunguje
 
@@ -50,9 +48,3 @@ Nechte seznam otevřený až dvě minuty. Pokud se neobjeví položka se slovem 
 ### Prohlížeč nemá přístup k USB
 
 Prohlížeč nainstalovaný jako balíček Snap nemusí dostat přístup k USB. Použijte prohlížeč z jeho oficiálního balíčku .deb nebo .rpm.
-
-Připraveno?
-
-## Otevřete webový instalátor a připojte hodinky.
-
-[Otevřít webový instalátor](https://terento.app/cs/install/)

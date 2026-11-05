@@ -3,13 +3,11 @@ title: "Hodinky Garmin a Edge: úspěšné instalace map — Terento"
 canonical: https://terento.app/cs/compatibility/
 ---
 
-Kompatibilita
-
 # Kompatibilita hodinek a cyklopočítačů Garmin Edge
 
-Terento je navrženo pro hodinky Garmin a novější cyklopočítače Garmin Edge s podporou map. Níže jsou uvedeny konkrétní modely a varianty, na kterých již proběhla alespoň jedna úspěšná instalace mapy třetí strany. Seznam se rozšiřuje s dalšími sdílenými úspěšnými instalacemi.
+Terento funguje s hodinkami Garmin a novějšími cyklopočítači Garmin Edge s podporou map. Níže jsou přesné modely, do kterých už někdo nainstaloval mapu přes Terento. Seznam roste s každou sdílenou instalací.
 
-Pokud zde svůj model nevidíte, neznamená to, že není podporován — pro daný model a variantu zatím možná nebyla sdílena žádná úspěšná instalace.
+Pokud zde svůj model nevidíte, neznamená to, že nebude fungovat. Možná z něj zatím nikdo nesdílel úspěšnou instalaci.
 
 **40** modely s úspěšnými instalacemi**356** úspěšných instalacíPoslední úspěšná instalace 5. listopadu 2026
 
@@ -423,11 +421,9 @@ App 1
 
 Poslední úspěšná instalace 7. října 2026
 
-Výsledky komunity
-
 ## Nevidíte zde svůj Garmin?
 
-Pokud vaše hodinky Garmin nebo cyklopočítač Edge podporují mapy, můžete Terento přesto vyzkoušet. Seznam se rozšiřuje s dalšími sdílenými úspěšnými instalacemi pro konkrétní modely a varianty.
+Pokud vaše hodinky Garmin nebo cyklopočítač Edge podporují mapy, můžete Terento i tak vyzkoušet. Každá sdílená úspěšná instalace přidá váš model do tohoto seznamu.
 
-[Instalujete mapy třetích stran poprvé? Přečtěte si průvodce pro Mac](https://terento.app/cs/guides/install-garmin-maps-mac/) [Nemáte Mac s Apple Silicon? Použijte webový instalátor](https://terento.app/cs/install/)
+[Poprvé? Přečtěte si průvodce pro Mac](https://terento.app/cs/guides/install-garmin-maps-mac/) [Nemáte Mac s Apple Silicon? Použijte webový instalátor](https://terento.app/cs/install/)
 [Stáhnout](https://terento.app/cs/download/)

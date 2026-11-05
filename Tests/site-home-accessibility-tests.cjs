@@ -20,7 +20,7 @@ const styles = read(path.join(root, "site", "styles.css"));
 for (const file of homeFiles) {
   const page = read(file);
   const experience = page.match(
-    /<section class="experience section" id="how-it-works"[\s\S]*?<\/section>/
+    /<section class="home-steps section" id="how-it-works"[\s\S]*?<\/section>/
   )?.[0];
   assert.ok(experience, `${file}: missing Home experience section`);
 
@@ -33,11 +33,7 @@ for (const file of homeFiles) {
   assert.equal(steps.length, 3, `${file}: expected exactly three workflow steps`);
   steps.forEach((step, index) => {
     const number = String(index + 1).padStart(2, "0");
-    assert.match(
-      step[1],
-      new RegExp(`<p class="step-number" aria-hidden="true">${number}<\\/p>`),
-      `${file}: visible step number ${number} must be decorative`
-    );
+    assert.doesNotMatch(step[1], /step-number/, `${file}: step ${number} numbering comes from the ordered list`);
     assert.match(step[1], /<h3>[^<]+<\/h3>/, `${file}: step ${number} is missing its title`);
   });
 }
@@ -45,7 +41,8 @@ for (const file of homeFiles) {
 assert.doesNotMatch(styles, /<article class="step" role="listitem">/);
 assert.match(styles, /\.steps\s*\{[^}]*margin:\s*38px 0 0;[^}]*padding:\s*0;[^}]*list-style:\s*none;/s);
 assert.match(styles, /\.steps::before\s*\{[^}]*background:\s*var\(--border\)/s);
-assert.match(styles, /\.map-feature-tab\s*\{[^}]*min-height:\s*48px/s);
+assert.match(styles, /\.home-switch-button\s*\{[^}]*min-height:\s*44px/s);
+assert.match(styles, /\.home-steps \.step::before\s*\{[^}]*color:\s*var\(--accent-text\)[^}]*content:\s*counter\(home-step\)/s);
 assert.match(styles, /\.text-link\s*\{[^}]*color:\s*var\(--link-text\)/s);
 assert.match(styles, /\.text-link:hover\s*\{[^}]*color:\s*var\(--link-text-hover\)/s);
 assert.match(styles, /\.eyebrow\s*\{[^}]*color:\s*var\(--eyebrow-text\)/s);

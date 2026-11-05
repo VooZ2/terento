@@ -1,12 +1,12 @@
 # Právní informace
 
-Terento je bezplatná aplikace macOS s otevřeným zdrojovým kódem pro instalaci a správu map třetích stran na hodinkách Garmin. Webový instalátor umožňuje instalovat mapy také z Google Chrome, Microsoft Edge, Opery nebo Brave. Tyto informace se vztahují na aplikaci, webový instalátor a tento web.
+Terento je bezplatná aplikace macOS s otevřeným zdrojovým kódem pro instalaci a správu map třetích stran na hodinkách Garmin a cyklopočítačích Edge. Webový instalátor umožňuje instalovat mapy také z Google Chrome, Microsoft Edge, Opery nebo Brave. Tyto informace se vztahují na aplikaci, webový instalátor a tento web.
 
 ## Projekt
 
 Terento je nezávislý projekt vydávaný soukromou osobou. Tvůrce najdete na stránce [O projektu](/cs/about/). Kontakt: [hello@terento.app](mailto:hello@terento.app).
 
-Aplikace je určena pro Macy s Apple Silicon. Webový instalátor vyžaduje Google Chrome, Microsoft Edge, Operu nebo Brave na Macu nebo počítači s Linuxem; na Linuxu se ještě testuje. Kompatibilitu hodnotíme pro každý přesný model a variantu hodinek. Před použitím ověřte [kompatibilitu](/cs/compatibility/). Příspěvky jsou dobrovolné a neodemykají funkce, mapy ani poskytovatele.
+Aplikace je určena pro Macy s Apple Silicon. Webový instalátor vyžaduje Google Chrome, Microsoft Edge, Operu nebo Brave na Macu nebo počítači s Linuxem; na Linuxu se ještě testuje. Kompatibilitu hodnotíme pro každý přesný model a variantu zařízení. Před použitím ověřte [kompatibilitu](/cs/compatibility/). Příspěvky jsou dobrovolné a neodemykají funkce, mapy ani poskytovatele.
 
 ## Licence softwaru a dalších součástí
 
@@ -19,6 +19,8 @@ Softwarová licence neposkytuje práva k ochranné známce Terento. Upravené ve
 ## Licence map
 
 Mapy pocházejí od [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [Freizeitkarte](https://www.freizeitkarte-osm.de/), [OpenTopoMap](https://garmin.opentopomap.org/), [BBBike](https://garmin.bbbike.org) a [OSMapaPL](https://osmapa-garmin.las.org.pl/) a podléhají jejich licencím a [uvedení autorství OpenStreetMap](https://www.openstreetmap.org/copyright). Pro vlastní importované mapy nadále platí příslušné podmínky.
+
+Obrázky map na tomto webu, včetně displejů hodinek a Edge, ukazují tyto mapy. Mapová data © [přispěvatelé OpenStreetMap](https://www.openstreetmap.org/copyright).
 
 Terento tyto mapy nevytváří, nemění jejich licence, neprovozuje knihovnu map a nezrcadlí soubory poskytovatelů. V aplikaci se katalogové mapy stahují od původního poskytovatele na váš Mac a pak do hodinek. U webového instalátoru server Terento stáhne zvolenou mapu od původního poskytovatele a předá ji vašemu prohlížeči. Tato kopie slouží jen vašemu požadavku a smaže se, jakmile ji prohlížeč má, nebo po dvou hodinách, pokud si ji nevyzvedne. Pro stránku [Styly map](/cs/map-styles/) server Terento dočasně stáhne vybrané katalogové mapy od původního poskytovatele, vytvoří z nich malé náhledové obrázky a soubory map poté smaže. Náhledy uvádějí poskytovatele a OpenStreetMap.
 

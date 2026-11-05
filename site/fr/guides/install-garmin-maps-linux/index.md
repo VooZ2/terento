@@ -1,21 +1,21 @@
 ---
-title: "Installer des cartes Garmin sous Linux depuis Chrome — Terento"
+title: "Cartes pour montre Garmin sous Linux avec Chrome — Terento"
 canonical: https://terento.app/fr/guides/install-garmin-maps-linux/
 ---
-
-Guide Linux
 
 # Installer des cartes Garmin sous Linux
 
 Sous Linux, l’installateur web Terento installe des cartes gratuites sur les montres Garmin compatibles avec les cartes, directement depuis votre navigateur. Linux a d’abord besoin d’une règle d’autorisation pour que le navigateur puisse utiliser la montre en USB.
+
+[Ouvrir l’installateur web](https://terento.app/fr/install/)
+
+Sur Mac ? Lisez le guide pour une [montre Garmin](https://terento.app/fr/guides/install-garmin-maps-mac/) ou un [Garmin Edge](https://terento.app/fr/guides/install-garmin-maps-edge-mac/).
 
 ## Ce qu’il vous faut
 
 - Chrome, Microsoft Edge, Opera ou Brave sur un ordinateur Linux. Firefox ne peut pas se connecter aux appareils USB.
 - Un câble USB de données, pas un câble de charge seule.
 - Une montre Garmin compatible avec les cartes, déverrouillée.
-
-Trois étapes
 
 ## Installer une carte depuis le navigateur
 
@@ -29,13 +29,11 @@ echo 'SUBSYSTEM=="usb", ATTR{idVendor}=="091e", MODE="0660", GROUP="plugdev", TA
 
 2. Ouvrir l’installateur web et connecter
 
-Ouvrez l’installateur web, choisissez « Connectez votre montre », puis l’entrée contenant « Garmin » dans son nom. La liste peut rester vide une ou deux minutes pendant que la montre se prépare.
+[Ouvrez l’installateur web](https://terento.app/fr/install/), choisissez « Connectez votre montre », puis l’entrée contenant « Garmin » dans son nom. La liste peut rester vide une ou deux minutes pendant que la montre se prépare.
 
 3. Choisir les cartes et installer
 
 Choisissez un pays ou une région, puis « Installer des cartes ». Gardez l’onglet ouvert et la montre connectée jusqu’à la fin.
-
-Dépannage
 
 ## Si cela ne fonctionne pas
 
@@ -50,9 +48,3 @@ Laissez la liste ouverte jusqu’à deux minutes. Si aucune entrée contenant «
 ### Le navigateur n’a pas d’accès USB
 
 Un navigateur installé en paquet Snap peut ne pas obtenir l’accès USB. Utilisez le navigateur issu de son paquet officiel .deb ou .rpm.
-
-Prêt ?
-
-## Ouvrez l’installateur web et connectez votre montre.
-
-[Ouvrir l’installateur web](https://terento.app/fr/install/)

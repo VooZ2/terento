@@ -23,7 +23,7 @@ for (const page of metadata.pages) {
   const expectedRobots = page.indexable === false ? "noindex,follow" : "index,follow";
   assert.match(source, new RegExp(`<meta name="robots" content="${expectedRobots}">`), `${page.path}: robots directive`);
   assert.match(source, new RegExp(`<link rel="canonical" href="${baseUrl}${page.path}">`), `${page.path}: canonical`);
-  const expectedAlt = altByLocale[page.locale];
+  const expectedAlt = page.socialImageAlt || altByLocale[page.locale];
   assert.match(source, new RegExp(`<meta property="og:image:alt" content="${expectedAlt.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}">`), `${page.path}: localized OG image alt`);
 }
 

@@ -7,7 +7,7 @@ const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "u
 const styles = read("site/styles.css");
 const shellSource = read("site/site-shell.js");
 const languageSource = read("site/language.js");
-const styleVersion = "20261102-design-audit-v4";
+const styleVersion = "20261105-type-scale-v1";
 const mobileLanguageNames = { en: "English", de: "Deutsch", fr: "Français", pl: "Polski", cs: "Čeština", it: "Italiano" };
 
 const cssBlock = (selector) => {
@@ -60,135 +60,39 @@ assert.match(styles, /\.provider-addon > summary\.provider-addon-toggle::after,[
 assert.match(cssBlock(".provider-count"), /font-variant-numeric:\s*tabular-nums/);
 assert.match(cssBlock(".provider-addon-count"), /font-variant-numeric:\s*tabular-nums/);
 
-const locales = {
-  en: {
-    file: "site/download/index.html",
-    guide: "/guides/install-garmin-maps-mac/",
-    compatibility: "/compatibility/",
-    guideLabel: "Read the Mac installation guide",
-    compatibilityLabel: "Check compatibility",
-    webInstaller: "/install/",
-    webInstallerLabel: "No Apple Silicon Mac? Use the web installer",
-    linuxGuide: "/guides/install-garmin-maps-linux/",
-    linuxGuideLabel: "On Linux? Read the Linux guide",
-    edgeGuide: "/guides/install-garmin-maps-edge-mac/",
-    edgeGuideLabel: "Garmin Edge? Read the Edge guide",
-  },
-  de: {
-    file: "site/de/download/index.html",
-    guide: "/de/guides/install-garmin-maps-mac/",
-    compatibility: "/de/compatibility/",
-    guideLabel: "Mac-Installationsanleitung lesen",
-    compatibilityLabel: "Kompatibilität prüfen",
-    webInstaller: "/de/install/",
-    webInstallerLabel: "Kein Mac mit Apple Silicon? Nutze den Web-Installer",
-    linuxGuide: "/de/guides/install-garmin-maps-linux/",
-    linuxGuideLabel: "Linux? Lies die Linux-Anleitung",
-    edgeGuide: "/de/guides/install-garmin-maps-edge-mac/",
-    edgeGuideLabel: "Garmin Edge? Lies die Edge-Anleitung",
-  },
-  fr: {
-    file: "site/fr/download/index.html",
-    guide: "/fr/guides/install-garmin-maps-mac/",
-    compatibility: "/fr/compatibility/",
-    guideLabel: "Lire le guide d’installation sur Mac",
-    compatibilityLabel: "Vérifier la compatibilité",
-    webInstaller: "/fr/install/",
-    webInstallerLabel: "Pas de Mac Apple Silicon ? Utilisez l’installateur web",
-    linuxGuide: "/fr/guides/install-garmin-maps-linux/",
-    linuxGuideLabel: "Sous Linux ? Lisez le guide Linux",
-    edgeGuide: "/fr/guides/install-garmin-maps-edge-mac/",
-    edgeGuideLabel: "Un Garmin Edge ? Lisez le guide Edge",
-  },
-  pl: {
-    file: "site/pl/download/index.html",
-    guide: "/pl/guides/install-garmin-maps-mac/",
-    compatibility: "/pl/compatibility/",
-    guideLabel: "Przeczytaj instrukcję instalacji na Macu",
-    compatibilityLabel: "Sprawdź kompatybilność",
-    webInstaller: "/pl/install/",
-    webInstallerLabel: "Nie masz Maca z Apple Silicon? Użyj instalatora webowego",
-    linuxGuide: "/pl/guides/install-garmin-maps-linux/",
-    linuxGuideLabel: "Linux? Przeczytaj przewodnik dla Linuksa",
-    edgeGuide: "/pl/guides/install-garmin-maps-edge-mac/",
-    edgeGuideLabel: "Garmin Edge? Przeczytaj poradnik dla Edge",
-  },
-  cs: {
-    file: "site/cs/download/index.html",
-    guide: "/cs/guides/install-garmin-maps-mac/",
-    compatibility: "/cs/compatibility/",
-    guideLabel: "Přečíst průvodce instalací na Macu",
-    compatibilityLabel: "Ověřit kompatibilitu",
-    webInstaller: "/cs/install/",
-    webInstallerLabel: "Nemáte Mac s Apple Silicon? Použijte webový instalátor",
-    linuxGuide: "/cs/guides/install-garmin-maps-linux/",
-    linuxGuideLabel: "Linux? Přečtěte si návod pro Linux",
-    edgeGuide: "/cs/guides/install-garmin-maps-edge-mac/",
-    edgeGuideLabel: "Garmin Edge? Přečtěte si průvodce pro Edge",
-  },
-  it: {
-    file: "site/it/download/index.html",
-    guide: "/it/guides/install-garmin-maps-mac/",
-    compatibility: "/it/compatibility/",
-    guideLabel: "Leggi la guida all’installazione su Mac",
-    compatibilityLabel: "Verifica la compatibilità",
-    webInstaller: "/it/install/",
-    webInstallerLabel: "Niente Mac con Apple Silicon? Usa l’installer web",
-    linuxGuide: "/it/guides/install-garmin-maps-linux/",
-    linuxGuideLabel: "Usi Linux? Leggi la guida per Linux",
-    edgeGuide: "/it/guides/install-garmin-maps-edge-mac/",
-    edgeGuideLabel: "Hai un Garmin Edge? Leggi la guida Edge",
-  },
-};
-
-const visibleText = (html) => html
-  .replace(/<span class="download-info-link-arrow"[^>]*>[\s\S]*?<\/span>/g, "")
-  .replace(/<[^>]+>/g, " ")
-  .replace(/\s+/g, " ")
-  .trim();
+const downloadCopy = JSON.parse(read("scripts/templates/download-copy.json"));
+const manifest = JSON.parse(read("site/updates/macos-arm64.json"));
+const locales = Object.fromEntries(["en", "de", "fr", "pl", "cs", "it"].map((locale) => [locale, {
+  file: `site/${locale === "en" ? "" : `${locale}/`}download/index.html`,
+  root: locale === "en" ? "/" : `/${locale}/`,
+}]));
 
 for (const [locale, contract] of Object.entries(locales)) {
   const html = read(contract.file);
+  const copy = downloadCopy[locale];
+  const main = html.match(/<main[\s\S]*?<\/main>/)[0];
   assert.match(html, new RegExp(`/styles\\.css\\?v=${styleVersion}`));
   assert.equal((html.match(/<link rel="stylesheet" href="\/styles\.css\?v=[^"]+">/g) || []).length, 1, `${locale} must load the shared stylesheet once`);
-  assert.equal((html.match(/class="download-hero"/g) || []).length, 1, `${locale} must use one focused download hero`);
-  assert.equal((html.match(/class="download-details"/g) || []).length, 1, `${locale} must use one technical details section`);
-  assert.equal((html.match(/class="download-detail"/g) || []).length, 2, `${locale} must use two decision-support detail cards`);
-  assert.equal((html.match(/class="download-visual"/g) || []).length, 1);
-  assert.match(html, /your-garmin-640\.avif\?v=20260912-app-screens-v2/);
-  const badges = html.match(/<ul class="download-badges">[\s\S]*?<\/ul>/)?.[0];
-  assert.ok(badges);
-  assert.equal((badges.match(/<li>/g) || []).length, 3);
-  assert.match(badges, /Apple Silicon/);
-  assert.doesNotMatch(badges, /beta|<a|<button/i);
-  assert.ok(html.indexOf('class="download-actions"') < html.indexOf('class="download-visual"'));
-  assert.ok(html.indexOf('class="download-visual"') < html.indexOf('class="download-details"'));
-
-  assert.doesNotMatch(html, /class="download-requirement"/);
-  assert.doesNotMatch(html, /class="download-trust"|Free · Notarized|Kostenlos · Notarisiert|Gratuit · Notarié|Bezpłatna · Notaryzowana|Zdarma · Notarizovaná|Gratuita · Notarizzata/);
-  const intro = html.match(/<p class="download-intro"[^>]*>[\s\S]*?<\/p>/);
-  assert.ok(intro, `${locale} must have a Download intro`);
-  assert.doesNotMatch(intro[0], /<strong>/);
-  assert.match(html, /class="download-action download-action-primary"[^>]+\.dmg/);
-  assert.match(html, /class="download-action download-action-secondary"[^>]+\.zip/);
-  assert.match(html, /class="download-action download-action-tertiary"[^>]+releases\/tag/);
-  assert.doesNotMatch(html, /class="download-sections"|class="download-grid"|What is included|Was enthalten ist|Ce qui est inclus|Co zawiera|Co obsahuje|Cosa include/);
-  assert.doesNotMatch(html, /New to third-party maps\?|Neu bei Drittanbieter-Karten\?|Vous débutez avec les cartes tierces|Dopiero zaczynasz z mapami innych firm|Začínáte s mapami třetích stran|È la prima volta che installi mappe di terze parti/);
-
-  const anchors = [...html.matchAll(/<a class="text-link download-info-link" href="([^"]+)"([^>]*)>([\s\S]*?)<\/a>/g)];
-  assert.equal(anchors.length, 5, `${locale} must expose exactly five Download information links`);
-  assert.deepEqual(anchors.map((match) => match[1]), [contract.guide, contract.webInstaller, contract.linuxGuide, contract.edgeGuide, contract.compatibility]);
-  assert.deepEqual(anchors.map((match) => visibleText(match[3])), [contract.guideLabel, contract.webInstallerLabel, contract.linuxGuideLabel, contract.edgeGuideLabel, contract.compatibilityLabel]);
-  for (const match of anchors) {
-    assert.match(match[3], /class="download-info-link-tail"/);
-    assert.match(match[3], /class="download-info-link-arrow" aria-hidden="true">→<\/span>/);
-    assert.doesNotMatch(match[1], /utm_/i);
-  }
-  assert.match(anchors[1][2], /data-umami-event="web-installer-link-click"/);
-  assert.match(anchors[2][2], /data-umami-event-location="download-page-linux"/);
-  assert.match(anchors[3][2], /data-umami-event-location="download-page-edge"/);
-  assert.match(anchors[4][2], /data-umami-event="compatibility-link-click"/);
-  assert.match(anchors[4][2], /data-umami-event-location="download-page"/);
+  assert.match(main, /<main id="main-content" class="download-main download-v2">/);
+  assert.equal((main.match(/<h1>/g) || []).length, 1);
+  assert.doesNotMatch(main, /class="eyebrow"|→|·/, `${locale} Download has no eyebrow labels, arrows or middle dots`);
+  // One primary action: the DMG. The Mac App Store row is plain text until APP_STORE_URL is set.
+  assert.equal((main.match(/class="download-action[ "]/g) || []).length, 1, `${locale} has one primary download action`);
+  assert.match(main, new RegExp(`<a class="download-action download-v2-primary" href="${manifest.downloadURL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
+  assert.match(main, new RegExp(`<p class="download-v2-store">${copy.store_label} <span class="download-v2-store-status"><svg[^>]*aria-hidden="true"[\\s\\S]*?</svg>${copy.store_status}</span></p>`), `${locale} App Store status has text and icon`);
+  assert.ok(main.indexOf("download-v2-actions") < main.indexOf("download-v2-shot"));
+  for (const need of copy.needs) assert.ok(main.includes(need.replace(/’/g, "’")), `${locale} lists requirement: ${need}`);
+  assert.equal((main.match(/<h2 /g) || []).length, 2, `${locale} has one requirements and one after-download heading`);
+  assert.equal((main.match(/<ol>[\s\S]*?<\/ol>/)[0].match(/<li>/g) || []).length, 3, `${locale} has three after-download steps`);
+  assert.doesNotMatch(main, /<code>|\.zip"/, `${locale} keeps checksum and ZIP off the page`);
+  const links = [...main.matchAll(/<a class="text-link( download-info-link)?" href="([^"]+)" data-umami-event="([^"]+)" data-umami-event-location="([^"]+)">/g)].map((m) => [m[2], m[3], m[4], Boolean(m[1])]);
+  assert.deepEqual(links, [
+    [`${contract.root}install/`, "web-installer-link-click", "download-page", false],
+    [`${contract.root}guides/install-garmin-maps-linux/`, "guide-link-click", "download-page-linux", false],
+    [`${contract.root}compatibility/`, "compatibility-link-click", "download-page", true],
+    [`${contract.root}guides/install-garmin-maps-mac/`, "guide-link-click", "download-page", false],
+    [`${contract.root}guides/install-garmin-maps-edge-mac/`, "guide-link-click", "download-page-edge", false],
+  ], `${locale} Download links keep their Umami events`);
   assert.doesNotMatch(html, /localized-content\.js/);
 }
 
@@ -259,12 +163,15 @@ for (const locale of Object.keys(locales)) {
   assert.doesNotMatch(html, /class="compatibility-hero about-hero"/);
   assert.equal((html.match(/<h1\b/g) || []).length, 1, `${locale} must have one primary About heading`);
   assert.match(html, /<section class="about-intro" aria-labelledby="about-title">[\s\S]*<h1 id="about-title">/);
-  assert.match(html, /<p class="eyebrow"><span class="status-dot" aria-hidden="true"><\/span>/, `${locale} About story eyebrow must use the shared status dot`);
+  assert.doesNotMatch(html.match(/<main[\s\S]*?<\/main>/)[0], /class="eyebrow"/, `${locale} About uses plain headings without eyebrow labels`);
   const storyCopy = html.match(/<div class="about-story-copy">[\s\S]*?<\/div>/)?.[0];
   assert.ok(storyCopy, `${locale} must have a story copy block`);
   assert.equal((storyCopy.match(/<p>/g) || []).length, 2, `${locale} must keep the maker story concise`);
-  assert.ok(html.indexOf('class="about-intro"') < html.indexOf('class="about-main"'));
-  assert.ok(html.indexOf('class="about-main"') < html.indexOf('class="about-story"'));
+  assert.ok(html.indexOf('class="about-intro"') < html.indexOf('class="about-story"'), `${locale} maker note follows the intro`);
+  assert.ok(html.indexOf('class="about-story"') < html.indexOf('class="about-main"'));
+  assert.match(html, /href="https:\/\/github\.com\/VooZ2\/terento"[^>]*>GitHub<\/a>/, `${locale} About links the source code`);
+  assert.match(html, /GPL-3\.0/, `${locale} About names the licence`);
+  for (const project of ["OpenTopoMap", "Freizeitkarte", "MapRando", "BBBike", "OSMapaPL"]) assert.match(html, new RegExp(`>${project}</a>`), `${locale} About credits ${project}`);
   assert.doesNotMatch(html, /vibe coding|software developer|Softwareentwickler|développeur logiciel|programistą|vývojář|sviluppatore software/i);
   const main = html.match(/<main[\s\S]*?<\/main>/)[0];
   assert.equal((main.match(/class="download-action"/g) || []).length, 1);

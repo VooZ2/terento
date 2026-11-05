@@ -272,16 +272,6 @@ attribution comment. App Store, Google Chrome, Microsoft Edge, Opera, Brave,
 Firefox and Safari names and marks remain the property of their respective
 owners.
 
-### Website Compatibility icons
-
-The public Compatibility page marks the successful installs made with the app
-and with the web installer with the original solid `laptop` and `globe` SVGs
-from the same pinned Font Awesome Free 7.3.1 revision, under CC BY 4.0. Their
-unchanged viewBox and path data, with the Font Awesome attribution comment,
-live in `scripts/build-compatibility-pages.py` and
-`site/compatibility/compatibility.js`; only presentation and accessibility
-attributes are added. No Font Awesome font, CSS or runtime is used.
-
 ### Mac App Store installation icon
 
 The Mac App Store build of the app marks a successful installation with the
@@ -289,3 +279,40 @@ original solid `circle-check` SVG from the same pinned Font Awesome Free 7.3.1
 revision, under CC BY 4.0. The unchanged SVG, with its attribution comment, is
 `app/Terento/Assets.xcassets/CircleCheck.imageset/circle-check.svg`; the app
 only tints it. No Font Awesome font, CSS or runtime is bundled.
+
+## Lucide icons (public website)
+
+- Source: [lucide-static](https://github.com/lucide-icons/lucide) v0.460.0,
+  original 24 px outline SVGs.
+- License: ISC License.
+- Copyright: Copyright (c) for portions of Lucide are held by Cole Bemis
+  2013-2022 as part of Feather (MIT). All other copyright (c) for Lucide are
+  held by Lucide Contributors 2022.
+- Icons used: `laptop` and `globe` (Compatibility successful installs, in
+  `scripts/build-compatibility-pages.py` and
+  `site/compatibility/compatibility.js`), `x` (Compatibility clear filters) and
+  `copy` and `check` (Linux guide command copy, in
+  `scripts/build-guide-pages.py`), `clock` (Download "coming soon" in
+  `scripts/normalize-release-pages.py`) and the Map styles controls (`search`,
+  `x`, `map-pin`, `square`, `columns-2`, `chevrons-left-right`, `link`,
+  `arrow-left-right`, `plus`, `minus`, `info`, `chevron-right`, `star`,
+  `circle-minus`, `clock`, in `scripts/build-map-style-pages.py` and
+  `site/map-styles/map-styles.js`) and `heart` (footer Support link, in
+  `scripts/normalize-public-shell.py`).
+- Path data is unchanged and carries the `@license lucide-static v0.460.0 - ISC`
+  comment (except the Download clock and the footer heart, which appear on the
+  Download page whose HTML must carry only the release version); only the stroke width (1.75 px, the brand icon spec) and
+  presentation and accessibility attributes are set. No Lucide font, package or
+  runtime is bundled.
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
+OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
+THIS SOFTWARE.

@@ -51,7 +51,7 @@ for (const locale of locales) {
     assert.match(entry.question, questionSignals[index][0], `${home}: FAQ question ${index + 1} semantic order`);
     assert.match(entry.answer, questionSignals[index][1], `${home}: FAQ answer ${index + 1} content`);
   });
-  assert.match(entries[1].answer, /simple|einfach|simple|proste|jednoduch|semplice/i, `${home}: BaseCamp answer explains simple map management`);
+  assert.match(entries[1].answer, /BaseCamp/, `${home}: BaseCamp answer says neither Garmin app is needed`);
   assert.match(entries[2].answer, /\.img|compatible|kompatib|zgodn|kompatibil|support/i, `${home}: own-map answer explains compatible local import`);
   assert.match(entries[5].answer, /already filled in|bereits ausgefüllten|déjà rempli|już wypełnionym|již vyplněnou|già compilato/, `${home}: installation report is prefilled`);
   assert.doesNotMatch(entries[5].answer, /copies a diagnostic|kopiert einen Diagnosebericht|copie un rapport|kopiuje raport|zkopíruje|copia un rapporto/, `${home}: no obsolete clipboard instruction`);
@@ -84,8 +84,8 @@ for (const locale of locales) {
   assert.doesNotMatch(entries[4].markup, /<a\b/, `${home}: watch-not-showing-up answer has no inline links`);
   if (locale === "en") {
     assert.match(entries[1].markup, />Read the installation guide\.</);
-    assert.match(entries[5].markup, />Open an issue /);
-    assert.match(entries[5].markup, />Email support /);
+    assert.match(entries[5].markup, />Open an issue</);
+    assert.match(entries[5].markup, />Email support</);
     assert.equal(entries[4].question, "Why isn’t my Garmin watch showing up on my Mac?");
   }
   assert.doesNotMatch(source, /<section[^>]+id="faq"[^>]*>[\s\S]*?<section[^>]+id="faq"/i, `${home}: one FAQ section`);

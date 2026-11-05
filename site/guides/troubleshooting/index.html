@@ -1,12 +1,12 @@
 <!doctype html>
 <html lang="en" data-language="en" data-page="troubleshooting">
   <head>
-    <script defer src="/site-shell.js?v=20261029-web-installer-public-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20261102-design-audit-v4">
+    <script defer src="/site-shell.js?v=20261105-copy-command-v1"></script>
+    <link rel="stylesheet" href="/styles.css?v=20261105-type-scale-v1">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
-    <meta name="description" content="Garmin watch or Edge not showing up on your Mac? Fix USB mode (MTP), Garmin Express using the device, low storage and failed map downloads.">
+    <meta name="description" content="Garmin watch or Edge not showing up on your Mac, or the map is missing? Fixes for USB mode, Garmin Express, downloads and installs.">
     <meta name="robots" content="index,follow">
     <link rel="canonical" href="https://terento.app/guides/troubleshooting/">
     <link rel="alternate" hreflang="en" href="https://terento.app/guides/troubleshooting/">
@@ -18,8 +18,8 @@
     <link rel="alternate" hreflang="x-default" href="https://terento.app/guides/troubleshooting/">
     <meta property="og:type" content="article">
     <meta property="og:site_name" content="Terento">
-    <meta property="og:title" content="Garmin Watch Not Showing Up on Mac? Troubleshooting — Terento">
-    <meta property="og:description" content="Garmin watch or Edge not showing up on your Mac? Fix USB mode (MTP), Garmin Express using the device, low storage and failed map downloads.">
+    <meta property="og:title" content="Garmin Not Showing Up on Mac? Map Fixes — Terento">
+    <meta property="og:description" content="Garmin watch or Edge not showing up on your Mac, or the map is missing? Fixes for USB mode, Garmin Express, downloads and installs.">
     <meta property="og:url" content="https://terento.app/guides/troubleshooting/">
     <meta property="og:image" content="https://terento.app/assets/social/terento-og.png">
     <meta property="og:image:type" content="image/png">
@@ -28,10 +28,10 @@
     <meta property="og:image:alt" content="Terento showing a connected Garmin smartwatch on macOS">
     <meta property="og:locale" content="en_US">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Garmin Watch Not Showing Up on Mac? Troubleshooting — Terento">
-    <meta name="twitter:description" content="Garmin watch or Edge not showing up on your Mac? Fix USB mode (MTP), Garmin Express using the device, low storage and failed map downloads.">
+    <meta name="twitter:title" content="Garmin Not Showing Up on Mac? Map Fixes — Terento">
+    <meta name="twitter:description" content="Garmin watch or Edge not showing up on your Mac, or the map is missing? Fixes for USB mode, Garmin Express, downloads and installs.">
     <meta name="twitter:image" content="https://terento.app/assets/social/terento-og.png">
-    <title>Garmin Watch Not Showing Up on Mac? Troubleshooting — Terento</title>
+    <title>Garmin Not Showing Up on Mac? Map Fixes — Terento</title>
 
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#222A2B">
 
@@ -41,7 +41,7 @@
     <link rel="mask-icon" href="/safari-pinned-tab.svg?v=20260820-4" color="#7898A8">
     <link rel="manifest" href="/manifest.webmanifest">
     <script defer src="/language.js?v=20260926-static-shell-v1"></script>
-    <script defer src="/privacy-consent.js?v=20260905-campaign-url-only-v1"></script>
+    <script defer src="/privacy-consent.js?v=20261105-outbound-links"></script>
     <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -136,7 +136,6 @@
       <article class="guide-article">
         <header class="guide-intro">
           <div class="shell">
-            <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>Troubleshooting</p>
             <h1>Fix Garmin watch and map problems on Mac</h1>
             <p class="guide-lede">Find the problem you see, from a Garmin watch that doesn’t show up on your Mac to a map download that fails, and follow the short steps. If nothing helps, send a report so we can take a look.</p>
             <nav class="troubleshooting-toc" aria-label="On this page"><div class="troubleshooting-toc-group"><p class="troubleshooting-toc-title">Garmin watch connection problems</p><ul><li><a href="#connect-watch" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin watch not showing up on Mac</a></li><li><a href="#garmin-busy" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin Express or another app is using the watch</a></li><li><a href="#multiple-garmin" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">More than one Garmin device connected</a></li><li><a href="#usb-mode" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin watch not recognized: USB mode (MTP)</a></li><li><a href="#connection-timeout" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin watch detected but not ready</a></li><li><a href="#watch-not-responding" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin watch stopped responding</a></li></ul></div><div class="troubleshooting-toc-group"><p class="troubleshooting-toc-title">Watch and map checks</p><ul><li><a href="#model-not-enabled" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Map installation not available for this Garmin model</a></li><li><a href="#couldnt-check" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Terento couldn’t check your Garmin watch</a></li><li><a href="#catalog-unavailable" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin map list won’t load or Terento needs an update</a></li></ul></div><div class="troubleshooting-toc-group"><p class="troubleshooting-toc-title">Map downloads and free space</p><ul><li><a href="#download-failed" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin map download failed</a></li><li><a href="#mac-storage" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Not enough space on the Mac to download the map</a></li><li><a href="#watch-storage" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Not enough space for Garmin maps on the watch</a></li></ul></div><div class="troubleshooting-toc-group"><p class="troubleshooting-toc-title">Map installs, updates and removals</p><ul><li><a href="#leftover-map" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Map installation failed: leftover map on the watch</a></li><li><a href="#update-remove" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Map update or removal takes a long time</a></li></ul></div><div class="troubleshooting-toc-group"><p class="troubleshooting-toc-title">Getting help</p><ul><li><a href="#send-report" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">How to report a problem with Terento</a></li></ul></div></nav>
@@ -145,15 +144,15 @@
 
         <div class="shell guide-content">
           <section class="guide-preflight" id="garmin-edge" aria-labelledby="garmin-edge-title">
-            <div class="guide-section-heading"><p class="eyebrow">Garmin Edge</p><h2 id="garmin-edge-title">Garmin Edge not showing up on Mac</h2></div>
+            <div class="guide-section-heading"><h2 id="garmin-edge-title">Garmin Edge not showing up on Mac</h2></div>
             <div class="guide-preflight-copy">
               <p>Newer Garmin Edge bike computers with map support connect to a Mac the same way current Garmin watches do, so most steps on this page work for an Edge too: use a USB data cable, quit Garmin Express and wait up to 2 minutes. Older Edge models that show up as a drive in Finder work differently.</p>
-              <a class="text-link" href="/guides/install-garmin-maps-edge-mac/" data-umami-event="guide-link-click" data-umami-event-location="troubleshooting-edge">Read the Garmin Edge guide <span aria-hidden="true">→</span></a>
+              <a class="text-link" href="/guides/install-garmin-maps-edge-mac/" data-umami-event="guide-link-click" data-umami-event-location="troubleshooting-edge">Read the Garmin Edge guide</a>
             </div>
           </section>
 
           <section class="troubleshooting" id="topic-connection" aria-labelledby="topic-connection-title">
-            <div class="guide-section-heading"><p class="eyebrow">Connection</p><h2 id="topic-connection-title">Garmin watch connection problems</h2></div>
+            <div class="guide-section-heading"><h2 id="topic-connection-title">Garmin watch connection problems</h2></div>
             <div class="troubleshooting-list"><section class="troubleshooting-item" id="connect-watch" aria-labelledby="connect-watch-title">
               <h3 id="connect-watch-title">Garmin watch not showing up on Mac</h3>
               <p>Connect the watch directly to your Mac with a USB cable that supports data, unlock it and wait up to 2 minutes: Terento finds it automatically.</p>
@@ -181,7 +180,7 @@
             </section></div>
           </section>
           <section class="troubleshooting" id="topic-checks" aria-labelledby="topic-checks-title">
-            <div class="guide-section-heading"><p class="eyebrow">Checks</p><h2 id="topic-checks-title">Watch and map checks</h2></div>
+            <div class="guide-section-heading"><h2 id="topic-checks-title">Watch and map checks</h2></div>
             <div class="troubleshooting-list"><section class="troubleshooting-item" id="model-not-enabled" aria-labelledby="model-not-enabled-title">
               <h3 id="model-not-enabled-title">Map installation not available for this Garmin model</h3>
               <p>Terento installs maps only on Garmin watches with map support that are enabled in Terento. You can still connect this watch and browse the maps.</p>
@@ -197,7 +196,7 @@
             </section></div>
           </section>
           <section class="troubleshooting" id="topic-storage" aria-labelledby="topic-storage-title">
-            <div class="guide-section-heading"><p class="eyebrow">Downloads and space</p><h2 id="topic-storage-title">Map downloads and free space</h2></div>
+            <div class="guide-section-heading"><h2 id="topic-storage-title">Map downloads and free space</h2></div>
             <div class="troubleshooting-list"><section class="troubleshooting-item" id="download-failed" aria-labelledby="download-failed-title">
               <h3 id="download-failed-title">Garmin map download failed</h3>
               <p>Check your internet connection and try again later: Terento downloads each map directly from its provider, and providers are sometimes slow or temporarily unavailable.</p>
@@ -213,7 +212,7 @@
             </section></div>
           </section>
           <section class="troubleshooting" id="topic-maps" aria-labelledby="topic-maps-title">
-            <div class="guide-section-heading"><p class="eyebrow">Installing and updating</p><h2 id="topic-maps-title">Map installs, updates and removals</h2></div>
+            <div class="guide-section-heading"><h2 id="topic-maps-title">Map installs, updates and removals</h2></div>
             <div class="troubleshooting-list"><section class="troubleshooting-item" id="leftover-map" aria-labelledby="leftover-map-title">
               <h3 id="leftover-map-title">Map installation failed: leftover map on the watch</h3>
               <p>Remove the leftover map in “Manage maps”, then install it again. If an installation stops after copying started, part of the map can stay on the watch, and Terento doesn’t remove it automatically.</p>
@@ -225,7 +224,7 @@
             </section></div>
           </section>
           <section class="troubleshooting" id="topic-help" aria-labelledby="topic-help-title">
-            <div class="guide-section-heading"><p class="eyebrow">Still stuck?</p><h2 id="topic-help-title">Getting help</h2></div>
+            <div class="guide-section-heading"><h2 id="topic-help-title">Getting help</h2></div>
             <div class="troubleshooting-list"><section class="troubleshooting-item" id="send-report" aria-labelledby="send-report-title">
               <h3 id="send-report-title">How to report a problem with Terento</h3>
               <p>Choose “Report issue” on the failure screen: Terento opens GitHub with the report it saved on your Mac already filled in.</p>
@@ -233,7 +232,7 @@
             </section></div>
           </section>
 
-          <p class="troubleshooting-guide-link">New to Terento? <a class="text-link" href="/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="troubleshooting-bottom">Read the Mac installation guide <span aria-hidden="true">→</span></a></p>
+          <p class="troubleshooting-guide-link">New to Terento? <a class="text-link" href="/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="troubleshooting-bottom">Read the Mac installation guide</a></p>
         </div>
       </article>
     </main>
@@ -244,13 +243,16 @@
             <img src="/assets/logo-white.svg" alt="" width="32" height="32">
             <span>Terento</span>
           </a>
-          <div class="footer-meta"><a class="footer-status footer-project-link" data-shell-copy="status" data-project-link href="https://github.com/VooZ2/terento" target="_blank" rel="noopener noreferrer">Open-source project</a><a class="footer-support-link" data-shell-copy="support" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">Support Terento</a></div>
+          <p class="footer-tagline" data-shell-copy="tagline">Free maps for your Garmin watch or Edge.</p>
+          <div class="footer-actions">
+          <a class="footer-support-link" data-support-link href="https://buymeacoffee.com/vooz2" target="_blank" rel="noopener noreferrer"><svg class="footer-support-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg><span data-shell-copy="support">Donate</span><span class="footer-support-via">Buy Me a Coffee</span></a>
+          <a class="footer-project-link" data-project-link href="https://github.com/VooZ2/terento" target="_blank" rel="noopener noreferrer"><svg class="footer-support-icon" viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg><span data-shell-copy="status">Source code</span><span class="footer-support-via">GitHub</span></a>
+          </div>
         </div>
         <nav class="footer-nav" data-shell-aria="footer" aria-label="Footer navigation">
-          <a href="/#faq" data-shell-copy="faq" data-shell-route="faq" data-umami-event="faq-link-click" data-umami-event-location="footer-nav">FAQ</a><a href="/guides/troubleshooting/" data-shell-copy="troubleshooting" data-shell-route="troubleshooting" aria-current="page" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Troubleshooting</a>
-          <a data-shell-copy="web_installer" href="/install/" data-umami-event="web-installer-link-click" data-umami-event-location="footer-nav">Web installer</a>
-          <a data-shell-copy="legal" href="/legal/" data-umami-event="legal-link-click" data-umami-event-location="footer-nav">Legal</a>
-          <a data-shell-copy="privacy" href="/privacy/" data-umami-event="privacy-link-click" data-umami-event-location="footer-nav">Privacy</a>
+          <div class="footer-column"><h2 class="footer-heading" data-shell-copy="col_install">Install</h2><a href="/download/" data-shell-copy="download" data-shell-route="download" data-umami-event="download-cta-click" data-umami-event-location="footer-nav">Download</a><a data-shell-copy="web_installer" href="/install/" data-umami-event="web-installer-link-click" data-umami-event-location="footer-nav">Web installer</a><a href="/map-styles/" data-shell-copy="styles" data-shell-route="styles" data-umami-event="maps-link-click" data-umami-event-location="footer-nav">Maps</a><a href="/compatibility/" data-shell-copy="compatibility" data-shell-route="compatibility" data-umami-event="compatibility-link-click" data-umami-event-location="footer-nav">Compatibility</a></div>
+          <div class="footer-column"><h2 class="footer-heading" data-shell-copy="col_help">Help</h2><a href="/guides/install-garmin-maps-mac/" data-shell-copy="guide_watch" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Watch guide</a><a href="/guides/install-garmin-maps-edge-mac/" data-shell-copy="guide_edge" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Edge guide</a><a href="/guides/install-garmin-maps-linux/" data-shell-copy="guide_linux" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Linux guide</a><a href="/guides/troubleshooting/" data-shell-copy="troubleshooting" data-shell-route="troubleshooting" aria-current="page" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Troubleshooting</a><a href="/#faq" data-shell-copy="faq" data-shell-route="faq" data-umami-event="faq-link-click" data-umami-event-location="footer-nav">FAQ</a></div>
+          <div class="footer-column"><h2 class="footer-heading" data-shell-copy="col_project">Project</h2><a href="/about/" data-shell-copy="about" data-shell-route="about" data-umami-event="navigation-link-click" data-umami-event-location="footer-nav">About</a><a data-shell-copy="legal" href="/legal/" data-umami-event="legal-link-click" data-umami-event-location="footer-nav">Legal</a><a data-shell-copy="privacy" href="/privacy/" data-umami-event="privacy-link-click" data-umami-event-location="footer-nav">Privacy</a></div>
         </nav>
       </div>
       <div class="shell footer-bottom"><p>© 2026 Terento Project</p></div>

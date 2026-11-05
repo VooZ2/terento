@@ -1,21 +1,21 @@
 ---
-title: "Instaluj mapy Garmin w Linuksie z Chrome — Terento"
+title: "Mapy na zegarek Garmin w Linuksie z Chrome — Terento"
 canonical: https://terento.app/pl/guides/install-garmin-maps-linux/
 ---
-
-Poradnik dla Linuksa
 
 # Instalowanie map Garmin w Linuksie
 
 W Linuksie instalator webowy Terento wgrywa darmowe mapy na zegarki Garmin obsługujące mapy, prosto z przeglądarki. Najpierw Linux potrzebuje jednej reguły uprawnień, aby przeglądarka mogła używać zegarka przez USB.
+
+[Otwórz instalator webowy](https://terento.app/pl/install/)
+
+Masz Maca? Przeczytaj poradnik dla [zegarka Garmin](https://terento.app/pl/guides/install-garmin-maps-mac/) lub [Garmin Edge](https://terento.app/pl/guides/install-garmin-maps-edge-mac/).
 
 ## Czego potrzebujesz
 
 - Chrome, Microsoft Edge, Opery lub Brave na komputerze z Linuksem. Firefox nie łączy się z urządzeniami USB.
 - Kabla USB do transmisji danych, nie tylko do ładowania.
 - Odblokowanego zegarka Garmin obsługującego mapy.
-
-Trzy kroki
 
 ## Zainstaluj mapę z przeglądarki
 
@@ -29,13 +29,11 @@ echo 'SUBSYSTEM=="usb", ATTR{idVendor}=="091e", MODE="0660", GROUP="plugdev", TA
 
 2. Otwórz instalator webowy i połącz
 
-Otwórz instalator webowy, wybierz „Podłącz zegarek”, a potem pozycję ze słowem „Garmin” w nazwie. Lista może pozostać pusta przez minutę lub dwie, gdy zegarek się przygotowuje.
+[Otwórz instalator webowy](https://terento.app/pl/install/), wybierz „Podłącz zegarek”, a potem pozycję ze słowem „Garmin” w nazwie. Lista może pozostać pusta przez minutę lub dwie, gdy zegarek się przygotowuje.
 
 3. Wybierz mapy i zainstaluj
 
 Wybierz kraj lub region, a potem „Zainstaluj mapy”. Nie zamykaj karty i nie odłączaj zegarka do zakończenia.
-
-Rozwiązywanie problemów
 
 ## Jeśli to nie działa
 
@@ -50,9 +48,3 @@ Nie zamykaj listy przez maksymalnie dwie minuty. Jeśli nie pojawi się pozycja 
 ### Przeglądarka nie ma dostępu do USB
 
 Przeglądarka zainstalowana jako pakiet Snap może nie mieć dostępu do USB. Użyj przeglądarki z jej oficjalnego pakietu .deb lub .rpm.
-
-Gotowe?
-
-## Otwórz instalator webowy i połącz zegarek.
-
-[Otwórz instalator webowy](https://terento.app/pl/install/)

@@ -1,76 +1,164 @@
 ---
-title: "Cartes Garmin gratuites : OpenTopoMap vs Freizeitkarte — Terento"
+title: "Cartes Garmin gratuites : OpenTopoMap, Freizeitkarte"
 canonical: https://terento.app/fr/map-styles/
 ---
 
-Styles de carte
+# Cartes gratuites pour votre Garmin
 
-# Comparez les cartes Garmin gratuites avant de les installer
-
-Voyez comment des styles de carte gratuits représentent le même lieu. Choisissez une zone, un sentier ou une ville populaire, puis comparez courbes de niveau, sentiers, rues et libellés.
+OpenTopoMap, Freizeitkarte, MapRando, BBBike et OSMapaPL sont des cartes topographiques gratuites issues d’OpenStreetMap, pour les montres Garmin et les compteurs vélo Edge. Voyez comment chacune représente le même lieu, puis installez celle qui convient à vos sorties.
 
 Lieu
 
-## Cinque Terre
+Chamonix–Mont Blanc
 
 Style de la carte de gauche Style de la carte de droite
 
-À propos des styles de carte
+Les aperçus sont proches, mais pas exacts : votre montre dessine elle-même la carte, les couleurs et le niveau de détail peuvent donc varier selon le modèle et ses réglages de carte.
 
-### Freizeitkarte
+## Les cartes en un coup d’œil
 
-Pour les balades, le vélo et les sorties.
+| Carte
+| Couverture
+| Courbes de niveau
+| Idéale pour
+| [OpenTopoMap](https://terento.app/fr/map-styles/#opentopomap)
+| Monde entier
+| En option
+| Randonnée en montagne
+| [Freizeitkarte](https://terento.app/fr/map-styles/#freizeitkarte)
+| Europe
+| Incluses
+| Balades, vélo et sorties
+| [MapRando](https://terento.app/fr/map-styles/#maprando)
+| De nombreux pays
+| Non précisé
+| Petits sentiers à pied
+| [BBBike](https://terento.app/fr/map-styles/#bbbike)
+| Monde entier
+| Pas dans le style OpenTopoMap
+| Vélo, rues et pistes cyclables
+| [OSMapaPL](https://terento.app/fr/map-styles/#osmapa)
+| Pologne
+| Paquet séparé
+| Randonnée et vélo en Pologne
 
-- Itinéraires à pied et à vélo
-- Courbes de niveau incluses
-- Lieux à visiter, arrêts de bus et gares
+La carte OpenTopoMap des Hautes Tatras
 
-### OpenTopoMap
+## OpenTopoMap
 
 Pour les randonnées où le relief compte.
 
-- Détails topographiques des routes et chemins
-- Données d’altitude et relief ombré
-- Courbes de niveau en option pour détailler le relief
+Une carte topographique avec relief ombré, pour bien voir crêtes et vallées, et des routes et chemins détaillés.
 
-Complément facultatif pour OpenTopoMap Courbes de niveau
+Couverture
+Pays et régions du monde entier.
+Courbes de niveau
+Une option à choisir lors de l’installation, proposée pour la plupart des régions. Elle prend de la place en plus.
+Mises à jour
+Nouvelles éditions quelques fois par an.
+Licence
+Données © contributeurs OpenStreetMap (ODbL). Style de carte © OpenTopoMap (CC BY-SA).
 
-Ajoutez des courbes d’altitude pour mieux lire les pentes. Choisissez ce complément lors de l’installation d’une région OpenTopoMap dans Terento.
+La carte Freizeitkarte des Hautes Tatras
 
-### MapRando
+## Freizeitkarte
+
+Pour les balades, le vélo et les sorties.
+
+Une carte de loisirs claire avec itinéraires à pied et à vélo, lieux à visiter, arrêts de bus et gares.
+
+Couverture
+Pays de toute l’Europe, y compris les Canaries, les Açores et Madère.
+Courbes de niveau
+Incluses.
+Mises à jour
+Nouvelles éditions tous les deux à trois mois.
+Licence
+Données © contributeurs OpenStreetMap (ODbL). Carte © Freizeitkarte (projet FZK).
+
+La carte MapRando des Hautes Tatras
+
+## MapRando
 
 Pour explorer les petits sentiers à pied.
 
-- Petits chemins au-delà des sentiers principaux
-- Un style de carte conçu pour la randonnée
-- Les nouvelles éditions intègrent les modifications OpenStreetMap
+Une carte de randonnée qui montre aussi les petits sentiers hors des grands itinéraires. Certains libellés sont en français.
 
-Certains libellés de la carte sont en français.
+Couverture
+Pays et régions d’Europe, des Amériques, d’Afrique, d’Asie et d’Australie. Certains pays sont découpés en régions ou en États.
+Mises à jour
+Les nouvelles éditions intègrent les changements d’OpenStreetMap.
+Licence
+Données © contributeurs OpenStreetMap (ODbL). MapRando par Alexis Lecanu.
 
-### BBBike (Ontrail)
+La carte BBBike des Hautes Tatras
 
-Pour marcher et pédaler en économisant le stockage.
+## BBBike
 
-- Des cartes compactes qui économisent de l’espace
-- Petites routes et chemins inclus
-- Navigation le long des routes et chemins cartographiés
+Des cartes régionales mises à jour chaque semaine pour le vélo et la marche, même là où les autres manquent.
 
-### BBBike (OpenTopoMap)
+Des cartes régionales en trois styles.
 
-Pour la randonnée et le vélo dans le style OpenTopoMap, même là où les autres cartes manquent.
+- Ontrail
 
-- Style OpenTopoMap : sentiers, chemins et occupation du sol
-- Cartes régionales actualisées chaque semaine
-- Aussi pour des pays qu’aucune autre carte ne couvre ici
+Des cartes compactes avec petites routes et chemins, qui économisent la place sur l’appareil. Navigation possible le long des routes et chemins cartographiés.
 
-Cette carte n’a pas de courbes de niveau.
+- Style OpenTopoMap
 
-Les aperçus sont proches, mais pas exacts : votre montre dessine elle-même la carte, les couleurs et le niveau de détail peuvent donc varier selon le modèle et ses réglages de carte.
+Sentiers, chemins et occupation du sol dans le style OpenTopoMap, sans courbes de niveau.
 
-Installez ces cartes sur votre montre avec l’ [app pour Mac](https://terento.app/fr/download/) ou l’ [installateur web](https://terento.app/fr/install/).
+- Classique
 
-## Cartes OpenStreetMap gratuites pour montres Garmin
+Le style BBBike d’origine, toujours proposé pour quelques régions.
 
-Chaque style présenté ici est une carte gratuite issue d’OpenStreetMap, la carte tenue à jour par des bénévoles. Des projets communautaires en font des cartes Garmin, chacune avec son propre rendu et son niveau de détail.
+Couverture
+Des régions du monde entier, y compris des pays qu’aucune autre carte ne couvre ici.
+Mises à jour
+Chaque semaine.
+Licence
+Données © contributeurs OpenStreetMap (ODbL). Cartes Garmin par BBBike ; le style OpenTopoMap est sous CC BY-SA.
 
-Choisissez selon votre activité : Freizeitkarte inclut les courbes de niveau, OpenTopoMap montre l’ombrage du relief et peut ajouter des courbes de niveau. MapRando affiche aussi les petits sentiers hors des grands itinéraires. BBBike est pensé pour les rues et les pistes cyclables, et son style Ontrail garde des cartes légères. OSMapaPL couvre la Pologne en détail.
+La carte OSMapaPL des Hautes Tatras
+
+## OSMapaPL
+
+Pour parcourir la Pologne à pied ou à vélo.
+
+Une carte détaillée de la Pologne en trois styles : avec les lettres polonaises, sans elles, ou une carte plus légère et plus petite.
+
+Couverture
+La Pologne, avec ou sans les zones frontalières.
+Courbes de niveau
+Dans un paquet séparé.
+Licence
+Données © contributeurs OpenStreetMap (ODbL). OSMapaPL par les bénévoles d’OSMapa.
+
+## Installer une carte
+
+Terento est gratuit. Utilisez l’app sur un Mac avec puce Apple, ou l’installateur web dans Chrome, Microsoft Edge, Opera ou Brave.
+
+[Télécharger pour Mac](https://terento.app/fr/download/) [Ouvrir l’installateur web](https://terento.app/fr/install/)
+
+Pas à pas : le [guide montres Garmin](https://terento.app/fr/guides/install-garmin-maps-mac/) et le [guide Garmin Edge](https://terento.app/fr/guides/install-garmin-maps-edge-mac/).
+
+## Questions sur les cartes gratuites
+
+Ces cartes sont-elles gratuites ?
+
+Oui. Chaque carte présentée ici est gratuite et créée à partir d’OpenStreetMap par des projets communautaires. Terento, l’app qui les installe, est aussi gratuite et open source.
+
+Fonctionnent-elles sur les compteurs vélo Garmin Edge ?
+
+Oui, sur les compteurs Edge récents compatibles avec les cartes, comme les Edge 540, 840 et 1050, et sur les montres Garmin compatibles avec les cartes. La [page Compatibilité](https://terento.app/fr/compatibility/) liste les modèles sur lesquels des cartes ont été installées.
+
+Une carte gratuite remplace-t-elle mes cartes Garmin ?
+
+Non. La nouvelle carte s’ajoute à celles déjà présentes sur l’appareil. Vos cartes Garmin d’origine ne sont jamais modifiées ni supprimées, et vous pouvez activer ou désactiver chaque carte dans les réglages de carte de l’appareil.
+
+Les cartes affichent-elles les courbes de niveau ?
+
+Freizeitkarte les inclut. OpenTopoMap les propose en option, et OSMapaPL dans un paquet séparé. Le style OpenTopoMap de BBBike n’en a pas.
+
+Comment en installer une ?
+
+[Téléchargez](https://terento.app/fr/download/) Terento pour un Mac avec puce Apple, ou utilisez l’ [installateur web](https://terento.app/fr/install/) dans un navigateur Chromium. Connectez votre montre ou votre Edge, choisissez une carte et une région, puis installez. Le [guide montres Garmin](https://terento.app/fr/guides/install-garmin-maps-mac/) et le [guide Garmin Edge](https://terento.app/fr/guides/install-garmin-maps-edge-mac/) vous guident.

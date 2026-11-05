@@ -1,26 +1,19 @@
 ---
-title: "Terento — Mappe di terze parti per Garmin su Mac"
+title: "Terento — Mappe gratis per orologi Garmin ed Edge"
 canonical: https://terento.app/it/
 ---
 
-Progetto open source
-
 # Installa mappe gratuite sul tuo dispositivo Garmin
 
-Terento è uno strumento gratuito e open source per installare, aggiornare e gestire mappe di terze parti su smartwatch Garmin e ciclocomputer Edge: con un’app Mac nativa o nel browser del computer.
+Terento installa mappe gratuite dai progetti OpenStreetMap su orologi Garmin e ciclocomputer Edge. Con l’app per Mac o direttamente dal browser del computer. Gratis e open source.
 
-[Scarica per Mac](https://terento.app/it/download/)
-[Verifica la compatibilità](https://terento.app/it/compatibility/) [Installa dal browser](https://terento.app/it/install/)
+[Scarica per Mac](https://terento.app/it/download/) [Installa dal browser](https://terento.app/it/install/)
 
-Terento mostra l’avanzamento dell’installazione di mappe di terze parti su macOS
+Non sai se il tuo modello è compatibile? [Verifica la compatibilità](https://terento.app/it/compatibility/)
 
-Come funziona
+Orologio Garmin con la mappa OpenTopoMap del lago Königssee, nelle Alpi bavaresi
 
-## Connetti Installa Fatto
-
-Installare mappe di terze parti dovrebbe essere semplice e veloce — senza copiare file a mano né competenze tecniche.
-
-Terento riunisce l’intero processo in tre semplici passaggi.
+## Come funziona
 
 1. Collega
 
@@ -34,10 +27,6 @@ Scegli le mappe dal catalogo oppure aggiungi la tua mappa .img compatibile.
 
 Le tue mappe sono installate e pronte per essere usate sul tuo Garmin.
 
-## Installa le mappe
-
-Scegli le mappe dal catalogo per regione oppure aggiungi la tua mappa .img compatibile.
-
 Terento mostra provider e regioni di mappe di terze parti su macOS
 
 ## Gestisci le mappe
@@ -46,23 +35,19 @@ Visualizza le mappe installate, aggiornatele quando è disponibile una versione 
 
 Terento mostra le mappe di terze parti installate raggruppate per provider
 
-Installer web
+Ciclocomputer Garmin Edge con la mappa Freizeitkarte della salita di Sa Calobra, nella Serra de Tramuntana a Maiorca
 
-## Niente app? Installa dal browser.
+## Anche in bici
 
-Collega il tuo Garmin con un cavo USB, scegli le mappe e installale direttamente da Chrome, Microsoft Edge, Opera o Brave. In seguito le aggiorni o le rimuovi allo stesso modo.
+I ciclocomputer Garmin Edge più recenti con supporto mappe, come Edge 540, 840 e 1050, usano le stesse mappe. Collega, scegli una regione, installa.
 
-Funziona su Mac e, ancora in fase di test, su Linux. Non ancora su Windows, telefoni o tablet.
+[Leggi la guida per Garmin Edge](https://terento.app/it/guides/install-garmin-maps-edge-mac/)
 
-Mac · Linux (in test)Chrome, Microsoft Edge, Opera, BraveCavo USB dati
-
-[Apri l’installer web](https://terento.app/it/install/)
-
-Mappe disponibili
-
-## Scopri le mappe disponibili.
+## Scegli la mappa adatta al percorso
 
 Scegli mappe dei provider disponibili. Le mappe vengono scaricate dalla fonte originale di ciascun provider.
+
+La mappa Freizeitkarte degli Alti Tatra
 
 ### Freizeitkarte
 
@@ -73,6 +58,8 @@ Per passeggiate, giri in bici e gite.
 - Percorsi a piedi e in bicicletta
 - Curve di livello incluse
 - Luoghi da visitare, fermate degli autobus e stazioni
+
+La mappa OpenTopoMap degli Alti Tatra
 
 ### OpenTopoMap
 
@@ -90,6 +77,8 @@ Aggiungi linee altimetriche per leggere meglio le pendenze. Scegli questo compon
 
 Disponibile per 157 pacchetti di mappe · Occupa spazio aggiuntivo.
 
+La mappa MapRando degli Alti Tatra
+
 ### MapRando
 
 Per esplorare i sentieri minori a piedi.
@@ -102,9 +91,25 @@ Alcune etichette della mappa sono in francese.
 
 [Confronta gli stili dal vivo](https://terento.app/it/map-styles/)
 
-Hai domande?
+## Con l’app per Mac o dal browser
 
-## FAQ
+### App per Mac
+
+Installa le mappe del catalogo o la tua mappa .img, vedi cosa c’è sul tuo Garmin e aggiorna le mappe quando escono nuove edizioni.
+
+macOS 13 o successivo su Apple Silicon.
+
+[Scarica per Mac](https://terento.app/it/download/)
+
+### Installer web
+
+Collega il tuo Garmin con un cavo USB, scegli le mappe e installale direttamente da Chrome, Microsoft Edge, Opera o Brave. In seguito le aggiorni o le rimuovi allo stesso modo.
+
+Funziona su Mac e, ancora in fase di test, su Linux. Non ancora su Windows, telefoni o tablet.
+
+[Apri l’installer web](https://terento.app/it/install/)
+
+## Domande e risposte
 
 Quali smartwatch Garmin e ciclocomputer Edge funzionano con Terento?
 
@@ -112,7 +117,7 @@ Consulta la pagina [Compatibilità](https://terento.app/it/compatibility/) per i
 
 Posso installare mappe di terze parti su uno smartwatch Garmin da un Mac senza Garmin Express né BaseCamp?
 
-Sì. Terento è progettato per rendere semplice e veloce la gestione delle mappe di terze parti su macOS — dalla scelta della mappa all’installazione, all’aggiornamento e alla gestione sul tuo smartwatch Garmin. [Leggi la guida all’installazione.](https://terento.app/it/guides/install-garmin-maps-mac/)
+Sì. Terento fa tutto dal tuo Mac: scegli una mappa e una regione, installala sul tuo Garmin e più tardi aggiornala o rimuovila. Non servono Garmin Express né BaseCamp. [Leggi la guida all’installazione.](https://terento.app/it/guides/install-garmin-maps-mac/)
 
 Posso aggiungere la mia mappa .img?
 
@@ -120,7 +125,7 @@ Sì. Aggiungi una mappa .img compatibile dal tuo Mac e installala sul tuo smartw
 
 Posso aggiornare le mappe in un secondo momento?
 
-Sì. Terento mostra quando sono disponibili versioni più recenti e ti aiuta ad aggiornare le mappe di terze parti gestite da Terento.
+Sì. Terento ti avvisa quando esce una versione più recente di una mappa installata e la aggiorna per te.
 
 Perché il Mac non rileva il mio orologio Garmin?
 
@@ -136,8 +141,8 @@ Posso installare le mappe senza installare l’app?
 
 Sì. L’ [installer web](https://terento.app/it/install/) installa, aggiorna e rimuove le mappe del catalogo da Chrome, Microsoft Edge, Opera o Brave su Mac e su Linux, dove è ancora in fase di test. Non funziona ancora su Windows, telefoni o tablet e non può aggiungere mappe .img personali.
 
-## Pronto per un modo più semplice di installare le mappe?
+## Il tuo Garmin, pronto per la prossima uscita
 
 Scarica Terento per il tuo Mac oppure installa le mappe direttamente dal browser.
 
-[Scarica](https://terento.app/it/download/) [Installa dal browser](https://terento.app/it/install/)
+[Scarica per Mac](https://terento.app/it/download/) [Installa dal browser](https://terento.app/it/install/)

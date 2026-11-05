@@ -114,12 +114,12 @@ function testPages() {
       ["osmapa-podstawowa", "osmapa-ogonki", "osmapa-light"], `${locale}: OSMapaPL styles wait for the manifest`);
     assert.ok(page.styles.every((style) => style.name && style.summary), `${locale}: every style has a name and summary`);
     assert.ok(!/\b[0-9]\b/.test(page.copy.styles_of.replace(/\{\w+\}/g, "")) && page.copy.styles_of.includes("{total}"), `${locale}: style count follows the listed styles`);
-    // The page opens on Cinque Terre, OpenTopoMap beside Freizeitkarte: both render that coast clearly.
-    assert.deepEqual(page.defaults, {area: "cinque-terre", a: "opentopomap", b: "freizeitkarte"}, `${locale}: default view`);
+    // Each language opens on a well-known place near its audience, OpenTopoMap beside Freizeitkarte.
+    const defaultArea = {en: "cinque-terre", de: "berchtesgaden-koenigssee", fr: "chamonix-mont-blanc", pl: "high-tatras", cs: "krkonose", it: "dolomites-tre-cime"}[locale];
+    assert.deepEqual(page.defaults, {area: defaultArea, a: "opentopomap", b: "freizeitkarte"}, `${locale}: default view`);
     const always = page.styles.filter((style) => !style.optional);
     assert.ok(always.some((style) => style.id === page.defaults.a) && always.some((style) => style.id === page.defaults.b), `${locale}: default styles are always on the page`);
     assert.match(read(path.join(root, "site/map-styles/map-styles.js")), /const defaults = data\.defaults;/, "the viewer opens on the page's default view");
-    assert.match(source, /<section class="shell map-styles-guide" aria-labelledby="map-styles-guide-title">\s*<h2 id="map-styles-guide-title">[^<]+<\/h2>\s*<div class="map-styles-guide-text">(<p>[^<]+<\/p>){2}<\/div>/, `${locale}: static guide text about the free maps`);
 
     const h1 = source.match(/<h1 id="map-styles-title">([^<]+)<\/h1>/);
     assert.ok(h1 && h1[1].trim() && !h1[1].trim().endsWith("."), `${locale}: H1 is present without a trailing full stop`);
@@ -149,26 +149,28 @@ function testPages() {
 
     const cards = homeCards(locale);
     assert.ok(cards.length >= 4, `${locale}: home provider cards found`);
-    // The style cards reuse the home "Explore available maps" component in one scrolling row (owner 2026-11-02).
-    assert.match(source, /<div class="provider-cards map-styles-about-cards" role="region" tabindex="0" aria-label="[^"]+">/, `${locale}: style cards sit in one scrolling row like the home page`);
-    assert.ok(!/map-styles-about-(card|grid|summary|language)\b/.test(source), `${locale}: no separate style card component`);
-    const about = [...source.matchAll(/<article class="provider-card" data-style-card="([^"]+)">([\s\S]*?)<\/article>/g)];
-    assert.equal(about.length, 5, `${locale}: five always-shown style descriptions`);
-    const optional = [...source.matchAll(/<article class="provider-card" data-style-card="([^"]+)" data-style-ids="([^"]+)" hidden>([\s\S]*?)<\/article>/g)];
-    assert.deepEqual(optional.map((item) => [item[1], item[2]]), [["osmapa", "osmapa-podstawowa osmapa-ogonki osmapa-light"]],
-      `${locale}: the OSMapaPL description starts hidden`);
-    about.push(...optional.map((item) => [item[0], item[1], item[3]]));
-    for (const [, styleId, body] of about) {
-      const name = decode(body.match(/<h3>([^<]+)/)[1].trim());
-      const summary = decode(body.match(/<p class="provider-summary">([^<]+)<\/p>/)[1]);
-      const benefits = [...body.matchAll(/<li>([^<]+)<\/li>/g)].map((item) => decode(item[1]));
+    // One section per free map (2026-11 redesign), each opening with the home card summary.
+    const sections = [...source.matchAll(/<section class="map-styles-v2-map" id="([^"]+)" aria-labelledby="\1-title">([\s\S]*?)<\/section>/g)];
+    assert.deepEqual(sections.map((item) => item[1]), ["opentopomap", "freizeitkarte", "maprando", "bbbike", "osmapa"], `${locale}: one section per map`);
+    for (const [, id, body] of sections) {
+      const name = decode(body.match(/<h2 id="[^"]+">([^<]+)<\/h2>/)[1].trim());
       const card = cards.find((item) => item.name === name);
-      assert.ok(card, `${locale}/${styleId}: style matches a home provider card`);
-      assert.equal(summary, card.summary, `${locale}/${styleId}: summary matches the home page`);
-      assert.deepEqual(benefits, card.benefits.slice(0, benefits.length), `${locale}/${styleId}: benefits match the home page`);
-      const note = body.match(/<p class="provider-language-note">[\s\S]*?<\/p>/);
-      assert.equal(note ? note[0] : null, card.note, `${locale}/${styleId}: the same note as the home page`);
+      assert.ok(card, `${locale}/${id}: section matches a home provider card`);
+      assert.equal(decode(body.match(/<p class="map-styles-v2-map-summary">([^<]+)<\/p>/)[1]), card.summary, `${locale}/${id}: summary matches the home page`);
+      assert.match(body, /<dl class="map-styles-v2-facts">/, `${locale}/${id}: facts list`);
+      assert.ok(source.includes(`href="#${id}"`), `${locale}/${id}: picker or table links to the section`);
     }
+    assert.equal((source.match(/<tr>\s*<th scope="row">/g) || []).length, 5, `${locale}: comparison table has a row per map`);
+    const faq = source.match(/<section class="faq section map-styles-v2-faq"[\s\S]*?<\/section>/);
+    assert.ok(faq, `${locale}: FAQ section`);
+    const questions = (faq[0].match(/<details/g) || []).length;
+    assert.ok(questions >= 3 && questions <= 5, `${locale}: 3 to 5 FAQ questions`);
+    for (const suffix of ["download/", "install/", "guides/install-garmin-maps-mac/", "guides/install-garmin-maps-edge-mac/", "compatibility/"]) {
+      assert.ok(source.includes(`${suffix}"`), `${locale}: links to ${suffix}`);
+    }
+    // Only page sections are H2s; the place name over the map is not a heading.
+    const viewer = source.match(/class="map-styles-viewer"[\s\S]*?<p class="shell map-styles-v2-note">/);
+    assert.ok(viewer && !/<h[1-6]\b/.test(viewer[0]), `${locale}: no headings inside the map viewer`);
   }
   assert.equal(titles.size, locales.length);
 }

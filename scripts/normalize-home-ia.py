@@ -13,7 +13,28 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 LOCALES = ("en", "de", "fr", "pl", "cs", "it")
 PROVIDER_SCRIPT_VERSION = "20261026-osmapa-v1"
-FEATURE_SCRIPT_VERSION = "20260904-home-workflow-tabs"
+FEATURE_SCRIPT_VERSION = "20261105-home-map-switch-v4"
+ASSET_VERSION = "20261105-home-edge4"
+# Empty until Apple approves the listing; the button renders only once this is set.
+APP_STORE_URL = ""
+# Hero watch map styles (Königssee previews), self-hosted in site/assets/home/.
+# Owner decision 2026-11-05: no visible map credit on the hero.
+HERO_MAP_STYLES = (
+    ("opentopomap", "OpenTopoMap"),
+    ("freizeitkarte", "Freizeitkarte"),
+    ("maprando", "MapRando"),
+)
+# Card thumbnails (High Tatras); plain BBBike has no preview there, so its card stays text-only.
+CARD_THUMBNAILS = {
+    "freizeitkarte": "freizeitkarte",
+    "opentopomap": "opentopomap",
+    "maprando": "maprando",
+    "bbbike-ontrail": "bbbike-ontrail",
+    "bbbike-opentopo": "bbbike-opentopo",
+    "bbbike-all": "bbbike-ontrail",
+    "osmapa": "osmapa-podstawowa",
+}
+EDGE_IMAGE = ROOT / "site/assets/home/edge-front.webp"
 EMAIL_URL = "mailto:hello@terento.app?subject=Terento%20installation%20issue"
 EMAIL_URL_HTML = EMAIL_URL.replace("@", "&#64;")
 HOME_COPY = json.loads((ROOT / "scripts/templates/home-copy.json").read_text())
@@ -453,6 +474,47 @@ for _locale, (_summary, _benefits, _note) in BBBIKE_OPENTOPO_CARD_COPY.items():
     }
     BBBIKE_OPENTOPO_NOTES[_locale] = _note
 
+# Home shows BBBike as one card covering all its map types; provider-list.js counts every available BBBike map.
+BBBIKE_MERGED_CARD_COPY = {
+    "en": ("Weekly-updated regional maps for cycling and walking, also where other maps are missing.", [
+        "Ontrail: compact, with small roads and paths",
+        "OpenTopoMap look: trails and land cover",
+        "Covers countries no other map here does",
+    ]),
+    "de": ("Wöchentlich aktualisierte Regionalkarten fürs Radfahren und Wandern, auch wo andere Karten fehlen.", [
+        "Ontrail: kompakt, mit kleinen Straßen und Wegen",
+        "OpenTopoMap-Stil: Wege und Bodenbedeckung",
+        "Auch für Länder, die keine andere Karte hier abdeckt",
+    ]),
+    "fr": ("Des cartes régionales mises à jour chaque semaine pour le vélo et la marche, même là où les autres manquent.", [
+        "Ontrail : compacte, avec petites routes et chemins",
+        "Style OpenTopoMap : sentiers et occupation du sol",
+        "Couvre des pays qu’aucune autre carte ne couvre ici",
+    ]),
+    "pl": ("Mapy regionów aktualizowane co tydzień, na rower i piesze wycieczki, także tam, gdzie brakuje innych map.", [
+        "Ontrail: kompaktowa, z mniejszymi drogami i ścieżkami",
+        "Styl OpenTopoMap: szlaki i pokrycie terenu",
+        "Obejmuje kraje, których nie ma tu żadna inna mapa",
+    ]),
+    "cs": ("Regionální mapy aktualizované každý týden, na kolo i pěšky, i tam, kde jiné mapy chybí.", [
+        "Ontrail: kompaktní, s menšími silnicemi a cestami",
+        "Styl OpenTopoMap: stezky a pokryv krajiny",
+        "Pokrývá země, které tu žádná jiná mapa nemá",
+    ]),
+    "it": ("Mappe regionali aggiornate ogni settimana, per bici e cammino, anche dove mancano altre mappe.", [
+        "Ontrail: compatta, con strade minori e sentieri",
+        "Stile OpenTopoMap: sentieri e copertura del suolo",
+        "Copre paesi che nessun’altra mappa copre qui",
+    ]),
+}
+for _locale, (_summary, _benefits) in BBBIKE_MERGED_CARD_COPY.items():
+    PROVIDER_CARD_COPY[_locale]["bbbike-all"] = {
+        "name": "BBBike",
+        "count_template": PROVIDER_CARD_COPY[_locale]["maprando"]["count_template"],
+        "summary": _summary,
+        "benefits": _benefits,
+    }
+
 # OSMapaPL ships hidden; provider-list.js shows it once the catalog lists the provider as active.
 OSMAPA_CARD_COPY = {
     "en": ("For trips across Poland, on foot or by bike.", [
@@ -515,7 +577,7 @@ def provider_card_addon(locale: str, provider_id: str, contour_count: bool = Tru
 
 def provider_cards_markup(locale: str, copy: dict[str, str]) -> str:
     cards = []
-    for provider_id in ("freizeitkarte", "opentopomap", "maprando", "bbbike", "bbbike-ontrail", "bbbike-opentopo", "osmapa"):
+    for provider_id in ("freizeitkarte", "opentopomap", "maprando", "bbbike-all", "osmapa"):
         provider = PROVIDER_CARD_COPY[locale][provider_id]
         fallback_count = {"freizeitkarte": "63", "opentopomap": "177"}.get(provider_id)
         count_markup = provider["count_template"].replace("{count}", fallback_count) if fallback_count else ""
@@ -524,14 +586,19 @@ def provider_cards_markup(locale: str, copy: dict[str, str]) -> str:
         addon = provider_card_addon(locale, provider_id)
         catalog_provider_id = "bbbike" if provider_id.startswith("bbbike") else provider_id
         type_attributes = ""
-        if provider_id.startswith("bbbike"):
+        if provider_id == "bbbike-all":
+            type_attributes = " hidden"
+        elif provider_id.startswith("bbbike"):
             map_type = {"bbbike-ontrail": "ontrail-latin1", "bbbike-opentopo": "opentopo-latin1"}.get(provider_id, "bbbike-latin1")
             type_attributes = f' data-provider-type="{map_type}" hidden'
         if provider_id == "osmapa":
             type_attributes = " hidden"
+        thumb = CARD_THUMBNAILS.get(provider_id)
+        thumb_markup = f'''<img class="home-card-map" src="/assets/home/maps-{thumb}.webp?v={ASSET_VERSION}" width="640" height="400" alt="{html.escape(copy["card_map_alt"].replace("{name}", provider["name"]))}" loading="lazy" decoding="async">
+              ''' if thumb else ""
         cards.append(
             f'''<article class="provider-card" data-provider-card="{catalog_provider_id}"{type_attributes}>
-              <div class="provider-card-header">
+              {thumb_markup}<div class="provider-card-header">
                 <h3>{provider["name"]}</h3>
                 <p class="provider-count" data-provider-count data-count-template="{provider["count_template"]}"{count_hidden}>{count_markup}</p>
               </div>
@@ -548,16 +615,39 @@ def normalize_home(source: str, path: Path, locale: str) -> str:
     provider_cards = provider_cards_markup(locale, copy)
     provider_section = f'''<section class="provider-section section" id="providers" aria-labelledby="providers-title">
         <div class="shell">
-          <div class="section-heading provider-intro"><p class="eyebrow">{copy["provider_eyebrow"]}</p><h2 id="providers-title">{copy["provider_title"]}</h2><p class="provider-copy">{copy["provider_copy"]}</p></div>
+          <div class="section-heading provider-intro"><h2 id="providers-title">{copy["provider_title"]}</h2><p class="provider-copy">{copy["provider_copy"]}</p></div>
           <div class="provider-cards" id="provider-cards" data-provider-cards role="region" tabindex="0" aria-label="{copy["provider_list_label"]}">
             {provider_cards}
           </div>
-          <p class="provider-compare"><a class="text-link" href="{"/map-styles/" if locale == "en" else f"/{locale}/map-styles/"}" data-umami-event="maps-link-click" data-umami-event-location="home-providers">{PROVIDER_CARD_COPY[locale]["compare_styles"]}<span aria-hidden="true"> →</span></a></p>
+          <p class="provider-compare"><a class="text-link" href="{"/map-styles/" if locale == "en" else f"/{locale}/map-styles/"}" data-umami-event="maps-link-click" data-umami-event-location="home-providers">{PROVIDER_CARD_COPY[locale]["compare_styles"]}</a></p>
         </div>
       </section>'''
-    values = {**copy, "provider_section": provider_section}
+    values = {**copy, "provider_section": provider_section, "asset_version": ASSET_VERSION}
+    def map_switch(alt: str, first: int, location: str) -> str:
+        return "".join(
+            f'<button type="button" class="home-switch-button" data-map-style="{style}" data-map-alt="{html.escape(alt.replace("{name}", name))}" aria-pressed="{str(index == first).lower()}" data-umami-event="map-style-switch" data-umami-event-location="{location}" data-umami-event-style="{style}">{name}</button>'
+            for index, (style, name) in enumerate(HERO_MAP_STYLES)
+        )
+    values["hero_map_alt"] = html.escape(copy["hero_map_alt"].replace("{name}", HERO_MAP_STYLES[0][1]))
+    values["hero_switch_buttons"] = map_switch(copy["hero_map_alt"], 0, "home-hero")
+    app_store = (
+        f'<a class="home-app-store" href="{APP_STORE_URL}" data-umami-event="app-store-click" data-umami-event-location="{{location}}">{html.escape(copy["app_store_label"])}</a>'
+        if APP_STORE_URL else ""
+    )
+    values["app_store_hero"] = app_store.replace("{location}", "home-hero")
+    values["app_store_final"] = app_store.replace("{location}", "home-final-cta")
+    values["edge_guide_href"] = "/guides/install-garmin-maps-edge-mac/" if locale == "en" else f"/{locale}/guides/install-garmin-maps-edge-mac/"
+    # Freizeitkarte first on the Edge so the two devices open on different maps.
+    values["edge_visual"] = (
+        f'<figure class="home-device home-edge-figure" data-map-switch><div class="home-edge-screen">'
+        f'<img class="home-edge-map" data-map-image src="/assets/home/edge-freizeitkarte.webp?v={ASSET_VERSION}" width="520" height="520" alt="{html.escape(copy["edge_map_alt"].replace("{name}", HERO_MAP_STYLES[1][1]))}" loading="lazy" decoding="async">'
+        f'<img class="home-edge-body" src="/assets/home/edge-front.webp?v={ASSET_VERSION}" width="800" height="1200" alt="" loading="lazy" decoding="async"></div>'
+        f'<figcaption><span class="home-switch" role="group" aria-label="{html.escape(copy["edge_switch_label"])}">{map_switch(copy["edge_map_alt"], 1, "home-edge")}</span></figcaption></figure>'
+        if EDGE_IMAGE.exists() else ""
+    )
     values.update({f"faq_question_{i}": question for i, question in enumerate(copy["faq_questions"])})
     template = Template((ROOT / "scripts/templates/home.html").read_text())
+    source = re.sub(r'/home-features\.js\?v=[^"]+', f"/home-features.js?v={FEATURE_SCRIPT_VERSION}", source)
     source, count = re.subn(r"<main\b[\s\S]*?</main>", lambda _: template.substitute(values).rstrip(), source, count=1)
     if count != 1:
         raise ValueError(f"{path}: expected one Home main element")
