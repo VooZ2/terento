@@ -9,7 +9,9 @@ from pathlib import Path
 
 from terento_catalog.admin import (
     ADMIN_STYLES,
-    _FA_ICONS,
+    _ADMIN_ICONS,
+    _FA_BRAND_ICONS,
+    _LUCIDE_ICONS,
     _PILL_ICONS,
     _admin_header,
     _admin_icon,
@@ -169,16 +171,16 @@ class AdminFilterDropdownTests(unittest.TestCase):
         self.assertNotRegex(script, r"['.]padding(Left|Right|Inline)?", "the button never copies padding from the native select")
         self.assertIn("['fontFamily', 'fontSize', 'fontWeight', 'letterSpacing']", script)
 
-    def test_dropdown_styles_use_only_admin_tokens_and_font_awesome_icons(self):
+    def test_dropdown_styles_use_only_admin_tokens_and_lucide_icons(self):
         from terento_catalog.admin import ADMIN_DROPDOWN_STYLES
         self.assertIn(ADMIN_DROPDOWN_STYLES, ADMIN_STYLES)
         self.assertNotRegex(ADMIN_DROPDOWN_STYLES, r"#[0-9A-Fa-f]{3,8}\b|rgba?\(")
         self.assertNotRegex(ADMIN_DROPDOWN_STYLES, r"content:")
         for fragment in ("background:var(--surface)", "border:1px solid var(--border)", "border-radius:var(--radius-control)",
-                         "font-family:var(--font-ui)", "var(--fa-chevron-down)", "var(--fa-check)", "var(--selected-tint)",
+                         "font-family:var(--font-ui)", "var(--icon-chevron-down)", "var(--icon-check)", "var(--selected-tint)",
                          "outline:var(--admin-focus-ring)", ".admin-dropdown-list{position:fixed"):
             self.assertIn(fragment, ADMIN_DROPDOWN_STYLES)
-        self.assertIn("--fa-check:url(\"data:image/svg+xml,", ADMIN_STYLES)
+        self.assertIn("--icon-check:url(\"data:image/svg+xml,", ADMIN_STYLES)
         # Every selector in the block is scoped to the component classes.
         for rule in re.findall(r"([^{}]+)\{[^{}]*\}", ADMIN_DROPDOWN_STYLES.replace("@media(max-width:760px){", "")):
             for selector in rule.split(","):
@@ -186,24 +188,61 @@ class AdminFilterDropdownTests(unittest.TestCase):
 
 
 class AdminIconTests(unittest.TestCase):
-    """Owner decision 2026-10-06: Admin icons are Font Awesome Free, never hand-drawn."""
+    """Owner decision 2026-11-05: Admin icons are original Lucide 0.460.0
+    outline SVGs like the public website, never hand-drawn; brand logos stay
+    Font Awesome brands."""
 
-    def test_icons_are_filled_font_awesome_paths(self):
+    def test_icons_are_unchanged_lucide_outlines(self):
         for name in set(_PILL_ICONS.values()) | {"arrow-right", "arrow-left", "external", "close", "download", "message"}:
             icon = _admin_icon(name)
-            self.assertIn("<path fill='currentColor' d='M", icon, name)
-            self.assertNotIn("stroke", icon)
+            self.assertIn("viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' "
+                          "stroke-linecap='round' stroke-linejoin='round' aria-hidden='true' focusable='false'>", icon, name)
+            self.assertNotIn("fill='currentColor'", icon, name)
         self.assertEqual(_admin_icon("not-an-icon"), "")
-        for view_box, path in _FA_ICONS.values():
+        self.assertEqual(set(_ADMIN_ICONS.values()) - set(_LUCIDE_ICONS), set())
+        for name, inner in _LUCIDE_ICONS.items():
+            self.assertRegex(name, r"^[a-z]+(-[a-z]+)*$")
+            # Only the upstream child elements, copied as published.
+            self.assertRegex(inner, r'^(<(path|circle|rect|line|polyline) [a-z0-9]+="[^"<>]+"( [a-z0-9]+="[^"<>]+")* />)+$', name)
+        # Spot checks against lucide-static@0.460.0/icons/<name>.svg.
+        self.assertEqual(_LUCIDE_ICONS["check"], '<path d="M20 6 9 17l-5-5" />')
+        self.assertEqual(_LUCIDE_ICONS["x"], '<path d="M18 6 6 18" /><path d="m6 6 12 12" />')
+        self.assertEqual(_LUCIDE_ICONS["chevron-down"], '<path d="m6 9 6 6 6-6" />')
+
+    def test_brand_logos_are_the_only_font_awesome_icons(self):
+        self.assertEqual(set(_FA_BRAND_ICONS), {"browser-chrome", "browser-edge", "browser-opera", "browser-brave",
+                                                "browser-firefox", "browser-safari", "source-appstore"})
+        self.assertEqual(set(_FA_BRAND_ICONS) & set(_ADMIN_ICONS), set())
+        for view_box, path in _FA_BRAND_ICONS.values():
             self.assertRegex(view_box, r"^0 0 \d+ 512$")
             self.assertRegex(path, r"^[MmLlHhVvCcSsQqTtAaZz0-9.,\- ]+$")
+        self.assertIn("<path fill='currentColor' d='M", _admin_icon("source-appstore"))
+        self.assertIn("stroke='currentColor'", _admin_icon("source-web"))
 
-    def test_css_draws_no_glyph_or_border_icons(self):
+    def test_icon_sizes_follow_the_spec(self):
+        self.assertIn(".admin-icon{display:inline-block;width:16px;height:16px;flex:0 0 auto;vertical-align:-3px}", ADMIN_STYLES)
+        self.assertIn(".dialog-close .admin-icon,.overview-dismiss-button .admin-icon,.provider-row-menu>summary .admin-icon,"
+                      ".overview-source-switch .admin-icon{width:20px;height:20px}", ADMIN_STYLES)
+        # CSS must not repaint the outline icons as filled shapes.
+        self.assertNotIn("fill:currentColor", ADMIN_STYLES.split(".admin-icon{", 1)[1].split("}", 1)[0])
+        for width in re.findall(r"\.admin-icon\{[^}]*?width:(\d+)px", ADMIN_STYLES):
+            self.assertIn(width, {"16", "20", "24"})
+
+    def test_css_masks_are_outline_icons(self):
         self.assertNotRegex(ADMIN_STYLES, r"content:\s*['\"][⌄›→↗×✓]")
-        self.assertIn(".sort-indicator[data-sort=\"ascending\"]{-webkit-mask-image:var(--fa-sort-up)", ADMIN_STYLES)
+        self.assertIn(".sort-indicator[data-sort=\"ascending\"]{-webkit-mask-image:var(--icon-sort-up)", ADMIN_STYLES)
         self.assertNotIn("border-width:0 2px 2px 0", ADMIN_STYLES)  # old drawn chevron
-        self.assertIn("--fa-chevron-right:url(\"data:image/svg+xml,", ADMIN_STYLES)
-        self.assertNotIn("stroke-linecap:round", ADMIN_STYLES.split(".admin-icon{", 1)[1].split("}", 1)[0])
+        self.assertNotIn("--fa-", ADMIN_STYLES)
+        masks = re.findall(r"--icon-([a-z-]+):url\(\"data:image/svg\+xml,([^\"]+)\"\)", ADMIN_STYLES)
+        self.assertEqual({name for name, _ in masks},
+                         {"chevron-down", "chevron-right", "arrow-right", "image", "sort", "sort-up", "sort-down", "check"})
+        for _, data in masks:
+            self.assertIn("fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'", data)
+
+    def test_no_font_awesome_ui_icon_remains(self):
+        source = (Path(__file__).parents[1] / "src" / "terento_catalog" / "admin.py").read_text()
+        self.assertNotIn("fa-solid", source)
+        self.assertNotIn("Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts", source)
 
 
 class AdminChartGeometryTests(unittest.TestCase):
