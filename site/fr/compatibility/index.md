@@ -1,5 +1,5 @@
 ---
-title: "Compatibilité cartes montres Garmin et Edge — Terento"
+title: "Montres Garmin et Edge : installations réussies — Terento"
 canonical: https://terento.app/fr/compatibility/
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: "Zgodność map: zegarki Garmin i liczniki Edge — Terento"
+title: "Zegarki Garmin i liczniki Edge: udane instalacje — Terento"
 canonical: https://terento.app/pl/compatibility/
 ---
 

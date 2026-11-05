@@ -171,7 +171,7 @@
       "file": "site/compatibility/index.html",
       "path": "/compatibility/",
       "locale": "en",
-      "title": "Garmin Watch & Edge Map Compatibility — Terento",
+      "title": "Garmin Watch & Edge Compatibility: Successful Installs — Terento",
       "description": "Terento is designed for Garmin smartwatches and newer Edge bike computers with map support. See exact models and variants with successful map installs.",
       "alternates": true
     },
@@ -179,7 +179,7 @@
       "file": "site/de/compatibility/index.html",
       "path": "/de/compatibility/",
       "locale": "de",
-      "title": "Garmin-Uhren & Edge: Karten-Kompatibilität — Terento",
+      "title": "Garmin-Uhren & Edge: erfolgreiche Installationen — Terento",
       "description": "Terento ist für Garmin-Smartwatches und neuere Edge-Radcomputer mit Kartenunterstützung gemacht. Hier stehen Modelle mit erfolgreichen Karteninstallationen.",
       "alternates": true
     },
@@ -187,7 +187,7 @@
       "file": "site/fr/compatibility/index.html",
       "path": "/fr/compatibility/",
       "locale": "fr",
-      "title": "Compatibilité cartes montres Garmin et Edge — Terento",
+      "title": "Montres Garmin et Edge : installations réussies — Terento",
       "description": "Terento est conçu pour les montres Garmin et les compteurs vélo Edge récents avec cartes. Voici les modèles et variantes exacts avec des installations réussies.",
       "alternates": true
     },
@@ -195,7 +195,7 @@
       "file": "site/pl/compatibility/index.html",
       "path": "/pl/compatibility/",
       "locale": "pl",
-      "title": "Zgodność map: zegarki Garmin i liczniki Edge — Terento",
+      "title": "Zegarki Garmin i liczniki Edge: udane instalacje — Terento",
       "description": "Terento jest przeznaczone dla zegarków Garmin i nowszych liczników rowerowych Edge obsługujących mapy. Zobacz modele i warianty z udanymi instalacjami map.",
       "alternates": true
     },
@@ -203,7 +203,7 @@
       "file": "site/cs/compatibility/index.html",
       "path": "/cs/compatibility/",
       "locale": "cs",
-      "title": "Kompatibilita map: hodinky Garmin a Edge — Terento",
+      "title": "Hodinky Garmin a Edge: úspěšné instalace map — Terento",
       "description": "Terento je navrženo pro hodinky Garmin a novější cyklopočítače Edge s podporou map. Podívejte se na modely a varianty s úspěšnými instalacemi map.",
       "alternates": true
     },
@@ -211,7 +211,7 @@
       "file": "site/it/compatibility/index.html",
       "path": "/it/compatibility/",
       "locale": "it",
-      "title": "Compatibilità mappe smartwatch Garmin ed Edge — Terento",
+      "title": "Smartwatch Garmin ed Edge: installazioni riuscite — Terento",
       "description": "Terento è progettato per smartwatch Garmin e ciclocomputer Edge recenti con supporto mappe. Scopri modelli e varianti esatti con installazioni riuscite.",
       "alternates": true
     },

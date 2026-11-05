@@ -1,5 +1,5 @@
 ---
-title: "Compatibilità mappe smartwatch Garmin ed Edge — Terento"
+title: "Smartwatch Garmin ed Edge: installazioni riuscite — Terento"
 canonical: https://terento.app/it/compatibility/
 ---
 

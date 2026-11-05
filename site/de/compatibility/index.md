@@ -1,5 +1,5 @@
 ---
-title: "Garmin-Uhren & Edge: Karten-Kompatibilität — Terento"
+title: "Garmin-Uhren & Edge: erfolgreiche Installationen — Terento"
 canonical: https://terento.app/de/compatibility/
 ---
 

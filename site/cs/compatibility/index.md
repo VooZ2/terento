@@ -1,5 +1,5 @@
 ---
-title: "Kompatibilita map: hodinky Garmin a Edge — Terento"
+title: "Hodinky Garmin a Edge: úspěšné instalace map — Terento"
 canonical: https://terento.app/cs/compatibility/
 ---
 
