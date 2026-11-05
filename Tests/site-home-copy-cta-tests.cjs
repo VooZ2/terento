@@ -8,7 +8,7 @@ const root = path.join(__dirname, "..");
 const locales = new Map([
   ["en", {
     file: path.join(root, "site", "index.html"),
-    h1: "Install free maps on your Garmin watch",
+    h1: "Install free maps on your Garmin device",
     hero: "Terento is a free, open-source way to install, update and manage third-party maps on Garmin watches and Edge bike computers: with a native Mac app or in your desktop browser.",
     experienceLabel: "How it works",
     experienceTitle: "Connect → Install → Done",
@@ -31,7 +31,7 @@ const locales = new Map([
   }],
   ["de", {
     file: path.join(root, "site", "de", "index.html"),
-    h1: "Kostenlose Karten auf deiner Garmin-Uhr installieren",
+    h1: "Kostenlose Karten auf deinem Garmin-Gerät installieren",
     hero: "Terento ist ein kostenloses Open-Source-Tool, mit dem du Drittanbieter-Karten auf Garmin-Uhren und Edge-Radcomputern installierst, aktualisierst und verwaltest: mit einer nativen Mac-App oder im Desktop-Browser.",
     experienceLabel: "So funktioniert es",
     experienceTitle: "Verbinden → Installieren → Fertig",
@@ -54,7 +54,7 @@ const locales = new Map([
   }],
   ["fr", {
     file: path.join(root, "site", "fr", "index.html"),
-    h1: "Installez des cartes gratuites sur votre montre Garmin",
+    h1: "Installez des cartes gratuites sur votre appareil Garmin",
     hero: "Terento est un outil gratuit et open source pour installer, mettre à jour et gérer des cartes tierces sur les montres et compteurs vélo Edge Garmin : avec une application Mac native ou dans votre navigateur sur ordinateur.",
     experienceLabel: "Comment ça marche",
     experienceTitle: "Connecter → Installer → Terminé",
@@ -77,7 +77,7 @@ const locales = new Map([
   }],
   ["pl", {
     file: path.join(root, "site", "pl", "index.html"),
-    h1: "Instaluj darmowe mapy na zegarku Garmin",
+    h1: "Instaluj darmowe mapy na urządzeniu Garmin",
     hero: "Terento to darmowe narzędzie open source do instalowania, aktualizowania i zarządzania mapami innych firm na zegarkach Garmin i licznikach rowerowych Edge: w natywnej aplikacji na Maca lub w przeglądarce na komputerze.",
     experienceLabel: "Jak to działa",
     experienceTitle: "Połącz → Zainstaluj → Gotowe",
@@ -100,7 +100,7 @@ const locales = new Map([
   }],
   ["cs", {
     file: path.join(root, "site", "cs", "index.html"),
-    h1: "Nainstalujte do hodinek Garmin mapy zdarma",
+    h1: "Nainstalujte do zařízení Garmin mapy zdarma",
     hero: "Terento je bezplatný open-source nástroj pro instalaci, aktualizaci a správu map třetích stran v hodinkách Garmin a cyklopočítačích Edge: v nativní aplikaci pro Mac nebo v prohlížeči na počítači.",
     experienceLabel: "Jak to funguje",
     experienceTitle: "Připojit → Instalovat → Hotovo",
@@ -123,7 +123,7 @@ const locales = new Map([
   }],
   ["it", {
     file: path.join(root, "site", "it", "index.html"),
-    h1: "Installa mappe gratuite sul tuo smartwatch Garmin",
+    h1: "Installa mappe gratuite sul tuo dispositivo Garmin",
     hero: "Terento è uno strumento gratuito e open source per installare, aggiornare e gestire mappe di terze parti su smartwatch Garmin e ciclocomputer Edge: con un’app Mac nativa o nel browser del computer.",
     experienceLabel: "Come funziona",
     experienceTitle: "Connetti → Installa → Fatto",
@@ -299,7 +299,7 @@ for (const [locale, expected] of locales) {
 
 const englishHome = pageFor("en");
 assert.match(englishHome, /<p class="hero-lede">Terento is a free, open-source way to install, update and manage third-party maps on Garmin watches and Edge bike computers: with a native Mac app or in your desktop browser\.<\/p>/);
-assert.match(englishHome, /<h1 id="hero-title">Install free maps on your Garmin watch<\/h1>/);
+assert.match(englishHome, /<h1 id="hero-title">Install free maps on your Garmin device<\/h1>/);
 assert.doesNotMatch(englishHome, /<p class="hero-lede">[^<]*Freizeitkarte/i);
 assert.match(englishHome, /<meta name="description" content="Install and manage third-party maps on Garmin watches and Edge bike computers with map support using Terento, a free macOS app for Apple Silicon\.">/);
 assert.match(englishHome, /<p class="eyebrow"><span class="status-dot" aria-hidden="true"><\/span>Open-source project<\/p>/);
