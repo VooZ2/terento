@@ -1,48 +1,58 @@
 ---
-title: "Informazioni su Terento — Mappe Garmin gratuite e open source"
+title: "Informazioni su Terento: mappe Garmin gratuite e libere"
 canonical: https://terento.app/it/about/
 ---
 
-Terento
+# Un’app di mappe gratuita, fatta da un escursionista con Garmin
 
-# Mappe gratuite. Più semplicemente sul tuo Garmin
-
-Terento è un’app Mac gratuita e open source per scegliere, installare e gestire mappe di terze parti su smartwatch Garmin e ciclocomputer Edge con supporto alle mappe. Per prepararti più facilmente al prossimo viaggio.
-
-Per Mac con Apple Silicon. La pagina Compatibilità mostra i modelli e le varianti esatti con almeno un’installazione riuscita condivisa; non è un elenco completo dei dispositivi supportati. [Verifica la compatibilità](https://terento.app/it/compatibility/)
+Terento installa mappe gratuite della community su orologi Garmin e ciclocomputer Edge. È un’app Mac gratuita e open source, più un installer web che funziona nel browser.
 
 [Scarica](https://terento.app/it/download/)
 
-## Per il tuo prossimo viaggio
+## Perché l’ho creato
 
-## Le mappe in un unico posto
+Sono Gediminas. Uso un Garmin e amo le escursioni in montagna. Prima di un viaggio voglio l’orologio pronto con le mappe di dove vado, e caricarle richiedeva più impegno del necessario.
 
-- Scegli e installa mappe da qualsiasi provider del catalogo.
+Ho creato Terento per rendere tutto più semplice, per me e per chiunque abbia un Garmin. È gratuito e open source perché voglio che sia utile alla comunità.
 
-- Aggiungi la tua mappa compatibile (.img); le mappe personali non hanno aggiornamenti automatici.
-
-- Aggiorna e gestisci le mappe dei fornitori installate da Terento in un’unica app Mac.
-
-- Protegge le mappe Garmin originali.
-
-## Gratuito e aperto a tutti
-
-- Gratuito, senza bisogno di un account.
-
-- Open source: esplora il codice o contribuisci su GitHub.
-
-- Le mappe provengono dai loro fornitori e mantengono le attribuzioni.
-
-Una nota dal creatore
-
-## Perché ho creato Terento
-
-Sono Gediminas, uso Garmin e amo le escursioni in montagna. Prima di un viaggio voglio preparare l’orologio con le mappe dei luoghi che visiterò. Trasferire quelle mappe richiedeva spesso più impegno del necessario.
-
-Ho creato Terento per semplificare tutto questo, per me e per gli altri utenti Mac. Lo mantengo gratuito e open source perché voglio che questa piccola soluzione sia utile alla comunità.
-
-Connettiti con il creatore
+### Scrivimi
 
 [LinkedIn](https://www.linkedin.com/in/gediminasc/) [Reddit](https://www.reddit.com/user/MrDonas/) [Email](mailto:hello@terento.app)
 
-Ti piace il progetto? [Dona](https://buymeacoffee.com/vooz2)
+Terento è gratuito e lo resterà. Se ti è utile, una donazione aiuta a pagare il server dell’installer web e delle anteprime delle mappe, e l’iscrizione da sviluppatore Apple di cui ha bisogno l’app Mac. Le donazioni non sbloccano nulla.
+
+[Offrimi un caffè](https://buymeacoffee.com/vooz2)
+
+## Cos’è Terento, e cosa non è
+
+### Cos’è
+
+- Un’app gratuita per Mac con Apple Silicon e macOS 13 o successivo.
+
+- Un [installer web](https://terento.app/it/install/) per Chrome, Microsoft Edge, Opera o Brave su Mac; Linux è ancora in prova.
+
+- Un modo per installare, aggiornare e rimuovere mappe gratuite su orologi Garmin e ciclocomputer Edge recenti con supporto mappe.
+
+- Spazio anche per la tua mappa compatibile (.img). Le mappe personali non si aggiornano automaticamente.
+
+- Gratuito, senza account.
+
+### Cosa non è
+
+- **Un prodotto Garmin.** Garmin non produce, non approva e non certifica Terento.
+
+- **Un produttore di mappe.** Le mappe vengono dai progetti della community elencati sotto.
+
+- **Un’app di navigazione.** Navighi sul tuo Garmin, come sempre.
+
+- **Un’app per Windows, telefoni o tablet.**
+
+- **Un rischio per le mappe Garmin originali.** Terento non le tocca mai.
+
+- **Una promessa che ogni Garmin funzioni.** La pagina [Compatibilità](https://terento.app/it/compatibility/) elenca i modelli su cui sono già state installate mappe.
+
+## Codice aperto, mappe della community
+
+Il codice di Terento è pubblico su [GitHub](https://github.com/VooZ2/terento), con licenza GPL-3.0. Puoi leggerlo, segnalare un problema o aiutare a migliorarlo.
+
+Le mappe sono realizzate da [OpenTopoMap](https://garmin.opentopomap.org/), [Freizeitkarte](https://www.freizeitkarte-osm.de/), [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [BBBike](https://garmin.bbbike.org) e [OSMapaPL](https://osmapa-garmin.las.org.pl/), con i dati dei [contributori di OpenStreetMap](https://www.openstreetmap.org/copyright). Terento prende ogni mappa dal suo progetto originale; licenze e attribuzioni restano loro.

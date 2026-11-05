@@ -34,11 +34,11 @@ for path in compatibility_files:
     assert 'class="compatibility-status' not in page
     assert 'successful-install-filter' in page
     assert '1–2' in page and '5+' in page
-    assert 'compatibility.js?v=20261102-compatibility-heading-v1' in page
+    assert 'compatibility.js?v=20261105-compatibility-clear-v2' in page
     assert '<noscript class="compatibility-noscript">' in page
 
     assert 'class="watch-install-sources"' in page, f"{path}: missing app/web install split"
-    assert 'Font Awesome Free 7.3.1' in page, f"{path}: missing Font Awesome attribution"
+    assert 'class="watch-install-source-icon"' in page and 'stroke-width="1.75"' in page, f"{path}: install source icons must follow the outline icon spec"
 
 # Static cards: app/web split and the card rounding rule (exact below 100, then
 # rounded down to the hundred with a plus); the page summary stays exact.

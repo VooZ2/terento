@@ -18,12 +18,13 @@
   const stage = $("map-styles-stage");
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (char) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[char]));
-  const icon = (paths) => `<svg class="map-styles-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${paths}</svg>`;
-  const ICON_PIN = icon('<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11Z"/><circle cx="12" cy="10" r="2.3"/>');
-  const ICON_STAR = icon('<path d="m12 4 2.4 5 5.4.6-4 3.7 1.1 5.3L12 16l-4.9 2.6 1.1-5.3-4-3.7 5.4-.6Z"/>');
-  const ICON_MINUS = icon('<circle cx="12" cy="12" r="9"/><path d="M8 12h8"/>');
-  const ICON_CLOCK = icon('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>');
-  const ICON_CHEVRON = icon('<path d="m9 6 6 6-6 6"/>');
+  // Lucide 0.460.0 icons (ISC, see THIRD_PARTY_NOTICES.md): original paths.
+  const icon = (paths) => `<svg class="map-styles-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><!-- @license lucide-static v0.460.0 - ISC -->${paths}</svg>`;
+  const ICON_PIN = icon('<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>');
+  const ICON_STAR = icon('<path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>');
+  const ICON_MINUS = icon('<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/>');
+  const ICON_CLOCK = icon('<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>');
+  const ICON_CHEVRON = icon('<path d="m9 18 6-6-6-6"/>');
 
   let regionNames = null;
   try { regionNames = new Intl.DisplayNames([locale], {type: "region"}); } catch (error) { regionNames = null; }

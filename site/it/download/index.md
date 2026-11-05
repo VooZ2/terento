@@ -1,36 +1,42 @@
 ---
-title: "Scarica Terento per Mac — Mappe di terze parti per Garmin"
+title: "Scarica Terento per Mac: mappe gratuite per Garmin"
 canonical: https://terento.app/it/download/
 ---
 
-Terento
+# Scarica Terento per Mac
 
-# Scarica Terento
+Un’app gratuita e open source che installa mappe gratuite su smartwatch Garmin e ciclocomputer Edge con supporto mappe.
 
-Un’app Mac nativa per installare e gestire mappe di terze parti sugli smartwatch Garmin con supporto alle mappe.
+[Scarica per Mac](https://github.com/VooZ2/terento/releases/download/v1.1.0-build46/Terento-1.1.0-macOS-arm64.dmg)
 
-- Gratuita
-- Notarizzata
-- Apple Silicon
-[Scarica DMG Consigliato](https://github.com/VooZ2/terento/releases/download/v1.1.0-build46/Terento-1.1.0-macOS-arm64.dmg) [Scarica ZIP](https://github.com/VooZ2/terento/releases/download/v1.1.0-build46/Terento-1.1.0-macOS-arm64.zip) [Note di rilascio](https://github.com/VooZ2/terento/releases/tag/v1.1.0-build46)
+Mac App Store In arrivo
 
-Ultima versione: **v1.1.0** Pubblicata il 27 ottobre 2026
+Ultima versione **v1.1.0**, pubblicata il 27 ottobre 2026. [Novità](https://github.com/VooZ2/terento/releases/tag/v1.1.0-build46)
+
+Niente Mac con Apple Silicon? [Usa l’installer web](https://terento.app/it/install/) in Chrome, Microsoft Edge, Opera o Brave su Mac. Linux è ancora in fase di test: vedi la [guida per Linux](https://terento.app/it/guides/install-garmin-maps-linux/).
 
 Terento mostra uno smartwatch Garmin collegato su macOS
 
-Prima dell’installazione
+## Cosa ti serve
 
-## Controlla i requisiti essenziali.
-
-## Requisiti
-
-- macOS 13 o versioni successive
-- Mac Apple Silicon
-- Smartwatch Garmin con supporto mappe
-[Leggi la guida all’installazione su Mac](https://terento.app/it/guides/install-garmin-maps-mac/) [Niente Mac con Apple Silicon? Usa l’installer web](https://terento.app/it/install/) [Usi Linux? Leggi la guida per Linux](https://terento.app/it/guides/install-garmin-maps-linux/) [Hai un Garmin Edge? Leggi la guida Edge](https://terento.app/it/guides/install-garmin-maps-edge-mac/)
-
-## Stato della versione
-
-Questa è la versione attuale di Terento. Supporta le mappe di tutti i provider del catalogo. La pagina Compatibilità mostra i modelli e le varianti esatti con installazioni riuscite condivise. L’assenza di un modello non significa che il dispositivo non sia supportato.
-
+- Un Mac con Apple Silicon
+- macOS 13 o successivo
+- Un cavo USB dati, non solo di ricarica
+- Uno smartwatch Garmin o un ciclocomputer Garmin Edge
 [Verifica la compatibilità](https://terento.app/it/compatibility/)
+
+## Dopo il download
+
+1. Apri Terento
+
+Apri il file scaricato e trascina Terento in Applicazioni.
+
+2. Collega il Garmin
+
+Usa un cavo USB dati e sblocca lo smartwatch o l’Edge.
+
+3. Scegli una mappa
+
+Scegli una mappa e una regione, poi installala.
+
+Passo dopo passo: la [guida per smartwatch Garmin](https://terento.app/it/guides/install-garmin-maps-mac/) e la [guida per Garmin Edge](https://terento.app/it/guides/install-garmin-maps-edge-mac/).

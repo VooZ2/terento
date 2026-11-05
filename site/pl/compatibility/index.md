@@ -3,13 +3,11 @@ title: "Zegarki Garmin i liczniki Edge: udane instalacje — Terento"
 canonical: https://terento.app/pl/compatibility/
 ---
 
-Kompatybilność
-
 # Zgodność zegarków Garmin i liczników Edge
 
-Terento jest przeznaczone dla zegarków Garmin i nowszych liczników rowerowych Garmin Edge obsługujących mapy. Poniżej pokazujemy dokładne modele i warianty, na których co najmniej jedna instalacja mapy innej firmy zakończyła się powodzeniem. Lista rośnie wraz z kolejnymi udostępnionymi udanymi instalacjami.
+Terento działa z zegarkami Garmin i nowszymi licznikami rowerowymi Garmin Edge obsługującymi mapy. Poniżej są dokładne modele, na których ktoś już zainstalował mapę przez Terento. Lista rośnie z każdą udostępnioną instalacją.
 
-Brak Twojego modelu na liście nie oznacza, że nie jest obsługiwany — być może nie otrzymaliśmy jeszcze udanej instalacji dla dokładnie tego modelu i wariantu.
+Brak Twojego modelu nie oznacza, że nie zadziała. Być może nikt jeszcze nie udostępnił z niego udanej instalacji.
 
 **39** modele z udanymi instalacjami**353** udane instalacjeOstatnia udana instalacja 5 listopada 2026
 
@@ -413,11 +411,9 @@ App 1
 
 Ostatnia udana instalacja 7 października 2026
 
-Wyniki społeczności
-
 ## Nie widzisz swojego Garmina?
 
-Jeśli Twój zegarek Garmin lub licznik Edge obsługuje mapy, nadal możesz wypróbować Terento. Lista rośnie wraz z udanymi instalacjami udostępnianymi dla kolejnych dokładnych modeli i wariantów.
+Jeśli Twój zegarek Garmin lub licznik Edge obsługuje mapy, i tak możesz wypróbować Terento. Każda udostępniona udana instalacja dodaje Twój model do tej listy.
 
-[Instalujesz mapy innych firm pierwszy raz? Przeczytaj instrukcję na Macu](https://terento.app/pl/guides/install-garmin-maps-mac/) [Nie masz Maca z Apple Silicon? Użyj instalatora webowego](https://terento.app/pl/install/)
+[Pierwszy raz? Przeczytaj instrukcję na Maca](https://terento.app/pl/guides/install-garmin-maps-mac/) [Nie masz Maca z Apple Silicon? Użyj instalatora webowego](https://terento.app/pl/install/)
 [Pobierz](https://terento.app/pl/download/)

@@ -354,6 +354,7 @@ def site_token_block(tokens: dict) -> str:
         "  --secondary: var(--muted-text);",
         f"  --font-brand: {font_stack(tokens, 'brand', BRAND_FONT_FALLBACK)};",
         f"  --font-ui: {font_stack(tokens, 'ui', UI_FONT_FALLBACK)};",
+        f"  --font-mono: {font_stack(tokens, 'mono', MONO_FONT_FALLBACK)};",
         "}",
         "",
         "@media (prefers-color-scheme: dark) {",

@@ -1,23 +1,17 @@
 ---
-title: "Garmin-Uhr wird am Mac nicht erkannt? Fehlerbehebung — Terento"
+title: "Garmin am Mac nicht erkannt? Hilfe zu Karten — Terento"
 canonical: https://terento.app/de/guides/troubleshooting/
 ---
-
-Fehlerbehebung
 
 # Probleme mit Garmin-Uhr und Karten am Mac lösen
 
 Finde dein Problem – von einer Garmin-Uhr, die der Mac nicht erkennt, bis zu einem fehlgeschlagenen Karten-Download – und folge den kurzen Schritten. Wenn nichts hilft, sende einen Bericht, damit wir es uns ansehen können.
-
-Garmin Edge
 
 ## Garmin Edge wird am Mac nicht erkannt
 
 Neuere Garmin-Edge-Radcomputer mit Kartenunterstützung verbinden sich mit dem Mac genauso wie aktuelle Garmin-Uhren. Die meisten Schritte auf dieser Seite gelten deshalb auch für einen Edge: USB-Datenkabel nutzen, Garmin Express beenden und bis zu 2 Minuten warten. Ältere Edge-Modelle, die im Finder als Laufwerk erscheinen, funktionieren anders.
 
 [Anleitung für Garmin Edge lesen](https://terento.app/de/guides/install-garmin-maps-edge-mac/)
-
-Verbindung
 
 ## Verbindungsprobleme mit der Garmin-Uhr
 
@@ -71,8 +65,6 @@ Trenne die Uhr, warte ein paar Sekunden und verbinde sie erneut: Die Verbindung 
 1. Wenn Terento gerade eine Karte installiert, aktualisiert oder entfernt hat, öffne nach dem Verbinden „Manage maps“ und prüfe das Ergebnis, bevor du es erneut versuchst.
 2. Starte die Uhr neu, wenn es wiederholt passiert.
 
-Prüfungen
-
 ## Uhren- und Kartenprüfungen
 
 ### Karteninstallation für dieses Garmin-Modell nicht verfügbar
@@ -98,8 +90,6 @@ Kann Terento die aktuelle Kartenliste nicht laden, prüfe deine Internetverbindu
 1. Ist diese Terento-Version für die aktuelle Kartenliste zu alt und meldet Terento eine neuere Version, installiere das Update.
 2. Solange Terento eine ältere gespeicherte Kartenliste zeigt, bleiben Installation und Aktualisierung von Katalogkarten nicht verfügbar, bis die aktuelle Liste geprüft werden kann.
 
-Downloads und Speicher
-
 ## Karten-Downloads und freier Speicher
 
 ### Garmin-Karte: Download fehlgeschlagen
@@ -124,8 +114,6 @@ Wähle eine kleinere Region oder entferne eine Karte, die du nicht mehr brauchst
 2. Öffne „Manage maps“ und entferne eine Karte, die du nicht mehr brauchst.
 3. Ein Update braucht zusätzlichen Speicher, während die neue Karte geprüft wird. Schaffe Platz, wenn ein Update nicht starten kann.
 
-Installieren und aktualisieren
-
 ## Karten installieren, aktualisieren und entfernen
 
 ### Karteninstallation fehlgeschlagen: Kartenrest auf der Uhr
@@ -144,8 +132,6 @@ Das ist in der aktuellen Version zu erwarten: Beim Aktualisieren oder Entfernen 
 1. Trenne die Uhr nicht, solange Terento arbeitet.
 2. Warte, bis Terento den Abschluss meldet.
 3. Wenn Terento einen Fehler meldet, verbinde die Uhr erneut und prüfe „Manage maps“, bevor du es erneut versuchst.
-
-Weiterhin Probleme?
 
 ## Hilfe bekommen
 

@@ -43,4 +43,19 @@
       setMenu(false);
     },
   };
+  document.querySelectorAll("[data-copy-command]").forEach(button => {
+    const text = button.querySelector("[data-copy-text]");
+    const label = text.textContent;
+    const code = button.parentElement.querySelector("code");
+    button.addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(code.textContent); } catch {
+        // Clipboard blocked: select the command so the reader can copy it by hand.
+        getSelection().selectAllChildren(code);
+        return;
+      }
+      text.textContent = button.dataset.copiedLabel;
+      button.classList.add("is-copied");
+      setTimeout(() => { text.textContent = label; button.classList.remove("is-copied"); }, 2000);
+    });
+  });
 })();

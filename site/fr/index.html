@@ -1,12 +1,13 @@
 <!doctype html>
 <html lang="fr" data-language="fr">
   <head>
-    <script defer src="/site-shell.js?v=20261029-web-installer-public-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20261102-design-audit-v4">
+    <script defer src="/site-shell.js?v=20261105-copy-command-v1"></script>
+    <link rel="stylesheet" href="/styles.css?v=20261105-type-scale-v1">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
-    <meta name="description" content="Installez et gérez des cartes tierces sur les montres Garmin et les compteurs vélo Edge compatibles cartes avec Terento, l’app macOS gratuite pour Apple Silicon.">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#222A2B">
+    <meta name="description" content="Installez des cartes gratuites comme OpenTopoMap et Freizeitkarte sur montres Garmin et compteurs vélo Edge. App Mac gratuite ou installateur web.">
     <meta name="robots" content="index,follow">
     <link rel="canonical" href="https://terento.app/fr/">
     <link rel="alternate" hreflang="en" href="https://terento.app/">
@@ -18,8 +19,8 @@
     <link rel="alternate" hreflang="x-default" href="https://terento.app/">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Terento">
-    <meta property="og:title" content="Terento — Cartes tierces pour Garmin sur Mac">
-    <meta property="og:description" content="Installez et gérez des cartes tierces sur les montres Garmin et les compteurs vélo Edge compatibles cartes avec Terento, l’app macOS gratuite pour Apple Silicon.">
+    <meta property="og:title" content="Terento — Cartes gratuites pour montres Garmin et Edge">
+    <meta property="og:description" content="Installez des cartes gratuites comme OpenTopoMap et Freizeitkarte sur montres Garmin et compteurs vélo Edge. App Mac gratuite ou installateur web.">
     <meta property="og:url" content="https://terento.app/fr/">
     <meta property="og:image" content="https://terento.app/assets/social/terento-og.png">
     <meta property="og:image:type" content="image/png">
@@ -28,12 +29,10 @@
     <meta property="og:image:alt" content="Terento affiche une montre Garmin connectée sur macOS">
     <meta property="og:locale" content="fr_FR">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Terento — Cartes tierces pour Garmin sur Mac">
-    <meta name="twitter:description" content="Installez et gérez des cartes tierces sur les montres Garmin et les compteurs vélo Edge compatibles cartes avec Terento, l’app macOS gratuite pour Apple Silicon.">
+    <meta name="twitter:title" content="Terento — Cartes gratuites pour montres Garmin et Edge">
+    <meta name="twitter:description" content="Installez des cartes gratuites comme OpenTopoMap et Freizeitkarte sur montres Garmin et compteurs vélo Edge. App Mac gratuite ou installateur web.">
     <meta name="twitter:image" content="https://terento.app/assets/social/terento-og.png">
-    <title>Terento — Cartes tierces pour Garmin sur Mac</title>
-
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#222A2B">
+    <title>Terento — Cartes gratuites pour montres Garmin et Edge</title>
 
     <link rel="icon" href="/favicon.ico?v=20260820-4" sizes="any">
     <link rel="icon" href="/favicon.svg?v=20260820-4" type="image/svg+xml">
@@ -41,9 +40,9 @@
     <link rel="mask-icon" href="/safari-pinned-tab.svg?v=20260820-4" color="#7898A8">
     <link rel="manifest" href="/manifest.webmanifest">
     <script defer src="/language.js?v=20260926-static-shell-v1"></script>
-    <script defer src="/privacy-consent.js?v=20260905-campaign-url-only-v1"></script>
+    <script defer src="/privacy-consent.js?v=20261105-outbound-links"></script>
     <script defer src="/provider-list.js?v=20261026-osmapa-v1"></script>
-    <script defer src="/home-features.js?v=20260904-home-workflow-tabs"></script>
+    <script defer src="/home-features.js?v=20261105-home-map-switch-v4"></script>
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -65,7 +64,7 @@
             "url": "https://terento.app/fr/",
             "applicationCategory": "UtilitiesApplication",
             "operatingSystem": "macOS 13 ou version ultérieure sur Apple Silicon",
-            "description": "Installez et gérez des cartes tierces sur les montres Garmin et les compteurs vélo Edge compatibles cartes avec Terento, l’app macOS gratuite pour Apple Silicon.",
+            "description": "Installez des cartes gratuites comme OpenTopoMap et Freizeitkarte sur montres Garmin et compteurs vélo Edge. App Mac gratuite ou installateur web.",
             "softwareVersion": "1.1.0",
             "softwareRequirements": "Mac Apple Silicon. Les Mac Intel ne sont pas pris en charge.",
             "downloadUrl": "https://github.com/VooZ2/terento/releases/download/v1.1.0-build46/Terento-1.1.0-macOS-arm64.dmg",
@@ -88,7 +87,7 @@
             "name": "Terento",
             "url": "https://terento.app/fr/",
             "inLanguage": "fr",
-            "description": "Installez et gérez des cartes tierces sur les montres Garmin et les compteurs vélo Edge compatibles cartes avec Terento, l’app macOS gratuite pour Apple Silicon.",
+            "description": "Installez des cartes gratuites comme OpenTopoMap et Freizeitkarte sur montres Garmin et compteurs vélo Edge. App Mac gratuite ou installateur web.",
             "publisher": {
               "@id": "https://terento.app/#organization"
             }
@@ -112,7 +111,7 @@
                 "name": "Puis-je installer des cartes tierces sur une montre Garmin depuis un Mac sans Garmin Express ni BaseCamp ?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Oui. Terento est conçu pour rendre la gestion des cartes tierces sur macOS simple et rapide — du choix de la carte à son installation, sa mise à jour et sa gestion sur votre montre Garmin. Lisez le guide d’installation."
+                  "text": "Oui. Terento fait tout depuis votre Mac : choisissez une carte et une région, installez-la sur votre Garmin, puis mettez-la à jour ou supprimez-la plus tard. Garmin Express et BaseCamp ne sont pas nécessaires. Lisez le guide d’installation."
                 }
               },
               {
@@ -128,7 +127,7 @@
                 "name": "Puis-je mettre les cartes à jour plus tard ?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Oui. Terento vous indique lorsqu’une version plus récente est disponible et vous aide à mettre à jour les cartes tierces gérées par Terento."
+                  "text": "Oui. Terento vous signale quand une version plus récente d’une carte installée est disponible et la met à jour pour vous."
                 }
               },
               {
@@ -194,123 +193,87 @@
       </div>
     </header>
 
-    <main id="main-content">
-      <section class="hero" aria-labelledby="hero-title">
-        <div class="shell hero-grid">
-          <div class="hero-copy">
-            <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>Projet open source</p>
-            <h1 id="hero-title">Installez des cartes gratuites sur votre montre Garmin</h1>
-            <p class="hero-lede">Terento est un outil gratuit et open source pour installer, mettre à jour et gérer des cartes tierces sur les montres et compteurs vélo Edge Garmin : avec une application Mac native ou dans votre navigateur sur ordinateur.</p>
-            <div class="hero-actions"><a class="download-action hero-download-action" href="/fr/download/" data-umami-event="download-cta-click" data-umami-event-location="home-hero">Télécharger pour Mac <span aria-hidden="true">→</span></a><div class="hero-secondary-actions"><a class="text-link hero-compatibility-link" href="/fr/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="home-hero">Vérifier la compatibilité <span aria-hidden="true">→</span></a><a class="text-link hero-web-installer-link" href="/fr/install/" data-umami-event="web-installer-link-click" data-umami-event-location="home-hero">Installer depuis votre navigateur<span aria-hidden="true">→</span></a></div></div>
+    <main id="main-content" class="home">
+      <section class="home-hero" aria-labelledby="hero-title">
+        <div class="shell home-hero-grid">
+          <div class="home-hero-copy">
+            <h1 id="hero-title">Installez des cartes gratuites sur votre Garmin</h1>
+            <p class="hero-lede">Terento installe des cartes gratuites issues de projets OpenStreetMap sur les montres Garmin et les compteurs vélo Edge. Avec l’app Mac ou directement dans le navigateur de votre ordinateur. Gratuit et open source.</p>
+            <div class="home-actions"><a class="download-action hero-download-action" href="/fr/download/" data-umami-event="download-cta-click" data-umami-event-location="home-hero">Télécharger pour Mac</a><a class="text-link hero-web-installer-link" href="/fr/install/" data-umami-event="web-installer-link-click" data-umami-event-location="home-hero">Installer depuis votre navigateur</a></div>
+            <p class="home-hero-note">Vous hésitez pour votre modèle ? <a class="text-link hero-compatibility-link" href="/fr/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="home-hero">Vérifier la compatibilité</a></p>
           </div>
-
-          <div class="hero-visual">
-            <figure class="app-shot app-shot--hero">
-              <picture>
-                <source type="image/avif" srcset="/assets/app/optimized/installing-maps-640.avif?v=20260912-app-screens-v2 640w, /assets/app/optimized/installing-maps-960.avif?v=20260912-app-screens-v2 960w, /assets/app/optimized/installing-maps-1280.avif?v=20260912-app-screens-v2 1280w, /assets/app/optimized/installing-maps-1600.avif?v=20260912-app-screens-v2 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 60vw">
-                <source type="image/webp" srcset="/assets/app/optimized/installing-maps-640.webp?v=20260912-app-screens-v2 640w, /assets/app/optimized/installing-maps-960.webp?v=20260912-app-screens-v2 960w, /assets/app/optimized/installing-maps-1280.webp?v=20260912-app-screens-v2 1280w, /assets/app/optimized/installing-maps-1600.webp?v=20260912-app-screens-v2 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 60vw">
-                <img src="/assets/app/optimized/installing-maps-1600.png?v=20260912-app-screens-v2" width="2358" height="1575" sizes="(max-width: 1099px) calc(100vw - 48px), 60vw" alt="Terento affiche la progression de l’installation de cartes tierces sur macOS" fetchpriority="high" decoding="async">
-              </picture>
-            </figure>
-          </div>
+          <figure class="home-device" data-map-switch>
+            <div class="home-watch">
+              <img class="home-watch-map" data-map-image src="/assets/home/hero-opentopomap.webp?v=20261105-home-edge4" width="520" height="520" alt="Montre Garmin affichant la carte OpenTopoMap du lac Königssee, dans les Alpes bavaroises" fetchpriority="high" decoding="async">
+              <img class="home-watch-body" src="/assets/home/watch-front.webp?v=20261105-home-edge4" width="1080" height="1080" alt="" decoding="async">
+            </div>
+            <figcaption>
+              <span class="home-switch" role="group" aria-label="Style de carte affiché sur la montre"><button type="button" class="home-switch-button" data-map-style="opentopomap" data-map-alt="Montre Garmin affichant la carte OpenTopoMap du lac Königssee, dans les Alpes bavaroises" aria-pressed="true" data-umami-event="map-style-switch" data-umami-event-location="home-hero" data-umami-event-style="opentopomap">OpenTopoMap</button><button type="button" class="home-switch-button" data-map-style="freizeitkarte" data-map-alt="Montre Garmin affichant la carte Freizeitkarte du lac Königssee, dans les Alpes bavaroises" aria-pressed="false" data-umami-event="map-style-switch" data-umami-event-location="home-hero" data-umami-event-style="freizeitkarte">Freizeitkarte</button><button type="button" class="home-switch-button" data-map-style="maprando" data-map-alt="Montre Garmin affichant la carte MapRando du lac Königssee, dans les Alpes bavaroises" aria-pressed="false" data-umami-event="map-style-switch" data-umami-event-location="home-hero" data-umami-event-style="maprando">MapRando</button></span>
+            </figcaption>
+          </figure>
         </div>
       </section>
 
-      <section class="experience section" id="how-it-works" aria-labelledby="experience-title">
-        <div class="shell">
-          <div class="section-heading">
-            <p class="eyebrow" id="experience-label">Comment ça marche</p><h2 id="experience-title">Connecter <span class="workflow-title-arrow" aria-hidden="true">→</span><span class="workflow-title-bullet" aria-hidden="true"></span> Installer <span class="workflow-title-arrow" aria-hidden="true">→</span><span class="workflow-title-bullet" aria-hidden="true"></span> Terminé</h2>
+      <section class="home-steps section" id="how-it-works" aria-labelledby="steps-title">
+        <div class="shell home-split">
+          <div class="home-split-copy">
+            <h2 id="steps-title">Comment ça marche</h2>
+            <ol class="steps">
+              <li class="step">
+                <h3>Connecter</h3>
+                <p>Terento reconnaît votre montre Garmin et indique quand elle est prête.</p>
+              </li>
+              <li class="step">
+                <h3>Installer</h3>
+                <p>Choisissez des cartes dans le catalogue ou ajoutez votre propre carte .img compatible.</p>
+              </li>
+              <li class="step">
+                <h3>Terminé</h3>
+                <p>Vos cartes sont installées et prêtes à être utilisées sur votre Garmin.</p>
+              </li>
+            </ol>
           </div>
-          <div class="problem-statement">
-            <p>Installer des cartes tierces devrait être simple et rapide — sans copier de fichiers à la main ni connaissances techniques.</p>
-            <p>Terento réunit tout le parcours en trois étapes simples.</p>
-          </div>
-          <ol class="steps">
-            <li class="step">
-              <p class="step-number" aria-hidden="true">01</p>
-              <h3>Connecter</h3>
-              <p>Terento reconnaît votre montre Garmin et indique quand elle est prête.</p>
-            </li>
-            <li class="step">
-              <p class="step-number" aria-hidden="true">02</p>
-              <h3>Installer</h3>
-              <p>Choisissez des cartes dans le catalogue ou ajoutez votre propre carte .img compatible.</p>
-            </li>
-            <li class="step">
-              <p class="step-number" aria-hidden="true">03</p>
-              <h3>Terminé</h3>
-              <p>Vos cartes sont installées et prêtes à être utilisées sur votre Garmin.</p>
-            </li>
-          </ol>
+          <figure class="app-shot app-shot--feature">
+            <picture>
+              <source type="image/avif" srcset="/assets/app/optimized/install-maps-640.avif?v=20260912-app-screens-v2 640w, /assets/app/optimized/install-maps-960.avif?v=20260912-app-screens-v2 960w, /assets/app/optimized/install-maps-1280.avif?v=20260912-app-screens-v2 1280w, /assets/app/optimized/install-maps-1600.avif?v=20260912-app-screens-v2 1600w" sizes="(max-width: 899px) calc(100vw - 48px), 60vw">
+              <source type="image/webp" srcset="/assets/app/optimized/install-maps-640.webp?v=20260912-app-screens-v2 640w, /assets/app/optimized/install-maps-960.webp?v=20260912-app-screens-v2 960w, /assets/app/optimized/install-maps-1280.webp?v=20260912-app-screens-v2 1280w, /assets/app/optimized/install-maps-1600.webp?v=20260912-app-screens-v2 1600w" sizes="(max-width: 899px) calc(100vw - 48px), 60vw">
+              <img src="/assets/app/optimized/install-maps-1600.png?v=20260912-app-screens-v2" width="2358" height="1575" sizes="(max-width: 899px) calc(100vw - 48px), 60vw" alt="Terento affiche les fournisseurs et les régions de cartes tierces sur macOS" loading="lazy" decoding="async">
+            </picture>
+          </figure>
         </div>
       </section>
 
-      <section class="map-feature-section" aria-label="Fonctions cartographiques">
-        <div class="shell">
-          <div class="map-feature-tabs" data-map-feature-tabs role="tablist" aria-label="Fonctions cartographiques">
-            <button class="map-feature-tab" type="button" role="tab" id="install-maps-tab" aria-controls="install-maps-panel" aria-selected="true">Installer des cartes</button>
-            <button class="map-feature-tab" type="button" role="tab" id="manage-maps-tab" aria-controls="manage-maps-panel" aria-selected="false">Gérer les cartes</button>
-          </div>
-        </div>
-        <div class="map-feature-panels">
-          <div class="map-feature-panel" id="install-maps-panel" role="tabpanel" tabindex="0" aria-labelledby="install-maps-tab">
-<section class="product-showcase product-showcase--muted" aria-labelledby="install-maps-title">
-        <div class="shell product-showcase-panel"><div class="product-showcase-grid">
-          <div class="product-showcase-copy">
-            <h2 id="install-maps-title">Installer les cartes</h2>
-            <p>Choisissez des cartes dans le catalogue par région ou ajoutez votre propre carte .img compatible.</p>
-          </div>
-          <div class="product-showcase-media">
-            <figure class="app-shot app-shot--feature">
-              <picture>
-                <source type="image/avif" srcset="/assets/app/optimized/install-maps-640.avif?v=20260912-app-screens-v2 640w, /assets/app/optimized/install-maps-960.avif?v=20260912-app-screens-v2 960w, /assets/app/optimized/install-maps-1280.avif?v=20260912-app-screens-v2 1280w, /assets/app/optimized/install-maps-1600.avif?v=20260912-app-screens-v2 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw">
-                <source type="image/webp" srcset="/assets/app/optimized/install-maps-640.webp?v=20260912-app-screens-v2 640w, /assets/app/optimized/install-maps-960.webp?v=20260912-app-screens-v2 960w, /assets/app/optimized/install-maps-1280.webp?v=20260912-app-screens-v2 1280w, /assets/app/optimized/install-maps-1600.webp?v=20260912-app-screens-v2 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw">
-                <img src="/assets/app/optimized/install-maps-1600.png?v=20260912-app-screens-v2" width="2358" height="1575" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw" alt="Terento affiche les fournisseurs et les régions de cartes tierces sur macOS" loading="lazy" decoding="async">
-              </picture>
-            </figure>
-          </div>
-        </div></div>
-      </section>
-        </div>
-          <div class="map-feature-panel" id="manage-maps-panel" role="tabpanel" tabindex="0" aria-labelledby="manage-maps-tab">
-<section class="product-showcase product-showcase--muted product-showcase--reverse" aria-labelledby="manage-maps-title">
-        <div class="shell product-showcase-panel"><div class="product-showcase-grid">
-          <div class="product-showcase-copy">
-            <h2 id="manage-maps-title">Gérer les cartes</h2>
+      <section class="home-manage section" aria-labelledby="manage-title">
+        <div class="shell home-split home-split--reverse">
+          <div class="home-split-copy">
+            <h2 id="manage-title">Gérer les cartes</h2>
             <p>Consultez les cartes installées, mettez-les à jour lorsqu’une version plus récente est disponible et supprimez les cartes tierces gérées par Terento. Les cartes Garmin d’origine restent protégées.</p>
           </div>
-          <div class="product-showcase-media">
-            <figure class="app-shot app-shot--feature">
-              <picture>
-                <source type="image/avif" srcset="/assets/app/optimized/manage-maps-640.avif?v=20260912-app-screens-v2 640w, /assets/app/optimized/manage-maps-960.avif?v=20260912-app-screens-v2 960w, /assets/app/optimized/manage-maps-1280.avif?v=20260912-app-screens-v2 1280w, /assets/app/optimized/manage-maps-1600.avif?v=20260912-app-screens-v2 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw">
-                <source type="image/webp" srcset="/assets/app/optimized/manage-maps-640.webp?v=20260912-app-screens-v2 640w, /assets/app/optimized/manage-maps-960.webp?v=20260912-app-screens-v2 960w, /assets/app/optimized/manage-maps-1280.webp?v=20260912-app-screens-v2 1280w, /assets/app/optimized/manage-maps-1600.webp?v=20260912-app-screens-v2 1600w" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw">
-                <img src="/assets/app/optimized/manage-maps-1600.png?v=20260912-app-screens-v2" width="2358" height="1575" sizes="(max-width: 1099px) calc(100vw - 48px), 68vw" alt="Terento affiche les cartes tierces installées, regroupées par fournisseur" loading="lazy" decoding="async">
-              </picture>
-            </figure>
-          </div>
-        </div></div>
-      </section>
-        </div>
+          <figure class="app-shot app-shot--feature">
+            <picture>
+              <source type="image/avif" srcset="/assets/app/optimized/manage-maps-640.avif?v=20260912-app-screens-v2 640w, /assets/app/optimized/manage-maps-960.avif?v=20260912-app-screens-v2 960w, /assets/app/optimized/manage-maps-1280.avif?v=20260912-app-screens-v2 1280w, /assets/app/optimized/manage-maps-1600.avif?v=20260912-app-screens-v2 1600w" sizes="(max-width: 899px) calc(100vw - 48px), 60vw">
+              <source type="image/webp" srcset="/assets/app/optimized/manage-maps-640.webp?v=20260912-app-screens-v2 640w, /assets/app/optimized/manage-maps-960.webp?v=20260912-app-screens-v2 960w, /assets/app/optimized/manage-maps-1280.webp?v=20260912-app-screens-v2 1280w, /assets/app/optimized/manage-maps-1600.webp?v=20260912-app-screens-v2 1600w" sizes="(max-width: 899px) calc(100vw - 48px), 60vw">
+              <img src="/assets/app/optimized/manage-maps-1600.png?v=20260912-app-screens-v2" width="2358" height="1575" sizes="(max-width: 899px) calc(100vw - 48px), 60vw" alt="Terento affiche les cartes tierces installées, regroupées par fournisseur" loading="lazy" decoding="async">
+            </picture>
+          </figure>
         </div>
       </section>
-      <section class="web-installer section" id="web-installer" aria-labelledby="web-installer-title">
-        <div class="shell">
-          <div class="section-heading">
-            <p class="eyebrow">Installateur web</p><h2 id="web-installer-title">Pas d’application ? Installez depuis votre navigateur.</h2>
+
+      <section class="home-edge section" id="edge" aria-labelledby="edge-title">
+        <div class="shell home-edge-inner">
+          <figure class="home-device home-edge-figure" data-map-switch><div class="home-edge-screen"><img class="home-edge-map" data-map-image src="/assets/home/edge-freizeitkarte.webp?v=20261105-home-edge4" width="520" height="520" alt="Compteur vélo Garmin Edge affichant la carte Freizeitkarte de la montée de Sa Calobra, dans la Serra de Tramuntana à Majorque" loading="lazy" decoding="async"><img class="home-edge-body" src="/assets/home/edge-front.webp?v=20261105-home-edge4" width="800" height="1200" alt="" loading="lazy" decoding="async"></div><figcaption><span class="home-switch" role="group" aria-label="Style de carte affiché sur l’Edge"><button type="button" class="home-switch-button" data-map-style="opentopomap" data-map-alt="Compteur vélo Garmin Edge affichant la carte OpenTopoMap de la montée de Sa Calobra, dans la Serra de Tramuntana à Majorque" aria-pressed="false" data-umami-event="map-style-switch" data-umami-event-location="home-edge" data-umami-event-style="opentopomap">OpenTopoMap</button><button type="button" class="home-switch-button" data-map-style="freizeitkarte" data-map-alt="Compteur vélo Garmin Edge affichant la carte Freizeitkarte de la montée de Sa Calobra, dans la Serra de Tramuntana à Majorque" aria-pressed="true" data-umami-event="map-style-switch" data-umami-event-location="home-edge" data-umami-event-style="freizeitkarte">Freizeitkarte</button><button type="button" class="home-switch-button" data-map-style="maprando" data-map-alt="Compteur vélo Garmin Edge affichant la carte MapRando de la montée de Sa Calobra, dans la Serra de Tramuntana à Majorque" aria-pressed="false" data-umami-event="map-style-switch" data-umami-event-location="home-edge" data-umami-event-style="maprando">MapRando</button></span></figcaption></figure><div class="home-edge-copy">
+            <h2 id="edge-title">À vélo aussi</h2>
+            <p>Les compteurs vélo Garmin Edge récents compatibles avec les cartes, comme les Edge 540, 840 et 1050, utilisent les mêmes cartes. Connectez, choisissez une région, installez.</p>
+            <p><a class="text-link" href="/fr/guides/install-garmin-maps-edge-mac/" data-umami-event="guide-link-click" data-umami-event-location="home-edge">Lire le guide Garmin Edge</a></p>
           </div>
-          <div class="problem-statement">
-            <p>Branchez votre Garmin avec un câble USB, choisissez des cartes et installez-les directement depuis Chrome, Microsoft Edge, Opera ou Brave. Mettez-les à jour ou supprimez-les plus tard de la même façon.</p>
-            <p>Fonctionne sur Mac et, encore en test, sous Linux. Pas encore sous Windows, ni sur téléphone ou tablette.</p>
-          </div>
-          <p class="guide-facts web-installer-facts"><span>Mac · Linux (en test)</span><span>Chrome, Microsoft Edge, Opera, Brave</span><span>Câble USB de données</span></p>
-          <p class="web-installer-action"><a class="text-link" href="/fr/install/" data-umami-event="web-installer-link-click" data-umami-event-location="home-section">Ouvrir l’installateur web<span aria-hidden="true">→</span></a></p>
         </div>
       </section>
       <section class="provider-section section" id="providers" aria-labelledby="providers-title">
         <div class="shell">
-          <div class="section-heading provider-intro"><p class="eyebrow">Cartes disponibles</p><h2 id="providers-title">Découvrez les cartes disponibles.</h2><p class="provider-copy">Choisissez parmi les fournisseurs disponibles. Les cartes sont téléchargées depuis la source d’origine de chaque fournisseur.</p></div>
+          <div class="section-heading provider-intro"><h2 id="providers-title">Choisissez la carte adaptée à votre sortie</h2><p class="provider-copy">Choisissez parmi les fournisseurs disponibles. Les cartes sont téléchargées depuis la source d’origine de chaque fournisseur.</p></div>
           <div class="provider-cards" id="provider-cards" data-provider-cards role="region" tabindex="0" aria-label="Fournisseurs de cartes">
             <article class="provider-card" data-provider-card="freizeitkarte">
+              <img class="home-card-map" src="/assets/home/maps-freizeitkarte.webp?v=20261105-home-edge4" width="640" height="400" alt="La carte Freizeitkarte des Hautes Tatras" loading="lazy" decoding="async">
               <div class="provider-card-header">
                 <h3>Freizeitkarte</h3>
                 <p class="provider-count" data-provider-count data-count-template="{count} paquets de cartes">63 paquets de cartes</p>
@@ -319,6 +282,7 @@
               <ul class="provider-benefits"><li>Itinéraires à pied et à vélo</li><li>Courbes de niveau incluses</li><li>Lieux à visiter, arrêts de bus et gares</li></ul>
             </article>
 <article class="provider-card" data-provider-card="opentopomap">
+              <img class="home-card-map" src="/assets/home/maps-opentopomap.webp?v=20261105-home-edge4" width="640" height="400" alt="La carte OpenTopoMap des Hautes Tatras" loading="lazy" decoding="async">
               <div class="provider-card-header">
                 <h3>OpenTopoMap</h3>
                 <p class="provider-count" data-provider-count data-count-template="{count} paquets de cartes">177 paquets de cartes</p>
@@ -332,6 +296,7 @@
               </details>
             </article>
 <article class="provider-card" data-provider-card="maprando">
+              <img class="home-card-map" src="/assets/home/maps-maprando.webp?v=20261105-home-edge4" width="640" height="400" alt="La carte MapRando des Hautes Tatras" loading="lazy" decoding="async">
               <div class="provider-card-header">
                 <h3>MapRando</h3>
                 <p class="provider-count" data-provider-count data-count-template="{count} paquets de cartes" hidden></p>
@@ -340,32 +305,17 @@
               <ul class="provider-benefits"><li>Petits chemins au-delà des sentiers principaux</li><li>Un style de carte conçu pour la randonnée</li><li>Les nouvelles éditions intègrent les modifications OpenStreetMap</li></ul>
               <p class="provider-language-note"><span aria-hidden="true">ⓘ</span><span>Certains libellés de la carte sont en français.</span></p>
             </article>
-<article class="provider-card" data-provider-card="bbbike" data-provider-type="bbbike-latin1" hidden>
+<article class="provider-card" data-provider-card="bbbike" hidden>
+              <img class="home-card-map" src="/assets/home/maps-bbbike-ontrail.webp?v=20261105-home-edge4" width="640" height="400" alt="La carte BBBike des Hautes Tatras" loading="lazy" decoding="async">
               <div class="provider-card-header">
                 <h3>BBBike</h3>
                 <p class="provider-count" data-provider-count data-count-template="{count} paquets de cartes" hidden></p>
               </div>
-              <p class="provider-summary">Pour explorer les rues, les pistes cyclables et leurs environs.</p>
-              <ul class="provider-benefits"><li>Styles distincts pour routes, pistes cyclables et chemins piétons</li><li>Bâtiments, parcs et forêts pour se repérer</li><li>Cartes régionales actualisées chaque semaine</li></ul>
-            </article>
-<article class="provider-card" data-provider-card="bbbike" data-provider-type="ontrail-latin1" hidden>
-              <div class="provider-card-header">
-                <h3>BBBike (Ontrail)</h3>
-                <p class="provider-count" data-provider-count data-count-template="{count} paquets de cartes" hidden></p>
-              </div>
-              <p class="provider-summary">Pour marcher et pédaler en économisant le stockage.</p>
-              <ul class="provider-benefits"><li>Des cartes compactes qui économisent de l’espace</li><li>Petites routes et chemins inclus</li><li>Navigation le long des routes et chemins cartographiés</li></ul>
-            </article>
-<article class="provider-card" data-provider-card="bbbike" data-provider-type="opentopo-latin1" hidden>
-              <div class="provider-card-header">
-                <h3>BBBike (OpenTopoMap)</h3>
-                <p class="provider-count" data-provider-count data-count-template="{count} paquets de cartes" hidden></p>
-              </div>
-              <p class="provider-summary">Pour la randonnée et le vélo dans le style OpenTopoMap, même là où les autres cartes manquent.</p>
-              <ul class="provider-benefits"><li>Style OpenTopoMap : sentiers, chemins et occupation du sol</li><li>Cartes régionales actualisées chaque semaine</li><li>Aussi pour des pays qu’aucune autre carte ne couvre ici</li></ul>
-              <p class="provider-language-note"><span aria-hidden="true">ⓘ</span><span>Cette carte n’a pas de courbes de niveau.</span></p>
+              <p class="provider-summary">Des cartes régionales mises à jour chaque semaine pour le vélo et la marche, même là où les autres manquent.</p>
+              <ul class="provider-benefits"><li>Ontrail : compacte, avec petites routes et chemins</li><li>Style OpenTopoMap : sentiers et occupation du sol</li><li>Couvre des pays qu’aucune autre carte ne couvre ici</li></ul>
             </article>
 <article class="provider-card" data-provider-card="osmapa" hidden>
+              <img class="home-card-map" src="/assets/home/maps-osmapa-podstawowa.webp?v=20261105-home-edge4" width="640" height="400" alt="La carte OSMapaPL des Hautes Tatras" loading="lazy" decoding="async">
               <div class="provider-card-header">
                 <h3>OSMapaPL</h3>
                 <p class="provider-count" data-provider-count data-count-template="{count} paquets de cartes" hidden></p>
@@ -374,14 +324,32 @@
               <ul class="provider-benefits"><li>Carte détaillée de la Pologne, aussi avec les zones frontalières</li><li>Trois styles : avec les lettres polonaises, sans elles, ou une carte plus légère et plus petite</li><li>Courbes de niveau dans un paquet séparé</li></ul>
             </article>
           </div>
-          <p class="provider-compare"><a class="text-link" href="/fr/map-styles/" data-umami-event="maps-link-click" data-umami-event-location="home-providers">Comparer les styles en direct<span aria-hidden="true"> →</span></a></p>
+          <p class="provider-compare"><a class="text-link" href="/fr/map-styles/" data-umami-event="maps-link-click" data-umami-event-location="home-providers">Comparer les styles en direct</a></p>
+        </div>
+      </section>
+      <section class="home-ways section" id="web-installer" aria-labelledby="ways-title">
+        <div class="shell">
+          <h2 id="ways-title">Avec l’app Mac ou depuis votre navigateur</h2>
+          <div class="home-ways-grid">
+            <div class="home-way">
+              <h3>App Mac</h3>
+              <p>Installez les cartes du catalogue ou votre propre carte .img, voyez ce qui se trouve sur votre Garmin et mettez à jour les cartes quand de nouvelles éditions paraissent.</p>
+              <p class="home-way-note">macOS 13 ou version ultérieure sur Apple Silicon.</p>
+              <p class="home-way-action"><a class="text-link" href="/fr/download/" data-umami-event="download-cta-click" data-umami-event-location="home-section">Télécharger pour Mac</a></p>
+            </div>
+            <div class="home-way">
+              <h3>Installateur web</h3>
+              <p>Branchez votre Garmin avec un câble USB, choisissez des cartes et installez-les directement depuis Chrome, Microsoft Edge, Opera ou Brave. Mettez-les à jour ou supprimez-les plus tard de la même façon.</p>
+              <p class="home-way-note">Fonctionne sur Mac et, encore en test, sous Linux. Pas encore sous Windows, ni sur téléphone ou tablette.</p>
+              <p class="home-way-action"><a class="text-link" href="/fr/install/" data-umami-event="web-installer-link-click" data-umami-event-location="home-section">Ouvrir l’installateur web</a></p>
+            </div>
+          </div>
         </div>
       </section>
       <section class="faq section" id="faq" aria-labelledby="faq-title">
         <div class="shell faq-grid">
           <div class="section-heading">
-            <p class="eyebrow">Vous avez des questions ?</p>
-            <h2 id="faq-title">FAQ</h2>
+            <h2 id="faq-title">Questions et réponses</h2>
           </div>
           <div class="faq-list">
             <details>
@@ -390,7 +358,7 @@
             </details>
             <details>
               <summary>Puis-je installer des cartes tierces sur une montre Garmin depuis un Mac sans Garmin Express ni BaseCamp ?</summary>
-              <p>Oui. Terento est conçu pour rendre la gestion des cartes tierces sur macOS simple et rapide — du choix de la carte à son installation, sa mise à jour et sa gestion sur votre montre Garmin. <a href="/fr/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="home-faq-basecamp">Lisez le guide d’installation.</a></p>
+              <p>Oui. Terento fait tout depuis votre Mac : choisissez une carte et une région, installez-la sur votre Garmin, puis mettez-la à jour ou supprimez-la plus tard. Garmin Express et BaseCamp ne sont pas nécessaires. <a href="/fr/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="home-faq-basecamp">Lisez le guide d’installation.</a></p>
             </details>
             <details>
               <summary>Puis-je ajouter ma propre carte .img ?</summary>
@@ -398,7 +366,7 @@
             </details>
             <details>
               <summary>Puis-je mettre les cartes à jour plus tard ?</summary>
-              <p>Oui. Terento vous indique lorsqu’une version plus récente est disponible et vous aide à mettre à jour les cartes tierces gérées par Terento.</p>
+              <p>Oui. Terento vous signale quand une version plus récente d’une carte installée est disponible et la met à jour pour vous.</p>
             </details>
             <details>
               <summary>Pourquoi ma montre Garmin n’apparaît-elle pas sur mon Mac ?</summary>
@@ -408,25 +376,25 @@
               <summary>Que dois-je faire si l’installation échoue ?</summary>
               <p>Sur l’écran d’échec de l’installation, choisissez « Report issue ». Terento ouvre GitHub avec le rapport déjà rempli. Vérifiez-le avant de le publier : les issues GitHub sont publiques. Pour une aide par e-mail, indiquez le modèle de votre montre, la région de la carte et ce qui s’est passé. <a href="/fr/guides/troubleshooting/" data-umami-event="guide-link-click" data-umami-event-location="home-faq-troubleshooting">Lisez le guide de dépannage.</a></p>
               <div class="faq-support-actions">
-                <a class="text-link" href="https://github.com/VooZ2/terento/issues/new/choose" target="_blank" rel="noopener noreferrer" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="github-issue">Ouvrir une issue <span aria-hidden="true">→</span></a>
-                <a class="text-link" href="mailto:hello&#64;terento.app?subject=Terento%20installation%20issue" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="email">Contacter le support <span aria-hidden="true">→</span></a>
+                <a class="text-link" href="https://github.com/VooZ2/terento/issues/new/choose" target="_blank" rel="noopener noreferrer" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="github-issue">Ouvrir une issue</a>
+                <a class="text-link" href="mailto:hello&#64;terento.app?subject=Terento%20installation%20issue" data-umami-event="support-link-click" data-umami-event-location="home-faq-install-failed" data-umami-event-channel="email">Contacter le support</a>
               </div>
             </details>
             <details>
               <summary>Puis-je installer des cartes sans installer l’application ?</summary>
               <p>Oui. L’<a href="/fr/install/" data-umami-event="web-installer-link-click" data-umami-event-location="home-faq">installateur web</a> installe, met à jour et supprime les cartes du catalogue depuis Chrome, Microsoft Edge, Opera ou Brave sur Mac, et sous Linux, où il est encore en test. Il ne fonctionne pas encore sous Windows, sur téléphone ou tablette, et ne permet pas d’ajouter vos propres cartes .img.</p>
             </details>
-            </div>
+          </div>
         </div>
       </section>
 
       <section class="final-cta" aria-labelledby="final-cta-title">
         <div class="shell final-cta-inner">
           <div class="final-cta-copy">
-            <h2 id="final-cta-title">Prêt pour une façon plus simple d’installer vos cartes ?</h2>
+            <h2 id="final-cta-title">Votre Garmin, prêt pour votre prochaine sortie</h2>
             <p>Téléchargez Terento pour votre Mac ou installez des cartes directement depuis votre navigateur.</p>
           </div>
-          <div class="final-cta-actions"><a class="download-action" href="/fr/download/" data-umami-event="download-cta-click" data-umami-event-location="home-final-cta">Télécharger</a><a class="text-link" href="/fr/install/" data-umami-event="web-installer-link-click" data-umami-event-location="home-final-cta">Installer depuis votre navigateur<span aria-hidden="true">→</span></a></div>
+          <div class="final-cta-actions"><a class="download-action" href="/fr/download/" data-umami-event="download-cta-click" data-umami-event-location="home-final-cta">Télécharger pour Mac</a><a class="text-link" href="/fr/install/" data-umami-event="web-installer-link-click" data-umami-event-location="home-final-cta">Installer depuis votre navigateur</a></div>
         </div>
       </section>
     </main>
@@ -438,13 +406,16 @@
             <img src="/assets/logo-white.svg" alt="" width="32" height="32">
             <span>Terento</span>
           </a>
-          <div class="footer-meta"><a class="footer-status footer-project-link" data-shell-copy="status" data-project-link href="https://github.com/VooZ2/terento" target="_blank" rel="noopener noreferrer">Projet open source</a><a class="footer-support-link" data-shell-copy="support" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">Support Terento</a></div>
+          <p class="footer-tagline" data-shell-copy="tagline">Cartes gratuites pour votre montre Garmin ou votre Edge.</p>
+          <div class="footer-actions">
+          <a class="footer-support-link" data-support-link href="https://buymeacoffee.com/vooz2" target="_blank" rel="noopener noreferrer"><svg class="footer-support-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg><span data-shell-copy="support">Faire un don</span><span class="footer-support-via">Buy Me a Coffee</span></a>
+          <a class="footer-project-link" data-project-link href="https://github.com/VooZ2/terento" target="_blank" rel="noopener noreferrer"><svg class="footer-support-icon" viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg><span data-shell-copy="status">Code source</span><span class="footer-support-via">GitHub</span></a>
+          </div>
         </div>
         <nav class="footer-nav" data-shell-aria="footer" aria-label="Navigation du pied de page">
-          <a href="/fr/#faq" data-shell-copy="faq" data-shell-route="faq" data-umami-event="faq-link-click" data-umami-event-location="footer-nav">FAQ</a><a href="/fr/guides/troubleshooting/" data-shell-copy="troubleshooting" data-shell-route="troubleshooting" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Dépannage</a>
-          <a data-shell-copy="web_installer" href="/fr/install/" data-umami-event="web-installer-link-click" data-umami-event-location="footer-nav">Installateur web</a>
-          <a data-shell-copy="legal" href="/legal/" data-umami-event="legal-link-click" data-umami-event-location="footer-nav">Mentions légales</a>
-          <a data-shell-copy="privacy" href="/privacy/" data-umami-event="privacy-link-click" data-umami-event-location="footer-nav">Confidentialité</a>
+          <div class="footer-column"><h2 class="footer-heading" data-shell-copy="col_install">Installer</h2><a href="/fr/download/" data-shell-copy="download" data-shell-route="download" data-umami-event="download-cta-click" data-umami-event-location="footer-nav">Télécharger</a><a data-shell-copy="web_installer" href="/fr/install/" data-umami-event="web-installer-link-click" data-umami-event-location="footer-nav">Installateur web</a><a href="/fr/map-styles/" data-shell-copy="styles" data-shell-route="styles" data-umami-event="maps-link-click" data-umami-event-location="footer-nav">Cartes</a><a href="/fr/compatibility/" data-shell-copy="compatibility" data-shell-route="compatibility" data-umami-event="compatibility-link-click" data-umami-event-location="footer-nav">Compatibilité</a></div>
+          <div class="footer-column"><h2 class="footer-heading" data-shell-copy="col_help">Aide</h2><a href="/fr/guides/install-garmin-maps-mac/" data-shell-copy="guide_watch" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Guide montre</a><a href="/fr/guides/install-garmin-maps-edge-mac/" data-shell-copy="guide_edge" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Guide Edge</a><a href="/fr/guides/install-garmin-maps-linux/" data-shell-copy="guide_linux" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Guide Linux</a><a href="/fr/guides/troubleshooting/" data-shell-copy="troubleshooting" data-shell-route="troubleshooting" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Dépannage</a><a href="/fr/#faq" data-shell-copy="faq" data-shell-route="faq" data-umami-event="faq-link-click" data-umami-event-location="footer-nav">FAQ</a></div>
+          <div class="footer-column"><h2 class="footer-heading" data-shell-copy="col_project">Projet</h2><a href="/fr/about/" data-shell-copy="about" data-shell-route="about" data-umami-event="navigation-link-click" data-umami-event-location="footer-nav">À propos</a><a data-shell-copy="legal" href="/legal/" data-umami-event="legal-link-click" data-umami-event-location="footer-nav">Mentions légales</a><a data-shell-copy="privacy" href="/privacy/" data-umami-event="privacy-link-click" data-umami-event-location="footer-nav">Confidentialité</a></div>
         </nav>
       </div>
       <div class="shell footer-bottom"><p>© 2026 Terento Project</p></div>

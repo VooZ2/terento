@@ -1,12 +1,14 @@
 <!doctype html>
 <html lang="en" data-language="en" data-page="linux-guide">
   <head>
-    <script defer src="/site-shell.js?v=20261029-web-installer-public-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20261102-design-audit-v4">
+    <script defer src="/site-shell.js?v=20261105-copy-command-v1"></script>
+    <link rel="stylesheet" href="/styles.css?v=20261105-type-scale-v1">
+    <script defer src="/reading-state.js?v=20260902-reading-state"></script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
-    <meta name="description" content="Install free OpenStreetMap maps on a Garmin watch from Linux in Chrome, Microsoft Edge, Opera or Brave: add one udev rule, connect the watch, send the map.">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#222A2B">
+    <meta name="description" content="Install free OpenStreetMap maps on a Garmin watch from Linux in Chrome, Microsoft Edge, Opera or Brave. One udev rule, no app.">
     <meta name="robots" content="index,follow">
     <link rel="canonical" href="https://terento.app/guides/install-garmin-maps-linux/">
     <link rel="alternate" hreflang="en" href="https://terento.app/guides/install-garmin-maps-linux/">
@@ -18,8 +20,8 @@
     <link rel="alternate" hreflang="x-default" href="https://terento.app/guides/install-garmin-maps-linux/">
     <meta property="og:type" content="article">
     <meta property="og:site_name" content="Terento">
-    <meta property="og:title" content="Install Garmin Maps on Linux from Chrome — Terento">
-    <meta property="og:description" content="Install free OpenStreetMap maps on a Garmin watch from Linux in Chrome, Microsoft Edge, Opera or Brave: add one udev rule, connect the watch, send the map.">
+    <meta property="og:title" content="Install Garmin Watch Maps on Linux in Chrome — Terento">
+    <meta property="og:description" content="Install free OpenStreetMap maps on a Garmin watch from Linux in Chrome, Microsoft Edge, Opera or Brave. One udev rule, no app.">
     <meta property="og:url" content="https://terento.app/guides/install-garmin-maps-linux/">
     <meta property="og:image" content="https://terento.app/assets/social/terento-og.png">
     <meta property="og:image:type" content="image/png">
@@ -28,12 +30,10 @@
     <meta property="og:image:alt" content="Terento showing a connected Garmin smartwatch on macOS">
     <meta property="og:locale" content="en_US">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Install Garmin Maps on Linux from Chrome — Terento">
-    <meta name="twitter:description" content="Install free OpenStreetMap maps on a Garmin watch from Linux in Chrome, Microsoft Edge, Opera or Brave: add one udev rule, connect the watch, send the map.">
+    <meta name="twitter:title" content="Install Garmin Watch Maps on Linux in Chrome — Terento">
+    <meta name="twitter:description" content="Install free OpenStreetMap maps on a Garmin watch from Linux in Chrome, Microsoft Edge, Opera or Brave. One udev rule, no app.">
     <meta name="twitter:image" content="https://terento.app/assets/social/terento-og.png">
-    <title>Install Garmin Maps on Linux from Chrome — Terento</title>
-
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#222A2B">
+    <title>Install Garmin Watch Maps on Linux in Chrome — Terento</title>
 
     <link rel="icon" href="/favicon.ico?v=20260820-4" sizes="any">
     <link rel="icon" href="/favicon.svg?v=20260820-4" type="image/svg+xml">
@@ -41,7 +41,7 @@
     <link rel="mask-icon" href="/safari-pinned-tab.svg?v=20260820-4" color="#7898A8">
     <link rel="manifest" href="/manifest.webmanifest">
     <script defer src="/language.js?v=20260926-static-shell-v1"></script>
-    <script defer src="/privacy-consent.js?v=20260905-campaign-url-only-v1"></script>
+    <script defer src="/privacy-consent.js?v=20261105-outbound-links"></script>
     <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -57,57 +57,26 @@
       ]
     },
     {
-      "@type": "HowTo",
-      "@id": "https://terento.app/guides/install-garmin-maps-linux/#howto",
-      "name": "Install Garmin maps on Linux",
+      "@type": "Article",
+      "@id": "https://terento.app/guides/install-garmin-maps-linux/#article",
+      "headline": "Install Garmin maps on Linux",
       "description": "Install free OpenStreetMap maps on a Garmin watch from Linux in Chrome, Microsoft Edge, Opera or Brave. Add one udev rule, connect the watch with a USB cable and send the map. No app needed.",
-      "inLanguage": "en",
-      "image": "https://terento.app/assets/social/terento-og.png",
       "datePublished": "2026-11-02T00:00:00Z",
       "dateModified": "2026-11-05T00:00:00Z",
       "mainEntityOfPage": {
         "@id": "https://terento.app/guides/install-garmin-maps-linux/"
       },
+      "inLanguage": "en",
+      "image": "https://terento.app/assets/social/terento-og.png",
       "publisher": {
         "@id": "https://terento.app/#organization"
       },
-      "tool": [
-        {
-          "@type": "HowToTool",
-          "name": "Chrome, Microsoft Edge, Opera or Brave on a Linux computer. Firefox can’t connect to USB devices."
-        },
-        {
-          "@type": "HowToTool",
-          "name": "A USB data cable, not a charge-only cable."
-        },
-        {
-          "@type": "HowToTool",
-          "name": "A Garmin watch that supports maps, unlocked."
-        }
-      ],
-      "step": [
-        {
-          "@type": "HowToStep",
-          "position": 1,
-          "name": "Give the browser USB access",
-          "text": "Open Terminal and paste this command. It adds a udev rule for Garmin devices and asks for your administrator password once. Then unplug the watch and plug it back in.",
-          "url": "https://terento.app/guides/install-garmin-maps-linux/#linux-step-1"
-        },
-        {
-          "@type": "HowToStep",
-          "position": 2,
-          "name": "Open the web installer and connect",
-          "text": "Open the web installer, choose Connect your watch and pick the entry with “Garmin” in its name. The list may stay empty for a minute or two while the watch gets ready.",
-          "url": "https://terento.app/guides/install-garmin-maps-linux/#linux-step-2"
-        },
-        {
-          "@type": "HowToStep",
-          "position": 3,
-          "name": "Choose maps and install",
-          "text": "Pick a country or region and choose Install maps. Keep the tab open and the watch connected until it finishes.",
-          "url": "https://terento.app/guides/install-garmin-maps-linux/#linux-step-3"
-        }
-      ]
+      "author": {
+        "@id": "https://terento.app/#organization"
+      },
+      "about": {
+        "@id": "https://terento.app/#software"
+      }
     },
     {
       "@type": "BreadcrumbList",
@@ -164,72 +133,73 @@
       </div>
     </header>
     <main id="main-content" class="guide-main">
-      <article class="guide-article">
+      <article class="guide-article guide-v2">
         <header class="guide-intro">
           <div class="shell">
-            <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>Linux guide</p>
+
             <h1>Install Garmin maps on Linux</h1>
             <p class="guide-lede">On Linux, the Terento web installer puts free maps on Garmin watches with map support, straight from your browser. Linux needs one permission rule first, so the browser can use the watch over USB.</p>
+            <p class="guide-hero-action"><a class="download-action" href="/install/" data-umami-event="web-installer-link-click" data-umami-event-location="linux-guide-hero">Open the web installer</a></p>
+            <p class="guide-v2-other">On a Mac? Read the guide for a <a href="/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="linux-guide-other">Garmin watch</a> or a <a href="/guides/install-garmin-maps-edge-mac/" data-umami-event="guide-link-click" data-umami-event-location="linux-guide-other">Garmin Edge</a>.</p>
           </div>
         </header>
 
         <div class="shell guide-content">
-          <section class="guide-preflight" id="before-you-start" aria-labelledby="linux-needs-title">
-            <div class="guide-section-heading"><h2 id="linux-needs-title">What you need</h2></div>
-            <div class="guide-preflight-copy">
-              <ul class="guide-checklist"><li>Chrome, Microsoft Edge, Opera or Brave on a Linux computer. Firefox can’t connect to USB devices.</li><li>A USB data cable, not a charge-only cable.</li><li>A Garmin watch that supports maps, unlocked.</li></ul>
-            </div>
+          <section class="guide-v2-section" id="before-you-start" aria-labelledby="before-you-start-title">
+            <h2 id="before-you-start-title">What you need</h2>
+            <ul class="guide-checklist"><li>Chrome, Microsoft Edge, Opera or Brave on a Linux computer. Firefox can’t connect to USB devices.</li><li>A USB data cable, not a charge-only cable.</li><li>A Garmin watch that supports maps, unlocked.</li></ul>
           </section>
 
-          <section class="guide-steps" id="steps" aria-labelledby="linux-steps-title">
-            <div class="guide-section-heading"><p class="eyebrow">Three steps</p><h2 id="linux-steps-title">Install a map from your browser</h2></div>
-            <ol class="guide-timeline guide-timeline-text"><li class="guide-step" id="linux-step-1">
-              <div class="guide-step-marker" aria-hidden="true">01</div>
+          <section class="guide-v2-section" id="steps" aria-labelledby="steps-title">
+            <h2 id="steps-title">Install a map from your browser</h2>
+            <ol class="guide-timeline"><li class="guide-step guide-v2-step-text">
+              <div class="guide-step-marker" aria-hidden="true">1</div>
               <div class="guide-step-content">
                 <div class="guide-step-copy">
                   <h3>Give the browser USB access</h3>
-                  <p>Open Terminal and paste this command. It adds a udev rule for Garmin devices and asks for your administrator password once. Then unplug the watch and plug it back in.</p><pre class="guide-command" aria-label="Command for Terminal"><code>echo &#x27;SUBSYSTEM==&quot;usb&quot;, ATTR{idVendor}==&quot;091e&quot;, MODE=&quot;0660&quot;, GROUP=&quot;plugdev&quot;, TAG+=&quot;uaccess&quot;&#x27; | sudo tee /etc/udev/rules.d/70-garmin.rules &gt;/dev/null &amp;&amp; sudo udevadm control --reload-rules &amp;&amp; sudo udevadm trigger</code></pre>
+                  <p>Open Terminal and paste this command. It adds a udev rule for Garmin devices and asks for your administrator password once. Then unplug the watch and plug it back in.</p><div class="guide-command-block"><pre class="guide-command" aria-label="Command for Terminal"><code>echo &#x27;SUBSYSTEM==&quot;usb&quot;, ATTR{idVendor}==&quot;091e&quot;, MODE=&quot;0660&quot;, GROUP=&quot;plugdev&quot;, TAG+=&quot;uaccess&quot;&#x27; | sudo tee /etc/udev/rules.d/70-garmin.rules &gt;/dev/null &amp;&amp; sudo udevadm control --reload-rules &amp;&amp; sudo udevadm trigger</code></pre><button type="button" class="guide-copy" title="Copy command" data-copy-command data-copied-label="Copied" data-umami-event="guide-command-copy" data-umami-event-location="linux-guide"><svg class="guide-copy-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><!-- @license lucide-static v0.460.0 - ISC --><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg><svg class="guide-copied-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><!-- @license lucide-static v0.460.0 - ISC --><path d="M20 6 9 17l-5-5"/></svg><span class="sr-only" data-copy-text aria-live="polite">Copy command</span></button></div>
                 </div>
+
               </div>
-            </li>
-            <li class="guide-step" id="linux-step-2">
-              <div class="guide-step-marker" aria-hidden="true">02</div>
+            </li><li class="guide-step guide-v2-step-text">
+              <div class="guide-step-marker" aria-hidden="true">2</div>
               <div class="guide-step-content">
                 <div class="guide-step-copy">
                   <h3>Open the web installer and connect</h3>
-                  <p>Open the web installer, choose Connect your watch and pick the entry with “Garmin” in its name. The list may stay empty for a minute or two while the watch gets ready.</p>
+                  <p><a href="/install/" data-umami-event="web-installer-link-click" data-umami-event-location="linux-guide-step">Open the web installer</a>, choose Connect your watch and pick the entry with “Garmin” in its name. The list may stay empty for a minute or two while the watch gets ready.</p>
                 </div>
+
               </div>
-            </li>
-            <li class="guide-step" id="linux-step-3">
-              <div class="guide-step-marker" aria-hidden="true">03</div>
+            </li><li class="guide-step guide-v2-step-text">
+              <div class="guide-step-marker" aria-hidden="true">3</div>
               <div class="guide-step-content">
                 <div class="guide-step-copy">
                   <h3>Choose maps and install</h3>
                   <p>Pick a country or region and choose Install maps. Keep the tab open and the watch connected until it finishes.</p>
                 </div>
+
               </div>
             </li></ol>
           </section>
 
-          <section class="troubleshooting" id="linux-problems" aria-labelledby="linux-problems-title">
-            <div class="guide-section-heading"><p class="eyebrow">Troubleshooting</p><h2 id="linux-problems-title">If it doesn’t work</h2></div>
-            <div class="troubleshooting-list"><section class="troubleshooting-item" id="linux-problem-1" aria-labelledby="linux-problem-1-title">
-              <h3 id="linux-problem-1-title">The browser can’t open the watch</h3>
-              <p>Your file manager may be using the watch. Eject it there without unplugging it, then reload the page. If you added the rule while the watch was connected, unplug it and plug it back in.</p>
-            </section><section class="troubleshooting-item" id="linux-problem-2" aria-labelledby="linux-problem-2-title">
-              <h3 id="linux-problem-2-title">The browser’s list stays empty</h3>
-              <p>Leave the list open for up to two minutes. If no entry with “Garmin” in its name appears, try another USB data cable and check that the watch is unlocked.</p>
-            </section><section class="troubleshooting-item" id="linux-problem-3" aria-labelledby="linux-problem-3-title">
-              <h3 id="linux-problem-3-title">The browser has no USB access</h3>
-              <p>A browser installed as a Snap package may not get USB access. Use the browser from its official .deb or .rpm package.</p>
-            </section></div>
+          <section class="guide-v2-section" id="troubleshooting" aria-labelledby="troubleshooting-title">
+            <h2 id="troubleshooting-title">If it doesn’t work</h2>
+            <div class="guide-v2-help">
+              <div class="guide-v2-help-item">
+                <h3>The browser can’t open the watch</h3>
+                <p>Your file manager may be using the watch. Eject it there without unplugging it, then reload the page. If you added the rule while the watch was connected, unplug it and plug it back in.</p>
+              </div>
+              <div class="guide-v2-help-item">
+                <h3>The browser’s list stays empty</h3>
+                <p>Leave the list open for up to two minutes. If no entry with “Garmin” in its name appears, try another USB data cable and check that the watch is unlocked.</p>
+              </div>
+              <div class="guide-v2-help-item">
+                <h3>The browser has no USB access</h3>
+                <p>A browser installed as a Snap package may not get USB access. Use the browser from its official .deb or .rpm package.</p>
+              </div>
+            </div>
           </section>
 
-          <section class="guide-bottom-cta" aria-labelledby="linux-bottom-title">
-            <div><p class="eyebrow">Ready?</p><h2 id="linux-bottom-title">Open the web installer and connect your watch.</h2></div>
-            <a class="text-link" href="/install/" data-umami-event="web-installer-link-click" data-umami-event-location="linux-guide-bottom">Open the web installer <span aria-hidden="true">→</span></a>
-          </section>
         </div>
       </article>
     </main>
@@ -240,13 +210,16 @@
             <img src="/assets/logo-white.svg" alt="" width="32" height="32">
             <span>Terento</span>
           </a>
-          <div class="footer-meta"><a class="footer-status footer-project-link" data-shell-copy="status" data-project-link href="https://github.com/VooZ2/terento" target="_blank" rel="noopener noreferrer">Open-source project</a><a class="footer-support-link" data-shell-copy="support" data-support-link href="https://buymeacoffee.com/vooz2" rel="noopener noreferrer">Support Terento</a></div>
+          <p class="footer-tagline" data-shell-copy="tagline">Free maps for your Garmin watch or Edge.</p>
+          <div class="footer-actions">
+          <a class="footer-support-link" data-support-link href="https://buymeacoffee.com/vooz2" target="_blank" rel="noopener noreferrer"><svg class="footer-support-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg><span data-shell-copy="support">Donate</span><span class="footer-support-via">Buy Me a Coffee</span></a>
+          <a class="footer-project-link" data-project-link href="https://github.com/VooZ2/terento" target="_blank" rel="noopener noreferrer"><svg class="footer-support-icon" viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg><span data-shell-copy="status">Source code</span><span class="footer-support-via">GitHub</span></a>
+          </div>
         </div>
         <nav class="footer-nav" data-shell-aria="footer" aria-label="Footer navigation">
-          <a href="/#faq" data-shell-copy="faq" data-shell-route="faq" data-umami-event="faq-link-click" data-umami-event-location="footer-nav">FAQ</a><a href="/guides/troubleshooting/" data-shell-copy="troubleshooting" data-shell-route="troubleshooting" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Troubleshooting</a>
-          <a data-shell-copy="web_installer" href="/install/" data-umami-event="web-installer-link-click" data-umami-event-location="footer-nav">Web installer</a>
-          <a data-shell-copy="legal" href="/legal/" data-umami-event="legal-link-click" data-umami-event-location="footer-nav">Legal</a>
-          <a data-shell-copy="privacy" href="/privacy/" data-umami-event="privacy-link-click" data-umami-event-location="footer-nav">Privacy</a>
+          <div class="footer-column"><h2 class="footer-heading" data-shell-copy="col_install">Install</h2><a href="/download/" data-shell-copy="download" data-shell-route="download" data-umami-event="download-cta-click" data-umami-event-location="footer-nav">Download</a><a data-shell-copy="web_installer" href="/install/" data-umami-event="web-installer-link-click" data-umami-event-location="footer-nav">Web installer</a><a href="/map-styles/" data-shell-copy="styles" data-shell-route="styles" data-umami-event="maps-link-click" data-umami-event-location="footer-nav">Maps</a><a href="/compatibility/" data-shell-copy="compatibility" data-shell-route="compatibility" data-umami-event="compatibility-link-click" data-umami-event-location="footer-nav">Compatibility</a></div>
+          <div class="footer-column"><h2 class="footer-heading" data-shell-copy="col_help">Help</h2><a href="/guides/install-garmin-maps-mac/" data-shell-copy="guide_watch" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Watch guide</a><a href="/guides/install-garmin-maps-edge-mac/" data-shell-copy="guide_edge" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Edge guide</a><a href="/guides/install-garmin-maps-linux/" data-shell-copy="guide_linux" aria-current="page" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Linux guide</a><a href="/guides/troubleshooting/" data-shell-copy="troubleshooting" data-shell-route="troubleshooting" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Troubleshooting</a><a href="/#faq" data-shell-copy="faq" data-shell-route="faq" data-umami-event="faq-link-click" data-umami-event-location="footer-nav">FAQ</a></div>
+          <div class="footer-column"><h2 class="footer-heading" data-shell-copy="col_project">Project</h2><a href="/about/" data-shell-copy="about" data-shell-route="about" data-umami-event="navigation-link-click" data-umami-event-location="footer-nav">About</a><a data-shell-copy="legal" href="/legal/" data-umami-event="legal-link-click" data-umami-event-location="footer-nav">Legal</a><a data-shell-copy="privacy" href="/privacy/" data-umami-event="privacy-link-click" data-umami-event-location="footer-nav">Privacy</a></div>
         </nav>
       </div>
       <div class="shell footer-bottom"><p>© 2026 Terento Project</p></div>

@@ -8,140 +8,98 @@ const root = path.join(__dirname, "..");
 const locales = new Map([
   ["en", {
     file: path.join(root, "site", "index.html"),
-    h1: "Install free maps on your Garmin watch",
-    hero: "Terento is a free, open-source way to install, update and manage third-party maps on Garmin watches and Edge bike computers: with a native Mac app or in your desktop browser.",
+    h1: "Install free maps on your Garmin",
+    hero: "Terento puts free maps from OpenStreetMap projects on Garmin watches and Edge bike computers. Use the Mac app, or install straight from your desktop browser. Free and open source.",
     experienceLabel: "How it works",
-    experienceTitle: "Connect → Install → Done",
-    featureTabsLabel: "Map features",
-    installLabel: "Install maps",
     manageLabel: "Manage maps",
-    problem: "Installing third-party maps should be simple and fast — no copying files by hand, no technical know-how.",
-    problemSecondary: "Terento brings the whole process together in three simple steps.",
     installStep: "Choose maps from the catalog, or add your own compatible .img map.",
     doneLabel: "Done",
     doneStep: "Your maps are installed and ready to use on your Garmin.",
-    installShowcase: "Choose maps from the catalog by region, or add your own compatible .img map.",
     manageShowcase: "See what's installed, update maps when newer releases are available, and remove third-party maps managed by Terento. Original Garmin maps remain protected.",
-    providerEyebrow: "Available maps",
-    providerTitle: "Explore available maps.",
+    providerTitle: "Pick the map that fits the trip",
     providerCopy: "Choose maps from available providers. Maps are downloaded from each provider's original source.",
     heroCompatibility: "Check compatibility",
-    download: "Download",
+    download: "Download for Mac",
     heroDownload: "Download for Mac",
   }],
   ["de", {
     file: path.join(root, "site", "de", "index.html"),
-    h1: "Kostenlose Karten auf deiner Garmin-Uhr installieren",
-    hero: "Terento ist ein kostenloses Open-Source-Tool, mit dem du Drittanbieter-Karten auf Garmin-Uhren und Edge-Radcomputern installierst, aktualisierst und verwaltest: mit einer nativen Mac-App oder im Desktop-Browser.",
+    h1: "Kostenlose Karten auf deinem Garmin installieren",
+    hero: "Terento bringt kostenlose Karten aus OpenStreetMap-Projekten auf Garmin-Uhren und Edge-Fahrradcomputer. Mit der Mac-App oder direkt im Desktop-Browser. Kostenlos und Open Source.",
     experienceLabel: "So funktioniert es",
-    experienceTitle: "Verbinden → Installieren → Fertig",
-    featureTabsLabel: "Kartenfunktionen",
-    installLabel: "Karten installieren",
     manageLabel: "Karten verwalten",
-    problem: "Die Installation von Drittanbieter-Karten sollte einfach und schnell sein — ohne Dateien von Hand zu kopieren und ohne technisches Vorwissen.",
-    problemSecondary: "Terento bündelt den gesamten Ablauf in drei einfachen Schritten.",
     installStep: "Wähle Karten aus dem Katalog oder füge deine eigene kompatible .img-Karte hinzu.",
     doneLabel: "Fertig",
     doneStep: "Deine Karten sind installiert und auf deinem Garmin einsatzbereit.",
-    installShowcase: "Wähle Karten aus dem Katalog nach Region oder füge deine eigene kompatible .img-Karte hinzu.",
     manageShowcase: "Sieh, was installiert ist, aktualisiere Karten, wenn neuere Versionen verfügbar sind, und entferne von Terento verwaltete Drittanbieter-Karten. Originale Garmin-Karten bleiben geschützt.",
-    providerEyebrow: "Verfügbare Karten",
-    providerTitle: "Verfügbare Karten entdecken.",
+    providerTitle: "Wähle die Karte, die zur Tour passt",
     providerCopy: "Wähle Karten der verfügbaren Anbieter. Karten werden von der Originalquelle des jeweiligen Anbieters geladen.",
     heroCompatibility: "Kompatibilität prüfen",
-    download: "Herunterladen",
+    download: "Für Mac herunterladen",
     heroDownload: "Für Mac herunterladen",
   }],
   ["fr", {
     file: path.join(root, "site", "fr", "index.html"),
-    h1: "Installez des cartes gratuites sur votre montre Garmin",
-    hero: "Terento est un outil gratuit et open source pour installer, mettre à jour et gérer des cartes tierces sur les montres et compteurs vélo Edge Garmin : avec une application Mac native ou dans votre navigateur sur ordinateur.",
+    h1: "Installez des cartes gratuites sur votre Garmin",
+    hero: "Terento installe des cartes gratuites issues de projets OpenStreetMap sur les montres Garmin et les compteurs vélo Edge. Avec l’app Mac ou directement dans le navigateur de votre ordinateur. Gratuit et open source.",
     experienceLabel: "Comment ça marche",
-    experienceTitle: "Connecter → Installer → Terminé",
-    featureTabsLabel: "Fonctions cartographiques",
-    installLabel: "Installer des cartes",
     manageLabel: "Gérer les cartes",
-    problem: "Installer des cartes tierces devrait être simple et rapide — sans copier de fichiers à la main ni connaissances techniques.",
-    problemSecondary: "Terento réunit tout le parcours en trois étapes simples.",
     installStep: "Choisissez des cartes dans le catalogue ou ajoutez votre propre carte .img compatible.",
     doneLabel: "Terminé",
     doneStep: "Vos cartes sont installées et prêtes à être utilisées sur votre Garmin.",
-    installShowcase: "Choisissez des cartes dans le catalogue par région ou ajoutez votre propre carte .img compatible.",
     manageShowcase: "Consultez les cartes installées, mettez-les à jour lorsqu’une version plus récente est disponible et supprimez les cartes tierces gérées par Terento. Les cartes Garmin d’origine restent protégées.",
-    providerEyebrow: "Cartes disponibles",
-    providerTitle: "Découvrez les cartes disponibles.",
+    providerTitle: "Choisissez la carte adaptée à votre sortie",
     providerCopy: "Choisissez parmi les fournisseurs disponibles. Les cartes sont téléchargées depuis la source d’origine de chaque fournisseur.",
     heroCompatibility: "Vérifier la compatibilité",
-    download: "Télécharger",
+    download: "Télécharger pour Mac",
     heroDownload: "Télécharger pour Mac",
   }],
   ["pl", {
     file: path.join(root, "site", "pl", "index.html"),
-    h1: "Instaluj darmowe mapy na zegarku Garmin",
-    hero: "Terento to darmowe narzędzie open source do instalowania, aktualizowania i zarządzania mapami innych firm na zegarkach Garmin i licznikach rowerowych Edge: w natywnej aplikacji na Maca lub w przeglądarce na komputerze.",
+    h1: "Instaluj darmowe mapy na swoim Garminie",
+    hero: "Terento wgrywa darmowe mapy z projektów OpenStreetMap na zegarki Garmin i liczniki rowerowe Edge. W aplikacji na Maca albo prosto z przeglądarki na komputerze. Za darmo i open source.",
     experienceLabel: "Jak to działa",
-    experienceTitle: "Połącz → Zainstaluj → Gotowe",
-    featureTabsLabel: "Funkcje map",
-    installLabel: "Instaluj mapy",
     manageLabel: "Zarządzaj mapami",
-    problem: "Instalowanie map innych firm powinno być proste i szybkie — bez ręcznego kopiowania plików i bez wiedzy technicznej.",
-    problemSecondary: "Terento łączy cały proces w trzech prostych krokach.",
     installStep: "Wybierz mapy z katalogu albo dodaj własną zgodną mapę .img.",
     doneLabel: "Gotowe",
     doneStep: "Twoje mapy są zainstalowane i gotowe do użycia na Twoim Garminie.",
-    installShowcase: "Wybieraj mapy z katalogu według regionu albo dodaj własną zgodną mapę .img.",
     manageShowcase: "Sprawdź, co jest zainstalowane, aktualizuj mapy, gdy dostępne są nowsze wydania, i usuwaj mapy innych firm zarządzane przez Terento. Oryginalne mapy Garmin pozostają chronione.",
-    providerEyebrow: "Dostępne mapy",
-    providerTitle: "Poznaj dostępne mapy.",
+    providerTitle: "Wybierz mapę pasującą do wyprawy",
     providerCopy: "Wybieraj mapy od dostępnych dostawców. Mapy są pobierane z oryginalnego źródła każdego dostawcy.",
     heroCompatibility: "Sprawdź kompatybilność",
-    download: "Pobierz",
+    download: "Pobierz na Maca",
     heroDownload: "Pobierz na Maca",
   }],
   ["cs", {
     file: path.join(root, "site", "cs", "index.html"),
-    h1: "Nainstalujte do hodinek Garmin mapy zdarma",
-    hero: "Terento je bezplatný open-source nástroj pro instalaci, aktualizaci a správu map třetích stran v hodinkách Garmin a cyklopočítačích Edge: v nativní aplikaci pro Mac nebo v prohlížeči na počítači.",
+    h1: "Nainstalujte do svého Garminu mapy zdarma",
+    hero: "Terento nahraje mapy zdarma z projektů OpenStreetMap do hodinek Garmin a cyklopočítačů Edge. V aplikaci pro Mac, nebo přímo z prohlížeče v počítači. Zdarma a open source.",
     experienceLabel: "Jak to funguje",
-    experienceTitle: "Připojit → Instalovat → Hotovo",
-    featureTabsLabel: "Funkce map",
-    installLabel: "Instalovat mapy",
     manageLabel: "Spravovat mapy",
-    problem: "Instalace map třetích stran by měla být jednoduchá a rychlá — bez ručního kopírování souborů a bez technických znalostí.",
-    problemSecondary: "Terento celý proces spojuje do tří jednoduchých kroků.",
     installStep: "Vybírejte mapy z katalogu podle oblasti nebo přidejte vlastní kompatibilní mapu .img.",
     doneLabel: "Hotovo",
     doneStep: "Vaše mapy jsou nainstalované a připravené k použití ve vašem Garminu.",
-    installShowcase: "Vybírejte mapy z katalogu podle oblasti nebo přidejte vlastní kompatibilní mapu .img.",
     manageShowcase: "Prohlédněte si nainstalované mapy, aktualizujte je, když je k dispozici novější vydání, a odstraňte mapy třetích stran spravované aplikací Terento. Původní mapy Garmin zůstávají chráněné.",
-    providerEyebrow: "Dostupné mapy",
-    providerTitle: "Prozkoumejte dostupné mapy.",
+    providerTitle: "Vyberte mapu, která sedí k výletu",
     providerCopy: "Vyberte si mapy od dostupných poskytovatelů. Mapy se stahují z původního zdroje každého poskytovatele.",
     heroCompatibility: "Ověřit kompatibilitu",
-    download: "Stáhnout",
+    download: "Stáhnout pro Mac",
     heroDownload: "Stáhnout pro Mac",
   }],
   ["it", {
     file: path.join(root, "site", "it", "index.html"),
-    h1: "Installa mappe gratuite sul tuo smartwatch Garmin",
-    hero: "Terento è uno strumento gratuito e open source per installare, aggiornare e gestire mappe di terze parti su smartwatch Garmin e ciclocomputer Edge: con un’app Mac nativa o nel browser del computer.",
+    h1: "Installa mappe gratuite sul tuo Garmin",
+    hero: "Terento installa mappe gratuite dai progetti OpenStreetMap su orologi Garmin e ciclocomputer Edge. Con l’app per Mac o direttamente dal browser del computer. Gratis e open source.",
     experienceLabel: "Come funziona",
-    experienceTitle: "Connetti → Installa → Fatto",
-    featureTabsLabel: "Funzioni delle mappe",
-    installLabel: "Installa mappe",
-    manageLabel: "Gestisci mappe",
-    problem: "Installare mappe di terze parti dovrebbe essere semplice e veloce — senza copiare file a mano né competenze tecniche.",
-    problemSecondary: "Terento riunisce l’intero processo in tre semplici passaggi.",
+    manageLabel: "Gestisci le mappe",
     installStep: "Scegli le mappe dal catalogo oppure aggiungi la tua mappa .img compatibile.",
     doneLabel: "Fatto",
     doneStep: "Le tue mappe sono installate e pronte per essere usate sul tuo Garmin.",
-    installShowcase: "Scegli le mappe dal catalogo per regione oppure aggiungi la tua mappa .img compatibile.",
     manageShowcase: "Visualizza le mappe installate, aggiornatele quando è disponibile una versione più recente e rimuovi le mappe di terze parti gestite da Terento. Le mappe Garmin originali restano protette.",
-    providerEyebrow: "Mappe disponibili",
-    providerTitle: "Scopri le mappe disponibili.",
+    providerTitle: "Scegli la mappa adatta al percorso",
     providerCopy: "Scegli mappe dei provider disponibili. Le mappe vengono scaricate dalla fonte originale di ciascun provider.",
     heroCompatibility: "Verifica la compatibilità",
-    download: "Scarica",
+    download: "Scarica per Mac",
     heroDownload: "Scarica per Mac",
   }],
 ]);
@@ -151,25 +109,27 @@ const classTokens = (classValue) => new Set(classValue.trim().split(/\s+/));
 const anchorFor = (page, className) => {
   const escapedClass = className.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const match = page.match(new RegExp(
-    `<a class="([^"]*\\b${escapedClass}\\b[^"]*)" href="([^"]+)"([^>]*)>([^<]+)<span aria-hidden="true">([^<]+)</span></a>`
+    `<a class="([^"]*\\b${escapedClass}\\b[^"]*)" href="([^"]+)"([^>]*)>([^<]+)</a>`
   ));
   assert.ok(match, `missing ${className} CTA`);
-  return { classes: classTokens(match[1]), href: match[2], attributes: match[3], label: match[4].trim(), arrow: match[5] };
+  return { classes: classTokens(match[1]), href: match[2], attributes: match[3], label: match[4].trim() };
 };
 
 for (const [locale, expected] of locales) {
   const page = pageFor(locale);
-  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20261102-design-audit-v4">/, `${locale}: Home stylesheet cache bust`);
-  assert.match(page, /<script defer src="\/home-features\.js\?v=20260904-home-workflow-tabs"><\/script>/, `${locale}: Home feature script cache bust`);
+  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20261105-type-scale-v1">/, `${locale}: Home stylesheet cache bust`);
+  assert.match(page, /<script defer src="\/home-features\.js\?v=20261105-home-map-switch-v4"><\/script>/, `${locale}: Home feature script cache bust`);
   assert.match(page, /installing-maps-1600\.png\?v=20260912-app-screens-v2/, `${locale}: installation screenshot cache bust`);
-  const heroArtwork = page.match(/<figure class="app-shot app-shot--hero">[\s\S]*?<\/figure>/)?.[0];
-  assert.ok(heroArtwork, `${locale}: hero screenshot exists`);
-  assert.doesNotMatch(heroArtwork, /your-garmin/);
-  for (const format of ["avif", "webp", "png"]) {
-    assert.ok(heroArtwork.includes(`installing-maps-1600.${format}?v=20260912-app-screens-v2`));
+  const heroDevice = page.match(/<figure class="home-device" data-map-switch>[\s\S]*?<\/figure>/)?.[0];
+  assert.ok(heroDevice, `${locale}: hero shows the drawn watch with a real map`);
+  assert.match(heroDevice, /<img class="home-watch-map" data-map-image src="\/assets\/home\/hero-opentopomap\.webp\?v=[^"]+" width="520" height="520" alt="[^"]+" fetchpriority="high"/);
+  assert.match(heroDevice, /<img class="home-watch-body" src="\/assets\/home\/watch-front\.webp\?v=[^"]+"[^>]* alt=""/);
+  assert.equal((heroDevice.match(/<button type="button" class="home-switch-button" data-map-style="[a-z]+"[^>]*aria-pressed="(?:true|false)"[^>]*>/g) || []).length, 3, `${locale}: three map styles`);
+  assert.equal((heroDevice.match(/aria-pressed="true"/g) || []).length, 1);
+  assert.doesNotMatch(heroDevice, /data-map-attribution/, `${locale}: owner removed the visible hero map credit`);
+  for (const style of ["opentopomap", "freizeitkarte", "maprando"]) {
+    assert.ok(fs.existsSync(path.join(root, "site", "assets", "home", `hero-${style}.webp`)), `hero-${style}.webp exists`);
   }
-  assert.match(heroArtwork, /width="2358" height="1575"/);
-  assert.match(heroArtwork, /alt="[^"]+" fetchpriority="high"/);
   const h1 = page.match(/<h1 id="hero-title">([^<]+)<\/h1>/);
   assert.ok(h1, `${locale}: missing hero H1`);
   assert.equal(h1[1], expected.h1, `${locale}: hero H1 copy`);
@@ -187,59 +147,37 @@ for (const [locale, expected] of locales) {
   assert.equal(finalDownload[1].trim(), expected.download, `${locale}: final CTA download label`);
   assert.equal(finalDownload[2] || "", "", `${locale}: final CTA has no decorative arrow`);
   assert.doesNotMatch(finalCta, /beta|bêta|betę|betu/i, `${locale}: final CTA avoids beta-specific button copy`);
-  const experience = page.match(/<section class="experience section" id="how-it-works"[\s\S]*?<\/section>/)?.[0];
+  const experience = page.match(/<section class="home-steps section" id="how-it-works"[\s\S]*?<\/section>/)?.[0];
   assert.ok(experience);
-  assert.equal(experience.match(/<p class="eyebrow" id="experience-label">([^<]+)<\/p>/)?.[1], expected.experienceLabel);
-  const experienceTitleMarkup = experience.match(/<h2 id="experience-title">([\s\S]*?)<\/h2>/)?.[1];
-  assert.ok(experienceTitleMarkup);
-  const experienceTitle = experienceTitleMarkup
-    .replace(/<span class="workflow-title-arrow" aria-hidden="true">→<\/span><span class="workflow-title-bullet" aria-hidden="true">•<\/span>/g, " → ")
-    .replace(/<[^>]+>/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  assert.equal(experienceTitle, expected.experienceTitle);
-  assert.equal((experienceTitleMarkup.match(/class="workflow-title-arrow"/g) || []).length, 2);
-  assert.equal((experienceTitleMarkup.match(/class="workflow-title-bullet"/g) || []).length, 2);
-  const problem = experience.match(/<div class="problem-statement">\s*<p>([^<]+)<\/p>\s*<p>([^<]+)<\/p>/);
-  assert.ok(problem);
-  assert.equal(problem[1], expected.problem);
-  assert.equal(problem[2], expected.problemSecondary);
+  assert.equal(experience.match(/<h2 id="steps-title">([^<]+)<\/h2>/)?.[1], expected.experienceLabel);
   const steps = [...experience.matchAll(/<li class="step">([\s\S]*?)<\/li>/g)];
   assert.equal(steps.length, 3);
   assert.equal(steps[1][1].match(/<p>([^<]+)<\/p>\s*$/)?.[1], expected.installStep);
   assert.equal(steps[2][1].match(/<h3>([^<]+)<\/h3>/)?.[1], expected.doneLabel);
   assert.equal(steps[2][1].match(/<p>([^<]+)<\/p>\s*$/)?.[1], expected.doneStep);
-  const mapFeature = page.match(/<section class="map-feature-section"[\s\S]*?(?=\s*<section class="provider-section section")/)?.[0];
-  assert.ok(mapFeature, `${locale}: missing consolidated map feature section`);
-  assert.match(mapFeature, new RegExp(`<div class="map-feature-tabs" data-map-feature-tabs role="tablist" aria-label="${expected.featureTabsLabel}">`));
-  assert.match(mapFeature, new RegExp(`<button class="map-feature-tab"[^>]*id="install-maps-tab"[^>]*aria-selected="true"[^>]*>${expected.installLabel}<\/button>`));
-  assert.match(mapFeature, new RegExp(`<button class="map-feature-tab"[^>]*id="manage-maps-tab"[^>]*aria-selected="false"[^>]*>${expected.manageLabel}<\/button>`));
-  const installShowcase = page.match(/<div class="map-feature-panel" id="install-maps-panel"[\s\S]*?<section class="product-showcase product-showcase--muted"[\s\S]*?<\/section>\s*<\/div>/)?.[0];
-  const manageShowcase = page.match(/<div class="map-feature-panel" id="manage-maps-panel"[\s\S]*?<section class="product-showcase product-showcase--muted product-showcase--reverse"[\s\S]*?<\/section>\s*<\/div>/)?.[0];
-  assert.ok(installShowcase);
-  assert.ok(manageShowcase);
-  assert.equal(installShowcase.match(/<h2 id="install-maps-title">[^<]+<\/h2>\s*<p>([^<]+)<\/p>/)?.[1], expected.installShowcase);
-  assert.equal(manageShowcase.match(/<h2 id="manage-maps-title">[^<]+<\/h2>\s*<p>([^<]+)<\/p>/)?.[1], expected.manageShowcase);
-  assert.doesNotMatch(installShowcase, /showcase-number/);
-  assert.doesNotMatch(manageShowcase, /showcase-number/);
-  assert.equal((installShowcase.match(/<figure class="app-shot app-shot--feature">/g) || []).length, 1);
-  assert.equal((manageShowcase.match(/<figure class="app-shot app-shot--feature">/g) || []).length, 1);
-  assert.doesNotMatch(installShowcase, /ready-to-install|installing-maps/);
-  for (const [showcase, stem] of [[installShowcase, "install-maps"], [manageShowcase, "manage-maps"]]) {
-    assert.match(showcase, /width="2358" height="1575"/);
-    for (const url of showcase.match(/\/assets\/app\/optimized\/[^"\s,]+/g) || []) {
+  const manage = page.match(/<section class="home-manage section"[\s\S]*?<\/section>/)?.[0];
+  assert.ok(manage, `${locale}: missing manage maps section`);
+  assert.equal(manage.match(/<h2 id="manage-title">([^<]+)<\/h2>/)?.[1], expected.manageLabel);
+  assert.equal(manage.match(/<h2 id="manage-title">[^<]+<\/h2>\s*<p>([^<]+)<\/p>/)?.[1], expected.manageShowcase);
+  assert.doesNotMatch(page, /class="map-feature-section"|role="tablist"|class="eyebrow"/, `${locale}: no tabs or eyebrow labels on Home`);
+  for (const [section, stem] of [[experience, "install-maps"], [manage, "manage-maps"]]) {
+    assert.equal((section.match(/<figure class="app-shot app-shot--feature">/g) || []).length, 1);
+    assert.match(section, /width="2358" height="1575"/);
+    for (const url of section.match(/\/assets\/app\/optimized\/[^"\s,]+/g) || []) {
       assert.ok(url.startsWith(`/assets/app/optimized/${stem}-`));
       assert.ok(url.endsWith("?v=20260912-app-screens-v2"), `${locale}: screenshot cache version`);
     }
   }
-  assert.match(installShowcase, /class="shell product-showcase-panel"><div class="product-showcase-grid">/);
-  assert.match(manageShowcase, /class="shell product-showcase-panel"><div class="product-showcase-grid">/);
+  const edge = page.match(/<section class="home-edge section" id="edge"[\s\S]*?<\/section>/)?.[0];
+  assert.ok(edge, `${locale}: Garmin Edge section`);
+  assert.match(edge, /Edge 540, 840/);
+  assert.match(edge, new RegExp(`href="${locale === "en" ? "" : `/${locale}`}/guides/install-garmin-maps-edge-mac/" data-umami-event="guide-link-click" data-umami-event-location="home-edge"`));
+  assert.doesNotMatch(page, /class="home-app-store"/, `${locale}: App Store button waits for the approved listing`);
   const providerSection = page.match(/<section class="provider-section section"[\s\S]*?<\/section>/)?.[0];
   assert.ok(providerSection, `${locale}: missing provider cards section`);
-  assert.match(providerSection, new RegExp(`<p class="eyebrow">${expected.providerEyebrow.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/p>`));
   assert.match(providerSection, new RegExp(`<h2 id="providers-title">${expected.providerTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/h2>`));
   assert.match(providerSection, new RegExp(`<p class="provider-copy">${expected.providerCopy.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/p>`));
-  assert.equal((providerSection.match(/<article class="provider-card"/g) || []).length, 7, `${locale}: seven map cards from five providers`);
+  assert.equal((providerSection.match(/<article class="provider-card"/g) || []).length, 5, `${locale}: one card per provider`);
   const osmapa = providerSection.match(/<article class="provider-card" data-provider-card="osmapa" hidden>[\s\S]*?<\/article>/)?.[0];
   assert.ok(osmapa, `${locale}: OSMapaPL stays hidden until the catalog lists it as active`);
   assert.ok(osmapa.includes("<h3>OSMapaPL</h3>"));
@@ -249,26 +187,22 @@ for (const [locale, expected] of locales) {
   assert.match(maprando, /class="provider-language-note"><span aria-hidden="true">ⓘ<\/span><span>[^<]+<\/span><\/p>/);
   assert.match(maprando, /data-provider-count[^>]* hidden><\/p>/);
   assert.match(maprando, /OpenStreetMap/);
-  for (const [type, name] of [['bbbike-latin1', 'BBBike'], ['ontrail-latin1', 'BBBike (Ontrail)'], ['opentopo-latin1', 'BBBike (OpenTopoMap)']]) {
-    const card = providerSection.match(new RegExp(`<article class="provider-card" data-provider-card="bbbike" data-provider-type="${type}" hidden>[\\s\\S]*?<\\/article>`))?.[0];
-    assert.ok(card, `${locale}: ${name} stays hidden until its type is available`);
-    assert.ok(card.includes(`<h3>${name}</h3>`));
-    assert.doesNotMatch(card, /provider-addon/);
-  }
-  const openTopo = providerSection.match(/<article class="provider-card" data-provider-card="bbbike" data-provider-type="opentopo-latin1" hidden>[\s\S]*?<\/article>/)?.[0];
-  assert.match(openTopo, /class="provider-language-note"><span aria-hidden="true">ⓘ<\/span><span>[^<]+<\/span><\/p>/, `${locale}: BBBike (OpenTopoMap) says it has no contour lines`);
+  const bbbike = providerSection.match(/<article class="provider-card" data-provider-card="bbbike" hidden>[\s\S]*?<\/article>/)?.[0];
+  assert.ok(bbbike, `${locale}: one BBBike card, hidden until the catalog lists BBBike`);
+  assert.ok(bbbike.includes("<h3>BBBike</h3>"));
+  assert.doesNotMatch(providerSection, /data-provider-type=/, `${locale}: BBBike variants share one card`);
   const otm = providerSection.match(/<article class="provider-card" data-provider-card="opentopomap">[\s\S]*?<\/article>/)?.[0];
   assert.ok(otm, `${locale}: OpenTopoMap card`);
   assert.match(otm, /<details class="provider-addon" data-provider-addon="contours">\s*<summary class="provider-addon-toggle">/);
   assert.doesNotMatch(otm, /<details[^>]*\bopen(?:\s|=|>)/);
   assert.match(otm, /<summary[^>]*>[\s\S]*provider-card-badge[\s\S]*provider-addon-title[\s\S]*<\/summary>\s*<p class="provider-addon-copy">/);
   assert.doesNotMatch(providerSection, /data-provider-card="opentopomap-contours"|type="checkbox"|role="switch"/);
-  assert.equal((providerSection.match(/class="provider-benefits"/g) || []).length, 7);
-  assert.equal((providerSection.match(/<li>/g) || []).length, 21);
+  assert.equal((providerSection.match(/class="provider-benefits"/g) || []).length, 5);
+  assert.equal((providerSection.match(/<li>/g) || []).length, 15);
   for (const list of providerSection.matchAll(/<ul class="provider-benefits">([\s\S]*?)<\/ul>/g)) {
     assert.equal((list[1].match(/<li>/g) || []).length, 3, `${locale}: exactly three benefits per map`);
   }
-  assert.equal((providerSection.match(/class="provider-summary"/g) || []).length, 7);
+  assert.equal((providerSection.match(/class="provider-summary"/g) || []).length, 5);
   assert.doesNotMatch(providerSection, /data-provider-previous|data-provider-next/);
   assert.match(providerSection, new RegExp(`<p class="provider-compare"><a class="text-link" href="${locale === "en" ? "" : `/${locale}`}/map-styles/"`));
   assert.match(page, /provider-list\.js\?v=20261026-osmapa-v1/);
@@ -283,26 +217,24 @@ for (const [locale, expected] of locales) {
   assert.doesNotMatch(page, /class="scope-section"|class="scope-link"|id="scope-title"|>Beta scope<|Available today|Choose a map and get moving/i, `${locale}: removed Beta scope and stale provider copy`);
   assert.ok(download.classes.has("download-action"), `${locale}: hero Download CTA uses the solid action style`);
   assert.equal(download.label, expected.heroDownload, `${locale}: download CTA label`);
-  assert.equal(download.arrow, "→", `${locale}: download CTA arrow`);
   assert.ok(heroCompatibility.classes.has("text-link"), `${locale}: Hero Compatibility CTA uses the shared text-link style`);
   assert.ok(heroCompatibility.classes.has("hero-compatibility-link"), `${locale}: Hero Compatibility CTA uses its layout modifier`);
   assert.equal(heroCompatibility.label, expected.heroCompatibility, `${locale}: Hero Compatibility CTA label`);
-  assert.equal(heroCompatibility.arrow, "→", `${locale}: Hero Compatibility CTA arrow`);
   assert.equal(heroCompatibility.href, locale === "en" ? "/compatibility/" : `/${locale}/compatibility/`, `${locale}: Hero Compatibility CTA href`);
   assert.match(heroCompatibility.attributes, /data-umami-event="compatibility-link-click"/);
   assert.match(heroCompatibility.attributes, /data-umami-event-location="home-hero"/);
-  assert.match(page, /<div class="hero-actions"><a class="download-action hero-download-action"[\s\S]*?<a class="text-link hero-compatibility-link"/);
+  assert.match(page, /<div class="home-actions"><a class="download-action hero-download-action"[\s\S]*?<a class="text-link hero-compatibility-link"/);
   assert.doesNotMatch(page, /<p class="hero-lede">[^<]*Freizeitkarte/i, `${locale}: hero copy is provider-neutral`);
   assert.doesNotMatch(page, /back up|backup|sauvegarder|zálohovat|wykonać kopię|eseguire il backup/i, `${locale}: no backup marketing copy`);
   assert.doesNotMatch(page, /beta[ .]?8|bêta 8/i, `${locale}: no stale beta.8 copy`);
 }
 
 const englishHome = pageFor("en");
-assert.match(englishHome, /<p class="hero-lede">Terento is a free, open-source way to install, update and manage third-party maps on Garmin watches and Edge bike computers: with a native Mac app or in your desktop browser\.<\/p>/);
-assert.match(englishHome, /<h1 id="hero-title">Install free maps on your Garmin watch<\/h1>/);
+assert.match(englishHome, /<p class="hero-lede">Terento puts free maps from OpenStreetMap projects on Garmin watches and Edge bike computers\. Use the Mac app, or install straight from your desktop browser\. Free and open source\.<\/p>/);
+assert.match(englishHome, /<h1 id="hero-title">Install free maps on your Garmin<\/h1>/);
 assert.doesNotMatch(englishHome, /<p class="hero-lede">[^<]*Freizeitkarte/i);
-assert.match(englishHome, /<meta name="description" content="Install and manage third-party maps on Garmin watches and Edge bike computers with map support using Terento, a free macOS app for Apple Silicon\.">/);
-assert.match(englishHome, /<p class="eyebrow"><span class="status-dot" aria-hidden="true"><\/span>Open-source project<\/p>/);
+assert.match(englishHome, /<meta name="description" content="Install free OpenTopoMap, Freizeitkarte and other OpenStreetMap maps on Garmin watches and Edge bike computers\. Free Mac app or web installer\.">/);
+assert.doesNotMatch(englishHome, /class="status-dot"/);
 assert.doesNotMatch(englishHome, /Compatibility varies by Garmin model\./);
 
 const styles = fs.readFileSync(path.join(root, "site", "styles.css"), "utf8");
@@ -365,7 +297,7 @@ assert.match(styles, /\.provider-cards\s*\{[^}]*grid-auto-flow:\s*column/s);
 assert.match(styles, /\.provider-card\s*\{[^}]*background:\s*var\(--surface\)/s);
 assert.match(styles, /\.provider-addon\s*\{[^}]*border-top:\s*1px solid var\(--border\)/s);
 assert.match(styles, /\.provider-cards\s*\{[^}]*align-items:\s*stretch/s);
-assert.match(styles, /\.provider-card-badge\s*\{[^}]*text-transform:\s*uppercase/s);
+assert.match(styles, /\.provider-card-badge\s*\{[^}]*text-transform:\s*none/s);
 assert.match(styles, /\.provider-benefits\s*\{[^}]*border-top:\s*1px solid var\(--border\)/s);
 assert.ok(!fs.existsSync(path.join(root, "site/localized-content.js")), "Home copy is generated, not rewritten in the browser");
 

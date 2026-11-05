@@ -13,10 +13,11 @@ import sys
 root = Path(sys.argv[1])
 privacy_script = (root / "site/privacy-consent.js").read_text(encoding="utf-8")
 site_shell = (root / "scripts/normalize-public-shell.py").read_text(encoding="utf-8")
-umami_version = "20260905-campaign-url-only-v1"
+umami_version = "20261105-outbound-links"
 
 assert '"download-click"' in privacy_script
 assert '"download-cta-click"' in privacy_script
+assert '"outbound-link-click"' in privacy_script
 assert '"dmg"' in privacy_script and '"zip"' in privacy_script
 assert '"download-page"' in privacy_script
 assert '"home-hero"' in privacy_script
@@ -152,14 +153,16 @@ download_files = [
 
 for path in home_files:
     html = path.read_text(encoding="utf-8")
-    assert html.count('class="map-feature-section"') == 1, f"{path}: expected one consolidated map feature section"
-    assert html.count('class="map-feature-tab"') == 2, f"{path}: expected Install and Manage feature tabs"
+    assert html.count('class="home-steps section"') == 1, f"{path}: expected the how-it-works section"
+    assert html.count('class="home-manage section"') == 1, f"{path}: expected the manage maps section"
+    assert html.count('data-umami-event="guide-link-click" data-umami-event-location="home-edge"') == 1, f"{path}: expected the Garmin Edge guide link"
     assert 'class="scope-section"' not in html, f"{path}: Beta scope section must be removed"
-    assert html.count('data-provider-card=') == 7, f"{path}: expected seven map-type cards with the existing nested OTM add-on"
-    assert html.count('class="provider-benefits"') == 7, f"{path}: expected one benefits list per map card"
+    assert html.count('data-provider-card=') == 5, f"{path}: expected one card per provider"
+    assert html.count('class="provider-benefits"') == 5, f"{path}: expected one benefits list per map card"
     assert html.count("<details>") == 7, f"{path}: expected seven FAQ answers"
     assert 'class="final-cta"' in html, f"{path}: expected final CTA"
-    assert "/assets/app/optimized/installing-maps-640.avif" in html, f"{path}: expected responsive hero artwork"
+    assert "/assets/home/hero-opentopomap.webp" in html, f"{path}: expected the drawn watch hero map"
+    assert "/assets/app/optimized/install-maps-640.avif" in html, f"{path}: expected responsive install screenshot"
     items = anchors(path)
     hero = [item for item in items if "hero-download-action" in item["class"] and "download-action" in item["class"] and urlparse(item["href"]).path.endswith("/download/")]
     assert len(hero) == 1, f"{path}: expected one home hero CTA"
@@ -199,7 +202,7 @@ for path in download_files:
     dmg = [item for item in items if urlparse(item["href"]).path.lower().endswith(".dmg")]
     zip_files = [item for item in items if urlparse(item["href"]).path.lower().endswith(".zip")]
     assert len(dmg) == 1, f"{path}: expected one DMG download"
-    assert len(zip_files) == 1, f"{path}: expected one ZIP download"
+    assert not zip_files, f"{path}: ZIP download is not offered"
     compatibility = [
         item for item in items
         if "download-info-link" in item["class"]
@@ -209,9 +212,7 @@ for path in download_files:
     assert compatibility[0]["attributes"].get("data-umami-event") == "compatibility-link-click"
     assert compatibility[0]["attributes"].get("data-umami-event-location") == "download-page"
     assert "/releases/download/" in dmg[0]["href"], f"{path}: unexpected DMG URL {dmg[0]['href']}"
-    assert "/releases/download/" in zip_files[0]["href"], f"{path}: unexpected ZIP URL {zip_files[0]['href']}"
     assert dmg[0]["href"] == update["downloadURL"], f"{path}: DMG URL drifted from update manifest"
-    assert zip_files[0]["href"] == update["downloadURL"][:-4] + ".zip", f"{path}: ZIP URL drifted from update manifest"
 
 compatibility_files = [
     root / "site/compatibility/index.html",
@@ -240,7 +241,7 @@ assert "key.charAt(0).toUpperCase()" in privacy_script
 
 assert 'href="https://buymeacoffee.com/vooz2"' in site_shell
 assert 'data-support-link' in site_shell
-assert 'Support Terento' in site_shell
+assert '"support": "Donate"' in site_shell
 assert 'href="https://github.com/VooZ2/terento"' in site_shell
 assert 'data-project-link' in site_shell
 assert 'src="/assets/logo-white.svg"' in site_shell

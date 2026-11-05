@@ -1,26 +1,19 @@
 ---
-title: "Terento — Mapy třetích stran pro Garmin na Macu"
+title: "Terento — Mapy zdarma pro hodinky Garmin a Edge"
 canonical: https://terento.app/cs/
 ---
 
-Open-source projekt
+# Nainstalujte do svého Garminu mapy zdarma
 
-# Nainstalujte do hodinek Garmin mapy zdarma
+Terento nahraje mapy zdarma z projektů OpenStreetMap do hodinek Garmin a cyklopočítačů Edge. V aplikaci pro Mac, nebo přímo z prohlížeče v počítači. Zdarma a open source.
 
-Terento je bezplatný open-source nástroj pro instalaci, aktualizaci a správu map třetích stran v hodinkách Garmin a cyklopočítačích Edge: v nativní aplikaci pro Mac nebo v prohlížeči na počítači.
+[Stáhnout pro Mac](https://terento.app/cs/download/) [Instalovat z prohlížeče](https://terento.app/cs/install/)
 
-[Stáhnout pro Mac](https://terento.app/cs/download/)
-[Ověřit kompatibilitu](https://terento.app/cs/compatibility/) [Instalovat z prohlížeče](https://terento.app/cs/install/)
+Nejste si jistí svým modelem? [Ověřit kompatibilitu](https://terento.app/cs/compatibility/)
 
-Terento zobrazuje průběh instalace map třetích stran v macOS
+Hodinky Garmin s mapou OpenTopoMap okolí jezera Königssee v Bavorských Alpách
 
-Jak to funguje
-
-## Připojit Instalovat Hotovo
-
-Instalace map třetích stran by měla být jednoduchá a rychlá — bez ručního kopírování souborů a bez technických znalostí.
-
-Terento celý proces spojuje do tří jednoduchých kroků.
+## Jak to funguje
 
 1. Připojit
 
@@ -34,10 +27,6 @@ Vybírejte mapy z katalogu podle oblasti nebo přidejte vlastní kompatibilní m
 
 Vaše mapy jsou nainstalované a připravené k použití ve vašem Garminu.
 
-## Instalovat mapy
-
-Vybírejte mapy z katalogu podle oblasti nebo přidejte vlastní kompatibilní mapu .img.
-
 Terento zobrazuje poskytovatele a oblasti map třetích stran v macOS
 
 ## Spravovat mapy
@@ -46,23 +35,19 @@ Prohlédněte si nainstalované mapy, aktualizujte je, když je k dispozici nov�
 
 Terento zobrazuje nainstalované mapy třetích stran seskupené podle poskytovatele
 
-Webový instalátor
+Cyklopočítač Garmin Edge s mapou Freizeitkarte stoupání Sa Calobra v pohoří Serra de Tramuntana na Mallorce
 
-## Bez aplikace? Instalujte z prohlížeče.
+## I na kole
 
-Připojte hodinky Garmin kabelem USB, vyberte mapy a nainstalujte je přímo z Chrome, Microsoft Edge, Opery nebo Brave. Později je stejně aktualizujete nebo odeberete.
+Novější cyklopočítače Garmin Edge s podporou map, například Edge 540, 840 a 1050, používají stejné mapy. Připojte, vyberte region, nainstalujte.
 
-Funguje na Macu a, zatím ve zkušebním provozu, na Linuxu. Zatím ne ve Windows, na telefonech ani tabletech.
+[Přečíst návod pro Garmin Edge](https://terento.app/cs/guides/install-garmin-maps-edge-mac/)
 
-Mac · Linux (v testu)Chrome, Microsoft Edge, Opera, BraveDatový kabel USB
-
-[Otevřít webový instalátor](https://terento.app/cs/install/)
-
-Dostupné mapy
-
-## Prozkoumejte dostupné mapy.
+## Vyberte mapu, která sedí k výletu
 
 Vyberte si mapy od dostupných poskytovatelů. Mapy se stahují z původního zdroje každého poskytovatele.
+
+Mapa Freizeitkarte Vysokých Tater
 
 ### Freizeitkarte
 
@@ -73,6 +58,8 @@ Na procházky, vyjížďky na kole a výlety.
 - Trasy pro pěší i cyklisty
 - Vrstevnice jsou součástí mapy
 - Místa k návštěvě, autobusové zastávky a nádraží
+
+Mapa OpenTopoMap Vysokých Tater
 
 ### OpenTopoMap
 
@@ -90,6 +77,8 @@ Přidejte výškové čáry, které pomáhají rozpoznat svahy. Tento doplněk v
 
 Dostupné pro 157 mapových balíčků · Zabírají další místo.
 
+Mapa MapRando Vysokých Tater
+
 ### MapRando
 
 Pro pěší objevování menších stezek.
@@ -102,9 +91,25 @@ Některé popisky mapy jsou ve francouzštině.
 
 [Porovnat styly map naživo](https://terento.app/cs/map-styles/)
 
-Máte otázky?
+## V aplikaci pro Mac nebo v prohlížeči
 
-## FAQ
+### Aplikace pro Mac
+
+Instalujte mapy z katalogu nebo vlastní mapu .img, podívejte se, co je ve vašem Garminu, a aktualizujte mapy, když vyjdou novější vydání.
+
+macOS 13 nebo novější na Apple Silicon.
+
+[Stáhnout pro Mac](https://terento.app/cs/download/)
+
+### Webový instalátor
+
+Připojte hodinky Garmin kabelem USB, vyberte mapy a nainstalujte je přímo z Chrome, Microsoft Edge, Opery nebo Brave. Později je stejně aktualizujete nebo odeberete.
+
+Funguje na Macu a, zatím ve zkušebním provozu, na Linuxu. Zatím ne ve Windows, na telefonech ani tabletech.
+
+[Otevřít webový instalátor](https://terento.app/cs/install/)
+
+## Otázky a odpovědi
 
 Které hodinky Garmin a cyklopočítače Edge fungují s Terento?
 
@@ -112,7 +117,7 @@ Na stránce [Kompatibilita](https://terento.app/cs/compatibility/) najdete konkr
 
 Mohu instalovat mapy třetích stran do hodinek Garmin z Macu bez Garmin Express a BaseCamp?
 
-Ano. Terento je navrženo tak, aby správa map třetích stran v macOS byla jednoduchá a rychlá — od výběru mapy po instalaci, aktualizaci a správu v hodinkách Garmin. [Přečtěte si instalační příručku.](https://terento.app/cs/guides/install-garmin-maps-mac/)
+Ano. Terento zvládne vše na vašem Macu: vyberete mapu a oblast, nainstalujete ji do Garminu a později ji aktualizujete nebo odeberete. Garmin Express ani BaseCamp nepotřebujete. [Přečtěte si instalační příručku.](https://terento.app/cs/guides/install-garmin-maps-mac/)
 
 Mohu přidat vlastní mapu .img?
 
@@ -120,7 +125,7 @@ Ano. Přidejte kompatibilní mapu .img z Macu a nainstalujte ji do připojených
 
 Mohu mapy aktualizovat později?
 
-Ano. Terento ukáže, když jsou k dispozici novější vydání, a pomůže vám aktualizovat mapy třetích stran spravované aplikací Terento.
+Ano. Terento vám ukáže, když vyjde novější verze nainstalované mapy, a aktualizuje ji za vás.
 
 Proč Mac nevidí moje hodinky Garmin?
 
@@ -136,8 +141,8 @@ Mohu instalovat mapy bez instalace aplikace?
 
 Ano. [Webový instalátor](https://terento.app/cs/install/) instaluje, aktualizuje a odebírá mapy z katalogu v Chrome, Microsoft Edge, Opeře nebo Brave na Macu a na Linuxu, kde se ještě testuje. Zatím nefunguje ve Windows, na telefonech ani tabletech a nepřidá vlastní mapy .img.
 
-## Chcete jednodušší způsob instalace map?
+## Váš Garmin připravený na další cestu
 
 Stáhněte si Terento pro Mac, nebo instalujte mapy přímo z prohlížeče.
 
-[Stáhnout](https://terento.app/cs/download/) [Instalovat z prohlížeče](https://terento.app/cs/install/)
+[Stáhnout pro Mac](https://terento.app/cs/download/) [Instalovat z prohlížeče](https://terento.app/cs/install/)

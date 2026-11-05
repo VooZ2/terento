@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Synchronize visible Download release data with the update manifest."""
+"""Render the Download pages from download-copy.json and the update manifest."""
 
 from __future__ import annotations
 
 import argparse
+import html
 import json
 import re
 import sys
@@ -29,84 +30,104 @@ def page_path(locale: str) -> Path:
     return ROOT / "site" / prefix / "download" / "index.html"
 
 
-# Visible wording follows the manifest label family (VERSIONING.md): a beta,
-# a release candidate or a stable release. Any other label is rejected.
-LATEST = {
-    "beta": {"en": "Latest", "de": "Neueste Beta", "fr": "Dernière bêta", "pl": "Najnowsza beta", "cs": "Nejnovější beta", "it": "Ultima beta"},
-    "rc": {
-        "en": "Latest",
-        "de": "Neuester Release Candidate",
-        "fr": "Dernière version candidate",
-        "pl": "Najnowsza wersja kandydująca",
-        "cs": "Nejnovější kandidát na vydání",
-        "it": "Ultima release candidate",
-    },
-    "stable": {
-        "en": "Latest",
-        "de": "Neueste Version",
-        "fr": "Dernière version",
-        "pl": "Najnowsza wersja",
-        "cs": "Nejnovější verze",
-        "it": "Ultima versione",
-    },
-}
-CURRENT_BUILD = {
-    "beta": {
-        "en": "This is the current Terento beta.",
-        "de": "Dies ist die aktuelle Terento-Beta.",
-        "fr": "Il s’agit de la bêta actuelle de Terento.",
-        "pl": "To aktualna beta Terento.",
-        "cs": "Jde o aktuální betu Terento.",
-        "it": "Questa è la beta attuale di Terento.",
-    },
-    "rc": {
-        "en": "This is the current Terento release candidate.",
-        "de": "Dies ist der aktuelle Terento Release Candidate.",
-        "fr": "Il s’agit de la version candidate actuelle de Terento.",
-        "pl": "To aktualna wersja kandydująca Terento.",
-        "cs": "Jde o aktuálního kandidáta na vydání Terento.",
-        "it": "Questa è la release candidate attuale di Terento.",
-    },
-    "stable": {
-        "en": "This is the current Terento release.",
-        "de": "Dies ist die aktuelle Terento-Version.",
-        "fr": "Il s’agit de la version actuelle de Terento.",
-        "pl": "To aktualna wersja Terento.",
-        "cs": "Jde o aktuální verzi Terento.",
-        "it": "Questa è la versione attuale di Terento.",
-    },
-}
+COPY = json.loads((ROOT / "scripts" / "templates" / "download-copy.json").read_text(encoding="utf-8"))
+# Empty until the Mac App Store listing is live; then the row becomes a link.
+APP_STORE_URL = ""
+SHOT = "/assets/app/optimized/your-garmin-{width}.{fmt}?v=20260912-app-screens-v2"
+SHOT_SIZES = "(max-width: 899px) min(480px, calc(100vw - 32px)), 480px"
+# Lucide 0.460.0 `clock` (ISC, see THIRD_PARTY_NOTICES.md); no inline license comment so the
+# page carries only the release version string.
+CLOCK_ICON = (
+    '<svg class="download-v2-store-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" '
+    'stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">'
+    '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
+)
 
 
 def release_family(label: str) -> str:
+    # Visible wording follows the manifest label family (VERSIONING.md): a beta,
+    # a release candidate or a stable release. Any other label is rejected.
     match = re.fullmatch(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-(beta|rc)\.[1-9][0-9]*)?", label)
     if not match:
         raise ValueError(f"unsupported public release label for Download copy: {label}")
     return match.group(1) or "stable"
 
 
-def release_line(locale: str, label: str, published: date) -> str:
+def release_date(locale: str, published: date) -> str:
     month = MONTHS[locale][published.month - 1]
-    latest = LATEST[release_family(label)][locale]
-    it_on = "l'" if published.day in (8, 11) else "il "  # Italian elides before 8 and 11
-    versions = {
-        "en": f"{latest}: <strong>v{label}</strong> <span aria-hidden=\"true\">·</span> Released {published.day} {month} {published.year}",
-        "de": f"{latest}: <strong>v{label}</strong> <span aria-hidden=\"true\">·</span> Veröffentlicht am {published.day}. {month} {published.year}",
-        "fr": f"{latest}: <strong>v{label}</strong> <span aria-hidden=\"true\">·</span> Publiée le {published.day} {month} {published.year}",
-        "pl": f"{latest}: <strong>v{label}</strong> <span aria-hidden=\"true\">·</span> Wydana {published.day} {month} {published.year}",
-        "cs": f"{latest}: <strong>v{label}</strong> <span aria-hidden=\"true\">·</span> Vydáno {published.day}. {month} {published.year}",
-        "it": f"{latest}: <strong>v{label}</strong> <span aria-hidden=\"true\">·</span> Pubblicata {it_on}{published.day} {month} {published.year}",
-    }
-    return f'<p class="download-release">{versions[locale]}</p>'
+    if locale in ("de", "cs"):
+        return f"{published.day}. {month} {published.year}"
+    if locale == "it":
+        article = "l'" if published.day in (8, 11) else "il "  # Italian elides before 8 and 11
+        return f"{article}{published.day} {month} {published.year}"
+    return f"{published.day} {month} {published.year}"
 
 
-def current_build_sentence(source: str, locale: str, label: str) -> tuple[str, int]:
-    known = "|".join(re.escape(copy[locale]) for copy in CURRENT_BUILD.values())
-    return re.subn(
-        rf'(<section class="download-detail"><h2>[^<]+</h2><p>)(?:{known})',
-        lambda match: match.group(1) + CURRENT_BUILD[release_family(label)][locale],
-        source,
-        count=1,
+def link(label: str, href: str, event: str, location: str, extra_class: str = "") -> str:
+    return (f'<a class="text-link{extra_class}" href="{href}" data-umami-event="{event}" '
+            f'data-umami-event-location="{location}">{html.escape(label)}</a>')
+
+
+def fill(template: str, **links: str) -> str:
+    text = html.escape(template, quote=False)
+    for key, value in links.items():
+        text = text.replace("{" + key + "}", value)
+    return text
+
+
+def render_main(locale: str, release: dict[str, object], dmg_url: str, notes_url: str) -> str:
+    c = COPY[locale]
+    root = "/" if locale == "en" else f"/{locale}/"
+    label = str(release["releaseLabel"])
+    sha = str(release.get("sha256", ""))
+    if not re.fullmatch(r"[0-9a-f]{64}", sha):
+        raise ValueError("release metadata sha256 must be a lowercase SHA-256 digest")
+    published = date.fromisoformat(str(release["publishedAt"]))
+    release_text = fill(c["release_" + release_family(label)],
+                        version=f"<strong>v{html.escape(label)}</strong>", date=html.escape(release_date(locale, published)))
+    store = (f'<a class="download-v2-store download-v2-store-link" href="{APP_STORE_URL}" data-umami-event="app-store-click" '
+             f'data-umami-event-location="download-page">{html.escape(c["store_label"])}</a>'
+             if APP_STORE_URL else
+             f'<p class="download-v2-store">{html.escape(c["store_label"])} '
+             f'<span class="download-v2-store-status">{CLOCK_ICON}{html.escape(c["store_status"])}</span></p>')
+    sources = "".join(
+        f'<source type="image/{fmt}" srcset="'
+        + ", ".join(f"{SHOT.format(width=w, fmt=fmt)} {w}w" for w in (640, 960, 1280, 1600))
+        + f'" sizes="{SHOT_SIZES}">'
+        for fmt in ("avif", "webp")
+    )
+    shot = (f'<figure class="app-shot app-shot--download download-v2-shot"><picture>{sources}'
+            f'<img src="{SHOT.format(width=1600, fmt="png")}" width="2358" height="1575" sizes="{SHOT_SIZES}" '
+            f'alt="{html.escape(c["shot_alt"])}" decoding="async"></picture></figure>')
+    web = fill(c["web_text"],
+               web=link(c["web_label"], f"{root}install/", "web-installer-link-click", "download-page"),
+               linux=link(c["linux_label"], f"{root}guides/install-garmin-maps-linux/", "guide-link-click", "download-page-linux"))
+    needs = "".join(f"<li>{html.escape(item)}</li>" for item in c["needs"])
+    steps = "".join(f"<li><h3>{html.escape(title)}</h3><p>{html.escape(body)}</p></li>" for title, body in c["steps"])
+    guides = fill(c["guides_text"],
+                  watch=link(c["watch_label"], f"{root}guides/install-garmin-maps-mac/", "guide-link-click", "download-page"),
+                  edge=link(c["edge_label"], f"{root}guides/install-garmin-maps-edge-mac/", "guide-link-click", "download-page-edge"))
+    return (
+        '<main id="main-content" class="download-main download-v2"><div class="shell">'
+        '<section class="download-v2-hero"><div class="download-v2-copy">'
+        f'<h1>{html.escape(c["h1"])}</h1>'
+        f'<p class="download-intro">{html.escape(c["intro"])}</p>'
+        '<div class="download-v2-actions">'
+        f'<a class="download-action download-v2-primary" href="{dmg_url}" rel="noopener noreferrer">{html.escape(c["download"])}</a>'
+        f'{store}</div>'
+        f'<p class="download-release">{release_text} '
+        f'<a class="text-link" href="{notes_url}" rel="noopener noreferrer">{html.escape(c["notes"])}</a></p>'
+        f'<p class="download-v2-web">{web}</p>'
+        f'</div>{shot}</section>'
+        '<div class="download-v2-info">'
+        '<section class="download-v2-needs" aria-labelledby="download-needs-title">'
+        f'<h2 id="download-needs-title">{html.escape(c["needs_title"])}</h2><ul>{needs}</ul>'
+        + link(c["compat_label"], f"{root}compatibility/", "compatibility-link-click", "download-page", " download-info-link")
+        + '</section>'
+        '<section class="download-v2-steps" aria-labelledby="download-steps-title">'
+        f'<h2 id="download-steps-title">{html.escape(c["steps_title"])}</h2><ol>{steps}</ol>'
+        f'<p class="download-v2-guides">{guides}</p></section></div>'
+        '</div></main>'
     )
 
 
@@ -116,26 +137,16 @@ def render(source: str, locale: str, release: dict[str, object], path: Path) -> 
     release_url = str(release["releaseNotesURL"])
     if not dmg_url.endswith(".dmg"):
         raise ValueError("downloadURL must identify the canonical DMG")
-    zip_url = f"{dmg_url[:-4]}.zip"
     if not dmg_url.startswith("https://github.com/VooZ2/terento/releases/download/"):
         raise ValueError("downloadURL must use the official Terento GitHub release path")
     if not release_url.startswith("https://github.com/VooZ2/terento/releases/tag/"):
         raise ValueError("releaseNotesURL must use the official Terento GitHub release path")
 
-    source, dmg_count = re.subn(
-        r'href="https://github\.com/VooZ2/terento/releases/download/[^\"]+\.dmg"',
-        f'href="{dmg_url}"',
+    source, main_count = re.subn(
+        r'<main id="main-content"[^>]*>[\s\S]*?</main>',
+        lambda _: render_main(locale, release, dmg_url, release_url),
         source,
-    )
-    source, zip_count = re.subn(
-        r'href="https://github\.com/VooZ2/terento/releases/download/[^\"]+\.zip"',
-        f'href="{zip_url}"',
-        source,
-    )
-    source, notes_count = re.subn(
-        r'href="https://github\.com/VooZ2/terento/releases/tag/[^\"]+"',
-        f'href="{release_url}"',
-        source,
+        count=1,
     )
     source, schema_version_count = re.subn(
         r'("softwareVersion":\s*)"[^\"]+"',
@@ -155,20 +166,9 @@ def render(source: str, locale: str, release: dict[str, object], path: Path) -> 
         source,
         count=1,
     )
-    published = date.fromisoformat(str(release["publishedAt"]))
-    source, line_count = re.subn(
-        r'<p class="download-release">[\s\S]*?</p>',
-        release_line(locale, label, published),
-        source,
-        count=1,
-    )
-    source, status_count = current_build_sentence(source, locale, label)
-    counts = (dmg_count, zip_count, notes_count, line_count, schema_version_count, schema_download_count, schema_notes_count, status_count)
-    if counts != (1, 1, 1, 1, 1, 1, 1, 1):
-        raise ValueError(
-            f"{path}: expected one DMG, ZIP, notes, visible release record, schema release record and current-build status; "
-            f"got {counts}"
-        )
+    counts = (main_count, schema_version_count, schema_download_count, schema_notes_count)
+    if counts != (1, 1, 1, 1):
+        raise ValueError(f"{path}: expected one main element and one schema release record; got {counts}")
     return source
 
 

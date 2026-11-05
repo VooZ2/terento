@@ -1,36 +1,42 @@
 ---
-title: "Stáhnout Terento pro Mac — Mapy třetích stran pro Garmin"
+title: "Stáhnout Terento pro Mac: bezplatné mapy pro Garmin"
 canonical: https://terento.app/cs/download/
 ---
 
-Terento
+# Stáhnout Terento pro Mac
 
-# Stáhnout Terento
+Bezplatná open-source aplikace, která instaluje bezplatné mapy do hodinek Garmin a cyklopočítačů Edge s podporou map.
 
-Nativní aplikace pro Mac k instalaci a správě map třetích stran na hodinkách Garmin s podporou map.
+[Stáhnout pro Mac](https://github.com/VooZ2/terento/releases/download/v1.1.0-build46/Terento-1.1.0-macOS-arm64.dmg)
 
-- Zdarma
-- Notarizovaná
-- Apple Silicon
-[Stáhnout DMG Doporučeno](https://github.com/VooZ2/terento/releases/download/v1.1.0-build46/Terento-1.1.0-macOS-arm64.dmg) [Stáhnout ZIP](https://github.com/VooZ2/terento/releases/download/v1.1.0-build46/Terento-1.1.0-macOS-arm64.zip) [Poznámky k vydání](https://github.com/VooZ2/terento/releases/tag/v1.1.0-build46)
+Mac App Store Již brzy
 
-Nejnovější verze: **v1.1.0** Vydáno 27. října 2026
+Nejnovější verze **v1.1.0**, vydáno 27. října 2026. [Co je nového](https://github.com/VooZ2/terento/releases/tag/v1.1.0-build46)
+
+Nemáte Mac s Apple Silicon? [Použijte webový instalátor](https://terento.app/cs/install/) v Chrome, Microsoft Edge, Opeře nebo Brave na Macu. Linux je zatím ve zkušebním provozu: viz [návod pro Linux](https://terento.app/cs/guides/install-garmin-maps-linux/).
 
 Terento zobrazuje připojené hodinky Garmin v macOS
 
-Před instalací
+## Co budete potřebovat
 
-## Nejdřív si ověřte to podstatné.
-
-## Požadavky
-
-- macOS 13 nebo novější
 - Mac s Apple Silicon
-- Hodinky Garmin s podporou map
-[Přečíst průvodce instalací na Macu](https://terento.app/cs/guides/install-garmin-maps-mac/) [Nemáte Mac s Apple Silicon? Použijte webový instalátor](https://terento.app/cs/install/) [Linux? Přečtěte si návod pro Linux](https://terento.app/cs/guides/install-garmin-maps-linux/) [Garmin Edge? Přečtěte si průvodce pro Edge](https://terento.app/cs/guides/install-garmin-maps-edge-mac/)
-
-## Stav verze
-
-Jde o aktuální verzi Terento. Podporuje mapy všech poskytovatelů v katalogu. Stránka Kompatibilita zobrazuje konkrétní modely a varianty s úspěšnými sdílenými instalacemi. Chybějící model neznamená, že zařízení není podporováno.
-
+- macOS 13 nebo novější
+- Datový kabel USB, ne jen nabíjecí
+- Hodinky Garmin nebo cyklopočítač Garmin Edge
 [Ověřit kompatibilitu](https://terento.app/cs/compatibility/)
+
+## Po stažení
+
+1. Otevřete Terento
+
+Otevřete stažený soubor a přetáhněte Terento do složky Aplikace.
+
+2. Připojte Garmin
+
+Použijte datový kabel USB a odemkněte hodinky nebo Edge.
+
+3. Vyberte mapu
+
+Vyberte mapu a region a nainstalujte ji.
+
+Krok za krokem: [průvodce pro hodinky Garmin](https://terento.app/cs/guides/install-garmin-maps-mac/) a [průvodce pro Garmin Edge](https://terento.app/cs/guides/install-garmin-maps-edge-mac/).

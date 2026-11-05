@@ -1,23 +1,17 @@
 ---
-title: "Il Mac non rileva il Garmin? Risoluzione problemi — Terento"
+title: "Il Mac non rileva il Garmin? Aiuto mappe — Terento"
 canonical: https://terento.app/it/guides/troubleshooting/
 ---
-
-Risoluzione dei problemi
 
 # Risolvi i problemi di orologio Garmin e mappe su Mac
 
 Trova il tuo problema, da un orologio Garmin che il Mac non rileva a un download della mappa non riuscito, e segui i brevi passaggi. Se niente funziona, invia un rapporto così possiamo dare un’occhiata.
-
-Garmin Edge
 
 ## Garmin Edge non rilevato dal Mac
 
 I ciclocomputer Garmin Edge più recenti con supporto alle mappe si collegano al Mac come gli orologi Garmin attuali, quindi la maggior parte dei passaggi di questa pagina vale anche per un Edge: usa un cavo USB dati, chiudi Garmin Express e attendi fino a 2 minuti. I modelli Edge meno recenti che compaiono nel Finder come disco funzionano in modo diverso.
 
 [Leggi la guida Garmin Edge](https://terento.app/it/guides/install-garmin-maps-edge-mac/)
-
-Connessione
 
 ## Problemi di connessione dell’orologio Garmin
 
@@ -71,8 +65,6 @@ Scollega l’orologio, attendi qualche secondo e ricollegalo: la connessione si 
 1. Se Terento stava installando, aggiornando o rimuovendo una mappa, dopo il ricollegamento apri “Manage maps” e controlla il risultato prima di riprovare.
 2. Riavvia l’orologio se succede di nuovo.
 
-Controlli
-
 ## Controlli di orologio e mappe
 
 ### Installazione mappe non disponibile per questo modello Garmin
@@ -98,8 +90,6 @@ Se Terento non riesce a caricare l’elenco attuale delle mappe, controlla la co
 1. Se questa versione di Terento è troppo vecchia per l’elenco attuale e Terento segnala una versione più recente, installa l’aggiornamento.
 2. Finché Terento mostra un elenco salvato meno recente, l’installazione e l’aggiornamento delle mappe del catalogo restano non disponibili fino a quando non è possibile verificare l’elenco attuale.
 
-Download e spazio
-
 ## Download delle mappe e spazio libero
 
 ### Download della mappa Garmin non riuscito
@@ -124,8 +114,6 @@ Scegli una regione più piccola o rimuovi una mappa che non ti serve più: Teren
 2. Apri “Manage maps” e rimuovi una mappa che non ti serve più.
 3. Un aggiornamento richiede spazio extra mentre la nuova mappa viene verificata. Libera spazio se un aggiornamento non può iniziare.
 
-Installazione e aggiornamenti
-
 ## Installare, aggiornare e rimuovere mappe
 
 ### Installazione della mappa non riuscita: mappa rimasta sull’orologio
@@ -144,8 +132,6 @@ Nella versione attuale è previsto: durante l’aggiornamento o la rimozione di 
 1. Non scollegare l’orologio mentre Terento è al lavoro.
 2. Attendi che Terento segnali che ha finito.
 3. Se Terento segnala un errore, ricollega l’orologio e controlla “Manage maps” prima di riprovare.
-
-Ancora problemi?
 
 ## Ottenere assistenza
 

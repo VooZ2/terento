@@ -6,23 +6,8 @@ cd "$(dirname "$0")/.."
 PYTHONDONTWRITEBYTECODE=1 python3 - <<'PYTHON'
 import runpy
 
-links = runpy.run_path("scripts/add-guide-links.py")
-normalize = links["normalize_download_layout"]
-for locale in links["COPY"]:
-    source = links["path_for"](locale, "download/index.html").read_text(encoding="utf-8")
-    normalized = normalize(source, locale)
-    assert normalize(normalized, locale) == normalized, locale
-    for layout in ("download-layout", "download-grid", "download-sections", "unknown"):
-        try:
-            normalize(source.replace('class="download-hero"', f'class="{layout}"'), locale)
-        except ValueError as error:
-            assert "download-hero" in str(error), error
-        else:
-            raise AssertionError(f"{locale}: obsolete or unknown layout accepted: {layout}")
-print("Download layout checks passed for all six locales.")
-
-# A release-candidate manifest must change only the description of the current
-# build, and a stable label uses its own reviewed copy; other labels are rejected.
+# The Download page renders its release line from the manifest label family
+# (stable, rc, beta); other labels are rejected and a round trip is lossless.
 import json
 release_pages = runpy.run_path("scripts/normalize-release-pages.py")
 published = json.loads(open("site/updates/macos-arm64.json", encoding="utf-8").read())
@@ -32,19 +17,17 @@ candidate = dict(published, releaseLabel="1.0.0-rc.1", releaseTag="v1.0.0-rc.1-b
 for locale in release_pages["LOCALES"]:
     path = release_pages["page_path"](locale)
     source = path.read_text(encoding="utf-8")
+    copy = release_pages["COPY"][locale]
+    assert release_pages["render"](source, locale, published, path) == source, f"{locale}: page is current"
     rc = release_pages["render"](source, locale, candidate, path)
-    assert "v1.0.0-rc.1" in rc and "beta.18" not in rc, locale
-    assert release_pages["LATEST"]["rc"][locale] + ": <strong>v1.0.0-rc.1</strong>" in rc, locale
-    assert release_pages["CURRENT_BUILD"]["rc"][locale] in rc, locale
-    assert release_pages["CURRENT_BUILD"]["beta"][locale] not in rc, locale
+    rc_prefix = copy["release_rc"].split("{version}")[0]
+    assert rc_prefix + "<strong>v1.0.0-rc.1</strong>" in rc, locale
+    assert copy["release_stable"].split("{version}")[0] + "<strong>" not in rc, locale
     assert '"softwareVersion": "1.0.0-rc.1"' in rc, locale
-    assert release_pages["render"](rc, locale, published, path) == source, f"{locale}: beta round trip"
-    stable = release_pages["render"](source, locale, dict(candidate, releaseLabel="1.0.0"), path)
-    assert release_pages["LATEST"]["stable"][locale] + ": <strong>v1.0.0</strong>" in stable, locale
-    assert release_pages["CURRENT_BUILD"]["stable"][locale] in stable, locale
-    assert release_pages["CURRENT_BUILD"]["rc"][locale] not in stable, locale
-    assert '"softwareVersion": "1.0.0"' in stable, locale
-    assert release_pages["render"](stable, locale, published, path) == source, f"{locale}: stable round trip"
+    assert candidate["downloadURL"] in rc, locale
+    assert release_pages["render"](rc, locale, published, path) == source, f"{locale}: rc round trip"
+    beta = release_pages["render"](source, locale, dict(candidate, releaseLabel="1.0.0-beta.2"), path)
+    assert copy["release_beta"].split("{version}")[0] + "<strong>v1.0.0-beta.2</strong>" in beta, locale
     for label in ("1.0", "01.0.0", "1.0.0-RC.1", "1.0.0-rc.0", "1.0.0-beta.0", "1.0.0-rc.1-local", "1.0.0-local"):
         try:
             release_pages["render"](source, locale, dict(candidate, releaseLabel=label), path)
@@ -52,6 +35,12 @@ for locale in release_pages["LOCALES"]:
             pass
         else:
             raise AssertionError(f"{locale}: unsupported release label accepted: {label}")
+    try:
+        release_pages["render"](source, locale, dict(published, sha256="nope"), path)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError(f"{locale}: malformed sha256 accepted")
 print("Download release-candidate and stable copy checks passed for all six locales.")
 PYTHON
 

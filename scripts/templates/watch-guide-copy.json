@@ -1,0 +1,644 @@
+{
+  "en": {
+    "title": "Install Third-Party Garmin Maps on Mac — Terento",
+    "description": "Step by step: put free OpenStreetMap maps or your own map file on a Garmin watch from an Apple Silicon Mac. No Garmin Express or BaseCamp needed.",
+    "h1": "Install free maps on your Garmin watch from a Mac",
+    "intro": "Terento puts free OpenStreetMap maps, or your own map file, on a Garmin watch with map support. You don’t copy any files yourself, and your Garmin maps stay as they are.",
+    "skip": "Skip to content",
+    "breadcrumb_home": "Home",
+    "breadcrumb_current": "Install third-party maps on Garmin from a Mac",
+    "cta": "Download",
+    "other": "Using Linux? [Install maps from your browser](guides/install-garmin-maps-linux/).",
+    "needs_title": "What you need",
+    "needs": [
+      "Apple Silicon Mac with macOS 13 or later",
+      "Garmin watch with map support",
+      "USB cable that supports data transfer"
+    ],
+    "needs_note": "After you connect, Terento checks the watch and tells you whether it can install maps. [Compatibility](compatibility/) lists the models with successful installations; a missing model isn’t necessarily unsupported.",
+    "steps_title": "Install a map",
+    "steps": [
+      {
+        "title": "Download and open Terento",
+        "body": "[Download Terento](download/), drag it from the disk image to Applications and open it there. The first time, macOS asks whether to open an app downloaded from the internet: choose Open."
+      },
+      {
+        "title": "Connect your watch",
+        "body": "Quit Garmin Express if it’s open. Unlock the watch and connect it to your Mac with a USB data cable, not a charge-only cable. If macOS asks whether to allow the accessory to connect, choose Allow. Terento finds the watch within 1–2 minutes and checks whether it can install maps.",
+        "help_anchor": "connect-watch",
+        "image": {
+          "asset": "your-garmin",
+          "width": 2358,
+          "height": 1575,
+          "alt": "Terento showing a connected Garmin watch and device detection status",
+          "caption": "Terento recognizes the connected Garmin watch before installation."
+        }
+      },
+      {
+        "title": "Choose a map",
+        "body": "Pick a map from the catalog or add your own compatible .img file. [Compare map styles](map-styles/) to see how each map draws roads and trails.",
+        "substeps": [
+          {
+            "title": "Choose from the catalog",
+            "body": "Choose a provider and a region from the catalog."
+          },
+          {
+            "title": "Add your own map",
+            "body": "Add a compatible .img map from your Mac."
+          }
+        ],
+        "image": {
+          "asset": "map-selected",
+          "width": 2358,
+          "height": 1575,
+          "alt": "Terento showing third-party map providers, regions and available Garmin storage",
+          "caption": "Choose a map from the catalog or add your own compatible file."
+        }
+      },
+      {
+        "title": "Install",
+        "body": "Start the installation and keep the watch connected until Terento says the map is ready. Then disconnect the watch.",
+        "image": {
+          "asset": "maps-done",
+          "width": 2358,
+          "height": 1575,
+          "alt": "Terento showing a completed map installation on a Garmin watch",
+          "caption": "Keep the watch connected until transfer and verification are complete."
+        }
+      }
+    ],
+    "show_title": "Show the map on your watch",
+    "show_body": "Disconnect the watch, open its map settings and turn the new map on. If it isn’t listed, restart the watch. If several maps cover the same area, turn off the ones you don’t want to see.",
+    "show_email": "Still can’t see it? Email hello@terento.app with your exact watch model, map region and what happened.",
+    "help_title": "If something doesn’t work",
+    "help": [
+      {
+        "title": "Terento does not detect the watch",
+        "body": "Wait up to 1–2 minutes after connecting. If the watch still does not appear, reconnect it, check that the cable supports data and close other apps that may be using it.",
+        "related": [
+          "connect-watch",
+          "garmin-busy",
+          "usb-mode"
+        ]
+      },
+      {
+        "title": "Install or Update is unavailable",
+        "body": "Temporarily unavailable maps stay visible. Read the reason shown beside the map. If its provider is unavailable or downloads are paused, try later. If Terento cannot check current availability, check your internet connection and try again. Your installed maps remain available.",
+        "related": [
+          "catalog-unavailable",
+          "download-failed"
+        ]
+      },
+      {
+        "title": "Installation failed",
+        "body": "On the failed installation screen, choose “Report issue”. Terento opens GitHub with the report already filled in. Review it before posting: GitHub issues are public. For help by email, include your watch model, map region and what happened.",
+        "related": [
+          "leftover-map",
+          "send-report"
+        ]
+      }
+    ],
+    "more": [
+      {
+        "id": "uninstall",
+        "title": "Uninstall Terento",
+        "body": "Quit Terento and move it from Applications to the Trash. Maps already on your watch stay there. Terento keeps its records of the maps it installed in ~/Library/Application Support/Terento: keep that folder if you may install Terento again, so it can still update and remove those maps. To remove everything, also delete that folder, ~/Library/Caches/Terento, ~/Library/Logs/Terento and ~/Library/Preferences/app.terento.mac.plist."
+      }
+    ]
+  },
+  "de": {
+    "title": "Drittanbieter-Karten auf Garmin vom Mac installieren — Terento",
+    "description": "Schritt für Schritt: kostenlose OpenStreetMap-Karten oder deine eigene Kartendatei vom Apple-Silicon-Mac auf eine Garmin-Uhr. Ohne Garmin Express oder BaseCamp.",
+    "h1": "Kostenlose Karten vom Mac auf deine Garmin-Uhr installieren",
+    "intro": "Terento installiert kostenlose OpenStreetMap-Karten oder deine eigene Kartendatei auf einer Garmin-Uhr mit Kartenunterstützung. Du kopierst selbst keine Dateien, und deine Garmin-Karten bleiben unverändert.",
+    "skip": "Zum Inhalt springen",
+    "breadcrumb_home": "Startseite",
+    "breadcrumb_current": "Drittanbieter-Karten auf Garmin vom Mac installieren",
+    "cta": "Herunterladen",
+    "other": "Du nutzt Linux? [Installiere Karten aus dem Browser](guides/install-garmin-maps-linux/).",
+    "needs_title": "Das brauchst du",
+    "needs": [
+      "Mac mit Apple Silicon und macOS 13 oder neuer",
+      "Garmin-Smartwatch mit Kartenunterstützung",
+      "USB-Kabel mit Datenübertragung"
+    ],
+    "needs_note": "Nach dem Verbinden prüft Terento die Uhr und sagt dir, ob es Karten installieren kann. Unter [Kompatibilität](compatibility/) stehen die Modelle mit erfolgreichen Installationen; fehlt ein Modell, heißt das nicht unbedingt, dass es nicht unterstützt wird.",
+    "steps_title": "Eine Karte installieren",
+    "steps": [
+      {
+        "title": "Terento laden und öffnen",
+        "body": "[Lade Terento herunter](download/), ziehe es aus dem Disk-Image in den Ordner „Programme“ und öffne es dort. Beim ersten Öffnen fragt macOS, ob du eine aus dem Internet geladene App öffnen möchtest: Wähle „Öffnen“."
+      },
+      {
+        "title": "Uhr verbinden",
+        "body": "Beende Garmin Express, falls es geöffnet ist. Entsperre die Uhr und verbinde sie mit einem USB-Datenkabel mit deinem Mac, nicht mit einem reinen Ladekabel. Fragt macOS, ob das Zubehör verbunden werden darf, wähle „Erlauben“. Terento findet die Uhr innerhalb von 1–2 Minuten und prüft, ob es Karten installieren kann.",
+        "help_anchor": "connect-watch",
+        "image": {
+          "asset": "your-garmin",
+          "width": 2358,
+          "height": 1575,
+          "alt": "Terento zeigt eine verbundene Garmin-Uhr und den Gerätestatus",
+          "caption": "Terento erkennt die verbundene Garmin-Uhr vor der Installation."
+        }
+      },
+      {
+        "title": "Karte wählen",
+        "body": "Wähle eine Karte aus dem Katalog oder füge deine eigene kompatible .img-Datei hinzu. [Vergleiche die Kartenstile](map-styles/), um zu sehen, wie jede Karte Straßen und Wege darstellt.",
+        "substeps": [
+          {
+            "title": "Aus dem Katalog wählen",
+            "body": "Wähle einen Anbieter und eine Region aus dem Katalog."
+          },
+          {
+            "title": "Eigene Karte hinzufügen",
+            "body": "Füge eine kompatible .img-Karte von deinem Mac hinzu."
+          }
+        ],
+        "image": {
+          "asset": "map-selected",
+          "width": 2358,
+          "height": 1575,
+          "alt": "Terento zeigt Drittanbieter-Kartenanbieter, Regionen und verfügbaren Garmin-Speicher",
+          "caption": "Wähle eine Karte aus dem Katalog oder füge deine eigene kompatible Datei hinzu."
+        }
+      },
+      {
+        "title": "Installieren",
+        "body": "Starte die Installation und lass die Uhr verbunden, bis Terento meldet, dass die Karte bereit ist. Trenne die Uhr danach.",
+        "image": {
+          "asset": "maps-done",
+          "width": 2358,
+          "height": 1575,
+          "alt": "Terento zeigt eine abgeschlossene Karteninstallation auf einer Garmin-Uhr",
+          "caption": "Lass die Uhr verbunden, bis Übertragung und Prüfung abgeschlossen sind."
+        }
+      }
+    ],
+    "show_title": "Die Karte auf der Uhr anzeigen",
+    "show_body": "Trenne die Uhr, öffne ihre Karteneinstellungen und schalte die neue Karte ein. Fehlt sie in der Liste, starte die Uhr neu. Decken mehrere Karten dasselbe Gebiet ab, schalte die aus, die du nicht sehen möchtest.",
+    "show_email": "Immer noch nicht sichtbar? Schreib an hello@terento.app mit deinem genauen Uhrenmodell, der Kartenregion und dem, was passiert ist.",
+    "help_title": "Wenn etwas nicht klappt",
+    "help": [
+      {
+        "title": "Terento erkennt die Uhr nicht",
+        "body": "Warte nach dem Verbinden bis zu 1–2 Minuten. Wenn die Uhr weiterhin nicht erscheint, verbinde sie erneut, prüfe das Datenkabel und schließe andere Programme, die sie verwenden könnten.",
+        "related": [
+          "connect-watch",
+          "garmin-busy",
+          "usb-mode"
+        ]
+      },
+      {
+        "title": "Installieren oder Aktualisieren ist nicht verfügbar",
+        "body": "Vorübergehend nicht verfügbare Karten bleiben sichtbar. Lies den Hinweis neben der Karte. Wenn der Kartenanbieter nicht erreichbar ist oder Downloads pausiert sind, versuche es später erneut. Kann Terento die aktuelle Verfügbarkeit nicht prüfen, überprüfe deine Internetverbindung und versuche es erneut. Bereits installierte Karten bleiben verfügbar.",
+        "related": [
+          "catalog-unavailable",
+          "download-failed"
+        ]
+      },
+      {
+        "title": "Installation fehlgeschlagen",
+        "body": "Wähle nach einer fehlgeschlagenen Installation „Report issue“. Terento öffnet GitHub mit einem bereits ausgefüllten Bericht. Prüfe ihn vor dem Veröffentlichen: GitHub-Issues sind öffentlich. Für Hilfe per E-Mail nenne dein Uhrenmodell, die Kartenregion und den Fehler.",
+        "related": [
+          "leftover-map",
+          "send-report"
+        ]
+      }
+    ],
+    "more": [
+      {
+        "id": "uninstall",
+        "title": "Terento deinstallieren",
+        "body": "Beende Terento und bewege es aus „Programme“ in den Papierkorb. Karten auf deiner Uhr bleiben dort. Terento speichert die Angaben zu den installierten Karten in ~/Library/Application Support/Terento: Behalte diesen Ordner, wenn du Terento wieder installieren möchtest, damit es diese Karten weiter aktualisieren und entfernen kann. Um alles zu entfernen, lösche auch diesen Ordner, ~/Library/Caches/Terento, ~/Library/Logs/Terento und ~/Library/Preferences/app.terento.mac.plist."
+      }
+    ]
+  },
+  "fr": {
+    "title": "Installer des cartes tierces Garmin sur Mac — Terento",
+    "description": "Pas à pas : installez des cartes OpenStreetMap gratuites ou votre propre fichier de carte sur une montre Garmin depuis un Mac Apple Silicon. Sans Garmin Express.",
+    "h1": "Installer des cartes gratuites sur votre montre Garmin depuis un Mac",
+    "intro": "Terento installe des cartes OpenStreetMap gratuites, ou votre propre fichier de carte, sur une montre Garmin compatible avec les cartes. Vous ne copiez aucun fichier vous-même, et vos cartes Garmin restent intactes.",
+    "skip": "Aller au contenu",
+    "breadcrumb_home": "Accueil",
+    "breadcrumb_current": "Installer des cartes tierces sur Garmin depuis un Mac",
+    "cta": "Télécharger",
+    "other": "Sous Linux ? [Installez des cartes depuis le navigateur](guides/install-garmin-maps-linux/).",
+    "needs_title": "Ce qu’il vous faut",
+    "needs": [
+      "Mac Apple Silicon avec macOS 13 ou version ultérieure",
+      "Montre Garmin prenant en charge les cartes",
+      "Câble USB permettant le transfert de données"
+    ],
+    "needs_note": "Après la connexion, Terento vérifie la montre et vous indique s’il peut installer des cartes. La page [Compatibilité](compatibility/) liste les modèles avec des installations réussies ; un modèle absent n’est pas forcément incompatible.",
+    "steps_title": "Installer une carte",
+    "steps": [
+      {
+        "title": "Télécharger et ouvrir Terento",
+        "body": "[Téléchargez Terento](download/), faites-le glisser de l’image disque vers Applications, puis ouvrez-le depuis ce dossier. À la première ouverture, macOS demande si vous voulez ouvrir une app téléchargée depuis Internet : choisissez Ouvrir."
+      },
+      {
+        "title": "Connecter la montre",
+        "body": "Quittez Garmin Express s’il est ouvert. Déverrouillez la montre et connectez-la au Mac avec un câble USB de données, pas un câble de charge seule. Si macOS demande d’autoriser la connexion de l’accessoire, choisissez Autoriser. Terento trouve la montre en 1 à 2 minutes et vérifie s’il peut installer des cartes.",
+        "help_anchor": "connect-watch",
+        "image": {
+          "asset": "your-garmin",
+          "width": 2358,
+          "height": 1575,
+          "alt": "Terento affiche une montre Garmin connectée et son état de détection",
+          "caption": "Terento reconnaît la montre Garmin connectée avant l’installation."
+        }
+      },
+      {
+        "title": "Choisir une carte",
+        "body": "Choisissez une carte dans le catalogue ou ajoutez votre propre fichier .img compatible. [Comparez les styles de carte](map-styles/) pour voir comment chaque carte affiche routes et sentiers.",
+        "substeps": [
+          {
+            "title": "Choisir dans le catalogue",
+            "body": "Choisissez un fournisseur et une région dans le catalogue."
+          },
+          {
+            "title": "Ajouter votre carte",
+            "body": "Ajoutez une carte .img compatible depuis votre Mac."
+          }
+        ],
+        "image": {
+          "asset": "map-selected",
+          "width": 2358,
+          "height": 1575,
+          "alt": "Terento affiche les fournisseurs, les régions de cartes tierces et l’espace Garmin disponible",
+          "caption": "Choisissez une carte dans le catalogue ou ajoutez votre propre fichier compatible."
+        }
+      },
+      {
+        "title": "Installer",
+        "body": "Lancez l’installation et gardez la montre connectée jusqu’à ce que Terento indique que la carte est prête. Déconnectez ensuite la montre.",
+        "image": {
+          "asset": "maps-done",
+          "width": 2358,
+          "height": 1575,
+          "alt": "Terento affiche une installation de carte terminée sur une montre Garmin",
+          "caption": "Gardez la montre connectée jusqu’à la fin du transfert et de la vérification."
+        }
+      }
+    ],
+    "show_title": "Afficher la carte sur votre montre",
+    "show_body": "Déconnectez la montre, ouvrez ses réglages de carte et activez la nouvelle carte. Si elle n’est pas listée, redémarrez la montre. Si plusieurs cartes couvrent la même zone, désactivez celles que vous ne voulez pas voir.",
+    "show_email": "Toujours invisible ? Écrivez à hello@terento.app en indiquant le modèle exact de la montre, la région de la carte et ce qui s’est passé.",
+    "help_title": "Si quelque chose ne fonctionne pas",
+    "help": [
+      {
+        "title": "Terento ne détecte pas la montre",
+        "body": "Attendez 1 à 2 minutes après la connexion. Si la montre n’apparaît toujours pas, reconnectez-la, vérifiez que le câble permet les données et fermez les autres apps susceptibles de l’utiliser.",
+        "related": [
+          "connect-watch",
+          "garmin-busy",
+          "usb-mode"
+        ]
+      },
+      {
+        "title": "L’installation ou la mise à jour est indisponible",
+        "body": "Les cartes temporairement indisponibles restent visibles. Lisez la raison affichée à côté de la carte. Si le fournisseur est inaccessible ou si les téléchargements sont suspendus, réessayez plus tard. Si Terento ne peut pas vérifier la disponibilité actuelle, vérifiez votre connexion Internet et réessayez. Vos cartes déjà installées restent disponibles.",
+        "related": [
+          "catalog-unavailable",
+          "download-failed"
+        ]
+      },
+      {
+        "title": "Échec de l’installation",
+        "body": "Sur l’écran d’échec de l’installation, choisissez « Report issue ». Terento ouvre GitHub avec le rapport déjà rempli. Vérifiez-le avant de le publier : les issues GitHub sont publiques. Pour une aide par e-mail, indiquez le modèle de votre montre, la région de la carte et ce qui s’est passé.",
+        "related": [
+          "leftover-map",
+          "send-report"
+        ]
+      }
+    ],
+    "more": [
+      {
+        "id": "uninstall",
+        "title": "Désinstaller Terento",
+        "body": "Quittez Terento et placez-le dans la Corbeille depuis Applications. Les cartes déjà sur votre montre y restent. Terento conserve les informations sur les cartes qu’il a installées dans ~/Library/Application Support/Terento : gardez ce dossier si vous comptez réinstaller Terento, pour qu’il puisse encore mettre à jour et supprimer ces cartes. Pour tout supprimer, effacez aussi ce dossier, ~/Library/Caches/Terento, ~/Library/Logs/Terento et ~/Library/Preferences/app.terento.mac.plist."
+      }
+    ]
+  },
+  "pl": {
+    "title": "Instalacja map innych firm na Garminie z Maca — Terento",
+    "description": "Krok po kroku: darmowe mapy OpenStreetMap lub własny plik mapy na zegarku Garmin z Maca z Apple Silicon. Bez Garmin Express i BaseCamp.",
+    "h1": "Zainstaluj darmowe mapy na zegarku Garmin z Maca",
+    "intro": "Terento instaluje darmowe mapy OpenStreetMap albo Twój własny plik mapy na zegarku Garmin z obsługą map. Nie kopiujesz żadnych plików samodzielnie, a mapy Garmin pozostają bez zmian.",
+    "skip": "Przejdź do treści",
+    "breadcrumb_home": "Strona główna",
+    "breadcrumb_current": "Instalowanie map innych firm na Garminie z Maca",
+    "cta": "Pobierz",
+    "other": "Używasz Linuksa? [Zainstaluj mapy z przeglądarki](guides/install-garmin-maps-linux/).",
+    "needs_title": "Czego potrzebujesz",
+    "needs": [
+      "Mac z Apple Silicon i macOS 13 lub nowszym",
+      "Zegarek Garmin z obsługą map",
+      "Kabel USB obsługujący przesyłanie danych"
+    ],
+    "needs_note": "Po podłączeniu Terento sprawdza zegarek i informuje, czy może zainstalować mapy. Strona [Kompatybilność](compatibility/) pokazuje modele z udanymi instalacjami; brak modelu nie oznacza, że nie jest obsługiwany.",
+    "steps_title": "Zainstaluj mapę",
+    "steps": [
+      {
+        "title": "Pobierz i otwórz Terento",
+        "body": "[Pobierz Terento](download/), przeciągnij je z obrazu dysku do folderu Aplikacje i otwórz je stamtąd. Przy pierwszym otwarciu macOS zapyta, czy otworzyć aplikację pobraną z internetu: wybierz Otwórz."
+      },
+      {
+        "title": "Podłącz zegarek",
+        "body": "Zamknij Garmin Express, jeśli jest otwarty. Odblokuj zegarek i podłącz go do Maca kablem USB do przesyłania danych, a nie kablem tylko do ładowania. Jeśli macOS zapyta, czy zezwolić na połączenie akcesorium, wybierz Zezwól. Terento znajdzie zegarek w ciągu 1–2 minuty i sprawdzi, czy może zainstalować mapy.",
+        "help_anchor": "connect-watch",
+        "image": {
+          "asset": "your-garmin",
+          "width": 2358,
+          "height": 1575,
+          "alt": "Terento pokazuje podłączony zegarek Garmin i stan wykrywania",
+          "caption": "Terento rozpoznaje podłączony zegarek Garmin przed instalacją."
+        }
+      },
+      {
+        "title": "Wybierz mapę",
+        "body": "Wybierz mapę z katalogu albo dodaj własny zgodny plik .img. [Porównaj style map](map-styles/), aby zobaczyć, jak każda mapa pokazuje drogi i szlaki.",
+        "substeps": [
+          {
+            "title": "Wybierz z katalogu",
+            "body": "Wybierz dostawcę i region z katalogu."
+          },
+          {
+            "title": "Dodaj własną mapę",
+            "body": "Dodaj zgodną mapę .img z Maca."
+          }
+        ],
+        "image": {
+          "asset": "map-selected",
+          "width": 2358,
+          "height": 1575,
+          "alt": "Terento pokazuje dostawców, regiony map innych firm i dostępne miejsce na Garminie",
+          "caption": "Wybierz mapę z katalogu albo dodaj własny zgodny plik."
+        }
+      },
+      {
+        "title": "Zainstaluj",
+        "body": "Rozpocznij instalację i nie odłączaj zegarka, dopóki Terento nie poinformuje, że mapa jest gotowa. Potem odłącz zegarek.",
+        "image": {
+          "asset": "maps-done",
+          "width": 2358,
+          "height": 1575,
+          "alt": "Terento pokazuje ukończoną instalację mapy na zegarku Garmin",
+          "caption": "Pozostaw zegarek podłączony do zakończenia przesyłania i sprawdzania."
+        }
+      }
+    ],
+    "show_title": "Wyświetl mapę na zegarku",
+    "show_body": "Odłącz zegarek, otwórz jego ustawienia map i włącz nową mapę. Jeśli nie ma jej na liście, uruchom zegarek ponownie. Jeśli kilka map obejmuje ten sam obszar, wyłącz te, których nie chcesz widzieć.",
+    "show_email": "Nadal jej nie widać? Napisz na hello@terento.app i podaj dokładny model zegarka, region mapy oraz opis problemu.",
+    "help_title": "Jeśli coś nie działa",
+    "help": [
+      {
+        "title": "Terento nie wykrywa zegarka",
+        "body": "Odczekaj 1–2 minuty po podłączeniu. Jeśli zegarek nadal się nie pojawia, podłącz go ponownie, sprawdź kabel do transmisji danych i zamknij inne aplikacje, które mogą z niego korzystać.",
+        "related": [
+          "connect-watch",
+          "garmin-busy",
+          "usb-mode"
+        ]
+      },
+      {
+        "title": "Instalacja lub aktualizacja jest niedostępna",
+        "body": "Tymczasowo niedostępne mapy pozostają widoczne. Przeczytaj powód podany obok mapy. Jeśli dostawca jest niedostępny lub pobieranie zostało wstrzymane, spróbuj później. Jeśli Terento nie może sprawdzić bieżącej dostępności, sprawdź połączenie internetowe i spróbuj ponownie. Zainstalowane mapy pozostają dostępne.",
+        "related": [
+          "catalog-unavailable",
+          "download-failed"
+        ]
+      },
+      {
+        "title": "Instalacja nie powiodła się",
+        "body": "Na ekranie nieudanej instalacji wybierz „Report issue”. Terento otwiera GitHuba z już wypełnionym raportem. Sprawdź go przed publikacją: zgłoszenia na GitHubie są publiczne. Jeśli potrzebujesz pomocy e-mailem, podaj model zegarka, region mapy i opisz, co się stało.",
+        "related": [
+          "leftover-map",
+          "send-report"
+        ]
+      }
+    ],
+    "more": [
+      {
+        "id": "uninstall",
+        "title": "Odinstalowanie Terento",
+        "body": "Zamknij Terento i przenieś je z folderu Aplikacje do Kosza. Mapy na zegarku zostają. Terento przechowuje informacje o zainstalowanych mapach w ~/Library/Application Support/Terento: zachowaj ten folder, jeśli możesz ponownie zainstalować Terento, aby nadal mogło aktualizować i usuwać te mapy. Aby usunąć wszystko, usuń też ten folder, ~/Library/Caches/Terento, ~/Library/Logs/Terento i ~/Library/Preferences/app.terento.mac.plist."
+      }
+    ]
+  },
+  "cs": {
+    "title": "Instalace map třetích stran do Garminu z Macu — Terento",
+    "description": "Krok za krokem: bezplatné mapy OpenStreetMap nebo vlastní mapový soubor do hodinek Garmin z Macu s Apple Silicon. Bez Garmin Express a BaseCamp.",
+    "h1": "Instalace bezplatných map do hodinek Garmin z Macu",
+    "intro": "Terento nainstaluje bezplatné mapy OpenStreetMap nebo váš vlastní mapový soubor do hodinek Garmin s podporou map. Sami nekopírujete žádné soubory a mapy od Garminu zůstanou beze změny.",
+    "skip": "Přejít k obsahu",
+    "breadcrumb_home": "Domů",
+    "breadcrumb_current": "Instalace map třetích stran do Garminu z Macu",
+    "cta": "Stáhnout",
+    "other": "Používáte Linux? [Nainstalujte mapy z prohlížeče](guides/install-garmin-maps-linux/).",
+    "needs_title": "Co potřebujete",
+    "needs": [
+      "Mac s Apple Silicon a macOS 13 nebo novějším",
+      "Hodinky Garmin s podporou map",
+      "USB kabel pro přenos dat"
+    ],
+    "needs_note": "Po připojení Terento hodinky zkontroluje a řekne vám, zda do nich může nainstalovat mapy. Stránka [Kompatibilita](compatibility/) uvádí modely s úspěšnými instalacemi; chybějící model nemusí znamenat, že není podporovaný.",
+    "steps_title": "Instalace mapy",
+    "steps": [
+      {
+        "title": "Stáhněte a otevřete Terento",
+        "body": "[Stáhněte Terento](download/), přetáhněte ho z obrazu disku do složky Aplikace a otevřete ho odtud. Při prvním otevření se macOS zeptá, zda otevřít aplikaci staženou z internetu: zvolte Otevřít."
+      },
+      {
+        "title": "Připojte hodinky",
+        "body": "Ukončete Garmin Express, pokud je otevřený. Odemkněte hodinky a připojte je k Macu USB kabelem pro přenos dat, ne kabelem jen pro nabíjení. Pokud se macOS zeptá, zda povolit připojení příslušenství, zvolte Povolit. Terento hodinky najde do 1–2 minut a ověří, zda do nich může nainstalovat mapy.",
+        "help_anchor": "connect-watch",
+        "image": {
+          "asset": "your-garmin",
+          "width": 2358,
+          "height": 1575,
+          "alt": "Terento zobrazuje připojené hodinky Garmin a stav rozpoznání",
+          "caption": "Terento před instalací rozpozná připojené hodinky Garmin."
+        }
+      },
+      {
+        "title": "Vyberte mapu",
+        "body": "Vyberte mapu z katalogu nebo přidejte vlastní kompatibilní soubor .img. [Porovnejte styly map](map-styles/) a podívejte se, jak každá mapa zobrazuje silnice a stezky.",
+        "substeps": [
+          {
+            "title": "Vybrat z katalogu",
+            "body": "Vyberte poskytovatele a oblast z katalogu."
+          },
+          {
+            "title": "Přidat vlastní mapu",
+            "body": "Přidejte kompatibilní mapu .img z Macu."
+          }
+        ],
+        "image": {
+          "asset": "map-selected",
+          "width": 2358,
+          "height": 1575,
+          "alt": "Terento zobrazuje poskytovatele, oblasti map třetích stran a dostupné místo v Garminu",
+          "caption": "Vyberte mapu z katalogu nebo přidejte vlastní kompatibilní soubor."
+        }
+      },
+      {
+        "title": "Instalujte",
+        "body": "Spusťte instalaci a nechte hodinky připojené, dokud Terento neoznámí, že je mapa připravená. Potom hodinky odpojte.",
+        "image": {
+          "asset": "maps-done",
+          "width": 2358,
+          "height": 1575,
+          "alt": "Terento zobrazuje dokončenou instalaci mapy do hodinek Garmin",
+          "caption": "Nechte hodinky připojené do dokončení přenosu a kontroly."
+        }
+      }
+    ],
+    "show_title": "Zobrazení mapy v hodinkách",
+    "show_body": "Odpojte hodinky, otevřete jejich nastavení map a novou mapu zapněte. Pokud v seznamu není, hodinky restartujte. Pokud stejnou oblast pokrývá více map, vypněte ty, které vidět nechcete.",
+    "show_email": "Mapa stále není vidět? Napište na hello@terento.app a uveďte přesný model hodinek, oblast mapy a popis problému.",
+    "help_title": "Když něco nefunguje",
+    "help": [
+      {
+        "title": "Terento hodinky nerozpozná",
+        "body": "Po připojení počkejte 1–2 minuty. Pokud se hodinky stále nezobrazí, připojte je znovu, ověřte datový kabel a ukončete ostatní aplikace, které je mohou používat.",
+        "related": [
+          "connect-watch",
+          "garmin-busy",
+          "usb-mode"
+        ]
+      },
+      {
+        "title": "Instalace nebo aktualizace není dostupná",
+        "body": "Dočasně nedostupné mapy zůstávají viditelné. Přečtěte si důvod uvedený vedle mapy. Pokud je poskytovatel nedostupný nebo je stahování pozastavené, zkuste to později. Pokud Terento nemůže ověřit aktuální dostupnost, zkontrolujte připojení k internetu a zkuste to znovu. Nainstalované mapy zůstávají dostupné.",
+        "related": [
+          "catalog-unavailable",
+          "download-failed"
+        ]
+      },
+      {
+        "title": "Instalace se nezdařila",
+        "body": "Na obrazovce neúspěšné instalace zvolte „Report issue“. Terento otevře GitHub s již vyplněnou zprávou. Před zveřejněním ji zkontrolujte: hlášení na GitHubu jsou veřejná. Pro pomoc e-mailem uveďte model hodinek, oblast mapy a popis problému.",
+        "related": [
+          "leftover-map",
+          "send-report"
+        ]
+      }
+    ],
+    "more": [
+      {
+        "id": "uninstall",
+        "title": "Odinstalace Terento",
+        "body": "Ukončete Terento a přesuňte ho ze složky Aplikace do koše. Mapy v hodinkách zůstanou. Terento si údaje o nainstalovaných mapách ukládá do ~/Library/Application Support/Terento: tuto složku si ponechte, pokud budete Terento instalovat znovu, aby tyto mapy mohlo dál aktualizovat a odstraňovat. Chcete-li odstranit vše, smažte i tuto složku, ~/Library/Caches/Terento, ~/Library/Logs/Terento a ~/Library/Preferences/app.terento.mac.plist."
+      }
+    ]
+  },
+  "it": {
+    "title": "Installare mappe di terze parti Garmin da Mac — Terento",
+    "description": "Passo per passo: mappe OpenStreetMap gratuite o un tuo file di mappa su un orologio Garmin da un Mac Apple Silicon. Senza Garmin Express né BaseCamp.",
+    "h1": "Installa mappe gratuite sul tuo orologio Garmin da Mac",
+    "intro": "Terento installa mappe OpenStreetMap gratuite, o un tuo file di mappa, su un orologio Garmin con supporto alle mappe. Non copi nessun file a mano e le tue mappe Garmin restano come sono.",
+    "skip": "Vai al contenuto",
+    "breadcrumb_home": "Home",
+    "breadcrumb_current": "Installare mappe di terze parti su Garmin da Mac",
+    "cta": "Scarica",
+    "other": "Usi Linux? [Installa le mappe dal browser](guides/install-garmin-maps-linux/).",
+    "needs_title": "Cosa ti serve",
+    "needs": [
+      "Mac Apple Silicon con macOS 13 o versioni successive",
+      "Smartwatch Garmin con supporto alle mappe",
+      "Cavo USB per il trasferimento dati"
+    ],
+    "needs_note": "Dopo il collegamento, Terento controlla l’orologio e ti dice se può installare le mappe. La pagina [Compatibilità](compatibility/) elenca i modelli con installazioni riuscite; un modello assente non è per forza non supportato.",
+    "steps_title": "Installa una mappa",
+    "steps": [
+      {
+        "title": "Scarica e apri Terento",
+        "body": "[Scarica Terento](download/), trascinalo dall’immagine disco in Applicazioni e aprilo da lì. Alla prima apertura macOS chiede se aprire un’app scaricata da Internet: scegli Apri."
+      },
+      {
+        "title": "Collega l’orologio",
+        "body": "Chiudi Garmin Express, se è aperto. Sblocca l’orologio e collegalo al Mac con un cavo USB dati, non con un cavo di sola ricarica. Se macOS chiede se consentire il collegamento dell’accessorio, scegli Consenti. Terento trova l’orologio entro 1–2 minuti e controlla se può installare le mappe.",
+        "help_anchor": "connect-watch",
+        "image": {
+          "asset": "your-garmin",
+          "width": 2358,
+          "height": 1575,
+          "alt": "Terento mostra uno smartwatch Garmin collegato e lo stato del rilevamento",
+          "caption": "Terento riconosce lo smartwatch Garmin collegato prima dell’installazione."
+        }
+      },
+      {
+        "title": "Scegli una mappa",
+        "body": "Scegli una mappa dal catalogo oppure aggiungi il tuo file .img compatibile. [Confronta gli stili di mappa](map-styles/) per vedere come ogni mappa mostra strade e sentieri.",
+        "substeps": [
+          {
+            "title": "Scegli dal catalogo",
+            "body": "Scegli un provider e una regione dal catalogo."
+          },
+          {
+            "title": "Aggiungi la tua mappa",
+            "body": "Aggiungi una mappa .img compatibile dal Mac."
+          }
+        ],
+        "image": {
+          "asset": "map-selected",
+          "width": 2358,
+          "height": 1575,
+          "alt": "Terento mostra i provider, le regioni delle mappe di terze parti e lo spazio disponibile sul Garmin",
+          "caption": "Scegli una mappa dal catalogo oppure aggiungi il tuo file compatibile."
+        }
+      },
+      {
+        "title": "Installa",
+        "body": "Avvia l’installazione e lascia l’orologio collegato finché Terento non indica che la mappa è pronta. Poi scollega l’orologio.",
+        "image": {
+          "asset": "maps-done",
+          "width": 2358,
+          "height": 1575,
+          "alt": "Terento mostra un’installazione della mappa completata su uno smartwatch Garmin",
+          "caption": "Lascia l’orologio collegato fino al completamento del trasferimento e della verifica."
+        }
+      }
+    ],
+    "show_title": "Mostra la mappa sull’orologio",
+    "show_body": "Scollega l’orologio, apri le impostazioni delle mappe e attiva la nuova mappa. Se non è nell’elenco, riavvia l’orologio. Se più mappe coprono la stessa zona, disattiva quelle che non vuoi vedere.",
+    "show_email": "Ancora non la vedi? Scrivi a hello@terento.app indicando il modello esatto dell’orologio, la regione della mappa e cosa è successo.",
+    "help_title": "Se qualcosa non funziona",
+    "help": [
+      {
+        "title": "Terento non rileva l’orologio",
+        "body": "Attendi 1–2 minuti dopo il collegamento. Se lo smartwatch non appare, ricollegalo, controlla il cavo dati e chiudi le altre app che potrebbero usarlo.",
+        "related": [
+          "connect-watch",
+          "garmin-busy",
+          "usb-mode"
+        ]
+      },
+      {
+        "title": "L’installazione o l’aggiornamento non è disponibile",
+        "body": "Le mappe temporaneamente non disponibili restano visibili. Leggi il motivo indicato accanto alla mappa. Se il provider non è raggiungibile o i download sono sospesi, riprova più tardi. Se Terento non riesce a verificare la disponibilità attuale, controlla la connessione Internet e riprova. Le mappe già installate restano disponibili.",
+        "related": [
+          "catalog-unavailable",
+          "download-failed"
+        ]
+      },
+      {
+        "title": "Installazione non riuscita",
+        "body": "Nella schermata di installazione non riuscita, scegli “Report issue”. Terento apre GitHub con il rapporto già compilato. Controllalo prima di pubblicarlo: le issue su GitHub sono pubbliche. Per assistenza via e-mail, indica il modello dell’orologio, la regione della mappa e cosa è successo.",
+        "related": [
+          "leftover-map",
+          "send-report"
+        ]
+      }
+    ],
+    "more": [
+      {
+        "id": "uninstall",
+        "title": "Disinstallare Terento",
+        "body": "Chiudi Terento e spostalo da Applicazioni nel Cestino. Le mappe già sull’orologio restano lì. Terento conserva le informazioni sulle mappe installate in ~/Library/Application Support/Terento: tieni questa cartella se potresti reinstallare Terento, così potrà ancora aggiornare e rimuovere quelle mappe. Per rimuovere tutto, elimina anche questa cartella, ~/Library/Caches/Terento, ~/Library/Logs/Terento e ~/Library/Preferences/app.terento.mac.plist."
+      }
+    ]
+  }
+}

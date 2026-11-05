@@ -102,10 +102,10 @@ async function checkSnapshotFirstAndRefresh() {
   // Summary stays exact; cards round from 100 and show the app/web split.
   const grid = node("#watch-grid").innerHTML;
   assert.match(grid, />1,200\+ successful installs<\/p>/);
-  assert.match(grid, /<\/svg>App 1,100\+<\/span> <span class="watch-install-source"><svg[^>]*viewBox="0 0 512 512">[\s\S]*?<\/svg>Web 54<\/span>/);
+  assert.match(grid, /<\/svg>App 1,100\+<\/span> <span class="watch-install-source"><svg[^>]*viewBox="0 0 24 24"[^>]*>(?:<!--[^>]*-->)?<circle[\s\S]*?<\/svg>Web 54<\/span>/);
   assert.match(grid, /aria-label="Forerunner 970, AMOLED, 1,200\+ successful installs, 1,100\+ with the app, 54 with the web installer, Latest successful install/);
   assert.match(grid, /11 successful installs<\/p><p class="watch-install-sources"><span class="watch-install-source"><svg[^>]*>[\s\S]*?<\/svg>App 11<\/span><\/p>/, "older rows count every success as app");
-  assert.equal((grid.match(/Font Awesome Free 7\.3\.1/g) || []).length, 4);
+  assert.equal((grid.match(/class="watch-install-source-icon"/g) || []).length, 4);
   assert.ok(!node("#watch-grid").innerHTML.includes("TESTING-only row"));
   assert.equal(node("#compatibility-retry").hidden, true);
 
@@ -116,8 +116,10 @@ async function checkSnapshotFirstAndRefresh() {
   assert.deepEqual(headings(), ["fēnix 8 Pro"]);
   node("#sort-filter").listeners.change({target: {value: "name"}});
   assert.deepEqual(headings(), ["fēnix 8 Pro"]);
+  assert.equal(node("#compatibility-clear").disabled, false, "Clear filters is enabled while a filter is active");
   node("#compatibility-clear").listeners.click();
   assert.deepEqual(headings(), ["Forerunner 970", "fēnix 8", "fēnix 8 Pro"]);
+  assert.equal(node("#compatibility-clear").disabled, true, "Clear filters is disabled with default filters");
   assert.equal(node("#watch-search").focused, true);
 
   refreshFails = true;

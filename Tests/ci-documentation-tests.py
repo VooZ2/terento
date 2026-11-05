@@ -11,6 +11,7 @@ PUBLIC_COPY_SOURCES = (
     "README.md",
     "scripts/templates/home-copy.json",
     "scripts/templates/home.html",
+    "scripts/templates/download-copy.json",
     "site/metadata.json",
     "scripts/add-guide-links.py",
     "scripts/build-about-pages.py",
