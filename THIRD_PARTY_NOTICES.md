@@ -237,6 +237,20 @@ OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
 TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 THIS SOFTWARE.
 
+### Web installer icons
+
+The web installer at terento.app/install/ (source in `terento-internal`,
+`lab/web-installer/public/index.html`) uses the same lucide-static v0.460.0
+original SVGs under the ISC licence above: `map`, `circle-check`,
+`triangle-alert`, `info`, `unplug`, `refresh-cw`, `check`, `clock`,
+`trash-2`, `chevron-down`, `laptop`, `loader-circle`, `usb`, `cable`,
+`lock-open`, `square-x`, `heart` and `github`. They are `<symbol>` elements
+of the page's inline sprite under the comment
+`@license lucide-static v0.460.0 - ISC`, with unchanged path data and
+viewBox; stroke (`currentColor`, 1.75, round caps and joins) and size come
+from the page CSS, and each use sets `aria-hidden="true"` and
+`focusable="false"`. No Lucide font, package or runtime is loaded.
+
 ## Font Awesome Free
 
 - Version: 7.3.1, upstream commit `14c65a3747d0f3b751f15831fc719236aea8729d`
