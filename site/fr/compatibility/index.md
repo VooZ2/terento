@@ -11,7 +11,7 @@ Terento est conçu pour les montres Garmin et les compteurs vélo Garmin Edge r�
 
 L’absence de votre modèle dans la liste ne signifie pas qu’il n’est pas pris en charge — il se peut simplement qu’aucune installation réussie n’ait encore été partagée pour ce modèle et cette variante précis.
 
-**39** modèles avec des installations réussies**353** installations réussiesDernière installation réussie 5 novembre 2026
+**40** modèles avec des installations réussies**356** installations réussiesDernière installation réussie 5 novembre 2026
 
 Comment fonctionne cette liste
 
@@ -21,7 +21,7 @@ Les résultats d’installation sont partagés avec Terento par les utilisateurs
 
 La version actuelle comprend tous les fournisseurs de cartes du catalogue. Cette information produit est distincte des résultats d’appareils présentés ici.
 
-39 modèles
+40 modèles
 
 fēnix
 
@@ -262,6 +262,16 @@ fēnix
 App 4
 
 Dernière installation réussie 23 septembre 2026
+
+Edge
+
+### Edge 540 Smartwatch
+
+3 installations réussies
+
+App 3
+
+Dernière installation réussie 5 novembre 2026
 
 Enduro
 

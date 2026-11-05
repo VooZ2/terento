@@ -11,7 +11,7 @@ Terento è progettato per gli smartwatch Garmin e i ciclocomputer Garmin Edge pi
 
 Se il tuo modello non è nell’elenco, non significa che non sia supportato — potrebbe semplicemente non esserci ancora un’installazione riuscita condivisa per quel modello e quella variante esatti.
 
-**39** modelli con installazioni riuscite**353** installazioni riusciteUltima installazione riuscita 5 novembre 2026
+**40** modelli con installazioni riuscite**356** installazioni riusciteUltima installazione riuscita 5 novembre 2026
 
 Come funziona questo elenco
 
@@ -21,7 +21,7 @@ I risultati delle installazioni sono condivisi con Terento dagli utenti; non cos
 
 La versione attuale include tutti i provider di mappe del catalogo. Questa informazione sul prodotto è distinta dai risultati dei dispositivi mostrati qui.
 
-39 modelli
+40 modelli
 
 fēnix
 
@@ -262,6 +262,16 @@ fēnix
 App 4
 
 Ultima installazione riuscita 23 settembre 2026
+
+Edge
+
+### Edge 540 Smartwatch
+
+3 installazioni riuscite
+
+App 3
+
+Ultima installazione riuscita 5 novembre 2026
 
 Enduro
 

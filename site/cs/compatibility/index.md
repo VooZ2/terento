@@ -11,7 +11,7 @@ Terento je navrženo pro hodinky Garmin a novější cyklopočítače Garmin Edg
 
 Pokud zde svůj model nevidíte, neznamená to, že není podporován — pro daný model a variantu zatím možná nebyla sdílena žádná úspěšná instalace.
 
-**39** modely s úspěšnými instalacemi**353** úspěšných instalacíPoslední úspěšná instalace 5. listopadu 2026
+**40** modely s úspěšnými instalacemi**356** úspěšných instalacíPoslední úspěšná instalace 5. listopadu 2026
 
 Jak tento seznam funguje
 
@@ -21,7 +21,7 @@ Výsledky instalací sdílejí s Terento uživatelé; nejde o certifikaci Garmin
 
 Aktuální verze zahrnuje všechny poskytovatele map v katalogu. Tato informace o produktu je oddělená od výsledků zařízení uvedených zde.
 
-39 modelů
+40 modelů
 
 fēnix
 
@@ -262,6 +262,16 @@ fēnix
 App 4
 
 Poslední úspěšná instalace 23. září 2026
+
+Edge
+
+### Edge 540 Smartwatch
+
+3 úspěšných instalací
+
+App 3
+
+Poslední úspěšná instalace 5. listopadu 2026
 
 Enduro
 

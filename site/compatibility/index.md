@@ -11,7 +11,7 @@ Terento is designed for Garmin smartwatches and newer Garmin Edge bike computers
 
 Not seeing your model does not mean it is unsupported — we may simply not have a successful shared installation for that exact model and variant yet.
 
-**39** models with successful installs**353** successful installsLatest successful install November 5, 2026
+**40** models with successful installs**356** successful installsLatest successful install November 5, 2026
 
 How this list works
 
@@ -21,7 +21,7 @@ Installation results are shared with Terento by users. They are not Garmin certi
 
 The current version includes every map provider in the catalog. This product information is separate from the device results shown here.
 
-39 models
+40 models
 
 fēnix
 
@@ -262,6 +262,16 @@ fēnix
 App 4
 
 Latest successful install September 23, 2026
+
+Edge
+
+### Edge 540 Smartwatch
+
+3 successful installs
+
+App 3
+
+Latest successful install November 5, 2026
 
 Enduro
 
