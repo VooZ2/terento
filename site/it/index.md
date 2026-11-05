@@ -3,7 +3,7 @@ title: "Terento — Mappe gratis per orologi Garmin ed Edge"
 canonical: https://terento.app/it/
 ---
 
-# Installa mappe gratuite sul tuo Garmin
+# Installa mappe gratuite sul tuo dispositivo Garmin
 
 Terento installa mappe gratuite dai progetti OpenStreetMap su orologi Garmin e ciclocomputer Edge. Con l’app per Mac o direttamente dal browser del computer. Gratis e open source.
 

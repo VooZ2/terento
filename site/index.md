@@ -3,7 +3,7 @@ title: "Terento — Free Maps for Garmin Watches and Edge"
 canonical: https://terento.app/
 ---
 
-# Install free maps on your Garmin
+# Install free maps on your Garmin device
 
 Terento puts free maps from OpenStreetMap projects on Garmin watches and Edge bike computers. Use the Mac app, or install straight from your desktop browser. Free and open source.
 

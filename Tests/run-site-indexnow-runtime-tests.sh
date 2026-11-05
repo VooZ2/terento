@@ -67,7 +67,7 @@ bad_body="$temporary/bad-response.html"
 grep -iq '^Content-Type: text/markdown; charset=utf-8' "$temporary/markdown-headers"
 grep -iq '^Vary: Accept' "$temporary/markdown-headers"
 cmp -s "$repo_root/site/index.md" "$markdown_body"
-grep -q '^# Install free maps on your Garmin$' "$markdown_body"
+grep -q '^# Install free maps on your Garmin device$' "$markdown_body"
 ! grep -qi '<html' "$markdown_body"
 curl --silent --show-error --head --dump-header "$temporary/markdown-head-headers" --header 'Accept: text/markdown' "http://127.0.0.1:$port/" >/dev/null
 grep -iq '^Content-Type: text/markdown; charset=utf-8' "$temporary/markdown-head-headers"
