@@ -38,8 +38,8 @@ class DeviceInformationLayoutTests(unittest.TestCase):
             public_compatibility_identity=None)], None, {"username": "operator"}, "csrf").decode()
         row = body.split("<tbody", 1)[1].split("</tbody>", 1)[0]
         self.assertIn("catalog-archive-icon", row)
-        self.assertIn("Font Awesome Free 7.3.1", row)
-        self.assertIn('viewBox="0 0 512 512"', row)
+        self.assertIn("<svg class='catalog-archive-icon' viewBox='0 0 24 24' fill='none' stroke='currentColor'", row)
+        self.assertIn('<rect width="20" height="5" x="2" y="3" rx="1" />', row)
         self.assertIn("historical-catalog-tooltip'>Historical catalog entry</span>", row)
         self.assertIn("/admin/devices/historical-example?from=devices", row)
         self.assertNotIn("table-secondary'>Historical catalog entry", row)
