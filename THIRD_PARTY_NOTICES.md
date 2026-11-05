@@ -200,6 +200,26 @@ OpenMTP and go-mtpfs were inspected for metadata resilience only. No OpenMTP
 or Go dependency or source code is incorporated. Reference:
 <https://github.com/ganeshrvel/go-mtpfs/pull/1> (optional USB descriptors).
 
+## Lucide 0.460.0 (web installer icons)
+
+- Version: 0.460.0, npm package `lucide-static`
+- Upstream: https://unpkg.com/lucide-static@0.460.0/icons/
+- Copyright (c) Cole Bemis 2013-2022 (portions, as part of Feather, MIT) and
+  Lucide Contributors 2022
+- License: ISC, https://github.com/lucide-icons/lucide/blob/0.460.0/LICENSE
+- Use: every icon of the web installer at terento.app/install/ (source in
+  `terento-internal`, `lab/web-installer/public/index.html`). The original
+  SVGs are `<symbol>` elements of the page's inline sprite, under the comment
+  `@license lucide-static v0.460.0 - ISC`.
+- Icons used: `map`, `circle-check`, `triangle-alert`, `info`, `unplug`,
+  `refresh-cw`, `check`, `clock`, `trash-2`, `chevron-down`, `laptop`,
+  `loader-circle`, `usb`, `cable`, `lock-open`, `square-x`, `heart` and
+  `github`.
+- Path data and viewBox are unchanged. Stroke (`currentColor`, width 1.75,
+  round caps and joins) and size come from the page CSS; each use sets
+  `aria-hidden="true"` and `focusable="false"`. No Lucide font, package or
+  runtime is loaded by the page.
+
 ## Font Awesome Free — box-archive
 
 - Version: 7.3.1, upstream commit `14c65a3747d0f3b751f15831fc719236aea8729d`
