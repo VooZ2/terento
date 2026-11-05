@@ -163,7 +163,7 @@ def test_sitemap_contract() -> None:
     noisy = "<!-- ignored comment -->" + source.replace('class="site-header"', 'class="different-layout"', 1)
     noisy = noisy.replace("?v=20260912-bbbike-types-v1", "?v=unrelated-cache-version")
     assert sitemap.content_fingerprint(noisy)[0] == fingerprint
-    assert sitemap.content_fingerprint(source.replace("Explore available maps.", "Explore all available maps.", 1))[0] != fingerprint
+    assert sitemap.content_fingerprint(source.replace("Install free maps on your Garmin device", "Install free maps on any Garmin device", 1))[0] != fingerprint
     assert sitemap.content_fingerprint(source.replace("softwareVersion", "softwareVersionChanged", 1))[0] != fingerprint
 
     compatibility = (ROOT / "site/compatibility/index.html").read_text(encoding="utf-8")
@@ -223,7 +223,7 @@ def test_sitemap_reproducibility_from_clean_git_history() -> None:
 
             home_path = checkout / "site/index.html"
             home_path.write_text(home_path.read_text(encoding="utf-8").replace(
-                "Explore available maps.", "Explore all available maps.", 1), encoding="utf-8")
+                "Install free maps on your Garmin device", "Install free maps on any Garmin device", 1), encoding="utf-8")
             git("add", "site/index.html")
             git("commit", "-qm", "meaningful home content", date="2026-01-02")
             home_change = render_and_write()
