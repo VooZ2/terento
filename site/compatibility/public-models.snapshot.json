@@ -156,10 +156,10 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-02906-10/g/cf-lg.jpg",
-      "successfulInstallations": 11,
-      "appSuccessfulInstallations": 11,
+      "successfulInstallations": 12,
+      "appSuccessfulInstallations": 12,
       "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-10-20T16:15:40+00:00"
+      "lastSuccessfulInstallation": "2026-11-05T05:57:30+00:00"
     },
     {
       "model": "fēnix 8 · 51 mm, AMOLED",
@@ -626,5 +626,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-11-04T23:28:29.208174+00:00"
+  "generatedAt": "2026-11-05T06:06:41.889552+00:00"
 }
