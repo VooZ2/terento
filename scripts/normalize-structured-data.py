@@ -20,6 +20,10 @@ REPOSITORY_URL = "https://github.com/VooZ2/terento"
 LOGO_URL = f"{BASE_URL}/assets/logo-sky.svg"
 ORGANIZATION_ID = f"{BASE_URL}/#organization"
 SOFTWARE_ID = f"{BASE_URL}/#software"
+# The released app's own install screen, the same artwork the home hero shows,
+# with the shell's image cache version (normalize-public-shell.py keeps it current).
+IMAGE_VERSION = re.search(r'^IMAGE_VERSION = "([^"]+)"', (ROOT / "scripts" / "normalize-public-shell.py").read_text(encoding="utf-8"), re.M).group(1)
+SCREENSHOT_URL = f"{BASE_URL}/assets/app/optimized/installing-maps-1600.png?v={IMAGE_VERSION}"
 JSON_LD_RE = re.compile(
     r"(?P<indent>[ \t]*)<script\b[^>]*type=[\"']application/ld\+json[\"'][^>]*>"
     r"(?P<body>[\s\S]*?)</script>",
@@ -124,6 +128,8 @@ def application(
         "downloadUrl": release["downloadURL"],
         "releaseNotes": release["releaseNotesURL"],
         "offers": {"@type": "Offer", "price": "0", "priceCurrency": "EUR"},
+        "processorRequirements": "Apple Silicon (arm64)",
+        "screenshot": SCREENSHOT_URL,
         "inLanguage": locale,
         "publisher": {"@id": ORGANIZATION_ID},
     }
@@ -151,6 +157,8 @@ def application(
             "downloadUrl",
             "releaseNotes",
             "offers",
+            "processorRequirements",
+            "screenshot",
             "inLanguage",
             "publisher",
         )
@@ -250,7 +258,9 @@ def build_pages() -> list[tuple[Path, str]]:
         source = path.read_text(encoding="utf-8")
         app_source = entity(json_ld(source, path), "SoftwareApplication", path)
         app = application(app_source, locale, canonical_url(page), release, page["description"])
-        rendered.append((path, replace_json_ld(source, {"@context": "https://schema.org", **app}, path)))
+        # The page carries the publisher it references, so the @id resolves here too.
+        graph = {"@context": "https://schema.org", "@graph": [organization(), app]}
+        rendered.append((path, replace_json_ld(source, graph, path)))
     return rendered
 
 

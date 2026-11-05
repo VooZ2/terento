@@ -34,6 +34,7 @@ function homeCards(locale) {
       name: decode(body.match(/<h3>([\s\S]*?)<\/h3>/)[1].trim()),
       summary: decode(body.match(/<p class="provider-summary">([\s\S]*?)<\/p>/)[1].trim()),
       benefits: [...body.matchAll(/<li>([\s\S]*?)<\/li>/g)].map((item) => decode(item[1].trim())),
+      note: (body.match(/<p class="provider-language-note">[\s\S]*?<\/p>/) || [null])[0],
     });
   }
   return cards;
@@ -104,7 +105,7 @@ function testPages() {
     assert.equal(page.manifestUrl, "https://api.terento.app/maps/previews/manifest.json");
     assert.equal(page.areas.length, contract.areas.length, `${locale}: every contract area is offered`);
     assert.deepEqual(page.areas.map((area) => area.id), contract.areas.map((area) => area.id));
-    assert.ok(page.areas.some((area) => area.id === "dolomites-tre-cime"), `${locale}: default area exists`);
+    assert.ok(page.areas.some((area) => area.id === page.defaults.area), `${locale}: default area exists`);
     // BBBike no longer publishes its classic style for regular regions, so the
     // page compares its Ontrail and OpenTopoMap styles and opens on one that has previews.
     assert.deepEqual(page.styles.filter((style) => !style.optional).map((style) => style.id),
@@ -113,10 +114,12 @@ function testPages() {
       ["osmapa-podstawowa", "osmapa-ogonki", "osmapa-light"], `${locale}: OSMapaPL styles wait for the manifest`);
     assert.ok(page.styles.every((style) => style.name && style.summary), `${locale}: every style has a name and summary`);
     assert.ok(!/\b[0-9]\b/.test(page.copy.styles_of.replace(/\{\w+\}/g, "")) && page.copy.styles_of.includes("{total}"), `${locale}: style count follows the listed styles`);
-    const defaults = read(path.join(root, "site/map-styles/map-styles.js")).match(/a: styleIds\.includes\(fromHash\.style\) \? fromHash\.style : "([^"]+)",\s*b: styleIds\.includes\(fromHash\.compare\) \? fromHash\.compare : "([^"]+)"/);
-    assert.ok(defaults, "default styles found");
+    // The page opens on Cinque Terre, OpenTopoMap beside Freizeitkarte: both render that coast clearly.
+    assert.deepEqual(page.defaults, {area: "cinque-terre", a: "opentopomap", b: "freizeitkarte"}, `${locale}: default view`);
     const always = page.styles.filter((style) => !style.optional);
-    assert.ok(always.some((style) => style.id === defaults[1]) && always.some((style) => style.id === defaults[2]), `${locale}: default styles are always on the page`);
+    assert.ok(always.some((style) => style.id === page.defaults.a) && always.some((style) => style.id === page.defaults.b), `${locale}: default styles are always on the page`);
+    assert.match(read(path.join(root, "site/map-styles/map-styles.js")), /const defaults = data\.defaults;/, "the viewer opens on the page's default view");
+    assert.match(source, /<section class="shell map-styles-guide" aria-labelledby="map-styles-guide-title">\s*<h2 id="map-styles-guide-title">[^<]+<\/h2>\s*<div class="map-styles-guide-text">(<p>[^<]+<\/p>){2}<\/div>/, `${locale}: static guide text about the free maps`);
 
     const h1 = source.match(/<h1 id="map-styles-title">([^<]+)<\/h1>/);
     assert.ok(h1 && h1[1].trim() && !h1[1].trim().endsWith("."), `${locale}: H1 is present without a trailing full stop`);
@@ -146,20 +149,25 @@ function testPages() {
 
     const cards = homeCards(locale);
     assert.ok(cards.length >= 4, `${locale}: home provider cards found`);
-    const about = [...source.matchAll(/<article class="map-styles-about-card" data-style-card="([^"]+)">([\s\S]*?)<\/article>/g)];
+    // The style cards reuse the home "Explore available maps" component in one scrolling row (owner 2026-11-02).
+    assert.match(source, /<div class="provider-cards map-styles-about-cards" role="region" tabindex="0" aria-label="[^"]+">/, `${locale}: style cards sit in one scrolling row like the home page`);
+    assert.ok(!/map-styles-about-(card|grid|summary|language)\b/.test(source), `${locale}: no separate style card component`);
+    const about = [...source.matchAll(/<article class="provider-card" data-style-card="([^"]+)">([\s\S]*?)<\/article>/g)];
     assert.equal(about.length, 5, `${locale}: five always-shown style descriptions`);
-    const optional = [...source.matchAll(/<article class="map-styles-about-card" data-style-card="([^"]+)" data-style-ids="([^"]+)" hidden>([\s\S]*?)<\/article>/g)];
+    const optional = [...source.matchAll(/<article class="provider-card" data-style-card="([^"]+)" data-style-ids="([^"]+)" hidden>([\s\S]*?)<\/article>/g)];
     assert.deepEqual(optional.map((item) => [item[1], item[2]]), [["osmapa", "osmapa-podstawowa osmapa-ogonki osmapa-light"]],
       `${locale}: the OSMapaPL description starts hidden`);
     about.push(...optional.map((item) => [item[0], item[1], item[3]]));
     for (const [, styleId, body] of about) {
       const name = decode(body.match(/<h3>([^<]+)/)[1].trim());
-      const summary = decode(body.match(/<p class="map-styles-about-summary">([^<]+)<\/p>/)[1]);
+      const summary = decode(body.match(/<p class="provider-summary">([^<]+)<\/p>/)[1]);
       const benefits = [...body.matchAll(/<li>([^<]+)<\/li>/g)].map((item) => decode(item[1]));
       const card = cards.find((item) => item.name === name);
       assert.ok(card, `${locale}/${styleId}: style matches a home provider card`);
       assert.equal(summary, card.summary, `${locale}/${styleId}: summary matches the home page`);
       assert.deepEqual(benefits, card.benefits.slice(0, benefits.length), `${locale}/${styleId}: benefits match the home page`);
+      const note = body.match(/<p class="provider-language-note">[\s\S]*?<\/p>/);
+      assert.equal(note ? note[0] : null, card.note, `${locale}/${styleId}: the same note as the home page`);
     }
   }
   assert.equal(titles.size, locales.length);
@@ -198,7 +206,17 @@ function testController() {
     "a recheck applies style list changes within the same release");
 }
 
+function testViewerHeight() {
+  // Owner 2026-11-02: the desktop map keeps its original height (80% of the
+  // screen); a screen-minus-intro height made the map too short.
+  const css = read(path.join(root, "site", "styles.css"));
+  const rule = css.match(/\.map-styles-viewer \{[^}]*\}/);
+  assert.ok(rule, "map viewer rule is missing");
+  assert.match(rule[0], /height: clamp\(540px, 80vh, 840px\);/);
+}
+
 testHelpers();
 testPages();
 testController();
+testViewerHeight();
 console.log("Map styles page tests passed for all six locales.");

@@ -109,7 +109,8 @@ async function checkSnapshotFirstAndRefresh() {
   assert.ok(!node("#watch-grid").innerHTML.includes("TESTING-only row"));
   assert.equal(node("#compatibility-retry").hidden, true);
 
-  const headings = () => [...node("#watch-grid").innerHTML.matchAll(/<h3>(.*?)<\/h3>/g)].map(match => match[1]);
+  const headings = () => [...node("#watch-grid").innerHTML.matchAll(/<h3>(.*?) <span class="watch-variant">[^<]*<\/span><\/h3>/g)].map(match => match[1]);
+  assert.match(node("#watch-grid").innerHTML, /<h3>Forerunner 970 <span class="watch-variant">AMOLED<\/span><\/h3>/, "the variant is part of the card heading");
   assert.deepEqual(headings(), ["Forerunner 970", "fēnix 8", "fēnix 8 Pro"]);
   node("#successful-install-filter").listeners.change({target: {value: "1_2"}});
   assert.deepEqual(headings(), ["fēnix 8 Pro"]);

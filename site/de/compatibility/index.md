@@ -1,57 +1,51 @@
 ---
-title: "Garmin-Uhren-Kompatibilität & erfolgreiche Installationen — Terento"
+title: "Garmin-Uhren & Edge: erfolgreiche Installationen — Terento"
 canonical: https://terento.app/de/compatibility/
 ---
 
 Kompatibilität
 
-# Kompatibilität von Garmin-Uhren
+# Kompatibilität von Garmin-Uhren und Edge
 
-Terento ist für Garmin-Smartwatches mit Kartenunterstützung entwickelt. Unten siehst du genaue Modelle und Varianten, auf denen mindestens eine Drittanbieter-Karte erfolgreich installiert wurde. Die Liste wächst, wenn weitere erfolgreiche Installationen geteilt werden.
+Terento ist für Garmin-Smartwatches und neuere Garmin-Edge-Radcomputer mit Kartenunterstützung entwickelt. Unten siehst du genaue Modelle und Varianten, auf denen mindestens eine Drittanbieter-Karte erfolgreich installiert wurde. Die Liste wächst, wenn weitere erfolgreiche Installationen geteilt werden.
 
 Wenn dein Modell nicht aufgeführt ist, bedeutet das nicht, dass es nicht unterstützt wird — möglicherweise wurde für genau dieses Modell und diese Variante noch keine erfolgreiche Installation geteilt.
 
-**39** Modelle mit erfolgreichen Installationen**344** erfolgreiche InstallationenLetzte erfolgreiche Installation 31. Oktober 2026
+**40** Modelle mit erfolgreichen Installationen**356** erfolgreiche InstallationenLetzte erfolgreiche Installation 5. November 2026
 
 So funktioniert diese Liste
 
-Diese Liste basiert auf echten erfolgreichen Terento-Installationen, die Nutzer geteilt haben. Sie zeigt nur genaue Garmin-Modelle und -Varianten mit mindestens einer erfolgreichen Installation einer Drittanbieter-Karte. Sie ist keine vollständige Liste aller Garmin-Uhren, mit denen Terento funktionieren kann.
+Diese Liste basiert auf echten erfolgreichen Terento-Installationen, die Nutzer geteilt haben. Sie zeigt nur genaue Garmin-Modelle und -Varianten mit mindestens einer erfolgreichen Installation einer Drittanbieter-Karte. Sie ist keine vollständige Liste aller Garmin-Uhren und Edge-Geräte, mit denen Terento funktionieren kann.
 
 Die Installationsergebnisse wurden von Nutzern mit Terento geteilt; sie sind keine Garmin-Zertifizierung.
 
 Die aktuelle Version umfasst alle Kartenanbieter im Katalog. Diese Produktinformation ist von den hier gezeigten Geräteergebnissen getrennt.
 
-39 Modelle
+40 Modelle
 
 fēnix
 
-### fēnix 8
+### fēnix 8 47 mm, AMOLED
 
-47 mm, AMOLED
+58 erfolgreiche Installationen
 
-57 erfolgreiche Installationen
+App 57 Web 1
 
-App 57
-
-Letzte erfolgreiche Installation 31. Oktober 2026
+Letzte erfolgreiche Installation 4. November 2026
 
 Forerunner
 
-### Forerunner 965
+### Forerunner 965 Historical
 
-Historical
+32 erfolgreiche Installationen
 
-31 erfolgreiche Installationen
+App 29 Web 3
 
-App 29 Web 2
-
-Letzte erfolgreiche Installation 22. Oktober 2026
+Letzte erfolgreiche Installation 1. November 2026
 
 Forerunner
 
-### Forerunner 970
-
-AMOLED
+### Forerunner 970 AMOLED
 
 28 erfolgreiche Installationen
 
@@ -61,9 +55,7 @@ Letzte erfolgreiche Installation 31. Oktober 2026
 
 fēnix
 
-### fēnix 9 Pro
-
-51 mm, AMOLED
+### fēnix 9 Pro 51 mm, AMOLED
 
 19 erfolgreiche Installationen
 
@@ -73,9 +65,7 @@ Letzte erfolgreiche Installation 22. Oktober 2026
 
 epix
 
-### epix Pro (Gen 2)
-
-51 mm, AMOLED
+### epix Pro (Gen 2) 51 mm, AMOLED
 
 18 erfolgreiche Installationen
 
@@ -85,9 +75,7 @@ Letzte erfolgreiche Installation 26. Oktober 2026
 
 fēnix
 
-### fēnix 7X Pro
-
-Solar, Historical
+### fēnix 7X Pro Solar, Historical
 
 18 erfolgreiche Installationen
 
@@ -97,9 +85,7 @@ Letzte erfolgreiche Installation 26. Oktober 2026
 
 fēnix
 
-### fēnix 9 Pro
-
-51 mm, AMOLED, inReach
+### fēnix 9 Pro 51 mm, AMOLED, inReach
 
 15 erfolgreiche Installationen
 
@@ -109,9 +95,7 @@ Letzte erfolgreiche Installation 31. Oktober 2026
 
 Forerunner
 
-### Forerunner 955
-
-Solar, Standard
+### Forerunner 955 Solar, Standard
 
 12 erfolgreiche Installationen
 
@@ -121,9 +105,7 @@ Letzte erfolgreiche Installation 16. Oktober 2026
 
 fēnix
 
-### fēnix 7
-
-47 mm, Solar
+### fēnix 7 47 mm, Solar
 
 12 erfolgreiche Installationen
 
@@ -133,21 +115,37 @@ Letzte erfolgreiche Installation 17. Oktober 2026
 
 fēnix
 
-### fēnix 8
+### fēnix 8 47 mm, MIP, Solar
 
-47 mm, MIP, Solar
+12 erfolgreiche Installationen
 
-11 erfolgreiche Installationen
+App 12
 
-App 11
-
-Letzte erfolgreiche Installation 20. Oktober 2026
+Letzte erfolgreiche Installation 5. November 2026
 
 fēnix
 
-### fēnix 9 Pro
+### fēnix 8 51 mm, AMOLED
 
-47 mm, AMOLED
+11 erfolgreiche Installationen
+
+App 10 Web 1
+
+Letzte erfolgreiche Installation 2. November 2026
+
+epix
+
+### epix Pro (Gen 2) 47 mm, AMOLED
+
+10 erfolgreiche Installationen
+
+App 6 Web 4
+
+Letzte erfolgreiche Installation 3. November 2026
+
+fēnix
+
+### fēnix 9 Pro 47 mm, AMOLED
 
 10 erfolgreiche Installationen
 
@@ -157,9 +155,7 @@ Letzte erfolgreiche Installation 22. Oktober 2026
 
 fēnix
 
-### fēnix 8 Pro
-
-51 mm, AMOLED, inReach
+### fēnix 8 Pro 51 mm, AMOLED, inReach
 
 9 erfolgreiche Installationen
 
@@ -169,33 +165,7 @@ Letzte erfolgreiche Installation 23. Oktober 2026
 
 fēnix
 
-### fēnix 8
-
-51 mm, AMOLED
-
-9 erfolgreiche Installationen
-
-App 8 Web 1
-
-Letzte erfolgreiche Installation 23. Oktober 2026
-
-epix
-
-### epix Pro (Gen 2)
-
-47 mm, AMOLED
-
-8 erfolgreiche Installationen
-
-App 6 Web 2
-
-Letzte erfolgreiche Installation 14. Oktober 2026
-
-fēnix
-
-### fēnix 7 Pro
-
-Solar, Historical
+### fēnix 7 Pro Solar, Historical
 
 8 erfolgreiche Installationen
 
@@ -205,21 +175,17 @@ Letzte erfolgreiche Installation 30. Oktober 2026
 
 fēnix
 
-### fēnix 7X
+### fēnix 7X 51 mm, Solar
 
-51 mm, Solar
+8 erfolgreiche Installationen
 
-7 erfolgreiche Installationen
+App 8
 
-App 7
-
-Letzte erfolgreiche Installation 23. Oktober 2026
+Letzte erfolgreiche Installation 1. November 2026
 
 fēnix
 
-### fēnix 8
-
-43 mm, AMOLED
+### fēnix 8 43 mm, AMOLED
 
 7 erfolgreiche Installationen
 
@@ -229,9 +195,7 @@ Letzte erfolgreiche Installation 31. Oktober 2026
 
 fēnix
 
-### fēnix 9 Pro
-
-47 mm, AMOLED, inReach
+### fēnix 9 Pro 47 mm, AMOLED, inReach
 
 7 erfolgreiche Installationen
 
@@ -241,9 +205,7 @@ Letzte erfolgreiche Installation 30. Oktober 2026
 
 fēnix
 
-### fēnix 6 Pro
-
-47 mm, MIP, Historical
+### fēnix 6 Pro 47 mm, MIP, Historical
 
 6 erfolgreiche Installationen
 
@@ -253,9 +215,7 @@ Letzte erfolgreiche Installation 26. Oktober 2026
 
 fēnix
 
-### fēnix 7 Pro
-
-Solar, (no Wi-Fi)
+### fēnix 7 Pro Solar, (no Wi-Fi)
 
 6 erfolgreiche Installationen
 
@@ -265,9 +225,7 @@ Letzte erfolgreiche Installation 12. Oktober 2026
 
 fēnix
 
-### fēnix 8 Pro
-
-47 mm, AMOLED, inReach
+### fēnix 8 Pro 47 mm, AMOLED, inReach
 
 5 erfolgreiche Installationen
 
@@ -277,9 +235,7 @@ Letzte erfolgreiche Installation 21. Oktober 2026
 
 epix
 
-### epix (Gen 2)
-
-47 mm
+### epix (Gen 2) 47 mm
 
 4 erfolgreiche Installationen
 
@@ -289,9 +245,7 @@ Letzte erfolgreiche Installation 19. Oktober 2026
 
 fēnix
 
-### fēnix 7S Pro
-
-Solar, Historical
+### fēnix 7S Pro Solar, Historical
 
 4 erfolgreiche Installationen
 
@@ -301,9 +255,7 @@ Letzte erfolgreiche Installation 2. Oktober 2026
 
 fēnix
 
-### fēnix 9
-
-47 mm, AMOLED
+### fēnix 9 47 mm, AMOLED
 
 4 erfolgreiche Installationen
 
@@ -311,11 +263,29 @@ App 4
 
 Letzte erfolgreiche Installation 23. September 2026
 
+Edge
+
+### Edge 540 Smartwatch
+
+3 erfolgreiche Installationen
+
+App 3
+
+Letzte erfolgreiche Installation 5. November 2026
+
+Enduro
+
+### Enduro 4 MIP, Solar
+
+3 erfolgreiche Installationen
+
+App 3
+
+Letzte erfolgreiche Installation 2. November 2026
+
 fēnix
 
-### fēnix 5 Plus
-
-Historical
+### fēnix 5 Plus Historical
 
 3 erfolgreiche Installationen
 
@@ -325,9 +295,7 @@ Letzte erfolgreiche Installation 29. Oktober 2026
 
 fēnix
 
-### fēnix 9 Pro
-
-51 mm, MIP, Solar, inReach
+### fēnix 9 Pro 51 mm, MIP, Solar, inReach
 
 3 erfolgreiche Installationen
 
@@ -337,9 +305,7 @@ Letzte erfolgreiche Installation 7. Oktober 2026
 
 fēnix
 
-### fēnix 9 Pro
-
-47 mm, MIP, Solar
+### fēnix 9 Pro 47 mm, MIP, Solar
 
 3 erfolgreiche Installationen
 
@@ -349,9 +315,7 @@ Letzte erfolgreiche Installation 16. Oktober 2026
 
 Descent
 
-### Descent Mk3i
-
-51 mm, AMOLED
+### Descent Mk3i 51 mm, AMOLED
 
 2 erfolgreiche Installationen
 
@@ -361,9 +325,7 @@ Letzte erfolgreiche Installation 14. Oktober 2026
 
 Enduro
 
-### Enduro 2
-
-Historical
+### Enduro 2 Historical
 
 2 erfolgreiche Installationen
 
@@ -371,23 +333,9 @@ App 2
 
 Letzte erfolgreiche Installation 13. Oktober 2026
 
-Enduro
-
-### Enduro 4
-
-MIP, Solar
-
-2 erfolgreiche Installationen
-
-App 2
-
-Letzte erfolgreiche Installation 23. Oktober 2026
-
 fēnix
 
-### fēnix 6X Pro
-
-51 mm, MIP, Historical
+### fēnix 6X Pro 51 mm, MIP, Historical
 
 2 erfolgreiche Installationen
 
@@ -397,9 +345,7 @@ Letzte erfolgreiche Installation 24. Oktober 2026
 
 fēnix
 
-### fēnix 6X
-
-51 mm
+### fēnix 6X 51 mm
 
 2 erfolgreiche Installationen
 
@@ -409,9 +355,7 @@ Letzte erfolgreiche Installation 20. Oktober 2026
 
 fēnix
 
-### fēnix 9 Pro
-
-51 mm, MIP, Solar
+### fēnix 9 Pro 51 mm, MIP, Solar
 
 2 erfolgreiche Installationen
 
@@ -421,9 +365,7 @@ Letzte erfolgreiche Installation 19. Oktober 2026
 
 fēnix
 
-### fēnix 9
-
-43 mm, AMOLED
+### fēnix 9 43 mm, AMOLED
 
 2 erfolgreiche Installationen
 
@@ -433,9 +375,7 @@ Letzte erfolgreiche Installation 29. Oktober 2026
 
 Venu
 
-### Venu X1
-
-AMOLED
+### Venu X1 AMOLED
 
 2 erfolgreiche Installationen
 
@@ -445,9 +385,7 @@ Letzte erfolgreiche Installation 29. Oktober 2026
 
 fēnix
 
-### fēnix 9 Pro
-
-43 mm, AMOLED
+### fēnix 9 Pro 43 mm, AMOLED
 
 1 erfolgreiche Installation
 
@@ -457,9 +395,7 @@ Letzte erfolgreiche Installation 12. Oktober 2026
 
 fēnix
 
-### fēnix 9 Pro
-
-47 mm, MIP, Solar, inReach
+### fēnix 9 Pro 47 mm, MIP, Solar, inReach
 
 1 erfolgreiche Installation
 
@@ -469,9 +405,7 @@ Letzte erfolgreiche Installation 27. September 2026
 
 quatix
 
-### quatix 7
-
-Historical
+### quatix 7 Historical
 
 1 erfolgreiche Installation
 
@@ -481,9 +415,7 @@ Letzte erfolgreiche Installation 17. Oktober 2026
 
 tactix
 
-### tactix Delta
-
-Solar, Historical
+### tactix Delta Solar, Historical
 
 1 erfolgreiche Installation
 
@@ -495,7 +427,7 @@ Ergebnisse aus der Community
 
 ## Dein Garmin ist nicht dabei?
 
-Wenn deine Garmin-Smartwatch Karten unterstützt, kannst du Terento trotzdem ausprobieren. Diese Liste wächst, wenn erfolgreiche Installationen für weitere genaue Modelle und Varianten geteilt werden.
+Wenn deine Garmin-Smartwatch oder dein Edge-Radcomputer Karten unterstützt, kannst du Terento trotzdem ausprobieren. Diese Liste wächst, wenn erfolgreiche Installationen für weitere genaue Modelle und Varianten geteilt werden.
 
-[Zum ersten Mal Drittanbieter-Karten installieren? Lies die Mac-Anleitung](https://terento.app/de/guides/install-garmin-maps-mac/)
+[Zum ersten Mal Drittanbieter-Karten installieren? Lies die Mac-Anleitung](https://terento.app/de/guides/install-garmin-maps-mac/) [Kein Mac mit Apple Silicon? Nutze den Web-Installer](https://terento.app/de/install/)
 [Herunterladen](https://terento.app/de/download/)

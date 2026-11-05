@@ -785,3 +785,42 @@ size are rejected; the other added links stay PENDING. Only PENDING rows change;
 a `device_identity_mapping_audit` row with no administrator. Administrator
 decisions, reports, assignments, permissions and statistics are unchanged;
 identity assessment reads the reviewed links on its next pass.
+
+### Migration090: Edge map catalog
+
+Owner decision of 2026-11-02 (canonical rule:
+[`contracts/INSTALLATION_AUTHORIZATION.md`](../../../contracts/INSTALLATION_AUTHORIZATION.md)).
+Data-only and additive: inserts the `garmin-edge` family if absent and eight
+`HISTORICAL_REVIEWED`, `collector_managed = false`, active Maps=Yes rows
+(`ON CONFLICT (id) DO NOTHING`) for the Edge cycling computers that connect
+over MTP: Edge 540, 840, 1040, 1050, 550, 850, 1060 and Edge Explore 2. Each
+`model` label gives the reported base model (Solar editions normalize to it),
+and each row records `Ability to add maps: yes` from its Garmin product
+specifications (checked 2026-11-02) in `specification_evidence.map_capable`.
+The rows let the owner test Edge installs; they are not a public support claim
+and are not published to public Compatibility. The previous revision reads
+every row unchanged.
+
+### Migration091: Edge retail catalog
+
+Owner decision of 2026-11-02 (canonical rule:
+[`contracts/INSTALLATION_AUTHORIZATION.md`](../../../contracts/INSTALLATION_AUTHORIZATION.md)).
+Data-only. The 090 rows still in Garmin's cycling category (Edge 1060, 850,
+550) become `CURRENT_RETAIL` collector rows with missed count 0; the 090 rows no
+longer in it (Edge 540, 840, 1040, 1050, Explore 2) become collector rows with
+the missed count at the retirement threshold, the same storage as a watch
+retired from retail. Both updates touch only rows still `collector_managed =
+false`. It inserts (`ON CONFLICT (id) DO NOTHING`) Edge MTB, 1040 Solar,
+Explore 3 and Explore 3 Plus as current rows and Edge 540 Solar and 840 Solar as
+retired rows, all Maps=Yes with their Garmin specification evidence, and 27
+older Edge models (1030 Plus back to Edge 205) as `HISTORICAL_REVIEWED` rows
+with Maps Unknown. Names, product pages and images come from Garmin's cycling
+category, product pages, Connect IQ device list and owner's manuals; Edge
+Explore, Edge 25 and Edge 20 have no Garmin image left and store none. The
+collector rows get the collector's `MISSING` image placeholder. The previous
+revision reads every row unchanged; its collector would only count current
+Edge rows as missed (an Admin label), with no change to Maps or
+authorization. Withdrawing a collector-managed Edge row needs Maps=`false`:
+the collector reactivates a row it sees and fills a NULL Maps value from the
+specification, but keeps a stored `false` (pinned by
+`test_edge_retail_catalog`).

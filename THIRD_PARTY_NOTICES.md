@@ -200,41 +200,63 @@ OpenMTP and go-mtpfs were inspected for metadata resilience only. No OpenMTP
 or Go dependency or source code is incorporated. Reference:
 <https://github.com/ganeshrvel/go-mtpfs/pull/1> (optional USB descriptors).
 
-## Font Awesome Free — box-archive
+## Lucide icons (Admin)
+
+- Source: [lucide-static](https://github.com/lucide-icons/lucide) v0.460.0,
+  original 24 px outline SVGs from
+  `https://unpkg.com/lucide-static@0.460.0/icons/<name>.svg`.
+- License: ISC License.
+- Copyright: Copyright (c) for portions of Lucide are held by Cole Bemis
+  2013-2022 as part of Feather (MIT). All other copyright (c) for Lucide are
+  held by Lucide Contributors 2022.
+- Use: every Admin interface icon (owner decision 2026-11-05: one icon system
+  with the public website, replacing the 2026-10-06 Font Awesome decision; no
+  hand-drawn icons): `external-link`, `arrow-right`, `arrow-left`,
+  `arrow-left-right`, `check`, `clock`, `x`, `circle-x`, `triangle-alert`,
+  `info`, `circle-help`, `circle-minus`, `download`, `message-square`,
+  `circle-check`, `circle-alert`, `chevron-down`, `chevron-right`,
+  `chevron-up`, `chevrons-up-down`, `image`, `ellipsis`, `layers`, `laptop`,
+  `globe`, `archive` (historical catalog entries) and `hourglass`,
+  `loader-circle`, `ban` and `refresh-cw` (download history and map activity).
+- The child elements are copied unchanged into `_LUCIDE_ICONS` in
+  `backend/catalog-api/src/terento_catalog/admin.py` under the Lucide licence
+  comment; only the stroke width (1.75 px, the brand icon spec) and
+  presentation and accessibility attributes are set. They are rendered as
+  inline SVG or as outline `data:` CSS masks. No Lucide font, package or
+  runtime and no external icon origin is used.
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
+OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
+THIS SOFTWARE.
+
+## Font Awesome Free
 
 - Version: 7.3.1, upstream commit `14c65a3747d0f3b751f15831fc719236aea8729d`
-- Upstream: https://github.com/FortAwesome/Font-Awesome/blob/14c65a3747d0f3b751f15831fc719236aea8729d/svgs/solid/box-archive.svg
+- Upstream: https://github.com/FortAwesome/Font-Awesome/tree/14c65a3747d0f3b751f15831fc719236aea8729d/svgs
 - Copyright 2026 Fonticons, Inc.
 - License: CC BY 4.0, https://creativecommons.org/licenses/by/4.0/
-- Use: the requested solid archive marker for historical admin catalog entries.
-- Bundling/redistribution is permitted with attribution. The original SVG path
-  and embedded attribution are preserved in `admin.py`; only presentation and
-  accessibility attributes are added. No Font Awesome fonts or runtime are bundled.
+- Bundling/redistribution is permitted with attribution. Paths are unchanged;
+  only presentation and accessibility attributes are added. No Font Awesome
+  font, CSS or runtime and no external icon origin is used.
 
-### Download history icons
+### Admin brand logos
 
-The same Font Awesome Free 7.3.1 source revision and CC BY 4.0 license above
-also apply to the original solid `hourglass-start`, `hourglass-end` and `spinner`
-SVGs used for Started, Succeeded and Processing in admin download history.
-Upstream directory: https://github.com/FortAwesome/Font-Awesome/tree/14c65a3747d0f3b751f15831fc719236aea8729d/svgs/solid
-Paths and attribution comments are unchanged; only CSS/accessibility attributes
-are added. No runtime or font dependency is introduced.
-
-Recent map activity also uses original solid `circle-xmark`, `ban`, `triangle-exclamation`, `circle-check` and `circle-info` assets from the same pinned Font Awesome Free 7.3.1 revision above, under CC BY 4.0, with attribution comments retained.
-
-### Admin interface icons
-
-Every other Admin icon (owner decision 2026-10-06: no hand-drawn icons) uses
-original solid SVGs from the same pinned Font Awesome Free 7.3.1 revision under
-CC BY 4.0: `arrow-up-right-from-square`, `arrow-right`, `arrow-left`, `check`,
-`clock`, `xmark`, `circle-xmark`, `triangle-exclamation`, `circle-info`,
-`circle-question`, `circle-minus`, `download`, `message`, `circle-check`,
-`circle-exclamation`, `chevron-down`, `chevron-right` and `image`, and the
-original brands `app-store-ios` SVG for the App Store source. Their
-unchanged viewBox and path data live in `_FA_ICONS` in
+Brand logos are not interface icons and stay the original Font Awesome Free
+brands SVGs: `app-store-ios` for the App Store source and `chrome`, `edge`,
+`opera`, `brave`, `firefox-browser` and `safari` for the Web installer browser
+column. Their unchanged viewBox and path data live in `_FA_BRAND_ICONS` in
 `backend/catalog-api/src/terento_catalog/admin.py` under the Font Awesome
-attribution comment; they are rendered as inline SVG or as `data:` CSS masks.
-No Font Awesome font, CSS or runtime and no external icon origin is used.
+attribution comment. App Store, Google Chrome, Microsoft Edge, Opera, Brave,
+Firefox and Safari names and marks remain the property of their respective
+owners.
 
 ### Website Compatibility icons
 

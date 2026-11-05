@@ -9,6 +9,14 @@ Rozwiązywanie problemów
 
 Znajdź swój problem – od zegarka Garmin, którego Mac nie widzi, po nieudane pobieranie mapy – i wykonaj krótkie kroki. Jeśli nic nie pomaga, wyślij raport, abyśmy mogli się temu przyjrzeć.
 
+Garmin Edge
+
+## Mac nie widzi Garmin Edge
+
+Nowsze liczniki rowerowe Garmin Edge z obsługą map łączą się z Makiem tak samo jak obecne zegarki Garmin, więc większość kroków na tej stronie działa też dla Edge: użyj kabla USB do przesyłania danych, zamknij Garmin Express i poczekaj do 2 minut. Starsze modele Edge, które pojawiają się w Finderze jako dysk, działają inaczej.
+
+[Przeczytaj poradnik dla Garmin Edge](https://terento.app/pl/guides/install-garmin-maps-edge-mac/)
+
 Połączenie
 
 ## Problemy z połączeniem zegarka Garmin
@@ -18,13 +26,15 @@ Połączenie
 Podłącz zegarek bezpośrednio do Maca kablem USB do przesyłania danych, odblokuj go i poczekaj do 2 minut: Terento wykryje go automatycznie.
 
 1. Użyj kabla do przesyłania danych. Kable tylko do ładowania i niektóre huby USB nie działają.
-2. Poczekaj do 2 minut, aż Terento sprawdzi połączenie.
-3. Jeśli zegarek nadal się nie pojawia, odłącz go, odczekaj kilka sekund i podłącz ponownie.
-4. Jeśli otwarta jest inna aplikacja, zobacz [Garmin Express lub inna aplikacja używa zegarka](https://terento.app/pl/guides/troubleshooting/#garmin-busy).
+2. To normalne, że zegarek lub Edge nie pojawia się w Finderze: macOS nie otwiera większości obecnych zegarków Garmin ani nowszych modeli Edge jako dysku. Terento komunikuje się z urządzeniem bezpośrednio.
+3. Jeśli na MacBooku macOS zapyta, czy zezwolić akcesorium na połączenie, wybierz Zezwól.
+4. Poczekaj do 2 minut, aż Terento sprawdzi połączenie.
+5. Jeśli zegarek nadal się nie pojawia, odłącz go, odczekaj kilka sekund i podłącz ponownie.
+6. Jeśli otwarta jest inna aplikacja, zobacz [Garmin Express lub inna aplikacja używa zegarka](https://terento.app/pl/guides/troubleshooting/#garmin-busy).
 
 ### Garmin Express lub inna aplikacja używa zegarka
 
-Zamknij Garmin Express i aplikacje do przesyłania plików, takie jak Android File Transfer, OpenMTP czy MacDroid: z połączenia z zegarkiem może korzystać tylko jedna aplikacja naraz.
+Zamknij Garmin Express i aplikacje do przesyłania plików, takie jak Android File Transfer, OpenMTP czy MacDroid: z połączenia z zegarkiem lub Edge może korzystać tylko jedna aplikacja naraz.
 
 1. Zamknij Garmin Express, Android File Transfer, OpenMTP, MacDroid i inne aplikacje MTP. Jeśli Terento wskaże aplikację, zamknij najpierw ją.
 2. Zamknij też Pobieranie obrazów, Zdjęcia i Podgląd, jeśli są otwarte.
@@ -40,7 +50,7 @@ Odłącz wszystkie urządzenia Garmin oprócz zegarka, którego chcesz użyć: T
 
 ### Mac nie rozpoznaje zegarka Garmin: tryb USB (MTP)
 
-Jeśli Terento informuje, że zegarek nie jest gotowy do przesyłania plików, ustaw w zegarku tryb USB na MTP, o ile Twój model ma to ustawienie.
+Jeśli Terento informuje, że zegarek nie jest gotowy do przesyłania plików, ustaw tryb USB zegarka na MTP, jeśli Twój model ma to ustawienie. MTP (Media Transfer Protocol) to sposób, w jaki większość obecnych zegarków Garmin udostępnia pliki przez USB, tak jak telefony z Androidem. macOS nie obsługuje MTP natywnie, dlatego zegarek nie pojawia się jako dysk; Terento samo korzysta z MTP, więc nie potrzebujesz Android File Transfer ani OpenMTP.
 
 1. Na zegarku otwórz tryb USB, zwykle w Ustawienia › System. Nie każdy model go ma.
 2. Wybierz MTP.
@@ -148,8 +158,4 @@ Na ekranie błędu wybierz „Report issue”: Terento otworzy GitHuba z już wy
 3. Sprawdź raport przed publikacją: zgłoszenia na GitHubie są publiczne.
 4. Nie masz konta GitHub? Napisz na [hello@terento.app](mailto:hello@terento.app?subject=Terento%20installation%20issue), podając model zegarka, region mapy i opis tego, co się stało.
 
-Pierwszy raz z Terento?
-
-## Zacznij od instrukcji instalacji w trzech krokach.
-
-[Przeczytaj instrukcję instalacji na Macu](https://terento.app/pl/guides/install-garmin-maps-mac/)
+Pierwszy raz z Terento? [Przeczytaj instrukcję instalacji na Macu](https://terento.app/pl/guides/install-garmin-maps-mac/)

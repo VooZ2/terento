@@ -324,15 +324,16 @@ populations. Updates must never change fresh-install counts or success rates.
 
 Its fresh series are provider fresh successes, custom fresh successes, and
 confirmed fresh-install failures (including custom). Successful updates and
-failed updates are separate series. Colours (owner decision 2026-10-05; existing
-brand tokens only, and every series also has a text label and legend entry):
-provider fresh install successful uses the existing slate/sky series; custom
-`.img` fresh install successful is its own green (Lichen family) series and
-legend entry; install failed is solid red; update successful is solid Stone
-Dark (the warm stone family's 5.16:1 shade, with no outline; Warm Stone itself
-is below 3:1);
-update failed uses red diagonal stripes in bars and legends. This supersedes
-every earlier chart colour rule. Fresh attempt totals are
+failed updates are separate series. Colours (owner decisions 2026-10-05 and
+2026-11-03; existing brand tokens only, and every series also has a text label
+and legend entry): healthy series recede in pale tones and problems keep their
+full tone. Provider fresh install successful (and download successful, First
+run connected and the app `.dmg` downloads) is pale Sky, the app `.zip`
+downloads a lighter Sky, custom `.img` fresh install successful is its own
+Lichen series and legend entry; install failed is solid red; update
+successful is Stone Dark diagonal stripes and update failed red diagonal
+stripes, in bars and legends. A bucket that has not ended yet is drawn dashed
+and named "in progress". This supersedes every earlier chart colour rule. Fresh attempt totals are
 `F_success + F_failed`; download, pre-install, device-check, not-started,
 cancelled, and unknown events are not chart series.
 
@@ -411,8 +412,10 @@ The GitHub read model uses these meanings:
 
 GitHub download trends use the same bucket rule as the map trends, so one
 Dashboard period selects one grid for every chart: Today and 24 hours hourly,
-seven days daily, 30 days weekly, and all time adaptive by the observed span since the first
-retained snapshot (up to 14 days daily, 15–60 days weekly, longer monthly).
+seven days daily, 30 days weekly. All time is adaptive by the observed span
+since the first retained snapshot (up to 14 days daily, 15–60 days weekly,
+longer monthly) when read alone; the Dashboard passes its map charts' All time
+grid instead, so its three charts share one time axis (owner QA 2026-11-04).
 
 For the hourly (Today and 24-hour) trend read model, `hour_start` is the
 canonical hourly floor of an observation. The exact `observed_at` remains

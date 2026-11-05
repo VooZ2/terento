@@ -496,6 +496,23 @@ for _locale, (_summary, _benefits) in OSMAPA_CARD_COPY.items():
 
 MAPRANDO_LANGUAGE_NOTES = {'en': 'Some map labels are in French.', 'de': 'Einige Kartenbeschriftungen sind auf Französisch.', 'fr': 'Certains libellés de la carte sont en français.', 'pl': 'Niektóre opisy na mapie są po francusku.', 'cs': 'Některé popisky mapy jsou ve francouzštině.', 'it': 'Alcune etichette della mappa sono in francese.'}
 
+def provider_card_addon(locale: str, provider_id: str, contour_count: bool = True) -> str:
+    """The note or add-on under a provider card's benefits; the map styles page reuses it."""
+    if provider_id == "maprando":
+        return f'<p class="provider-language-note"><span aria-hidden="true">ⓘ</span><span>{html.escape(MAPRANDO_LANGUAGE_NOTES[locale])}</span></p>'
+    if provider_id == "bbbike-opentopo":
+        return f'<p class="provider-language-note"><span aria-hidden="true">ⓘ</span><span>{html.escape(BBBIKE_OPENTOPO_NOTES[locale])}</span></p>'
+    if provider_id == "opentopomap":
+        contour = PROVIDER_CARD_COPY[locale]["contours"]
+        count = f'''
+                <p class="provider-addon-count" data-contour-count data-count-template="{contour["count_template"]}">{contour["count_template"].replace("{count}", "157")}</p>''' if contour_count else ""
+        return f'''<details class="provider-addon" data-provider-addon="contours">
+                <summary class="provider-addon-toggle"><span><span class="provider-card-badge">{contour["badge"]}</span> <span class="provider-addon-title">{contour["name"]}</span></span></summary>
+                <p class="provider-addon-copy">{contour["description"]}</p>{count}
+              </details>'''
+    return ""
+
+
 def provider_cards_markup(locale: str, copy: dict[str, str]) -> str:
     cards = []
     for provider_id in ("freizeitkarte", "opentopomap", "maprando", "bbbike", "bbbike-ontrail", "bbbike-opentopo", "osmapa"):
@@ -504,18 +521,7 @@ def provider_cards_markup(locale: str, copy: dict[str, str]) -> str:
         count_markup = provider["count_template"].replace("{count}", fallback_count) if fallback_count else ""
         count_hidden = "" if fallback_count else " hidden"
         benefits = "".join(f"<li>{html.escape(benefit)}</li>" for benefit in provider["benefits"])
-        addon = ""
-        if provider_id == "maprando":
-            addon = f'<p class="provider-language-note"><span aria-hidden="true">ⓘ</span><span>{html.escape(MAPRANDO_LANGUAGE_NOTES[locale])}</span></p>'
-        if provider_id == "bbbike-opentopo":
-            addon = f'<p class="provider-language-note"><span aria-hidden="true">ⓘ</span><span>{html.escape(BBBIKE_OPENTOPO_NOTES[locale])}</span></p>'
-        if provider_id == "opentopomap":
-            contour = PROVIDER_CARD_COPY[locale]["contours"]
-            addon = f'''<details class="provider-addon" data-provider-addon="contours">
-                <summary class="provider-addon-toggle"><span><span class="provider-card-badge">{contour["badge"]}</span> <span class="provider-addon-title">{contour["name"]}</span></span></summary>
-                <p class="provider-addon-copy">{contour["description"]}</p>
-                <p class="provider-addon-count" data-contour-count data-count-template="{contour["count_template"]}">{contour["count_template"].replace("{count}", "157")}</p>
-              </details>'''
+        addon = provider_card_addon(locale, provider_id)
         catalog_provider_id = "bbbike" if provider_id.startswith("bbbike") else provider_id
         type_attributes = ""
         if provider_id.startswith("bbbike"):

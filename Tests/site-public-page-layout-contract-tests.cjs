@@ -7,7 +7,7 @@ const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "u
 const styles = read("site/styles.css");
 const shellSource = read("site/site-shell.js");
 const languageSource = read("site/language.js");
-const styleVersion = "20261029-web-installer-v1";
+const styleVersion = "20261102-design-audit-v4";
 const mobileLanguageNames = { en: "English", de: "Deutsch", fr: "Français", pl: "Polski", cs: "Čeština", it: "Italiano" };
 
 const cssBlock = (selector) => {
@@ -69,6 +69,10 @@ const locales = {
     compatibilityLabel: "Check compatibility",
     webInstaller: "/install/",
     webInstallerLabel: "No Apple Silicon Mac? Use the web installer",
+    linuxGuide: "/guides/install-garmin-maps-linux/",
+    linuxGuideLabel: "On Linux? Read the Linux guide",
+    edgeGuide: "/guides/install-garmin-maps-edge-mac/",
+    edgeGuideLabel: "Garmin Edge? Read the Edge guide",
   },
   de: {
     file: "site/de/download/index.html",
@@ -78,6 +82,10 @@ const locales = {
     compatibilityLabel: "Kompatibilität prüfen",
     webInstaller: "/de/install/",
     webInstallerLabel: "Kein Mac mit Apple Silicon? Nutze den Web-Installer",
+    linuxGuide: "/de/guides/install-garmin-maps-linux/",
+    linuxGuideLabel: "Linux? Lies die Linux-Anleitung",
+    edgeGuide: "/de/guides/install-garmin-maps-edge-mac/",
+    edgeGuideLabel: "Garmin Edge? Lies die Edge-Anleitung",
   },
   fr: {
     file: "site/fr/download/index.html",
@@ -87,6 +95,10 @@ const locales = {
     compatibilityLabel: "Vérifier la compatibilité",
     webInstaller: "/fr/install/",
     webInstallerLabel: "Pas de Mac Apple Silicon ? Utilisez l’installateur web",
+    linuxGuide: "/fr/guides/install-garmin-maps-linux/",
+    linuxGuideLabel: "Sous Linux ? Lisez le guide Linux",
+    edgeGuide: "/fr/guides/install-garmin-maps-edge-mac/",
+    edgeGuideLabel: "Un Garmin Edge ? Lisez le guide Edge",
   },
   pl: {
     file: "site/pl/download/index.html",
@@ -96,6 +108,10 @@ const locales = {
     compatibilityLabel: "Sprawdź kompatybilność",
     webInstaller: "/pl/install/",
     webInstallerLabel: "Nie masz Maca z Apple Silicon? Użyj instalatora webowego",
+    linuxGuide: "/pl/guides/install-garmin-maps-linux/",
+    linuxGuideLabel: "Linux? Przeczytaj przewodnik dla Linuksa",
+    edgeGuide: "/pl/guides/install-garmin-maps-edge-mac/",
+    edgeGuideLabel: "Garmin Edge? Przeczytaj poradnik dla Edge",
   },
   cs: {
     file: "site/cs/download/index.html",
@@ -105,6 +121,10 @@ const locales = {
     compatibilityLabel: "Ověřit kompatibilitu",
     webInstaller: "/cs/install/",
     webInstallerLabel: "Nemáte Mac s Apple Silicon? Použijte webový instalátor",
+    linuxGuide: "/cs/guides/install-garmin-maps-linux/",
+    linuxGuideLabel: "Linux? Přečtěte si návod pro Linux",
+    edgeGuide: "/cs/guides/install-garmin-maps-edge-mac/",
+    edgeGuideLabel: "Garmin Edge? Přečtěte si průvodce pro Edge",
   },
   it: {
     file: "site/it/download/index.html",
@@ -114,6 +134,10 @@ const locales = {
     compatibilityLabel: "Verifica la compatibilità",
     webInstaller: "/it/install/",
     webInstallerLabel: "Niente Mac con Apple Silicon? Usa l’installer web",
+    linuxGuide: "/it/guides/install-garmin-maps-linux/",
+    linuxGuideLabel: "Usi Linux? Leggi la guida per Linux",
+    edgeGuide: "/it/guides/install-garmin-maps-edge-mac/",
+    edgeGuideLabel: "Hai un Garmin Edge? Leggi la guida Edge",
   },
 };
 
@@ -152,17 +176,19 @@ for (const [locale, contract] of Object.entries(locales)) {
   assert.doesNotMatch(html, /New to third-party maps\?|Neu bei Drittanbieter-Karten\?|Vous débutez avec les cartes tierces|Dopiero zaczynasz z mapami innych firm|Začínáte s mapami třetích stran|È la prima volta che installi mappe di terze parti/);
 
   const anchors = [...html.matchAll(/<a class="text-link download-info-link" href="([^"]+)"([^>]*)>([\s\S]*?)<\/a>/g)];
-  assert.equal(anchors.length, 3, `${locale} must expose exactly three Download information links`);
-  assert.deepEqual(anchors.map((match) => match[1]), [contract.guide, contract.webInstaller, contract.compatibility]);
-  assert.deepEqual(anchors.map((match) => visibleText(match[3])), [contract.guideLabel, contract.webInstallerLabel, contract.compatibilityLabel]);
+  assert.equal(anchors.length, 5, `${locale} must expose exactly five Download information links`);
+  assert.deepEqual(anchors.map((match) => match[1]), [contract.guide, contract.webInstaller, contract.linuxGuide, contract.edgeGuide, contract.compatibility]);
+  assert.deepEqual(anchors.map((match) => visibleText(match[3])), [contract.guideLabel, contract.webInstallerLabel, contract.linuxGuideLabel, contract.edgeGuideLabel, contract.compatibilityLabel]);
   for (const match of anchors) {
     assert.match(match[3], /class="download-info-link-tail"/);
     assert.match(match[3], /class="download-info-link-arrow" aria-hidden="true">→<\/span>/);
     assert.doesNotMatch(match[1], /utm_/i);
   }
   assert.match(anchors[1][2], /data-umami-event="web-installer-link-click"/);
-  assert.match(anchors[2][2], /data-umami-event="compatibility-link-click"/);
-  assert.match(anchors[2][2], /data-umami-event-location="download-page"/);
+  assert.match(anchors[2][2], /data-umami-event-location="download-page-linux"/);
+  assert.match(anchors[3][2], /data-umami-event-location="download-page-edge"/);
+  assert.match(anchors[4][2], /data-umami-event="compatibility-link-click"/);
+  assert.match(anchors[4][2], /data-umami-event-location="download-page"/);
   assert.doesNotMatch(html, /localized-content\.js/);
 }
 

@@ -11,6 +11,8 @@ Připojte hodinky, vyberte mapu a nechte Terento instalaci vyřídit — bez ru�
 
 macOS 13+Apple SiliconHodinky Garmin s podporou map
 
+[Stáhnout](https://terento.app/cs/download/)
+
 Rychlá kontrola
 
 ## Než začnete
@@ -81,8 +83,14 @@ Hodinky znovu připojte nebo restartujte a zkontrolujte nastavení map. Pokud ma
 
 [Zobrazit všechna řešení](https://terento.app/cs/guides/troubleshooting/)
 
-Připraveno, až budete
+Po instalaci
 
-## Jste připraveni nainstalovat první mapu?
+## První spuštění a odinstalace
 
-[Stáhnout](https://terento.app/cs/download/)
+### První spuštění
+
+Přetáhněte Terento ze staženého DMG do složky Aplikace a otevřete ho odtud. Terento je notářsky ověřené společností Apple; při prvním otevření se macOS zeptá, zda otevřít aplikaci staženou z internetu, zvolte Otevřít. Pokud se na notebooku Mac macOS zeptá, zda povolit připojení příslušenství, zvolte Povolit.
+
+### Odinstalace Terento
+
+Ukončete Terento a přesuňte ho ze složky Aplikace do koše. Mapy v hodinkách zůstanou. Terento si údaje o nainstalovaných mapách ukládá do ~/Library/Application Support/Terento: tuto složku si ponechte, pokud budete Terento instalovat znovu, aby tyto mapy mohlo dál aktualizovat a odstraňovat. Chcete-li odstranit vše, smažte i tuto složku, ~/Library/Caches/Terento, ~/Library/Logs/Terento a ~/Library/Preferences/app.terento.mac.plist.

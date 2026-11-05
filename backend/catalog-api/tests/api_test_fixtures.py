@@ -51,6 +51,7 @@ class FakeProviderDatabase:
         self.map_statistic_filters: list[dict] = []
         self.overview_map_requests: list[tuple[datetime, str, str]] = []
         self.overview_download_requests: list[tuple[str, str]] = []
+        self.overview_download_grids: list[str | None] = []
         self.local_purge_calls: list[dict] = []
 
     def admin_user_count(self) -> int:
@@ -93,8 +94,9 @@ class FakeProviderDatabase:
             "bucket": "hour",
         }
 
-    def github_downloads_snapshot(self, *, time_zone="UTC", period="24h"):
+    def github_downloads_snapshot(self, *, time_zone="UTC", period="24h", all_time_grid=None):
         self.overview_download_requests.append((period, time_zone))
+        self.overview_download_grids.append(all_time_grid)
         return {
             "hasData": True,
             "dmgTotal": 23,

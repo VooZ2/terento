@@ -11,7 +11,7 @@ Voyez comment des styles de carte gratuits représentent le même lieu. Choisiss
 
 Lieu
 
-## Dolomites – Tre Cime
+## Cinque Terre
 
 Style de la carte de gauche Style de la carte de droite
 
@@ -32,6 +32,10 @@ Pour les randonnées où le relief compte.
 - Détails topographiques des routes et chemins
 - Données d’altitude et relief ombré
 - Courbes de niveau en option pour détailler le relief
+
+Complément facultatif pour OpenTopoMap Courbes de niveau
+
+Ajoutez des courbes d’altitude pour mieux lire les pentes. Choisissez ce complément lors de l’installation d’une région OpenTopoMap dans Terento.
 
 ### MapRando
 
@@ -62,3 +66,11 @@ Pour la randonnée et le vélo dans le style OpenTopoMap, même là où les autr
 Cette carte n’a pas de courbes de niveau.
 
 Les aperçus sont proches, mais pas exacts : votre montre dessine elle-même la carte, les couleurs et le niveau de détail peuvent donc varier selon le modèle et ses réglages de carte.
+
+Installez ces cartes sur votre montre avec l’ [app pour Mac](https://terento.app/fr/download/) ou l’ [installateur web](https://terento.app/fr/install/).
+
+## Cartes OpenStreetMap gratuites pour montres Garmin
+
+Chaque style présenté ici est une carte gratuite issue d’OpenStreetMap, la carte tenue à jour par des bénévoles. Des projets communautaires en font des cartes Garmin, chacune avec son propre rendu et son niveau de détail.
+
+Choisissez selon votre activité : Freizeitkarte inclut les courbes de niveau, OpenTopoMap montre l’ombrage du relief et peut ajouter des courbes de niveau. MapRando affiche aussi les petits sentiers hors des grands itinéraires. BBBike est pensé pour les rues et les pistes cyclables, et son style Ontrail garde des cartes légères. OSMapaPL couvre la Pologne en détail.

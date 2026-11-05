@@ -1,5 +1,5 @@
 ---
-title: "Porównaj darmowe mapy Garmin: OpenTopoMap, Freizeitkarte — Terento"
+title: "Darmowe mapy Garmin: OpenTopoMap, Freizeitkarte — Terento"
 canonical: https://terento.app/pl/map-styles/
 ---
 
@@ -11,7 +11,7 @@ Zobacz, jak darmowe style map przedstawiają to samo miejsce. Wybierz popularny 
 
 Miejsce
 
-## Dolomites – Tre Cime
+## Cinque Terre
 
 Styl lewej mapy Styl prawej mapy
 
@@ -32,6 +32,10 @@ Na wędrówki, podczas których liczy się rzeźba terenu.
 - Topograficzne szczegóły dróg i ścieżek
 - Dane wysokościowe i cieniowanie terenu
 - Opcjonalne poziomice ze szczegółami rzeźby terenu
+
+Opcjonalny dodatek do OpenTopoMap Poziomice
+
+Dodaj linie wysokości, które pomagają odczytać nachylenie terenu. Wybierz ten dodatek podczas instalacji regionu OpenTopoMap w Terento.
 
 ### MapRando
 
@@ -62,3 +66,11 @@ Na piesze i rowerowe wycieczki w znanym stylu OpenTopoMap, także tam, gdzie bra
 Ta mapa nie ma poziomic.
 
 Podglądy są zbliżone, ale nie dokładne: zegarek sam rysuje mapę, więc kolory i szczegóły mogą się różnić w zależności od modelu i ustawień mapy.
+
+Zainstaluj te mapy na zegarku w [aplikacji na Maca](https://terento.app/pl/download/) lub w [instalatorze webowym](https://terento.app/pl/install/).
+
+## Darmowe mapy OpenStreetMap na zegarki Garmin
+
+Każdy styl na tej stronie to darmowa mapa oparta na OpenStreetMap, mapie aktualizowanej przez wolontariuszy. Projekty społecznościowe tworzą z tych danych mapy Garmin, każdą z własnym wyglądem i poziomem szczegółów.
+
+Wybierz według tego, co robisz: Freizeitkarte ma poziomice, a OpenTopoMap pokazuje cieniowanie rzeźby terenu i może dodać poziomice. MapRando pokazuje też małe ścieżki poza głównymi szlakami. BBBike powstał z myślą o ulicach i drogach rowerowych, a jego styl Ontrail daje małe mapy. OSMapaPL szczegółowo obejmuje Polskę.

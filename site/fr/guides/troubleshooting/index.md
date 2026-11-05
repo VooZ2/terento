@@ -9,6 +9,14 @@ Dépannage
 
 Trouvez votre problème, d’une montre Garmin que le Mac ne détecte pas à un téléchargement de carte qui échoue, et suivez les étapes courtes. Si rien ne fonctionne, envoyez un rapport pour que nous puissions l’examiner.
 
+Garmin Edge
+
+## Garmin Edge non détecté sur Mac
+
+Les compteurs vélo Garmin Edge récents qui prennent en charge les cartes se connectent au Mac comme les montres Garmin actuelles : la plupart des étapes de cette page valent donc aussi pour un Edge. Utilisez un câble USB de données, quittez Garmin Express et attendez jusqu’à 2 minutes. Les anciens Edge qui apparaissent comme un disque dans le Finder fonctionnent autrement.
+
+[Lire le guide Garmin Edge](https://terento.app/fr/guides/install-garmin-maps-edge-mac/)
+
 Connexion
 
 ## Problèmes de connexion de la montre Garmin
@@ -18,13 +26,15 @@ Connexion
 Connectez la montre directement à votre Mac avec un câble USB qui transfère les données, déverrouillez-la et attendez jusqu’à 2 minutes : Terento la détecte automatiquement.
 
 1. Utilisez un câble de données. Les câbles de recharge seule et certains hubs USB ne fonctionnent pas.
-2. Attendez jusqu’à 2 minutes pendant que Terento vérifie la connexion.
-3. Si la montre n’apparaît toujours pas, débranchez-la, attendez quelques secondes et reconnectez-la.
-4. Si une autre app est ouverte, voir [Garmin Express ou une autre app utilise la montre](https://terento.app/fr/guides/troubleshooting/#garmin-busy).
+2. Il est normal que la montre ou l’Edge n’apparaisse pas dans le Finder : macOS n’ouvre pas la plupart des montres Garmin actuelles ni des Edge récents comme un disque. Terento dialogue directement avec l’appareil.
+3. Sur un Mac portable, si macOS demande d’autoriser la connexion de l’accessoire, choisissez Autoriser.
+4. Attendez jusqu’à 2 minutes pendant que Terento vérifie la connexion.
+5. Si la montre n’apparaît toujours pas, débranchez-la, attendez quelques secondes et reconnectez-la.
+6. Si une autre app est ouverte, voir [Garmin Express ou une autre app utilise la montre](https://terento.app/fr/guides/troubleshooting/#garmin-busy).
 
 ### Garmin Express ou une autre app utilise la montre
 
-Quittez Garmin Express et les apps de transfert de fichiers comme Android File Transfer, OpenMTP ou MacDroid : une seule app à la fois peut utiliser la connexion de la montre.
+Quittez Garmin Express et les apps de transfert de fichiers comme Android File Transfer, OpenMTP ou MacDroid : une seule app à la fois peut utiliser la connexion de la montre ou de l’Edge.
 
 1. Quittez Garmin Express, Android File Transfer, OpenMTP, MacDroid et les autres apps MTP. Si Terento nomme une app, quittez-la en premier.
 2. Fermez aussi Transfert d’images, Photos et Aperçu s’ils sont ouverts.
@@ -40,7 +50,7 @@ Déconnectez tous les appareils Garmin sauf la montre que vous voulez utiliser :
 
 ### Montre Garmin non reconnue : mode USB (MTP)
 
-Si Terento indique que la montre n’est pas prête pour le transfert de fichiers, réglez le mode USB de la montre sur MTP, si votre modèle dispose de ce réglage.
+Si Terento indique que la montre n’est pas prête pour le transfert de fichiers, réglez le mode USB de la montre sur MTP, si votre modèle propose ce réglage. Le MTP (Media Transfer Protocol) est la façon dont la plupart des montres Garmin actuelles partagent leurs fichiers en USB, comme les téléphones Android. macOS ne gère pas le MTP nativement, la montre n’apparaît donc pas comme un disque ; Terento utilise lui-même le MTP, vous n’avez donc besoin ni d’Android File Transfer ni d’OpenMTP.
 
 1. Sur la montre, ouvrez Mode USB, généralement dans Paramètres › Système. Tous les modèles ne l’ont pas.
 2. Choisissez MTP.
@@ -148,8 +158,4 @@ Sur l’écran d’échec, choisissez « Report issue » : Terento ouvre GitHub 
 3. Vérifiez le rapport avant de le publier : les issues GitHub sont publiques.
 4. Pas de compte GitHub ? Écrivez à [hello@terento.app](mailto:hello@terento.app?subject=Terento%20installation%20issue) en indiquant le modèle de votre montre, la région de la carte et ce qui s’est passé.
 
-Nouveau sur Terento ?
-
-## Commencez par le guide d’installation en trois étapes.
-
-[Lire le guide d’installation sur Mac](https://terento.app/fr/guides/install-garmin-maps-mac/)
+Nouveau sur Terento ? [Lire le guide d’installation sur Mac](https://terento.app/fr/guides/install-garmin-maps-mac/)

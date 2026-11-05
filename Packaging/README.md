@@ -257,8 +257,12 @@ Before distributing a public build:
   guides, guide links, compatibility, public shell, metadata); a later step
   rewrites the output of an earlier one, so running a single generator such as
   `build-guide-pages.py` alone produces stale pages. Then run
-  `python3 scripts/build-markdown-pages.py --write`. The guide review date
-  follows the manifest `publishedAt`;
+  `python3 scripts/build-markdown-pages.py --write`. The Mac guide's
+  `dateModified` is the later of the manifest `publishedAt` and
+  `GUIDE_CONTENT_REVIEWED` in `scripts/build-guide-pages.py`; bump that date
+  whenever the guide text changes, because
+  `Tests/site-discoverability-tests.py` requires every guide's `dateModified`
+  to equal its sitemap `lastmod`;
 - commit the regenerated pages before `python3 scripts/generate-sitemap.py
   --write`: sitemap `lastmod` comes from Git history and is omitted for
   uncommitted pages;

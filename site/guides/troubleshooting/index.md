@@ -9,6 +9,14 @@ Troubleshooting
 
 Find the problem you see, from a Garmin watch that doesn’t show up on your Mac to a map download that fails, and follow the short steps. If nothing helps, send a report so we can take a look.
 
+Garmin Edge
+
+## Garmin Edge not showing up on Mac
+
+Newer Garmin Edge bike computers with map support connect to a Mac the same way current Garmin watches do, so most steps on this page work for an Edge too: use a USB data cable, quit Garmin Express and wait up to 2 minutes. Older Edge models that show up as a drive in Finder work differently.
+
+[Read the Garmin Edge guide](https://terento.app/guides/install-garmin-maps-edge-mac/)
+
 Connection
 
 ## Garmin watch connection problems
@@ -18,13 +26,15 @@ Connection
 Connect the watch directly to your Mac with a USB cable that supports data, unlock it and wait up to 2 minutes: Terento finds it automatically.
 
 1. Use a USB data cable. Charge-only cables and some USB hubs don’t work.
-2. Wait up to 2 minutes while Terento checks the connection.
-3. If the watch still doesn’t appear, unplug it, wait a few seconds and connect it again.
-4. If another app is open, see [Garmin Express or another app is using the watch](https://terento.app/guides/troubleshooting/#garmin-busy).
+2. Your watch or Edge won’t appear in Finder, and that’s normal: macOS doesn’t open most current Garmin watches and newer Edge models as a drive. Terento talks to the device directly.
+3. On a Mac laptop, if macOS asks whether to allow the accessory to connect, choose Allow.
+4. Wait up to 2 minutes while Terento checks the connection.
+5. If the watch still doesn’t appear, unplug it, wait a few seconds and connect it again.
+6. If another app is open, see [Garmin Express or another app is using the watch](https://terento.app/guides/troubleshooting/#garmin-busy).
 
 ### Garmin Express or another app is using the watch
 
-Quit Garmin Express and file-transfer apps such as Android File Transfer, OpenMTP or MacDroid: only one app at a time can use the watch connection.
+Quit Garmin Express and file-transfer apps such as Android File Transfer, OpenMTP or MacDroid: only one app at a time can use the connection to the watch or Edge.
 
 1. Quit Garmin Express, Android File Transfer, OpenMTP, MacDroid and other MTP apps. If Terento names an app, quit that one first.
 2. Also close Image Capture, Photos and Preview if they are open.
@@ -40,7 +50,7 @@ Disconnect every Garmin device except the watch you want to use: Terento works w
 
 ### Garmin watch not recognized: USB mode (MTP)
 
-If Terento says the watch isn’t ready for file transfer, set the watch’s USB Mode to MTP, if your model has this setting.
+If Terento says the watch isn’t ready for file transfer, set the watch’s USB Mode to MTP, if your model has this setting. MTP (Media Transfer Protocol) is how most current Garmin watches share files over USB, the same way Android phones do. macOS has no built-in MTP support, so the watch doesn’t show up as a drive; Terento uses MTP itself, so you don’t need Android File Transfer or OpenMTP.
 
 1. On the watch, open USB Mode, usually under Settings › System. Not every model has it.
 2. Choose MTP.
@@ -148,8 +158,4 @@ Choose “Report issue” on the failure screen: Terento opens GitHub with the r
 3. Review the report before posting: GitHub issues are public.
 4. No GitHub account? Email [hello@terento.app](mailto:hello@terento.app?subject=Terento%20installation%20issue) with your watch model, the map region and what happened.
 
-New to Terento?
-
-## Start with the three-step installation guide.
-
-[Read the Mac installation guide](https://terento.app/guides/install-garmin-maps-mac/)
+New to Terento? [Read the Mac installation guide](https://terento.app/guides/install-garmin-maps-mac/)

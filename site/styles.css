@@ -805,6 +805,18 @@ h1 {
   min-height: 44px;
 }
 
+/* The two secondary hero links share one row and wrap only when it is too narrow. */
+.hero-secondary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 28px;
+}
+
+.hero-secondary-actions > a {
+  min-height: 44px;
+}
+
 .primary-nav .download-action {
   min-height: 40px;
   padding: 8px 14px;
@@ -1180,6 +1192,11 @@ h1 {
 
 .section-heading h2 .workflow-title-bullet {
   display: none;
+}
+
+/* Drawn by CSS so the heading text reads "Connect → Install → Done". */
+.section-heading h2 .workflow-title-bullet::before {
+  content: "•";
 }
 
 .problem-statement {
@@ -1609,11 +1626,18 @@ h1 {
   line-height: 1.04;
 }
 
-.final-cta-copy p:not(.eyebrow) {
+.final-cta-copy p {
   max-width: 520px;
   margin-bottom: 0;
   color: var(--secondary);
   font-size: 17px;
+}
+
+.final-cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 28px;
 }
 
 .testing-grid,
@@ -2179,6 +2203,16 @@ details p {
     width: 100%;
   }
 
+  .final-cta-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .final-cta-actions .text-link {
+    justify-content: center;
+    min-height: 44px;
+  }
+
   .download-detail .download-info-link {
     margin-top: 18px;
   }
@@ -2544,10 +2578,15 @@ details p {
 }
 
 .watch-variant {
+  display: block;
   min-height: 24px;
   margin: 6px 0 0;
   color: var(--secondary);
+  font-family: var(--font-ui);
   font-size: 14px;
+  font-weight: 400;
+  letter-spacing: normal;
+  line-height: 1.53;
 }
 
 .status-badge {
@@ -2702,10 +2741,17 @@ details p {
   font-size: 15px;
 }
 
-.compatibility-guide-link {
+.compatibility-guide-link,
+.compatibility-web-installer-link {
   display: inline-flex;
   margin-top: 13px;
   font-size: 13px;
+}
+
+.compatibility-web-installer-link {
+  display: flex;
+  width: fit-content;
+  margin-top: 6px;
 }
 
 .compatibility-community-link {
@@ -2736,10 +2782,6 @@ details p {
   color: var(--secondary);
   font-size: clamp(18px, 2vw, 21px);
   line-height: 1.5;
-}
-
-.guide-bottom-cta .download-action {
-  min-height: 46px;
 }
 
 .guide-facts {
@@ -2928,6 +2970,38 @@ details p {
   line-height: 1.55;
 }
 
+/* Steps without screenshots (Linux guide, 2026-11-02): marker and text only. */
+.guide-timeline-text .guide-step {
+  grid-template-columns: 72px minmax(0, 1fr);
+  padding-bottom: 48px;
+}
+
+.guide-timeline-text .guide-step:not(:last-child)::before {
+  grid-column: 1;
+  margin-bottom: -48px;
+}
+
+.guide-timeline-text .guide-step-marker {
+  grid-column: 1;
+}
+
+.guide-timeline-text .guide-step-copy {
+  grid-column: 2;
+}
+
+.guide-command {
+  margin: 16px 0 0;
+  padding: 14px 16px;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-muted);
+  color: var(--graphite);
+  font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .guide-step-note {
   margin-top: 14px !important;
   padding: 12px 14px;
@@ -3015,13 +3089,45 @@ details p {
   border-bottom: 1px solid var(--border);
 }
 
-.guide-bottom-cta .download-action {
-  flex: 0 0 auto;
-  white-space: nowrap;
-}
-
 .troubleshooting-list {
   border-top: 1px solid var(--border);
+}
+
+.troubleshooting-toc {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 24px 40px;
+  margin-top: 36px;
+  padding-top: 28px;
+  border-top: 1px solid var(--border);
+}
+
+.troubleshooting-toc-title {
+  margin: 0 0 6px;
+  color: var(--muted-text);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.troubleshooting-toc ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.troubleshooting-toc a {
+  display: inline-block;
+  padding: 5px 0;
+  color: var(--link-text);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-decoration: none;
+}
+
+.troubleshooting-toc a:hover {
+  text-decoration: underline;
 }
 
 .troubleshooting-item {
@@ -3067,6 +3173,17 @@ details p {
 
 .troubleshooting-more {
   margin: 22px 0 0;
+}
+
+.guide-hero-action {
+  margin: 28px 0 0;
+}
+
+.troubleshooting-guide-link {
+  margin: 0;
+  padding: clamp(40px, 5vw, 56px) 0 clamp(64px, 8vw, 96px);
+  color: var(--muted-text);
+  font-size: 16px;
 }
 
 .guide-bottom-cta {
@@ -3138,10 +3255,6 @@ details p {
     align-items: flex-start;
     flex-direction: column;
     padding: 28px 0;
-  }
-
-  .guide-bottom-cta .download-action {
-    width: 100%;
   }
 }
 
@@ -3339,6 +3452,7 @@ details p {
 .map-styles-hero h1 { max-width: 1100px; margin: 12px 0 16px; font-size: clamp(48px, 5.2vw, 76px); }
 .map-styles-hero .hero-lede { max-width: 840px; margin-bottom: 0; }
 .map-styles-frame { width: min(calc(100% - 48px), 1440px); margin: 0 auto 24px; }
+/* The viewer leaves room for the hero so the style pickers at its bottom show on the first screen. */
 .map-styles-viewer { position: relative; height: clamp(540px, 80vh, 840px); overflow: hidden; overflow: clip; isolation: isolate; container: map-styles-viewer / size; border: 1px solid var(--border); border-radius: 18px; background: var(--surface-muted); }
 .map-styles-stage { position: absolute; inset: 0; --map-styles-split: 50%; }
 .map-styles-pane { position: absolute; inset: 0; overflow: hidden; }
@@ -3465,14 +3579,17 @@ details p {
 .map-styles-about-details > summary::-webkit-details-marker { display: none; }
 .map-styles-about-details > summary:hover { color: var(--graphite); }
 .map-styles-about-label { display: inline-flex; align-items: center; gap: 8px; }
-.map-styles-about-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; margin-top: 12px; }
-.map-styles-about-card { display: grid; align-content: start; gap: 8px; padding: 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
-.map-styles-about-card h3 { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 8px; margin: 0; font: 600 17px/1.3 var(--font-ui); letter-spacing: 0; }
-.map-styles-about-summary { margin: 0; font-size: 15px; line-height: 1.45; }
-.map-styles-about-card ul { display: grid; gap: 4px; margin: 0; padding-left: 18px; color: var(--muted-text); font-size: 14px; line-height: 1.4; }
-.map-styles-about-language { display: flex; align-items: flex-start; gap: 6px; margin: 0; color: var(--muted-text); font-size: 13px; }
-.map-styles-about-language .map-styles-icon { width: 16px; height: 16px; margin-top: 1px; }
+/* The style cards reuse the home page provider cards (.provider-cards, owner 2026-11-02). */
+.map-styles-about-cards { margin-top: 12px; }
+/* Inside the open About details, keep the summary text colour and the closed add-on chevron as on the home page. */
+.map-styles-about-cards .provider-summary { color: inherit; }
+.map-styles-about-cards .provider-addon:not([open]) > summary.provider-addon-toggle::after { transform: rotate(45deg) translateY(-2px); }
 .map-styles-about-note { max-width: 80ch; margin: 14px 4px 0; color: var(--muted-text); font-size: 14px; line-height: 1.5; }
+.map-styles-install { margin-top: -16px; padding-bottom: 40px; color: var(--muted-text); font-size: 15px; line-height: 1.5; }
+.map-styles-guide { padding-bottom: 48px; }
+.map-styles-guide h2 { max-width: 30ch; margin: 0 0 16px; font-size: clamp(26px, 3vw, 34px); line-height: 1.15; }
+.map-styles-guide-text { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px 40px; max-width: 1100px; }
+.map-styles-guide-text p { margin: 0; color: var(--muted-text); font-size: 16px; line-height: 1.6; }
 .map-styles-viewer:not(.is-ready) .map-styles-overlay, .map-styles-viewer:not(.is-ready) .map-styles-zoom, .map-styles-viewer:not(.is-ready) .map-styles-divider { display: none; }
 
 @media (max-width: 1000px) {

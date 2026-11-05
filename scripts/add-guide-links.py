@@ -17,6 +17,8 @@ COPY = {
         "download_guide": "Read the Mac installation guide",
         "download_compatibility": "Check compatibility",
         "download_web_installer": "No Apple Silicon Mac? Use the web installer",
+        "download_linux_guide": "On Linux? Read the Linux guide",
+        "download_edge_guide": "Garmin Edge? Read the Edge guide",
         "compatibility": "First time installing third-party maps? Read the Mac guide",
         "community_eyebrow": "Community results",
         "community_heading": "Don’t see your Garmin here?",
@@ -30,6 +32,8 @@ COPY = {
         "download_guide": "Mac-Installationsanleitung lesen",
         "download_compatibility": "Kompatibilität prüfen",
         "download_web_installer": "Kein Mac mit Apple Silicon? Nutze den Web-Installer",
+        "download_linux_guide": "Linux? Lies die Linux-Anleitung",
+        "download_edge_guide": "Garmin Edge? Lies die Edge-Anleitung",
         "compatibility": "Zum ersten Mal Drittanbieter-Karten installieren? Lies die Mac-Anleitung",
         "community_eyebrow": "Ergebnisse aus der Community",
         "community_heading": "Dein Garmin ist nicht dabei?",
@@ -43,6 +47,8 @@ COPY = {
         "download_guide": "Lire le guide d’installation sur Mac",
         "download_compatibility": "Vérifier la compatibilité",
         "download_web_installer": "Pas de Mac Apple Silicon ? Utilisez l’installateur web",
+        "download_linux_guide": "Sous Linux ? Lisez le guide Linux",
+        "download_edge_guide": "Un Garmin Edge ? Lisez le guide Edge",
         "compatibility": "Vous installez des cartes tierces pour la première fois ? Lisez le guide Mac",
         "community_eyebrow": "Résultats de la communauté",
         "community_heading": "Votre Garmin n’apparaît pas ?",
@@ -56,6 +62,8 @@ COPY = {
         "download_guide": "Przeczytaj instrukcję instalacji na Macu",
         "download_compatibility": "Sprawdź kompatybilność",
         "download_web_installer": "Nie masz Maca z Apple Silicon? Użyj instalatora webowego",
+        "download_linux_guide": "Linux? Przeczytaj przewodnik dla Linuksa",
+        "download_edge_guide": "Garmin Edge? Przeczytaj poradnik dla Edge",
         "compatibility": "Instalujesz mapy innych firm pierwszy raz? Przeczytaj instrukcję na Macu",
         "community_eyebrow": "Wyniki społeczności",
         "community_heading": "Nie widzisz swojego Garmina?",
@@ -69,6 +77,8 @@ COPY = {
         "download_guide": "Přečíst průvodce instalací na Macu",
         "download_compatibility": "Ověřit kompatibilitu",
         "download_web_installer": "Nemáte Mac s Apple Silicon? Použijte webový instalátor",
+        "download_linux_guide": "Linux? Přečtěte si návod pro Linux",
+        "download_edge_guide": "Garmin Edge? Přečtěte si průvodce pro Edge",
         "compatibility": "Instalujete mapy třetích stran poprvé? Přečtěte si průvodce pro Mac",
         "community_eyebrow": "Výsledky komunity",
         "community_heading": "Nevidíte zde svůj Garmin?",
@@ -82,6 +92,8 @@ COPY = {
         "download_guide": "Leggi la guida all’installazione su Mac",
         "download_compatibility": "Verifica la compatibilità",
         "download_web_installer": "Niente Mac con Apple Silicon? Usa l’installer web",
+        "download_linux_guide": "Usi Linux? Leggi la guida per Linux",
+        "download_edge_guide": "Hai un Garmin Edge? Leggi la guida Edge",
         "compatibility": "Installi mappe di terze parti per la prima volta? Leggi la guida per Mac",
         "community_eyebrow": "Risultati della community",
         "community_heading": "Non vedi il tuo Garmin?",
@@ -128,12 +140,12 @@ def download_link(label: str, href: str, *, event=None, location=None) -> str:
 
 
 DOWNLOAD_PRESENTATION = {
-    "en": ("A native Mac app for installing and managing community maps on Garmin smartwatches with map support.", "Free", "Notarized", "Terento showing a connected Garmin watch on macOS"),
-    "de": ("Eine native Mac-App zum Installieren und Verwalten von Community-Karten auf Garmin-Smartwatches mit Kartenunterstützung.", "Kostenlos", "Notarisiert", "Terento zeigt eine verbundene Garmin-Uhr unter macOS"),
-    "fr": ("Une application Mac native pour installer et gérer des cartes communautaires sur les montres Garmin prenant en charge les cartes.", "Gratuit", "Notarié", "Terento affiche une montre Garmin connectée sur macOS"),
-    "pl": ("Natywna aplikacja na Maca do instalowania i zarządzania mapami społecznościowymi na zegarkach Garmin obsługujących mapy.", "Bezpłatna", "Notaryzowana", "Terento pokazuje podłączony zegarek Garmin w macOS"),
-    "cs": ("Nativní aplikace pro Mac k instalaci a správě komunitních map na hodinkách Garmin s podporou map.", "Zdarma", "Notarizovaná", "Terento zobrazuje připojené hodinky Garmin v macOS"),
-    "it": ("Un’app Mac nativa per installare e gestire mappe della comunità sugli smartwatch Garmin con supporto alle mappe.", "Gratuita", "Notarizzata", "Terento mostra uno smartwatch Garmin collegato su macOS"),
+    "en": ("A native Mac app for installing and managing third-party maps on Garmin smartwatches with map support.", "Free", "Notarized", "Terento showing a connected Garmin watch on macOS"),
+    "de": ("Eine native Mac-App zum Installieren und Verwalten von Drittanbieter-Karten auf Garmin-Smartwatches mit Kartenunterstützung.", "Kostenlos", "Notarisiert", "Terento zeigt eine verbundene Garmin-Uhr unter macOS"),
+    "fr": ("Une application Mac native pour installer et gérer des cartes tierces sur les montres Garmin prenant en charge les cartes.", "Gratuit", "Notarié", "Terento affiche une montre Garmin connectée sur macOS"),
+    "pl": ("Natywna aplikacja na Maca do instalowania i zarządzania mapami innych firm na zegarkach Garmin obsługujących mapy.", "Bezpłatna", "Notaryzowana", "Terento pokazuje podłączony zegarek Garmin w macOS"),
+    "cs": ("Nativní aplikace pro Mac k instalaci a správě map třetích stran na hodinkách Garmin s podporou map.", "Zdarma", "Notarizovaná", "Terento zobrazuje připojené hodinky Garmin v macOS"),
+    "it": ("Un’app Mac nativa per installare e gestire mappe di terze parti sugli smartwatch Garmin con supporto alle mappe.", "Gratuita", "Notarizzata", "Terento mostra uno smartwatch Garmin collegato su macOS"),
 }
 
 
@@ -288,8 +300,20 @@ def add_download_link(locale: str) -> None:
         event="web-installer-link-click",
         location="download-page",
     )
+    linux_guide = download_link(
+        COPY[locale]["download_linux_guide"],
+        f"/{'' if locale == 'en' else f'{locale}/'}guides/install-garmin-maps-linux/",
+        event="guide-link-click",
+        location="download-page-linux",
+    )
+    edge_guide = download_link(
+        COPY[locale]["download_edge_guide"],
+        f"/{'' if locale == 'en' else f'{locale}/'}guides/install-garmin-maps-edge-mac/",
+        event="guide-link-click",
+        location="download-page-edge",
+    )
     source = replace_download_section_link(source, 1, compatibility)
-    source = replace_download_section_link(source, 0, guide + web_installer)
+    source = replace_download_section_link(source, 0, guide + web_installer + linux_guide + edge_guide)
     path.write_text(source, encoding="utf-8")
 
 
@@ -318,13 +342,15 @@ def add_compatibility_link(locale: str) -> None:
             raise RuntimeError(f"Compatibility evidence explanation not found for {locale}")
     guide = f'<a class="text-link compatibility-guide-link" href="{localized_guide(locale)}" data-umami-event="guide-link-click" data-umami-event-location="compatibility-community-testing">{COPY[locale]["compatibility"]} <span aria-hidden="true">→</span></a>'
     download = f'<a class="download-action download-action-primary compatibility-community-link" href="{localized_download(locale)}" data-umami-event="download-cta-click" data-umami-event-location="compatibility-community-testing">{COPY[locale]["community_download"]}</a>'
+    # Without an Apple Silicon Mac: the web installer (2026-11-02, same words as the Download page).
+    web_installer = f'<a class="text-link compatibility-web-installer-link" href="/{'' if locale == 'en' else f'{locale}/'}install/" data-umami-event="web-installer-link-click" data-umami-event-location="compatibility-community-testing">{COPY[locale]["download_web_installer"]} <span aria-hidden="true">→</span></a>'
     community = (
         '<div class="compatibility-community-cta">'
         '<div class="compatibility-community-copy">'
         f'<p class="eyebrow">{COPY[locale]["community_eyebrow"]}</p>'
         f'<h2>{COPY[locale]["community_heading"]}</h2>'
         f'<p>{COPY[locale]["community_body"]}</p>'
-        f'{guide}'
+        f'{guide}{web_installer}'
         '</div>'
         f'{download}'
         '</div></div></section>'

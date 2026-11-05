@@ -104,12 +104,53 @@ raise SystemExit(module.run(args))
 '''
 
 
+def test_live_external_page_names_itself_canonical() -> None:
+    class Http:
+        def __init__(self, body: bytes) -> None:
+            self.body = body
+
+        def request(self, label: str, arguments: list[str]) -> tuple[int, bytes]:
+            url = arguments[-1]
+            if url.endswith("/sitemap.xml"):
+                return 0, (ROOT / "site/sitemap.xml").read_bytes()
+            return 0, self.body
+
+    url = "https://terento.app/de/install/"
+    with tempfile.TemporaryDirectory() as directory:
+        manifest, plan = Path(directory) / "manifest.json", Path(directory) / "plan.json"
+        manifest.write_text(json.dumps({"baseUrl": "https://terento.app", "pages": [{"path": "/de/install/", "url": url, "external": True, "indexable": True, "fingerprint": "x"}]}))
+        plan.write_text(json.dumps({"entries": [{"url": url, "kind": "new"}]}))
+        argv, original = sys.argv, live_site.load_http
+        try:
+            sys.argv = ["verify-live-site.py", "--current-manifest", str(manifest), "--plan", str(plan)]
+            live_site.load_http = lambda: Http(f'<html><link rel="canonical" href="{url}"></html>'.encode())
+            assert live_site.main() == 0
+            live_site.load_http = lambda: Http(b'<html><link rel="canonical" href="https://terento.app/install/"></html>')
+            assert live_site.main() == 1
+        finally:
+            sys.argv, live_site.load_http = argv, original
+
+
 def test_sitemap_contract() -> None:
     manifest = sitemap.build_manifest(ROOT / ".github/indexnow/site-state.json")
     rendered = sitemap.render_sitemap(manifest)
     assert rendered == (ROOT / "site/sitemap.xml").read_text(encoding="utf-8")
     indexable = [page for page in manifest["pages"] if page["indexable"]]
-    assert len(indexable) == 42
+    assert len(indexable) == 60
+    # The web installer (another service on this host): listed with its reviewed lastmod.
+    external = [page for page in indexable if page.get("external")]
+    assert [page["path"] for page in external] == ["/install/", "/de/install/", "/fr/install/", "/pl/install/", "/cs/install/", "/it/install/"]
+    assert all("file" not in page and page["lastmod"] for page in external)
+    assert "<loc>https://terento.app/de/install/</loc>" in rendered
+    entry = {"path": "/install/", "locale": "en", "title": "T", "description": "D", "lastmod": "2026-11-02"}
+    assert sitemap.external_fingerprint(entry) != sitemap.external_fingerprint({**entry, "lastmod": "2026-11-03"})
+    for bad in ({**entry, "file": "site/x.html"}, {**entry, "path": "/install"}, {**entry, "lastmod": "soon"}, {**entry, "path": "/"}):
+        try:
+            sitemap.validate_external_page(bad, [*json.loads((ROOT / "site/metadata.json").read_text())["pages"], bad])
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"external page accepted: {bad}")
     assert all(page.get("lastmod") or page.get("lastmodOmittedReason") ==
                "uncommitted content has no reliable Git date" for page in indexable)
     assert "https://terento.app/legal/" not in rendered
@@ -562,6 +603,7 @@ def test_secret_and_runtime_boundaries() -> None:
 
 if __name__ == "__main__":
     test_live_page_cloudflare_email_equivalence()
+    test_live_external_page_names_itself_canonical()
     test_sitemap_contract()
     test_sitemap_reproducibility_from_clean_git_history()
     test_delta_selection_and_bootstrap()

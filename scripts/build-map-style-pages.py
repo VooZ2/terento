@@ -20,12 +20,14 @@ SLUG = "map-styles/"
 AREAS = json.loads((ROOT / "contracts/map-preview-areas.json").read_text(encoding="utf-8"))
 HOME = runpy.run_path(str(ROOT / "scripts/normalize-home-ia.py"))
 SHELL = runpy.run_path(str(ROOT / "scripts/normalize-public-shell.py"))
+SCHEMA = runpy.run_path(str(ROOT / "scripts/page_schema.py"))
 PROVIDER_COPY = HOME["PROVIDER_CARD_COPY"]
-MAPRANDO_NOTES = HOME["MAPRANDO_LANGUAGE_NOTES"]
-STYLE_NOTES = {"maprando": MAPRANDO_NOTES, "bbbike-opentopo": HOME["BBBIKE_OPENTOPO_NOTES"]}
 LEAFLET_VERSION = "1.9.4"
-SCRIPT_VERSION = "20261029-map-styles-v12"
+SCRIPT_VERSION = "20261102-map-styles-v13"
 MANIFEST_URL = "https://api.terento.app/maps/previews/manifest.json"
+# The view the page opens on: a well-known coastal hike where both of the most
+# installed styles render clearly (sea, villages, trails) side by side.
+DEFAULT_VIEW = {"area": "cinque-terre", "a": "opentopomap", "b": "freizeitkarte"}
 # BBBike stopped publishing its classic "bbbike" Garmin style for regular
 # regions in October 2026, so its Ontrail and OpenTopoMap styles are compared.
 STYLE_IDS = ("freizeitkarte", "opentopomap", "maprando", "bbbike-ontrail", "bbbike-opentopo")
@@ -107,6 +109,11 @@ COPY: dict[str, dict[str, object]] = {
         "showing": "Showing {style} for {place}",
         "about": "About the map styles",
         "about_note": "Previews are close, not exact: your watch draws the map itself, so colours and detail can differ with the watch model and its map settings.",
+        "guide_title": "Free OpenStreetMap maps for Garmin watches",
+        "guide_paragraphs": ["Every style here is a free map built from OpenStreetMap, the map that volunteers keep up to date. Community projects turn that data into Garmin maps, each with its own look and level of detail.", "Pick by what you do: Freizeitkarte includes contour lines, while OpenTopoMap shows shaded relief and can add contour lines. MapRando also draws small paths beyond the main trails. BBBike is made for streets and cycle paths, and its Ontrail style keeps maps small. OSMapaPL covers Poland in detail."],
+        "install_line": "Install these maps on your watch with the {mac} or the {web}.",
+        "install_mac": "Mac app",
+        "install_web": "web installer",
         "noscript": "Turn on JavaScript to compare the map styles on the map.",
         "continents": {"europe": "Europe", "north-america": "North America", "south-america": "South America", "africa": "Africa", "asia": "Asia", "oceania": "Oceania"},
         "tags": {"mountains": "Mountains", "glaciers": "Glaciers", "lakes": "Lakes", "coast": "Coast", "forest": "Forest", "volcano": "Volcano", "canyon": "Canyon", "dunes": "Dunes", "river": "River", "highlands": "Highlands", "island": "Island", "rocks": "Rock formations", "city": "City", "cycling": "Cycling", "parks": "Parks", "old-town": "Old town", "non-latin-labels": "Non-Latin labels", "long-distance-trail": "Long-distance trail", "pilgrim-route": "Pilgrim route"},
@@ -157,6 +164,11 @@ COPY: dict[str, dict[str, object]] = {
         "showing": "{style} für {place} wird angezeigt",
         "about": "Über die Kartenstile",
         "about_note": "Vorschauen sind nah dran, aber nicht exakt: Deine Uhr zeichnet die Karte selbst, daher können Farben und Details je nach Modell und Karteneinstellungen abweichen.",
+        "guide_title": "Kostenlose OpenStreetMap-Karten für Garmin-Uhren",
+        "guide_paragraphs": ["Jeder Stil hier ist eine kostenlose Karte auf Basis von OpenStreetMap, der Karte, die Freiwillige aktuell halten. Community-Projekte machen daraus Garmin-Karten, jede mit eigenem Aussehen und eigenem Detailgrad.", "Wähle nach dem, was du vorhast: Freizeitkarte enthält Höhenlinien, OpenTopoMap zeigt Geländeschummerung und kann Höhenlinien ergänzen. MapRando zeigt auch kleine Pfade abseits der Hauptwege. BBBike ist für Straßen und Radwege gemacht, sein Ontrail-Stil hält die Karten klein. OSMapaPL deckt Polen detailliert ab."],
+        "install_line": "Installiere diese Karten mit der {mac} oder dem {web} auf deiner Uhr.",
+        "install_mac": "Mac-App",
+        "install_web": "Web-Installer",
         "noscript": "Aktiviere JavaScript, um die Kartenstile auf der Karte zu vergleichen.",
         "continents": {"europe": "Europa", "north-america": "Nordamerika", "south-america": "Südamerika", "africa": "Afrika", "asia": "Asien", "oceania": "Ozeanien"},
         "tags": {"mountains": "Berge", "glaciers": "Gletscher", "lakes": "Seen", "coast": "Küste", "forest": "Wald", "volcano": "Vulkan", "canyon": "Schlucht", "dunes": "Dünen", "river": "Fluss", "highlands": "Hochland", "island": "Insel", "rocks": "Felsformationen", "city": "Stadt", "cycling": "Radfahren", "parks": "Parks", "old-town": "Altstadt", "non-latin-labels": "Nicht-lateinische Beschriftung", "long-distance-trail": "Fernwanderweg", "pilgrim-route": "Pilgerweg"},
@@ -207,6 +219,11 @@ COPY: dict[str, dict[str, object]] = {
         "showing": "Affichage de {style} pour {place}",
         "about": "À propos des styles de carte",
         "about_note": "Les aperçus sont proches, mais pas exacts : votre montre dessine elle-même la carte, les couleurs et le niveau de détail peuvent donc varier selon le modèle et ses réglages de carte.",
+        "guide_title": "Cartes OpenStreetMap gratuites pour montres Garmin",
+        "guide_paragraphs": ["Chaque style présenté ici est une carte gratuite issue d’OpenStreetMap, la carte tenue à jour par des bénévoles. Des projets communautaires en font des cartes Garmin, chacune avec son propre rendu et son niveau de détail.", "Choisissez selon votre activité : Freizeitkarte inclut les courbes de niveau, OpenTopoMap montre l’ombrage du relief et peut ajouter des courbes de niveau. MapRando affiche aussi les petits sentiers hors des grands itinéraires. BBBike est pensé pour les rues et les pistes cyclables, et son style Ontrail garde des cartes légères. OSMapaPL couvre la Pologne en détail."],
+        "install_line": "Installez ces cartes sur votre montre avec l’{mac} ou l’{web}.",
+        "install_mac": "app pour Mac",
+        "install_web": "installateur web",
         "noscript": "Activez JavaScript pour comparer les styles sur la carte.",
         "continents": {"europe": "Europe", "north-america": "Amérique du Nord", "south-america": "Amérique du Sud", "africa": "Afrique", "asia": "Asie", "oceania": "Océanie"},
         "tags": {"mountains": "Montagnes", "glaciers": "Glaciers", "lakes": "Lacs", "coast": "Côte", "forest": "Forêt", "volcano": "Volcan", "canyon": "Canyon", "dunes": "Dunes", "river": "Rivière", "highlands": "Hautes terres", "island": "Île", "rocks": "Formations rocheuses", "city": "Ville", "cycling": "Vélo", "parks": "Parcs", "old-town": "Vieille ville", "non-latin-labels": "Libellés non latins", "long-distance-trail": "Grande randonnée", "pilgrim-route": "Chemin de pèlerinage"},
@@ -257,6 +274,11 @@ COPY: dict[str, dict[str, object]] = {
         "showing": "Wyświetlono {style} dla miejsca {place}",
         "about": "O stylach map",
         "about_note": "Podglądy są zbliżone, ale nie dokładne: zegarek sam rysuje mapę, więc kolory i szczegóły mogą się różnić w zależności od modelu i ustawień mapy.",
+        "guide_title": "Darmowe mapy OpenStreetMap na zegarki Garmin",
+        "guide_paragraphs": ["Każdy styl na tej stronie to darmowa mapa oparta na OpenStreetMap, mapie aktualizowanej przez wolontariuszy. Projekty społecznościowe tworzą z tych danych mapy Garmin, każdą z własnym wyglądem i poziomem szczegółów.", "Wybierz według tego, co robisz: Freizeitkarte ma poziomice, a OpenTopoMap pokazuje cieniowanie rzeźby terenu i może dodać poziomice. MapRando pokazuje też małe ścieżki poza głównymi szlakami. BBBike powstał z myślą o ulicach i drogach rowerowych, a jego styl Ontrail daje małe mapy. OSMapaPL szczegółowo obejmuje Polskę."],
+        "install_line": "Zainstaluj te mapy na zegarku w {mac} lub w {web}.",
+        "install_mac": "aplikacji na Maca",
+        "install_web": "instalatorze webowym",
         "noscript": "Włącz JavaScript, aby porównać style na mapie.",
         "continents": {"europe": "Europa", "north-america": "Ameryka Północna", "south-america": "Ameryka Południowa", "africa": "Afryka", "asia": "Azja", "oceania": "Oceania"},
         "tags": {"mountains": "Góry", "glaciers": "Lodowce", "lakes": "Jeziora", "coast": "Wybrzeże", "forest": "Las", "volcano": "Wulkan", "canyon": "Kanion", "dunes": "Wydmy", "river": "Rzeka", "highlands": "Wyżyny", "island": "Wyspa", "rocks": "Formacje skalne", "city": "Miasto", "cycling": "Rower", "parks": "Parki", "old-town": "Stare miasto", "non-latin-labels": "Opisy niełacińskie", "long-distance-trail": "Szlak długodystansowy", "pilgrim-route": "Szlak pielgrzymkowy"},
@@ -307,6 +329,11 @@ COPY: dict[str, dict[str, object]] = {
         "showing": "Zobrazeno {style} pro {place}",
         "about": "O stylech map",
         "about_note": "Náhledy jsou blízké, ale ne přesné: hodinky kreslí mapu samy, takže barvy a podrobnosti se mohou lišit podle modelu a nastavení mapy.",
+        "guide_title": "Bezplatné mapy OpenStreetMap pro hodinky Garmin",
+        "guide_paragraphs": ["Každý styl na této stránce je bezplatná mapa z OpenStreetMap, mapy, kterou udržují dobrovolníci. Komunitní projekty z těchto dat vytvářejí mapy pro Garmin, každou s vlastním vzhledem a mírou detailu.", "Vybírejte podle toho, co děláte: Freizeitkarte obsahuje vrstevnice, OpenTopoMap ukazuje stínování terénu a vrstevnice může přidat. MapRando zobrazuje i malé pěšiny mimo hlavní trasy. BBBike je určený pro ulice a cyklostezky a jeho styl Ontrail drží mapy malé. OSMapaPL podrobně pokrývá Polsko."],
+        "install_line": "Nainstalujte tyto mapy do hodinek pomocí {mac} nebo {web}.",
+        "install_mac": "aplikace pro Mac",
+        "install_web": "webového instalátoru",
         "noscript": "Zapněte JavaScript a porovnejte styly na mapě.",
         "continents": {"europe": "Evropa", "north-america": "Severní Amerika", "south-america": "Jižní Amerika", "africa": "Afrika", "asia": "Asie", "oceania": "Oceánie"},
         "tags": {"mountains": "Hory", "glaciers": "Ledovce", "lakes": "Jezera", "coast": "Pobřeží", "forest": "Les", "volcano": "Sopka", "canyon": "Kaňon", "dunes": "Duny", "river": "Řeka", "highlands": "Vysočina", "island": "Ostrov", "rocks": "Skalní útvary", "city": "Město", "cycling": "Cyklistika", "parks": "Parky", "old-town": "Staré město", "non-latin-labels": "Nelatinkové popisky", "long-distance-trail": "Dálková trasa", "pilgrim-route": "Poutní cesta"},
@@ -357,6 +384,11 @@ COPY: dict[str, dict[str, object]] = {
         "showing": "Visualizzazione di {style} per {place}",
         "about": "Informazioni sugli stili di mappa",
         "about_note": "Le anteprime sono vicine, ma non identiche: l’orologio disegna la mappa da sé, quindi colori e dettagli possono variare in base al modello e alle impostazioni della mappa.",
+        "guide_title": "Mappe OpenStreetMap gratuite per orologi Garmin",
+        "guide_paragraphs": ["Ogni stile qui è una mappa gratuita basata su OpenStreetMap, la mappa aggiornata da volontari. Progetti della comunità trasformano questi dati in mappe Garmin, ognuna con il proprio aspetto e livello di dettaglio.", "Scegli in base a ciò che fai: Freizeitkarte include le curve di livello, OpenTopoMap mostra l’ombreggiatura del rilievo e può aggiungere le curve di livello. MapRando mostra anche i sentieri minori oltre a quelli principali. BBBike è pensato per strade e piste ciclabili, e il suo stile Ontrail mantiene le mappe leggere. OSMapaPL copre la Polonia nel dettaglio."],
+        "install_line": "Installa queste mappe sull’orologio con l’{mac} o con l’{web}.",
+        "install_mac": "app per Mac",
+        "install_web": "installer web",
         "noscript": "Attiva JavaScript per confrontare gli stili sulla mappa.",
         "continents": {"europe": "Europa", "north-america": "Nord America", "south-america": "Sud America", "africa": "Africa", "asia": "Asia", "oceania": "Oceania"},
         "tags": {"mountains": "Montagne", "glaciers": "Ghiacciai", "lakes": "Laghi", "coast": "Costa", "forest": "Foresta", "volcano": "Vulcano", "canyon": "Canyon", "dunes": "Dune", "river": "Fiume", "highlands": "Altopiani", "island": "Isola", "rocks": "Formazioni rocciose", "city": "Città", "cycling": "Bici", "parks": "Parchi", "old-town": "Centro storico", "non-latin-labels": "Etichette non latine", "long-distance-trail": "Sentiero a lunga percorrenza", "pilgrim-route": "Cammino di pellegrinaggio"},
@@ -401,7 +433,6 @@ def style_copy(locale: str) -> list[dict[str, object]]:
             "name": provider["name"],
             "summary": provider["summary"],
             "benefits": list(provider["benefits"]),
-            "note": STYLE_NOTES[style_id][locale] if style_id in STYLE_NOTES else None,
         })
     for provider_id, provider_styles in OPTIONAL_STYLES.items():
         provider = PROVIDER_COPY[locale][provider_id]
@@ -415,13 +446,32 @@ def style_copy(locale: str) -> list[dict[str, object]]:
                 "card_name": provider["name"],
                 "card_summary": provider["summary"],
                 "benefits": list(provider["benefits"]),
-                "note": None,
             })
     return styles
 
 
 def area_name(area: dict, locale: str) -> str:
     return area["name"].get(locale) or area["name"]["en"]
+
+
+def install_line(locale: str, copy: dict[str, object]) -> str:
+    """Where to install the compared maps: the Mac app or the web installer (2026-11-02)."""
+    mac = f'<a class="text-link" href="{localized_path(locale, "download/")}" data-umami-event="download-cta-click" data-umami-event-location="map-styles-install">{esc(copy["install_mac"])}</a>'
+    web = f'<a class="text-link" href="{localized_path(locale, "install/")}" data-umami-event="web-installer-link-click" data-umami-event-location="map-styles-install">{esc(copy["install_web"])}</a>'
+    return esc(copy["install_line"]).replace("{mac}", mac).replace("{web}", web)
+
+
+def about_card(style_id: str, provider_id: str, name: str, summary: str, benefits: list, locale: str, extra: str = "") -> str:
+    """One style card with the home page provider card component and copy (owner 2026-11-02)."""
+    items = "".join(f"<li>{esc(item)}</li>" for item in benefits)
+    addon = HOME["provider_card_addon"](locale, provider_id, contour_count=False)
+    return (
+        f'<article class="provider-card" data-style-card="{esc(style_id)}"{extra}>'
+        f'<div class="provider-card-header"><h3>{esc(name)}</h3></div>'
+        f'<p class="provider-summary">{esc(summary)}</p>'
+        f'<ul class="provider-benefits">{items}</ul>{addon}'
+        "</article>"
+    )
 
 
 def about_markup(locale: str, copy: dict[str, object], styles: list[dict[str, object]]) -> str:
@@ -431,30 +481,12 @@ def about_markup(locale: str, copy: dict[str, object], styles: list[dict[str, ob
         if style.get("optional"):
             optional.setdefault(str(style["card"]), []).append(style)
             continue
-        benefits = "".join(f"<li>{esc(item)}</li>" for item in style["benefits"])
-        note = (
-            f'<p class="map-styles-about-language">{icon("info")}<span>{esc(style["note"])}</span></p>'
-            if style["note"] else ""
-        )
-        cards.append(
-            f'<article class="map-styles-about-card" data-style-card="{esc(style["id"])}">'
-            f'<h3>{esc(style["name"])}</h3>'
-            f'<p class="map-styles-about-summary">{esc(style["summary"])}</p>'
-            f'<ul>{benefits}</ul>{note}'
-            "</article>"
-        )
+        cards.append(about_card(str(style["id"]), str(style["id"]), str(style["name"]), str(style["summary"]), list(style["benefits"]), locale))
     # One hidden card per optional provider; the page shows it once any of its styles is listed.
     for card_id, members in optional.items():
         first = members[0]
-        benefits = "".join(f"<li>{esc(item)}</li>" for item in first["benefits"])
         ids = " ".join(str(style["id"]) for style in members)
-        cards.append(
-            f'<article class="map-styles-about-card" data-style-card="{esc(card_id)}" data-style-ids="{esc(ids)}" hidden>'
-            f'<h3>{esc(first["card_name"])}</h3>'
-            f'<p class="map-styles-about-summary">{esc(first["card_summary"])}</p>'
-            f'<ul>{benefits}</ul>'
-            "</article>"
-        )
+        cards.append(about_card(card_id, card_id, str(first["card_name"]), str(first["card_summary"]), list(first["benefits"]), locale, f' data-style-ids="{esc(ids)}" hidden'))
     return "".join(cards)
 
 
@@ -482,7 +514,8 @@ def page_data(locale: str, copy: dict[str, object], styles: list[dict[str, objec
             {key: style[key] for key in ("id", "name", "summary", "optional") if key in style}
             for style in styles
         ],
-        "copy": {key: value for key, value in copy.items() if key not in {"h1", "lead", "eyebrow", "skip", "noscript", "about", "about_note"}},
+        "defaults": DEFAULT_VIEW,
+        "copy": {key: value for key, value in copy.items() if key not in {"h1", "lead", "eyebrow", "skip", "noscript", "about", "about_note", "guide_title", "guide_paragraphs"}},
     }
     return json.dumps(document, ensure_ascii=False, separators=(",", ":")).replace("<", "\\u003c")
 
@@ -490,7 +523,7 @@ def page_data(locale: str, copy: dict[str, object], styles: list[dict[str, objec
 def render(locale: str) -> str:
     copy = COPY[locale]
     styles = style_copy(locale)
-    default = next(area for area in AREAS["areas"] if area["id"] == "dolomites-tre-cime")
+    default = next(area for area in AREAS["areas"] if area["id"] == DEFAULT_VIEW["area"])
     tabs = "".join(
         f'<button type="button" role="tab" aria-selected="{"true" if key == "places" else "false"}" data-tab="{key}">{esc(label)}</button>'
         for key, label in copy["tabs"].items()
@@ -508,6 +541,7 @@ def render(locale: str) -> str:
     <meta name="theme-color" content="#F7F3EC">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#222A2B">
     <title>Terento</title>
+{SCHEMA["json_ld_block"](locale, SLUG, "WebPage")}
     <link rel="icon" href="/favicon.ico?v=20260820-4" sizes="any">
     <link rel="icon" href="/favicon.svg?v=20260820-4" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20260820-4">
@@ -604,9 +638,14 @@ def render(locale: str) -> str:
       <section class="shell map-styles-about" aria-label="{esc(copy["about"])}">
         <details class="map-styles-about-details" id="map-styles-about">
           <summary><span class="map-styles-about-label">{icon("info")}<span>{esc(copy["about"])}</span></span></summary>
-          <div class="map-styles-about-grid">{about_markup(locale, copy, styles)}</div>
+          <div class="provider-cards map-styles-about-cards" role="region" tabindex="0" aria-label="{esc(copy["about"])}">{about_markup(locale, copy, styles)}</div>
           <p class="map-styles-about-note">{esc(copy["about_note"])}</p>
         </details>
+      </section>
+      <p class="shell map-styles-install">{install_line(locale, copy)}</p>
+      <section class="shell map-styles-guide" aria-labelledby="map-styles-guide-title">
+        <h2 id="map-styles-guide-title">{esc(copy["guide_title"])}</h2>
+        <div class="map-styles-guide-text">{"".join(f"<p>{esc(paragraph)}</p>" for paragraph in copy["guide_paragraphs"])}</div>
       </section>
     </main>
     <footer class="site-footer"></footer>

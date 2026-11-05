@@ -69,6 +69,12 @@ site/fr/guides/troubleshooting/index.html
 site/pl/guides/troubleshooting/index.html
 site/cs/guides/troubleshooting/index.html
 site/it/guides/troubleshooting/index.html
+site/guides/install-garmin-maps-edge-mac/index.html
+site/de/guides/install-garmin-maps-edge-mac/index.html
+site/fr/guides/install-garmin-maps-edge-mac/index.html
+site/pl/guides/install-garmin-maps-edge-mac/index.html
+site/cs/guides/install-garmin-maps-edge-mac/index.html
+site/it/guides/install-garmin-maps-edge-mac/index.html
 site/index.html
 site/de/index.html
 site/fr/index.html
@@ -126,6 +132,23 @@ regenerate_site
 after="$(cksum $generated)"
 if [ "$before" != "$after" ]; then
   echo "Guide generator output is not deterministic." >&2
+  exit 1
+fi
+
+# The scheduled compatibility refresh runs only build-compatibility-pages.py.
+# It must write exactly what the full site build writes, or every refresh PR
+# fails this parity test (2026-11-02..04: compatibility-locales.js cache version).
+compatibility="site/compatibility/index.html
+site/de/compatibility/index.html
+site/fr/compatibility/index.html
+site/pl/compatibility/index.html
+site/cs/compatibility/index.html
+site/it/compatibility/index.html"
+before="$(cksum $compatibility)"
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/build-compatibility-pages.py >/dev/null
+after="$(cksum $compatibility)"
+if [ "$before" != "$after" ]; then
+  echo "Compatibility refresh generator output differs from the full site build." >&2
   exit 1
 fi
 

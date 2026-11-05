@@ -9,7 +9,9 @@ Mac installation guide
 
 Connect your watch, choose a map, and let Terento handle the installation — without manual file transfers.
 
-macOS 13+Apple SiliconMap-capable Garmin watch
+macOS 13+Apple SiliconGarmin watch with map support
+
+[Download](https://terento.app/download/)
 
 A quick check
 
@@ -81,8 +83,14 @@ Reconnect or restart the watch and check its map settings. If the map still does
 
 [See all troubleshooting steps](https://terento.app/guides/troubleshooting/)
 
-Ready when you are
+After installing
 
-## Ready to install your first map?
+## First launch and uninstalling
 
-[Download](https://terento.app/download/)
+### First launch
+
+Drag Terento from the downloaded DMG to Applications and open it there. Terento is notarized by Apple; the first time, macOS asks whether to open an app downloaded from the internet, so choose Open. On a Mac laptop, if macOS asks whether to allow the accessory to connect, choose Allow.
+
+### Uninstall Terento
+
+Quit Terento and move it from Applications to the Trash. Maps already on your watch stay there. Terento keeps its records of the maps it installed in ~/Library/Application Support/Terento: keep that folder if you may install Terento again, so it can still update and remove those maps. To remove everything, also delete that folder, ~/Library/Caches/Terento, ~/Library/Logs/Terento and ~/Library/Preferences/app.terento.mac.plist.

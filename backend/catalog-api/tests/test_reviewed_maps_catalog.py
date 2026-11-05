@@ -177,7 +177,7 @@ class MigratedCatalogTests(PGliteTestCase):
         self.assertEqual(app_resolve(document, garmin("quatix 8 Pro 51mm")),
                          ("APPROVED", ["garmin-quatix-8-pro-51-amoled"]))
 
-    def test_fenix_6_edge_and_unknown_models_are_unchanged(self):
+    def test_fenix_6_and_unknown_models_are_unchanged(self):
         # Migration 075 leaves the original fēnix 6 rows as they are; the Pro
         # editions are added by migration 076 (test_fenix_6_map_editions.py).
         document = self.policy()
@@ -187,7 +187,8 @@ class MigratedCatalogTests(PGliteTestCase):
             self.assertEqual((row["active"], row["mapCapable"], row["variant"]), (True, True, row["variant"]))
         self.assertEqual(app_resolve(document, garmin("fēnix 6 Dual Power"))[0], "PENDING")
         self.assertEqual(app_resolve(document, garmin("fēnix 6X Sapphire")), ("APPROVED", ["garmin-fenix-6x-51"]))
-        for reported in ("Edge 840", "Edge 1050", "GPSMAP 67", "Enduro 4", "Approach S72", "MARQ Captain (Gen 3)"):
+        # Edge rows are added later by migration 090 (test_edge_map_catalog.py).
+        for reported in ("GPSMAP 67", "Enduro 4", "Approach S72", "MARQ Captain (Gen 3)"):
             with self.subTest(reported=reported):
                 self.assertEqual(app_resolve(document, garmin(reported)), ("PENDING", []))
 

@@ -383,13 +383,17 @@ class HealthPageTests(unittest.TestCase):
             body = overview_page({"period": "24h", "data": {"hasData": False}, "providers": HEALTH["providers"],
                                   "review": review, "supportReports": {"openCount": 1}, "system": system},
                                  {"username": "operator"}, "csrf").decode()
-            return body.split("id='overview-attention-title'", 1)[1].split("</section>", 1)[0]
+            # The card plus its headline tile, which carries the total (owner 2026-11-03).
+            strip = body.split("class='admin-card overview-kpi-strip'", 1)[1].split("</section>", 1)[0]
+            return body.split("id='overview-attention-title'", 1)[1].split("</section>", 1)[0] + strip
 
         # HEALTH: Database failed, Catalogs failed (a provider problem, which
         # stays on Providers) -> one System checks issue.
         card = attention(HEALTH)
         self.assertIn("<span class='overview-attention-label'>System checks</span><strong>1</strong>", card)
         self.assertIn("href='/admin/system-health?status=FAILED' aria-label='System checks: 1'", card)
+        # System checks is the one urgent row; review counts stay neutral.
+        self.assertIn("<li class='overview-attention-row' data-state='urgent'><a href='/admin/system-health?status=FAILED'", card)
         self.assertNotIn("Provider problems", card)
         self.assertIn("data-stat='attentionTotal'>4</strong>", card)
         labels = re.findall(r"<span class='overview-attention-label'>([^<]+)</span>", card)

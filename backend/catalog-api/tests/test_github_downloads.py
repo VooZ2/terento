@@ -522,6 +522,13 @@ class GithubDownloadTests(unittest.TestCase):
             database.github_downloads_snapshot(now=now, period="all")["bucket"], "day",
         )
         self.assertEqual(database.github_downloads_snapshot(now=now, period="30d")["bucket"], "week")
+        # The Dashboard passes its map charts' All time grid: one time axis.
+        monthly = database.github_downloads_snapshot(now=now, period="all", all_time_grid="month")
+        self.assertEqual(monthly["bucket"], "month")
+        self.assertEqual(sum(item["dmg_count"] or 0 for item in monthly["trend"]), 13)
+        self.assertEqual(
+            database.github_downloads_snapshot(now=now, period="30d", all_time_grid="month")["bucket"], "week",
+        )
 
     def test_collection_failure_does_not_replace_last_successful_snapshot(self):
         database = CollectDatabase()

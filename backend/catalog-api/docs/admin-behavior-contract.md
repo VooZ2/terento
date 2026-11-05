@@ -52,11 +52,8 @@ cannot establish the France failure's cause.
 
 Install successes/failures and update successes/failures have distinct chart
 series and labels. Chart colours follow the single rule in the statistics
-contract (owner decision 2026-10-05): provider fresh install successful uses
-Interactive Primary (slate), custom `.img` fresh install successful its own
-Lichen-dark series and legend entry, install failed solid red (destructive
-text), update successful solid Stone Dark with no outline (Warm Stone alone is
-2.69:1 on white), and update failed red diagonal stripes in bars and legends.
+contract (owner decisions 2026-10-05 and 2026-11-03): pale healthy series,
+full-tone failures, hatched updates.
 Stacked segments touch with no separator line, so each bar reads as one solid
 column; every series has a legend
 entry (counts follow the Dashboard legend rule), and each bucket is one keyboard
@@ -76,7 +73,7 @@ section card
 explanatory paragraph), a status pill (icon plus sentence-case text; colour
 supports but never replaces the text), table conventions (identity first,
 numbers and dates trailing, `—` for unknown; every data table sorts by any
-labelled column through its header button with a Font Awesome sort icon and
+labelled column through its header button with a Lucide sort icon and
 `aria-sort`, `—` always last; server-paginated tables sort the loaded page and
 ranking lists with a visually hidden header keep their ranking order), empty states (empty, filtered,
 unavailable with Retry) and chart legends. Labels and card titles carry no
@@ -86,8 +83,14 @@ decision 2026-10-06); term definitions are owned by
 contract.
 Colours, radii and focus rings come only from the generated brand tokens; the
 focus ring is Interactive Primary (≥3:1). Every icon, including chevrons,
-arrows and placeholders, is an unchanged Font Awesome Free solid icon from the
-pinned revision in `THIRD_PARTY_NOTICES.md`, inlined (no external origin);
+arrows and placeholders, is an unchanged Lucide 0.460.0 outline icon, the
+same set as the public website (owner decision 2026-11-05, replacing the
+2026-10-06 Font Awesome rule), inlined (no external origin) with a 1.75 px
+stroke on the 24 px grid; `data:` CSS masks keep the same outline stroke.
+Icons are 16 px in rows and beside text, 20 px in icon-only buttons and 24 px
+in empty states and placeholders. Brand logos (App Store and the Web
+installer browser logos) are the only exception and stay unchanged Font
+Awesome Free brands SVGs. Both sources are pinned in `THIRD_PARTY_NOTICES.md`.
 Admin never uses hand-drawn SVG, CSS-drawn shapes or text glyphs as icons.
 
 Filter bar (owner decision 2026-10-06): every Admin filter bar uses the
@@ -124,7 +127,7 @@ Filter dropdown (owner decision 2026-10-06): every remaining filter-type
 provider, the Dashboard period, rows-per-page and the mobile sort selects —
 carries `data-admin-dropdown` and is enhanced by one shared,
 nonce-delivered Admin script. A combobox button shows the selected option and
-a Font Awesome chevron; its listbox popover opens directly below the field,
+a Lucide chevron; its listbox popover opens directly below the field,
 left-aligned and at least the field's width, flips above only when there is no
 room below, and never covers the field. It uses the white surface, a 1px
 border, the control radius, the existing card shadow, Inter at the field's
@@ -291,20 +294,55 @@ duplicate Review navigation item.
 
 ### Dashboard and Needs attention
 
+Admin look (owner decision 2026-11-03, dashboard-design skill): Inter for UI
+and numbers (tight, tabular), white cards with a hairline and a soft shadow on
+the Off-White canvas, segmented controls on a grey track with the active
+segment as a white tile, no tray behind filter rows, sentence-case table
+headers, scope and card totals as quiet text rather than pills, and pale
+healthy chart series so failures carry the strongest tone.
+
 Dashboard must answer whether anything is wrong, what happened in the selected
-period, whether activity is changing, and what to inspect next. It has no
-summary tile row: the Downloads and Installs chart cards share the first row.
-Each chart card holds exactly three things (owner decision 2026-10-06): a
-header with the period scope chip and, top right, the period totals as one
-numbers-only badge `successful / failed / success rate` (owner decision
-2026-10-11; failed in the danger tone only when positive, the words only for
-screen readers; Installs counts fresh installs only); the chart; and a legend
-naming each series by colour without counts. One `All`/`App`/`App Store`/`Web` switch beside the
+period, whether activity is changing, and what to inspect next. It opens with
+one headline card of tiles divided by hairlines (owner decision 2026-11-03,
+dashboard-design skill, replacing "no summary tile row"): Map downloads and
+Installs (successful as the value, success rate top right whenever it is
+known, including 0%, `N failed` below in the danger tone only when positive, a
+sparkline of the period's successful results per bucket; one tile per source,
+swapped by the source switch), App downloads (the period's .dmg plus .zip
+increase, with `.dmg N · .zip N` on one line under the value), First run (opened sessions, % allowed, connected; `—`
+and `Unavailable` when the funnel cannot be read) and Needs attention (the
+`Now` total, `—` when any row is unavailable). Below 900 px the tiles form two
+columns and each tile puts its top-right fact under the label, so the values
+in a row line up. These tiles are the only place the period totals appear. Then
+Needs attention and First run share a row, then the Map downloads and Installs
+chart cards. Each chart card holds a header with its title only, the chart,
+and a legend naming each series by colour without counts (Installs counts fresh
+installs only, so update segments are hatched: stone for succeeded, danger for
+failed). Successful bars use the quiet
+`--sky` tone so failures stand out. Every Dashboard chart, App downloads
+included, puts its bars on one even bucket grid (a missing bucket stays an
+empty slot, never a drawn zero), uses a four-step axis with round steps (3,
+20, 40, never 19 or 37), and marks the bucket still in progress with one
+dashed outline around the whole bar (its segments keep their full tone and no
+separator) and a dashed last sparkline segment (owner QA 2026-11-03). App
+downloads uses the map charts' plot area and, for All time, their bucket grid
+starting at the default map charts' first bucket (months before the first
+GitHub snapshot stay empty labelled slots, so bars line up), draws no clip around its bars, and reserves room above the plot only on the
+wide chart with visible marker text. A tapped, clicked or focused bar gets one
+frame around the whole bar, never a stroke per segment; on the bar in progress
+that frame stays dashed and the value strip date reads `(in progress)`. App
+downloads release and data-boundary lines are solid and drawn behind the bars,
+so dashes mean only a bucket in progress; one release shows its version
+(`New release · 1.1.0`), several their count, and the exact labels stay in the
+titles (owner QA 2026-11-04). Marker text shows only on the wide chart and only
+where it does not collide; on phones the marker lines keep their names in
+titles. One `All`/`App`/`App Store`/`Web` switch beside the
 period picker, in the picker's height, swaps both chart cards at once (owner
 decisions 2026-10-10 and 2026-10-11; All is the default and the choice
-survives a period change): the chart and its header totals. The switch shows
-Font Awesome icons only (layer-group All, laptop App, app-store-ios App Store,
-globe Web; the names are for screen readers). App and App Store split the
+survives a period change) and the matching headline tiles. The switch shows
+icons (Lucide layers All, laptop App and globe Web, the app-store-ios brand
+logo App Store) with their names visible from 1024 px and for screen readers below
+(owner decision 2026-11-03). App and App Store split the
 app-only statistic below into the directly downloaded app and the Mac App Store
 build (owner request 2026-10-30;
 [`STATISTICS_CONTRACT.md`](../../../contracts/STATISTICS_CONTRACT.md), App and
@@ -319,22 +357,24 @@ row the globe icon after its label, and a web row has
 no update-diagnostics link. A web row whose watch matches no single catalog
 model shows the model name the watch reported as plain text (no model link;
 it is not counted for any model). No All time line, purpose breakdown or other
-explanatory text is shown in these cards; all-time totals live on Maps. Header totals and charts use the same period
+explanatory text is shown in these cards; all-time totals live on Maps. Headline tiles and charts use the same period
 population, so they agree. A legend elsewhere shows a count only where it adds
-information no total shows (the Maps Custom .img install split and the App
-downloads period increases). The Needs attention header shows its `Now` total
-as one chip (`—` when any row is unavailable). Below the
-charts, Needs attention and Activity share a row, then First run and App
-downloads share the next row (owner decision 2026-10-11, swapping Activity and
-First run); cards in a row stretch to one height, the First run previous-period
-line closes its card at the bottom like the App downloads All time line, and
+information no total shows (the Maps Custom .img install split); the App
+downloads legend names `.dmg` and `.zip` only, because the headline tile
+carries their period increases. Below the charts,
+Activity and App downloads share the last row (owner decision 2026-11-03);
+cards in a row stretch to one height, the First run previous-period
+line closes its card at the bottom, and
 when one card is omitted the last one spans the row, so no Dashboard row leaves
-an empty grid cell at ≥1024 px. The narrow order is Downloads, Installs, Needs
-attention, Activity, First run, then App downloads.
+an empty grid cell at ≥1024 px. The narrow order is Needs attention, First run,
+Map downloads, Installs, Activity, then App downloads; in one column Activity
+shows its five newest rows without an inner scroll, and View all opens the rest.
 
 Every number shows its scope as visible text (`Today`, `Last 24 hours`,
 `Last 7 days`, `Last 30 days`, `All time` or `Now`); hover-only scope is not
-used. Every Admin period picker (the Dashboard period dropdown and the Maps time
+used. On the Dashboard the period picker names the selected period once and
+cards carry a scope chip only when it differs (`Now`, `All time`; owner
+decision 2026-11-03). Every Admin period picker (the Dashboard period dropdown and the Maps time
 range) offers, in this order, Today, Last 24 hours, Last 7 days, Last 30 days and
 All time (owner request 2026-10-07); Today covers the current day from midnight
 in the selected Admin time zone up to now. The Dashboard and First run use the
@@ -344,13 +384,13 @@ when the browser zone differs from the zone it was rendered in. The Dashboard de
 hours and the Maps default stays All time; an unknown Dashboard period falls
 back to Last 24 hours. Card titles
 are one or two words. App downloads means Terento application downloads (GitHub
-`.dmg` and `.zip`, never map downloads), shows its
-period increases in the legend and its all-time totals and last update in one
+`.dmg` and `.zip`, never map downloads), names both in the legend and
+shows its all-time totals and last update in one
 `All time` line, and is omitted when no usable counter or trend data exists.
 The Dashboard First run card is a short review that says whether the First run
-page is worth opening (owner decisions 2026-10-10). Its header shows the
-journey totals as chips: `Opened` (the period's distinct sessions),
-`Connected` and `Allowed` (`—` when the read model does not report it). Below,
+page is worth opening (owner decisions 2026-10-10). Its journey totals
+(`Opened`, the period's distinct sessions; `Connected`; `Allowed`, `—` when the
+read model does not report it) are the First run headline tile. In the card,
 in the Needs attention row style, one row per loss above zero: `Never
 connected` (`neverConnectedSessionCount`, with `Mostly: <reason> (N)` from Why
 not connected), `Connected but not allowed` (connected minus allowed, with the
@@ -519,13 +559,17 @@ true height is below that floor for each of its non-zero segments grows to
 exactly the floor, and exact values always remain in the bucket label and value
 strip. X axis: every bucket is labelled when the labels fit, otherwise every
 second bucket (or the smallest regular step that fits on the compact chart),
-always including the most recent bucket and never overlapping.
+always including the most recent bucket and never overlapping; when an
+edge-anchored label would collide, the step widens instead of dropping one
+label, so the labelled gaps stay even.
 
 Needs attention covers unresolved work across all dates in six review queues
 (owner decision 2026-10-06), in this order, each row with an icon, label, count
 and arrow: Open problems, GitHub issues, Identity review, Publication review,
 Missing reports and Support reports, followed by one System checks row (owner
-decision 2026-10-06). System checks appears only when Health has Failed or
+decision 2026-10-06). Row counts and the header total are neutral; System
+checks is the one urgent row, with its icon and count in the danger tone
+(owner decision 2026-11-03). System checks appears only when Health has Failed or
 Degraded checks; its count is those checks (the same states Health lists under
 Issues) excluding the Catalogs check, because provider problems stay on
 Providers. It links to `/admin/system-health?status=FAILED`, or
@@ -741,6 +785,9 @@ Empty installation history omits unusable filters, table, and pagination. Above
 report), Updates, Administration, Device information, and Technical
 details form the left column while Installation history and, below it, Update
 history use the right column.
+With open problems, an `N open problems` notice (x-circle icon, Review open
+problems link that filters Installation history) follows Updates as a white card
+like the others, without a tinted tray or tooltip.
 Update history uses the Installation history layout: its `Update history` title
 sits outside the card in the same section heading, with no scope chip, followed
 by the same quick-filter bar in the Installation history order (All, Failed,
@@ -806,17 +853,18 @@ updates, finished relay jobs as downloads), in every tile, card and trend.
 Event detail lists app reports only, so the Web view omits it.
 
 Maps reads top to bottom: the filter bar; Downloads, Installs and Updates tiles
-for the selected period (each with failed count and rate); then Countries (world
-map) and Top countries; then Providers; then Top maps; then the collapsed Events
-disclosure; and last, at the very bottom, the Downloads and Installs trend cards,
-laid out like the Dashboard charts (the period successful / failed / success
-rate badge at the top right, a legend without numbers, nothing under the legend)
-(owner decision 2026-10-06). The Countries
+for the selected period (each with failed count and rate); then the Downloads
+and Installs trend cards, laid out like the Dashboard charts (a header with the
+title only, because the tiles above hold the totals, a legend without
+numbers, nothing under the legend); then Countries (world map) and Top
+countries; then Providers; then Top maps; and last the collapsed Events
+disclosure (owner decision 2026-11-03, replacing trends at the bottom). The
+Maps source switch shows the source names beside the icons from 1024 px. The Countries
 card carries no visible country/install count line; the world map's accessible
 name states when coverage is empty or partially unavailable. Russia, where maps
 are never offered, is hatched grey instead of shaded as zero installs; its
 tooltip shows only the country name, with no explanatory text. The map opens at
-the whole world; zoom in works, zoom out stops at the whole world and its
+the whole world; zoom in works with +, double-click or pinch (the mouse wheel scrolls the page; owner decision 2026-11-03), zoom out stops at the whole world and its
 button is off there. The controls are only +, − and Reset map, with no zoom
 percentage (owner decisions 2026-10-10). Top maps names are
 plain text with the provider and last-install date below, not links; Top
@@ -891,7 +939,7 @@ accessible text; independently retained authoritative release markers may add
 card width with only axis and clipping margins.
 
 History remains compact and explicit. Icons and color supplement status text.
-Download phase icons remain static. Timestamps use the selected time zone.
+Download phase icons remain static (the Processing loader never spins: it marks a past phase). Timestamps use the selected time zone.
 
 ### Diagnostics
 
@@ -909,7 +957,7 @@ report, then the Preview issue report and Link or manage an existing issue
 disclosures); Review administration; Technical details; and Device identity
 last. Every `<details>` in the dialog, including the per-result Technical
 details, uses the one `admin-disclosure diagnostic-disclosure` presentation
-(white surface, border, card radius, Font Awesome chevron, same summary font).
+(white surface, border, card radius, Lucide chevron, same summary font).
 Review administration holds the resolve/reopen and workflow forms in one
 collapsed disclosure, each form a compact row with its button aligned to its
 fields; it is omitted when no lifecycle or workflow action applies. There is no
@@ -1001,7 +1049,8 @@ The model detail adds a separate Updates card and Update history, scoped to all
 retained nonlocal reports for that exact identity. The Installs and Updates
 cards share one design (same classes, label and value sizes), carry no `All
 time` chip, have one row per source in the switch order (App, App Store, Web,
-then All; owner decisions 2026-10-11 and 2026-10-30), and show plain
+then All; owner decisions 2026-10-11 and 2026-10-30), each row marked by its
+icon and visible source name (owner decision 2026-11-03), and show plain
 Successful, Failed and Not started counts
 without links (owner decision 2026-10-06); the Update history outcome filters
 open the matching records. The Administration card has two separated sections,
@@ -1088,7 +1137,8 @@ failed`). On this page the word is **Issues**: the Issues card groups package
 issues by recorded reason; other pages keep Open problems and Package problems.
 Each group shows its package count, one Recheck (a single-package group
 rechecks that package; a larger group's `Recheck affected` and the card's
-`Recheck affected packages` recheck every affected package) and at most five
+`Recheck affected packages`, a secondary button so `Check provider health`
+stays the page's one primary action, recheck every affected package) and at most five
 rows with Recheck, Open source and Copy details, plus `Show all N in Packages`.
 Packages is the one package list: search, Issues/Available filter (Issues is
 preselected when issues exist), pagination, and a per-row `⋯` menu with

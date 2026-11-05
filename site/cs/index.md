@@ -5,19 +5,20 @@ canonical: https://terento.app/cs/
 
 Open-source projekt
 
-# Instalujte mapy do hodinek Garmin jednoduše
+# Nainstalujte do zařízení Garmin mapy zdarma
 
-Instalujte, aktualizujte a spravujte mapy třetích stran z nativní aplikace pro macOS — bez ručních přenosů souborů.
+Terento je bezplatný open-source nástroj pro instalaci, aktualizaci a správu map třetích stran v hodinkách Garmin a cyklopočítačích Edge: v nativní aplikaci pro Mac nebo v prohlížeči na počítači.
 
-[Stáhnout](https://terento.app/cs/download/) [Ověřit kompatibilitu](https://terento.app/cs/compatibility/) [Nebo instalujte z prohlížeče](https://terento.app/cs/install/)
+[Stáhnout pro Mac](https://terento.app/cs/download/)
+[Ověřit kompatibilitu](https://terento.app/cs/compatibility/) [Instalovat z prohlížeče](https://terento.app/cs/install/)
 
-Terento zobrazuje průběh instalace komunitních map v macOS
+Terento zobrazuje průběh instalace map třetích stran v macOS
 
 Jak to funguje
 
 ## Připojit Instalovat Hotovo
 
-Instalace map třetích stran by měla být jednoduchá a rychlá — bez dalšího softwaru, samostatných kroků stahování a technických znalostí.
+Instalace map třetích stran by měla být jednoduchá a rychlá — bez ručního kopírování souborů a bez technických znalostí.
 
 Terento celý proces spojuje do tří jednoduchých kroků.
 
@@ -31,7 +32,7 @@ Vybírejte mapy z katalogu podle oblasti nebo přidejte vlastní kompatibilní m
 
 3. Hotovo
 
-Vaše mapy jsou nainstalované a připravené k použití v hodinkách.
+Vaše mapy jsou nainstalované a připravené k použití ve vašem Garminu.
 
 ## Instalovat mapy
 
@@ -49,11 +50,11 @@ Webový instalátor
 
 ## Bez aplikace? Instalujte z prohlížeče.
 
-Připojte hodinky Garmin kabelem USB, vyberte mapy a nainstalujte je přímo z Chrome, Edge, Opery nebo Brave. Později je stejně aktualizujete nebo odeberete.
+Připojte hodinky Garmin kabelem USB, vyberte mapy a nainstalujte je přímo z Chrome, Microsoft Edge, Opery nebo Brave. Později je stejně aktualizujete nebo odeberete.
 
 Funguje na Macu a, zatím ve zkušebním provozu, na Linuxu. Zatím ne ve Windows, na telefonech ani tabletech.
 
-Mac · Linux (v testu)Chrome, Edge, Opera, BraveDatový kabel USB
+Mac · Linux (v testu)Chrome, Microsoft Edge, Opera, BraveDatový kabel USB
 
 [Otevřít webový instalátor](https://terento.app/cs/install/)
 
@@ -105,11 +106,11 @@ Máte otázky?
 
 ## FAQ
 
-Které hodinky Garmin fungují s Terento?
+Které hodinky Garmin a cyklopočítače Edge fungují s Terento?
 
-Na stránce [Kompatibilita](https://terento.app/cs/compatibility/) najdete konkrétní modely a varianty Garmin s alespoň jednou úspěšnou sdílenou instalací. Chybějící model nemusí znamenat, že není podporován.
+Na stránce [Kompatibilita](https://terento.app/cs/compatibility/) najdete konkrétní modely a varianty Garmin s alespoň jednou úspěšnou sdílenou instalací. Chybějící model nemusí znamenat, že není podporován. Fungují i novější cyklopočítače Garmin Edge s podporou map, například Edge 540, 840 a 1050. [Přečtěte si průvodce pro Edge.](https://terento.app/cs/guides/install-garmin-maps-edge-mac/)
 
-Mohu instalovat mapy třetích stran do hodinek Garmin z Macu bez BaseCamp?
+Mohu instalovat mapy třetích stran do hodinek Garmin z Macu bez Garmin Express a BaseCamp?
 
 Ano. Terento je navrženo tak, aby správa map třetích stran v macOS byla jednoduchá a rychlá — od výběru mapy po instalaci, aktualizaci a správu v hodinkách Garmin. [Přečtěte si instalační příručku.](https://terento.app/cs/guides/install-garmin-maps-mac/)
 
@@ -133,12 +134,10 @@ Na obrazovce neúspěšné instalace zvolte „Report issue“. Terento otevře 
 
 Mohu instalovat mapy bez instalace aplikace?
 
-Ano. [Webový instalátor](https://terento.app/cs/install/) instaluje, aktualizuje a odebírá mapy z katalogu v Chrome, Edge, Opeře nebo Brave na Macu a na Linuxu, kde se ještě testuje. Zatím nefunguje ve Windows, na telefonech ani tabletech a nepřidá vlastní mapy .img.
-
-Začněte ještě dnes
+Ano. [Webový instalátor](https://terento.app/cs/install/) instaluje, aktualizuje a odebírá mapy z katalogu v Chrome, Microsoft Edge, Opeře nebo Brave na Macu a na Linuxu, kde se ještě testuje. Zatím nefunguje ve Windows, na telefonech ani tabletech a nepřidá vlastní mapy .img.
 
 ## Chcete jednodušší způsob instalace map?
 
-Stáhněte si Terento a spravujte mapy třetích stran z Macu.
+Stáhněte si Terento pro Mac, nebo instalujte mapy přímo z prohlížeče.
 
-[Stáhnout](https://terento.app/cs/download/)
+[Stáhnout](https://terento.app/cs/download/) [Instalovat z prohlížeče](https://terento.app/cs/install/)

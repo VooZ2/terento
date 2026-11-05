@@ -7,7 +7,7 @@ Terento
 
 # Scarica Terento
 
-Un’app Mac nativa per installare e gestire mappe della comunità sugli smartwatch Garmin con supporto alle mappe.
+Un’app Mac nativa per installare e gestire mappe di terze parti sugli smartwatch Garmin con supporto alle mappe.
 
 - Gratuita
 - Notarizzata
@@ -27,7 +27,7 @@ Prima dell’installazione
 - macOS 13 o versioni successive
 - Mac Apple Silicon
 - Smartwatch Garmin con supporto mappe
-[Leggi la guida all’installazione su Mac](https://terento.app/it/guides/install-garmin-maps-mac/) [Niente Mac con Apple Silicon? Usa l’installer web](https://terento.app/it/install/)
+[Leggi la guida all’installazione su Mac](https://terento.app/it/guides/install-garmin-maps-mac/) [Niente Mac con Apple Silicon? Usa l’installer web](https://terento.app/it/install/) [Usi Linux? Leggi la guida per Linux](https://terento.app/it/guides/install-garmin-maps-linux/) [Hai un Garmin Edge? Leggi la guida Edge](https://terento.app/it/guides/install-garmin-maps-edge-mac/)
 
 ## Stato della versione
 

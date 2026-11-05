@@ -34,6 +34,10 @@
   }
 
   @assets path *.css *.js *.svg *.png *.ico *.woff2 *.webmanifest *.xml
+
+  # Admin on api.terento.app loads the brand fonts cross-origin; its CSP font-src already allows this host.
+  @brandFonts path /assets/fonts/*.woff2
+  header @brandFonts Access-Control-Allow-Origin "https://api.terento.app"
   header @assets Cache-Control "public, max-age=604800"
 
   @updateManifest path /updates/macos-arm64.json
@@ -49,6 +53,8 @@
 
   @legacySupportedWatches path /supported-watches /supported-watches/*
   @legacyAdmin path /admin /admin/*
+  # /index.html and /de/index.html duplicate the canonical directory URLs.
+  @indexFile path_regexp indexFile ^(/(?:[a-zA-Z0-9_-]+/)*)index\.html$
   @negotiatedPage {
     method GET HEAD
     path_regexp negotiatedPage ^/([a-zA-Z0-9_-]+/)*$
@@ -64,6 +70,7 @@
   route {
     redir @legacySupportedWatches /compatibility/ permanent
     redir @legacyAdmin https://api.terento.app{uri} permanent
+    redir @indexFile {re.indexFile.1} permanent
 
     # Serve generated public-page Markdown only when an agent asks for it.
     @markdown {

@@ -1,5 +1,5 @@
 ---
-title: "Il Mac non rileva l’orologio Garmin? Risoluzione problemi — Terento"
+title: "Il Mac non rileva il Garmin? Risoluzione problemi — Terento"
 canonical: https://terento.app/it/guides/troubleshooting/
 ---
 
@@ -8,6 +8,14 @@ Risoluzione dei problemi
 # Risolvi i problemi di orologio Garmin e mappe su Mac
 
 Trova il tuo problema, da un orologio Garmin che il Mac non rileva a un download della mappa non riuscito, e segui i brevi passaggi. Se niente funziona, invia un rapporto così possiamo dare un’occhiata.
+
+Garmin Edge
+
+## Garmin Edge non rilevato dal Mac
+
+I ciclocomputer Garmin Edge più recenti con supporto alle mappe si collegano al Mac come gli orologi Garmin attuali, quindi la maggior parte dei passaggi di questa pagina vale anche per un Edge: usa un cavo USB dati, chiudi Garmin Express e attendi fino a 2 minuti. I modelli Edge meno recenti che compaiono nel Finder come disco funzionano in modo diverso.
+
+[Leggi la guida Garmin Edge](https://terento.app/it/guides/install-garmin-maps-edge-mac/)
 
 Connessione
 
@@ -18,13 +26,15 @@ Connessione
 Collega l’orologio direttamente al Mac con un cavo USB che trasferisca i dati, sbloccalo e attendi fino a 2 minuti: Terento lo rileva automaticamente.
 
 1. Usa un cavo dati. I cavi solo di ricarica e alcuni hub USB non funzionano.
-2. Attendi fino a 2 minuti mentre Terento controlla la connessione.
-3. Se l’orologio non appare ancora, scollegalo, attendi qualche secondo e ricollegalo.
-4. Se è aperta un’altra app, vedi [Garmin Express o un’altra app sta usando l’orologio](https://terento.app/it/guides/troubleshooting/#garmin-busy).
+2. È normale che l’orologio o l’Edge non compaia nel Finder: macOS non apre come disco la maggior parte degli orologi Garmin attuali e dei modelli Edge più recenti. Terento comunica direttamente con il dispositivo.
+3. Su un Mac portatile, se macOS chiede se consentire il collegamento dell’accessorio, scegli Consenti.
+4. Attendi fino a 2 minuti mentre Terento controlla la connessione.
+5. Se l’orologio non appare ancora, scollegalo, attendi qualche secondo e ricollegalo.
+6. Se è aperta un’altra app, vedi [Garmin Express o un’altra app sta usando l’orologio](https://terento.app/it/guides/troubleshooting/#garmin-busy).
 
 ### Garmin Express o un’altra app sta usando l’orologio
 
-Chiudi Garmin Express e le app di trasferimento file come Android File Transfer, OpenMTP o MacDroid: solo un’app alla volta può usare la connessione con l’orologio.
+Chiudi Garmin Express e le app di trasferimento file come Android File Transfer, OpenMTP o MacDroid: solo un’app alla volta può usare la connessione con l’orologio o con l’Edge.
 
 1. Chiudi Garmin Express, Android File Transfer, OpenMTP, MacDroid e le altre app MTP. Se Terento indica un’app, chiudi prima quella.
 2. Chiudi anche Acquisizione Immagine, Foto e Anteprima se sono aperte.
@@ -40,7 +50,7 @@ Scollega tutti i dispositivi Garmin tranne l’orologio che vuoi usare: Terento 
 
 ### Orologio Garmin non riconosciuto: modalità USB (MTP)
 
-Se Terento indica che l’orologio non è pronto per il trasferimento file, imposta la Modalità USB dell’orologio su MTP, se il tuo modello ha questa impostazione.
+Se Terento indica che l’orologio non è pronto per il trasferimento dei file, imposta la modalità USB dell’orologio su MTP, se il tuo modello ha questa impostazione. MTP (Media Transfer Protocol) è il modo in cui la maggior parte degli orologi Garmin attuali condivide i file via USB, come i telefoni Android. macOS non supporta MTP in modo nativo, quindi l’orologio non appare come disco; Terento usa MTP da solo, quindi non ti servono Android File Transfer né OpenMTP.
 
 1. Sull’orologio apri Modalità USB, di solito in Impostazioni › Sistema. Non tutti i modelli la hanno.
 2. Scegli MTP.
@@ -148,8 +158,4 @@ Nella schermata di errore scegli “Report issue”: Terento apre GitHub con il 
 3. Controlla il rapporto prima di pubblicarlo: le issue su GitHub sono pubbliche.
 4. Non hai un account GitHub? Scrivi a [hello@terento.app](mailto:hello@terento.app?subject=Terento%20installation%20issue) indicando il modello dell’orologio, la regione della mappa e cosa è successo.
 
-Nuovo su Terento?
-
-## Inizia dalla guida all’installazione in tre passaggi.
-
-[Leggi la guida all’installazione su Mac](https://terento.app/it/guides/install-garmin-maps-mac/)
+Nuovo su Terento? [Leggi la guida all’installazione su Mac](https://terento.app/it/guides/install-garmin-maps-mac/)

@@ -2,11 +2,11 @@
 <html lang="cs" data-language="cs" data-page="about">
   <head>
     <script defer src="/site-shell.js?v=20261029-web-installer-public-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20261029-web-installer-v1">
+    <link rel="stylesheet" href="/styles.css?v=20261102-design-audit-v4">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
-    <meta name="description" content="Zjistěte, proč Terento vzniklo: bezplatná open-source aplikace pro macOS k instalaci a správě map třetích stran na hodinkách Garmin.">
+    <meta name="description" content="Zjistěte, proč Terento vzniklo: bezplatná open-source aplikace pro macOS k instalaci a správě map třetích stran na hodinkách a cyklopočítačích Garmin Edge.">
     <meta name="robots" content="index,follow">
     <link rel="canonical" href="https://terento.app/cs/about/">
     <link rel="alternate" hreflang="en" href="https://terento.app/about/">
@@ -19,7 +19,7 @@
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Terento">
     <meta property="og:title" content="O Terento — Bezplatné open-source mapy Garminu na Macu">
-    <meta property="og:description" content="Zjistěte, proč Terento vzniklo: bezplatná open-source aplikace pro macOS k instalaci a správě map třetích stran na hodinkách Garmin.">
+    <meta property="og:description" content="Zjistěte, proč Terento vzniklo: bezplatná open-source aplikace pro macOS k instalaci a správě map třetích stran na hodinkách a cyklopočítačích Garmin Edge.">
     <meta property="og:url" content="https://terento.app/cs/about/">
     <meta property="og:image" content="https://terento.app/assets/social/terento-og.png">
     <meta property="og:image:type" content="image/png">
@@ -29,11 +29,64 @@
     <meta property="og:locale" content="cs_CZ">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="O Terento — Bezplatné open-source mapy Garminu na Macu">
-    <meta name="twitter:description" content="Zjistěte, proč Terento vzniklo: bezplatná open-source aplikace pro macOS k instalaci a správě map třetích stran na hodinkách Garmin.">
+    <meta name="twitter:description" content="Zjistěte, proč Terento vzniklo: bezplatná open-source aplikace pro macOS k instalaci a správě map třetích stran na hodinkách a cyklopočítačích Garmin Edge.">
     <meta name="twitter:image" content="https://terento.app/assets/social/terento-og.png">
     <title>O Terento — Bezplatné open-source mapy Garminu na Macu</title>
 
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#222A2B">
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://terento.app/#organization",
+            "name": "Terento",
+            "url": "https://terento.app/",
+            "logo": "https://terento.app/assets/logo-sky.svg",
+            "sameAs": [
+              "https://github.com/VooZ2/terento"
+            ]
+          },
+          {
+            "@type": "AboutPage",
+            "@id": "https://terento.app/cs/about/#webpage",
+            "url": "https://terento.app/cs/about/",
+            "name": "O Terento",
+            "description": "Zjistěte, proč Terento vzniklo: bezplatná open-source aplikace pro macOS k instalaci a správě map třetích stran na hodinkách a cyklopočítačích Garmin Edge.",
+            "inLanguage": "cs",
+            "isPartOf": {
+              "@id": "https://terento.app/cs/#website"
+            },
+            "publisher": {
+              "@id": "https://terento.app/#organization"
+            },
+            "breadcrumb": {
+              "@id": "https://terento.app/cs/about/#breadcrumb"
+            }
+          },
+          {
+            "@type": "BreadcrumbList",
+            "@id": "https://terento.app/cs/about/#breadcrumb",
+            "itemListElement": [
+              {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Domů",
+                "item": "https://terento.app/cs/"
+              },
+              {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "O Terento",
+                "item": "https://terento.app/cs/about/"
+              }
+            ]
+          }
+        ]
+      }
+    </script>
 
     <link rel="icon" href="/favicon.ico?v=20260820-4" sizes="any">
     <link rel="icon" href="/favicon.svg?v=20260820-4" type="image/svg+xml">
@@ -77,8 +130,8 @@
       <section class="about-intro" aria-labelledby="about-title">
         <div class="shell">
           <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>Terento</p>
-          <h1 id="about-title">Komunitní mapy. Jednodušeji do vašeho Garminu</h1>
-          <p class="about-intro-copy">Terento je bezplatná open-source aplikace pro Mac k výběru, instalaci a správě komunitních map na hodinkách Garmin s podporou map. Usnadňuje přípravu na další cestu.</p>
+          <h1 id="about-title">Mapy zdarma. Jednodušeji do vašeho Garminu</h1>
+          <p class="about-intro-copy">Terento je bezplatná open-source aplikace pro Mac k výběru, instalaci a správě map třetích stran na hodinkách Garmin a cyklopočítačích Edge s podporou map. Usnadňuje přípravu na další cestu.</p>
           <p class="about-beta">Pro Macy s Apple Silicon. Stránka Kompatibilita zobrazuje konkrétní modely a varianty s alespoň jednou úspěšnou sdílenou instalací; není to úplný seznam podporovaných zařízení. <a class="text-link" href="/cs/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="about-intro">Ověřit kompatibilitu</a></p>
           <div class="hero-actions"><a class="download-action" href="/cs/download/" data-umami-event="download-cta-click" data-umami-event-location="about-intro">Stáhnout</a></div>
         </div>

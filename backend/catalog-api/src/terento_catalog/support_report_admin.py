@@ -150,11 +150,11 @@ def support_reports_page(
             listing = _empty_state("filtered", "No reports on this page.", action=(f"/admin/support-reports?status={query_status}", "First page"))
         else:
             listing = _empty_state("empty", "No open reports." if status == "OPEN" else "No handled reports.")
-        body = _metric_row([
+        body = "<section class='admin-card installation-kpis' aria-label='Support report summary'>" + _metric_row([
             _metric_tile("Open", open_count, scope="now", failure=False),
             _metric_tile("Handled", handled_count, scope="all"),
             _metric_tile("Reports", open_count + handled_count, scope="all"),
-        ], label="Support report summary") + _section_card(
+        ], label="Support report summary") + "</section>" + _section_card(
             "Reports",
             f"<div class='filter-bar support-report-filters'><div class='quick-filter-group' role='group' aria-label='Report status'>{chips}</div></div>{listing}",
             card_id="support-report-list",

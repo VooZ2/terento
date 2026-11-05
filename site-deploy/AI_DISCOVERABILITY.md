@@ -50,12 +50,13 @@ Legal/Privacy must remain fetchable so their noindex can be read.
 The shared wildcard group in `site/robots.txt` publishes:
 
 ```text
-Content-Signal: ai-train=yes, search=yes, ai-input=no
+Content-Signal: ai-train=yes, search=yes, ai-input=yes
 ```
 
-This signals a preference to allow AI model training and search indexing/results,
-and to disallow using the content as input for generative AI, including RAG or
-grounding. These values follow the proposed vocabulary in the
+This signals a preference to allow AI model training, search indexing/results
+and using the content as input for generative AI answers, including RAG or
+grounding, so AI search can cite Terento's pages (owner decision 2026-11-02;
+it was `ai-input=no` before). These values follow the proposed vocabulary in the
 [IETF Content Signals Internet-Draft](https://datatracker.ietf.org/doc/draft-romm-aipref-contentsignals/).
 They express publisher preferences; they do not change crawler access rules or
 provide technical enforcement. Keep this preference distinct from `robots.txt`

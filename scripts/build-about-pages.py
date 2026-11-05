@@ -5,10 +5,12 @@ from __future__ import annotations
 
 import html
 import json
+import runpy
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+SCHEMA = runpy.run_path(str(ROOT / "scripts/page_schema.py"))
 BASE_URL = "https://terento.app"
 ABOUT_SLUG = "about/"
 SHELL_VERSION = "20260905-in-page-language-v1"
@@ -41,7 +43,7 @@ def localized_path(locale: str, suffix: str = "") -> str:
 
 COPY = {'en': {'title': 'About Terento — Free, Open-Source Garmin Maps for Mac',
         'description': 'Terento is a free, open-source Mac app for choosing, installing, and managing '
-                       'community maps on Garmin smartwatches with map support. Built to make getting ready for your '
+                       'third-party maps on Garmin smartwatches and Edge bike computers with map support. Built to make getting ready for your '
                        'next trip simpler.',
         'skip': 'Skip to content',
         'story_eyebrow': 'A note from the maker',
@@ -67,13 +69,13 @@ COPY = {'en': {'title': 'About Terento — Free, Open-Source Garmin Maps for Mac
         'doesnt_items': ['Free to use, with no account required.',
                          'Open source: explore the code or help improve it on GitHub.',
                          'Maps come from their providers, with their attribution preserved.'],
-        'product_heading': 'Community maps. A simpler way onto your Garmin.',
+        'product_heading': 'Free maps. A simpler way onto your Garmin.',
         'beta': 'For Apple Silicon Macs. The Compatibility page shows exact models and variants with at least one successful shared installation; it is not a complete supported-device list.',
         'compatibility': 'Check compatibility',
         'download': 'Download'},
  'de': {'title': 'Über Terento — Kostenlose Open-Source-Garmin-Karten für den Mac',
         'description': 'Terento ist eine kostenlose Open-Source-Mac-App zum Auswählen, Installieren und '
-                       'Verwalten von Community-Karten auf Garmin-Smartwatches mit Kartenunterstützung. Damit die Vorbereitung '
+                       'Verwalten von Drittanbieter-Karten auf Garmin-Smartwatches und Edge-Radcomputern mit Kartenunterstützung. Damit die Vorbereitung '
                        'auf deine nächste Reise einfacher wird.',
         'skip': 'Zum Inhalt springen',
         'story_eyebrow': 'Eine Notiz vom Entwickler',
@@ -101,13 +103,13 @@ COPY = {'en': {'title': 'About Terento — Free, Open-Source Garmin Maps for Mac
         'doesnt_items': ['Kostenlos nutzbar, ohne Konto.',
                          'Open Source: Sieh dir den Code an oder hilf auf GitHub mit.',
                          'Die Karten stammen von ihren Anbietern; deren Quellenangaben bleiben erhalten.'],
-        'product_heading': 'Community-Karten. Einfacher auf deiner Garmin.',
+        'product_heading': 'Kostenlose Karten. Einfacher auf deiner Garmin.',
         'beta': 'Für Macs mit Apple Silicon. Die Kompatibilitätsseite zeigt genaue Modelle und Varianten mit mindestens einer erfolgreich geteilten Installation; sie ist keine vollständige Liste unterstützter Geräte.',
         'compatibility': 'Kompatibilität prüfen',
         'download': 'Download'},
  'fr': {'title': 'À propos de Terento — Cartes Garmin gratuites et open source sur Mac',
         'description': 'Terento est une application Mac gratuite et open source pour choisir, installer et '
-                       'gérer des cartes communautaires sur les montres Garmin prenant en charge les cartes. Pour préparer '
+                       'gérer des cartes tierces sur les montres et compteurs vélo Edge Garmin prenant en charge les cartes. Pour préparer '
                        'plus simplement votre prochaine escapade.',
         'skip': 'Aller au contenu',
         'story_eyebrow': 'Une note du créateur',
@@ -136,13 +138,13 @@ COPY = {'en': {'title': 'About Terento — Free, Open-Source Garmin Maps for Mac
         'doesnt_items': ['Gratuit, sans compte obligatoire.',
                          'Open source : consultez le code ou contribuez sur GitHub.',
                          'Les cartes proviennent de leurs fournisseurs et conservent leurs attributions.'],
-        'product_heading': 'Des cartes communautaires. Plus simplement sur votre Garmin.',
+        'product_heading': 'Des cartes gratuites. Plus simplement sur votre Garmin.',
         'beta': 'Pour les Mac avec Apple Silicon. La page Compatibilité affiche les modèles et variantes exacts avec au moins une installation réussie partagée ; ce n’est pas une liste exhaustive des appareils pris en charge.',
         'compatibility': 'Vérifier la compatibilité',
         'download': 'Télécharger'},
  'pl': {'title': 'O Terento — Bezpłatne, otwartoźródłowe mapy Garmina na Macu',
         'description': 'Terento to bezpłatna aplikacja open source na Maca do wybierania, instalowania i '
-                       'zarządzania mapami społecznościowymi na zegarkach Garmin obsługujących mapy. Ułatwia '
+                       'zarządzania mapami innych firm na zegarkach Garmin i licznikach rowerowych Edge obsługujących mapy. Ułatwia '
                        'przygotowania do kolejnej podróży.',
         'skip': 'Przejdź do treści',
         'story_eyebrow': 'Notatka od twórcy',
@@ -169,13 +171,13 @@ COPY = {'en': {'title': 'About Terento — Free, Open-Source Garmin Maps for Mac
         'doesnt_items': ['Bezpłatnie, bez konieczności zakładania konta.',
                          'Open source: przeglądaj kod lub pomóż go ulepszać na GitHubie.',
                          'Mapy pochodzą od ich dostawców, z zachowaniem informacji o autorstwie.'],
-        'product_heading': 'Mapy społecznościowe. Prościej na Twoim Garminie.',
+        'product_heading': 'Darmowe mapy. Prościej na Twoim Garminie.',
         'beta': 'Dla Maców z Apple Silicon. Strona zgodności pokazuje dokładne modele i warianty z co najmniej jedną udaną, udostępnioną instalacją; nie jest pełną listą obsługiwanych urządzeń.',
         'compatibility': 'Sprawdź zgodność',
         'download': 'Pobierz'},
  'cs': {'title': 'O Terento — Bezplatné open-source mapy Garminu na Macu',
         'description': 'Terento je bezplatná open-source aplikace pro Mac k výběru, instalaci a správě '
-                       'komunitních map na hodinkách Garmin s podporou map. Usnadňuje přípravu na další '
+                       'map třetích stran na hodinkách Garmin a cyklopočítačích Edge s podporou map. Usnadňuje přípravu na další '
                        'cestu.',
         'skip': 'Přejít k obsahu',
         'story_eyebrow': 'Poznámka od tvůrce',
@@ -203,13 +205,13 @@ COPY = {'en': {'title': 'About Terento — Free, Open-Source Garmin Maps for Mac
         'doesnt_items': ['Zdarma, bez nutnosti účtu.',
                          'Open source: prohlédněte si kód nebo pomozte s jeho vylepšením na GitHubu.',
                          'Mapy pocházejí od svých poskytovatelů a zachovávají údaje o autorství.'],
-        'product_heading': 'Komunitní mapy. Jednodušeji do vašeho Garminu.',
+        'product_heading': 'Mapy zdarma. Jednodušeji do vašeho Garminu.',
         'beta': 'Pro Macy s Apple Silicon. Stránka Kompatibilita zobrazuje konkrétní modely a varianty s alespoň jednou úspěšnou sdílenou instalací; není to úplný seznam podporovaných zařízení.',
         'compatibility': 'Ověřit kompatibilitu',
         'download': 'Stáhnout'},
  'it': {'title': 'Informazioni su Terento — Mappe Garmin gratuite e open source su Mac',
         'description': 'Terento è un’app Mac gratuita e open source per scegliere, installare e gestire '
-                       'mappe della comunità sugli smartwatch Garmin con supporto alle mappe. Per prepararti più facilmente '
+                       'mappe di terze parti su smartwatch Garmin e ciclocomputer Edge con supporto alle mappe. Per prepararti più facilmente '
                        'al prossimo viaggio.',
         'skip': 'Vai al contenuto',
         'story_eyebrow': 'Una nota dal creatore',
@@ -238,7 +240,7 @@ COPY = {'en': {'title': 'About Terento — Free, Open-Source Garmin Maps for Mac
         'doesnt_items': ['Gratuito, senza bisogno di un account.',
                          'Open source: esplora il codice o contribuisci su GitHub.',
                          'Le mappe provengono dai loro fornitori e mantengono le attribuzioni.'],
-        'product_heading': 'Mappe della comunità. Più semplicemente sul tuo Garmin.',
+        'product_heading': 'Mappe gratuite. Più semplicemente sul tuo Garmin.',
         'beta': 'Per Mac con Apple Silicon. La pagina Compatibilità mostra i modelli e le varianti esatti con almeno un’installazione riuscita condivisa; non è un elenco completo dei dispositivi supportati.',
         'compatibility': 'Verifica la compatibilità',
         'download': 'Scarica'}}
@@ -294,6 +296,7 @@ def render(locale: str, copy: dict[str, object]) -> str:
     <meta name="twitter:description" content="{esc(copy["description"])}">
     <meta name="twitter:image" content="{BASE_URL}{SOCIAL_IMAGE}">
     <title>{esc(copy["title"])}</title>
+{SCHEMA["json_ld_block"](locale, ABOUT_SLUG, "AboutPage")}
 
 
     <link rel="icon" href="/favicon.ico?v=20260820-4" sizes="any">

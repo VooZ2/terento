@@ -994,8 +994,11 @@ class CatalogService:
             "timeZone": time_zone,
             "since": since,
             "data": data,
+            # All time App downloads share the map charts' grid (one Dashboard
+            # time axis); the other periods already use one bucket rule.
             "downloads": section("downloads", lambda: self.database.github_downloads_snapshot(
                 time_zone=time_zone, period=period,
+                all_time_grid=data.get("bucket") if isinstance(data, dict) else None,
             ), dict(unavailable)),
             "providers": providers,
             "system": section("system", system_health, dict(unavailable)),
@@ -3474,6 +3477,13 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             self.send_header("Access-Control-Allow-Origin", "*")
             self.send_header("X-Content-Type-Options", "nosniff")
             self.send_header("Referrer-Policy", "no-referrer")
+            self.send_header("Strict-Transport-Security", "max-age=31536000")
+            self.send_header("X-Frame-Options", "DENY")
+            # Admin HTML sends its own nonce CSP; a second CSP header would intersect and block it.
+            if not content_type.startswith("text/html"):
+                self.send_header(
+                    "Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'"
+                )
 
         def log_message(self, format: str, *args: Any) -> None:
             LOGGER.info("%s - %s", self.address_string(), format % args)

@@ -55,7 +55,7 @@ class DiscoverabilityTests(unittest.TestCase):
     def test_robots_public_and_private_for_every_crawler(self):
         robots_source = (ROOT / 'site/robots.txt').read_text()
         self.assertEqual(re.findall(r'(?mi)^Content-Signal:\s*(.+)$', robots_source),
-                         ['ai-train=yes, search=yes, ai-input=no'])
+                         ['ai-train=yes, search=yes, ai-input=yes'])
         self.assertIn(f'Agentmap: {BASE}/.well-known/ard.json', robots_source)
         robots = RobotFileParser()
         robots.parse(robots_source.splitlines())
@@ -68,13 +68,22 @@ class DiscoverabilityTests(unittest.TestCase):
                          '/api/private', '/diagnostics/', '/preview/', '/lab/', '/test/'):
                 self.assertFalse(robots.can_fetch(agent, BASE + path), (agent, path))
 
+    def test_security_txt_points_to_private_reporting(self):
+        # RFC 9116: Contact and Expires are required; renew Expires before it passes.
+        fields = dict(line.split(': ', 1) for line in (ROOT / 'site/.well-known/security.txt').read_text().splitlines() if line)
+        self.assertEqual(fields['Contact'], 'https://github.com/VooZ2/terento/security/advisories/new')
+        self.assertRegex(fields['Expires'], r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$')
+        self.assertEqual(fields['Canonical'], BASE + '/.well-known/security.txt')
+
     def test_sitemap_exact_inventory_limits_and_metadata(self):
         source = (ROOT / 'site/sitemap.xml').read_bytes()
         ns = {'s': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
         tree = ET.fromstring(source)
         urls = [node.text for node in tree.findall('s:url/s:loc', ns)]
         expected = [BASE + p['path'] for p in CONFIG['pages'] if p.get('indexable', True)]
-        self.assertCountEqual(urls, expected)
+        # The web installer service serves these; the sitemap only lists them.
+        external = [BASE + p['path'] for p in CONFIG['externalPages']]
+        self.assertCountEqual(urls, expected + external)
         self.assertEqual(len(urls), len(set(urls)))
         self.assertLessEqual(len(urls), 50000)
         self.assertLessEqual(len(source), 50 * 1024 * 1024)
@@ -82,6 +91,7 @@ class DiscoverabilityTests(unittest.TestCase):
             parsed = urlsplit(url)
             self.assertEqual((parsed.scheme, parsed.netloc, parsed.query, parsed.fragment),
                              ('https', 'terento.app', '', ''))
+            if url in external: continue
             page = self.pages[parsed.path]
             self.assertEqual(page.canonical, [url])
             self.assertEqual(page.meta['robots'], 'index,follow')
@@ -98,6 +108,22 @@ class DiscoverabilityTests(unittest.TestCase):
             titles.append(title); descriptions.append(description)
         self.assertEqual(len(titles), len(set(titles)))
         self.assertEqual(len(descriptions), len(set(descriptions)))
+
+    def test_article_date_modified_matches_sitemap_lastmod(self):
+        # One date per guide: its JSON-LD dateModified and its sitemap lastmod
+        # (2026-11-02 SEO review, A6). Bump the guide's reviewed date with its text.
+        ns = {'s': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
+        tree = ET.fromstring((ROOT / 'site/sitemap.xml').read_bytes())
+        lastmods = {node.findtext('s:loc', namespaces=ns): node.findtext('s:lastmod', namespaces=ns)
+                    for node in tree.findall('s:url', ns)}
+        checked = 0
+        for page in CONFIG['pages']:
+            path, source = page['path'], (ROOT / page['file']).read_text(encoding='utf-8')
+            dates = re.findall(r'"dateModified":\s*"(\d{4}-\d{2}-\d{2})', source)
+            lastmod = lastmods.get(BASE + path)
+            if not dates or not lastmod: continue
+            self.assertEqual(set(dates), {lastmod}, path); checked += 1
+        self.assertGreaterEqual(checked, 18)
 
     def test_no_unregistered_html_and_all_pages_reachable_by_links(self):
         registered = {ROOT / page['file'] for page in CONFIG['pages']}
@@ -131,6 +157,7 @@ class DiscoverabilityTests(unittest.TestCase):
         source = (ROOT / 'site/llms.txt').read_text()
         links = re.findall(r'\]\((https://[^)]+)\)', source)
         allowed = {BASE + p['path'] for p in CONFIG['pages'] if p.get('indexable', True)}
+        allowed |= {BASE + p['path'] for p in CONFIG['externalPages']}
         allowed.add('https://github.com/VooZ2/terento')
         self.assertTrue(set(links) <= allowed)
         for path in ('/', '/about/', '/compatibility/', '/download/', '/guides/install-garmin-maps-mac/', '/guides/troubleshooting/'):
@@ -285,6 +312,13 @@ class DiscoverabilityTests(unittest.TestCase):
         caddy = (ROOT / 'site-deploy/Caddyfile').read_text()
         self.assertIn('@agentSkill path /.well-known/agent-skills/*/SKILL.md', caddy)
         self.assertIn('Content-Type "text/markdown; charset=utf-8"', caddy)
+
+    def test_brand_fonts_allow_admin_origin_only(self):
+        caddy = (ROOT / 'site-deploy/Caddyfile').read_text()
+        self.assertIn('@brandFonts path /assets/fonts/*.woff2', caddy)
+        self.assertIn('header @brandFonts Access-Control-Allow-Origin "https://api.terento.app"', caddy)
+        api = (ROOT / 'backend/catalog-api/src/terento_catalog/http_api.py').read_text()
+        self.assertIn('font-src https://terento.app;', api)
 
     def test_public_json_is_available_but_not_indexable(self):
         site = (ROOT / 'site-deploy/Caddyfile').read_text()

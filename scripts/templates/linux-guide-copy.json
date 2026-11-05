@@ -1,0 +1,206 @@
+{
+  "en": {
+    "title": "Install Garmin Maps on Linux from Chrome — Terento",
+    "description": "Install free OpenStreetMap maps on a Garmin watch from Linux in Chrome, Microsoft Edge, Opera or Brave. Add one udev rule, connect the watch with a USB cable and send the map. No app needed.",
+    "h1": "Install Garmin maps on Linux",
+    "eyebrow": "Linux guide",
+    "intro": "On Linux, the Terento web installer puts free maps on Garmin watches with map support, straight from your browser. Linux needs one permission rule first, so the browser can use the watch over USB.",
+    "skip": "Skip to content",
+    "breadcrumb_home": "Home",
+    "breadcrumb_current": "Linux guide",
+    "needs_title": "What you need",
+    "needs": [
+      "Chrome, Microsoft Edge, Opera or Brave on a Linux computer. Firefox can’t connect to USB devices.",
+      "A USB data cable, not a charge-only cable.",
+      "A Garmin watch that supports maps, unlocked."
+    ],
+    "steps_eyebrow": "Three steps",
+    "steps_title": "Install a map from your browser",
+    "steps": [
+      {"title": "Give the browser USB access", "body": "Open Terminal and paste this command. It adds a udev rule for Garmin devices and asks for your administrator password once. Then unplug the watch and plug it back in.", "command": true},
+      {"title": "Open the web installer and connect", "body": "Open the web installer, choose Connect your watch and pick the entry with “Garmin” in its name. The list may stay empty for a minute or two while the watch gets ready."},
+      {"title": "Choose maps and install", "body": "Pick a country or region and choose Install maps. Keep the tab open and the watch connected until it finishes."}
+    ],
+    "command_label": "Command for Terminal",
+    "problems_eyebrow": "Troubleshooting",
+    "problems_title": "If it doesn’t work",
+    "problems": [
+      {"title": "The browser can’t open the watch", "body": "Your file manager may be using the watch. Eject it there without unplugging it, then reload the page. If you added the rule while the watch was connected, unplug it and plug it back in."},
+      {"title": "The browser’s list stays empty", "body": "Leave the list open for up to two minutes. If no entry with “Garmin” in its name appears, try another USB data cable and check that the watch is unlocked."},
+      {"title": "The browser has no USB access", "body": "A browser installed as a Snap package may not get USB access. Use the browser from its official .deb or .rpm package."}
+    ],
+    "cta_eyebrow": "Ready?",
+    "cta_title": "Open the web installer and connect your watch.",
+    "cta_link": "Open the web installer"
+  },
+  "de": {
+    "title": "Garmin-Karten unter Linux aus Chrome installieren — Terento",
+    "description": "Installiere kostenlose OpenStreetMap-Karten unter Linux aus Chrome, Microsoft Edge, Opera oder Brave auf deine Garmin-Uhr. Eine udev-Regel anlegen, die Uhr per USB-Kabel verbinden und die Karte senden. Keine App nötig.",
+    "h1": "Garmin-Karten unter Linux installieren",
+    "eyebrow": "Linux-Anleitung",
+    "intro": "Unter Linux installiert der Terento-Web-Installer kostenlose Karten auf Garmin-Uhren mit Kartenunterstützung, direkt aus dem Browser. Linux braucht zuerst eine Berechtigungsregel, damit der Browser die Uhr über USB nutzen kann.",
+    "skip": "Zum Inhalt springen",
+    "breadcrumb_home": "Startseite",
+    "breadcrumb_current": "Linux-Anleitung",
+    "needs_title": "Das brauchst du",
+    "needs": [
+      "Chrome, Microsoft Edge, Opera oder Brave auf einem Linux-Computer. Firefox kann keine USB-Geräte verbinden.",
+      "Ein USB-Datenkabel, kein reines Ladekabel.",
+      "Eine entsperrte Garmin-Uhr mit Kartenunterstützung."
+    ],
+    "steps_eyebrow": "Drei Schritte",
+    "steps_title": "Eine Karte aus dem Browser installieren",
+    "steps": [
+      {"title": "Dem Browser USB-Zugriff geben", "body": "Öffne das Terminal und füge diesen Befehl ein. Er legt eine udev-Regel für Garmin-Geräte an und fragt einmal nach deinem Administratorpasswort. Trenne die Uhr danach und schließe sie wieder an.", "command": true},
+      {"title": "Web-Installer öffnen und verbinden", "body": "Öffne den Web-Installer, wähle „Verbinde deine Uhr“ und dann den Eintrag mit „Garmin“ im Namen. Die Liste kann ein bis zwei Minuten leer bleiben, während sich die Uhr vorbereitet."},
+      {"title": "Karten wählen und installieren", "body": "Wähle ein Land oder eine Region und dann „Karten installieren“. Lass den Tab geöffnet und die Uhr verbunden, bis der Vorgang abgeschlossen ist."}
+    ],
+    "command_label": "Befehl für das Terminal",
+    "problems_eyebrow": "Fehlerbehebung",
+    "problems_title": "Wenn es nicht klappt",
+    "problems": [
+      {"title": "Der Browser kann die Uhr nicht öffnen", "body": "Möglicherweise verwendet dein Dateimanager die Uhr. Wirf sie dort aus, ohne sie zu trennen, und lade die Seite neu. Wenn du die Regel bei verbundener Uhr angelegt hast, trenne die Uhr und schließe sie wieder an."},
+      {"title": "Die Liste des Browsers bleibt leer", "body": "Lass die Liste bis zu zwei Minuten offen. Wenn kein Eintrag mit „Garmin“ im Namen erscheint, probiere ein anderes USB-Datenkabel und prüfe, ob die Uhr entsperrt ist."},
+      {"title": "Der Browser hat keinen USB-Zugriff", "body": "Ein als Snap-Paket installierter Browser bekommt möglicherweise keinen USB-Zugriff. Verwende den Browser aus seinem offiziellen .deb- oder .rpm-Paket."}
+    ],
+    "cta_eyebrow": "Bereit?",
+    "cta_title": "Öffne den Web-Installer und verbinde deine Uhr.",
+    "cta_link": "Web-Installer öffnen"
+  },
+  "fr": {
+    "title": "Installer des cartes Garmin sous Linux depuis Chrome — Terento",
+    "description": "Installez des cartes OpenStreetMap gratuites sur une montre Garmin sous Linux depuis Chrome, Microsoft Edge, Opera ou Brave. Ajoutez une règle udev, branchez la montre avec un câble USB et envoyez la carte. Aucune application nécessaire.",
+    "h1": "Installer des cartes Garmin sous Linux",
+    "eyebrow": "Guide Linux",
+    "intro": "Sous Linux, l’installateur web Terento installe des cartes gratuites sur les montres Garmin compatibles avec les cartes, directement depuis votre navigateur. Linux a d’abord besoin d’une règle d’autorisation pour que le navigateur puisse utiliser la montre en USB.",
+    "skip": "Aller au contenu",
+    "breadcrumb_home": "Accueil",
+    "breadcrumb_current": "Guide Linux",
+    "needs_title": "Ce qu’il vous faut",
+    "needs": [
+      "Chrome, Microsoft Edge, Opera ou Brave sur un ordinateur Linux. Firefox ne peut pas se connecter aux appareils USB.",
+      "Un câble USB de données, pas un câble de charge seule.",
+      "Une montre Garmin compatible avec les cartes, déverrouillée."
+    ],
+    "steps_eyebrow": "Trois étapes",
+    "steps_title": "Installer une carte depuis le navigateur",
+    "steps": [
+      {"title": "Donner l’accès USB au navigateur", "body": "Ouvrez le Terminal et collez cette commande. Elle ajoute une règle udev pour les appareils Garmin et demande une fois votre mot de passe administrateur. Débranchez ensuite la montre, puis rebranchez-la.", "command": true},
+      {"title": "Ouvrir l’installateur web et connecter", "body": "Ouvrez l’installateur web, choisissez « Connectez votre montre », puis l’entrée contenant « Garmin » dans son nom. La liste peut rester vide une ou deux minutes pendant que la montre se prépare."},
+      {"title": "Choisir les cartes et installer", "body": "Choisissez un pays ou une région, puis « Installer des cartes ». Gardez l’onglet ouvert et la montre connectée jusqu’à la fin."}
+    ],
+    "command_label": "Commande pour le Terminal",
+    "problems_eyebrow": "Dépannage",
+    "problems_title": "Si cela ne fonctionne pas",
+    "problems": [
+      {"title": "Le navigateur ne peut pas ouvrir la montre", "body": "Votre gestionnaire de fichiers utilise peut-être la montre. Éjectez-la depuis celui-ci sans la débrancher, puis rechargez la page. Si vous avez ajouté la règle avec la montre branchée, débranchez-la puis rebranchez-la."},
+      {"title": "La liste du navigateur reste vide", "body": "Laissez la liste ouverte jusqu’à deux minutes. Si aucune entrée contenant « Garmin » n’apparaît, essayez un autre câble USB de données et vérifiez que la montre est déverrouillée."},
+      {"title": "Le navigateur n’a pas d’accès USB", "body": "Un navigateur installé en paquet Snap peut ne pas obtenir l’accès USB. Utilisez le navigateur issu de son paquet officiel .deb ou .rpm."}
+    ],
+    "cta_eyebrow": "Prêt ?",
+    "cta_title": "Ouvrez l’installateur web et connectez votre montre.",
+    "cta_link": "Ouvrir l’installateur web"
+  },
+  "pl": {
+    "title": "Instaluj mapy Garmin w Linuksie z Chrome — Terento",
+    "description": "Instaluj darmowe mapy OpenStreetMap na zegarku Garmin w Linuksie z Chrome, Microsoft Edge, Opery lub Brave. Dodaj jedną regułę udev, podłącz zegarek kablem USB i wyślij mapę. Bez aplikacji.",
+    "h1": "Instalowanie map Garmin w Linuksie",
+    "eyebrow": "Poradnik dla Linuksa",
+    "intro": "W Linuksie instalator webowy Terento wgrywa darmowe mapy na zegarki Garmin obsługujące mapy, prosto z przeglądarki. Najpierw Linux potrzebuje jednej reguły uprawnień, aby przeglądarka mogła używać zegarka przez USB.",
+    "skip": "Przejdź do treści",
+    "breadcrumb_home": "Strona główna",
+    "breadcrumb_current": "Poradnik dla Linuksa",
+    "needs_title": "Czego potrzebujesz",
+    "needs": [
+      "Chrome, Microsoft Edge, Opery lub Brave na komputerze z Linuksem. Firefox nie łączy się z urządzeniami USB.",
+      "Kabla USB do transmisji danych, nie tylko do ładowania.",
+      "Odblokowanego zegarka Garmin obsługującego mapy."
+    ],
+    "steps_eyebrow": "Trzy kroki",
+    "steps_title": "Zainstaluj mapę z przeglądarki",
+    "steps": [
+      {"title": "Daj przeglądarce dostęp do USB", "body": "Otwórz Terminal i wklej to polecenie. Dodaje ono regułę udev dla urządzeń Garmin i raz prosi o hasło administratora. Potem odłącz zegarek i podłącz go ponownie.", "command": true},
+      {"title": "Otwórz instalator webowy i połącz", "body": "Otwórz instalator webowy, wybierz „Podłącz zegarek”, a potem pozycję ze słowem „Garmin” w nazwie. Lista może pozostać pusta przez minutę lub dwie, gdy zegarek się przygotowuje."},
+      {"title": "Wybierz mapy i zainstaluj", "body": "Wybierz kraj lub region, a potem „Zainstaluj mapy”. Nie zamykaj karty i nie odłączaj zegarka do zakończenia."}
+    ],
+    "command_label": "Polecenie dla Terminala",
+    "problems_eyebrow": "Rozwiązywanie problemów",
+    "problems_title": "Jeśli to nie działa",
+    "problems": [
+      {"title": "Przeglądarka nie może otworzyć zegarka", "body": "Możliwe, że menedżer plików używa zegarka. Wysuń go tam bez odłączania kabla i odśwież stronę. Jeśli reguła została dodana przy podłączonym zegarku, odłącz go i podłącz ponownie."},
+      {"title": "Lista w przeglądarce pozostaje pusta", "body": "Nie zamykaj listy przez maksymalnie dwie minuty. Jeśli nie pojawi się pozycja ze słowem „Garmin” w nazwie, spróbuj innego kabla USB do danych i sprawdź, czy zegarek jest odblokowany."},
+      {"title": "Przeglądarka nie ma dostępu do USB", "body": "Przeglądarka zainstalowana jako pakiet Snap może nie mieć dostępu do USB. Użyj przeglądarki z jej oficjalnego pakietu .deb lub .rpm."}
+    ],
+    "cta_eyebrow": "Gotowe?",
+    "cta_title": "Otwórz instalator webowy i połącz zegarek.",
+    "cta_link": "Otwórz instalator webowy"
+  },
+  "cs": {
+    "title": "Instalace map Garmin v Linuxu z Chrome — Terento",
+    "description": "Nainstalujte bezplatné mapy OpenStreetMap do hodinek Garmin v Linuxu z Chrome, Microsoft Edge, Opery nebo Brave. Přidejte jedno pravidlo udev, připojte hodinky kabelem USB a odešlete mapu. Bez aplikace.",
+    "h1": "Instalace map Garmin v Linuxu",
+    "eyebrow": "Průvodce pro Linux",
+    "intro": "V Linuxu webový instalátor Terento nahraje bezplatné mapy do hodinek Garmin s podporou map přímo z prohlížeče. Linux nejdřív potřebuje jedno pravidlo oprávnění, aby prohlížeč mohl hodinky používat přes USB.",
+    "skip": "Přejít na obsah",
+    "breadcrumb_home": "Domů",
+    "breadcrumb_current": "Průvodce pro Linux",
+    "needs_title": "Co potřebujete",
+    "needs": [
+      "Chrome, Microsoft Edge, Operu nebo Brave na počítači s Linuxem. Firefox se nemůže připojit k zařízením USB.",
+      "Datový kabel USB, ne kabel jen pro nabíjení.",
+      "Odemčené hodinky Garmin s podporou map."
+    ],
+    "steps_eyebrow": "Tři kroky",
+    "steps_title": "Instalace mapy z prohlížeče",
+    "steps": [
+      {"title": "Dejte prohlížeči přístup k USB", "body": "Otevřete Terminál a vložte tento příkaz. Přidá pravidlo udev pro zařízení Garmin a jednou se zeptá na heslo správce. Pak hodinky odpojte a znovu připojte.", "command": true},
+      {"title": "Otevřete webový instalátor a připojte", "body": "Otevřete webový instalátor, zvolte „Připojte hodinky“ a pak položku se slovem „Garmin“ v názvu. Seznam může minutu nebo dvě zůstat prázdný, než se hodinky připraví."},
+      {"title": "Vyberte mapy a nainstalujte", "body": "Vyberte zemi nebo oblast a zvolte „Instalovat mapy“. Nechte kartu otevřenou a hodinky připojené, dokud nebude vše hotovo."}
+    ],
+    "command_label": "Příkaz pro Terminál",
+    "problems_eyebrow": "Řešení potíží",
+    "problems_title": "Když to nefunguje",
+    "problems": [
+      {"title": "Prohlížeč nemůže hodinky otevřít", "body": "Hodinky možná používá správce souborů. Vysuňte je tam bez odpojení kabelu a znovu načtěte stránku. Pokud jste pravidlo přidali s připojenými hodinkami, odpojte je a znovu připojte."},
+      {"title": "Seznam v prohlížeči zůstává prázdný", "body": "Nechte seznam otevřený až dvě minuty. Pokud se neobjeví položka se slovem „Garmin“ v názvu, zkuste jiný datový kabel USB a zkontrolujte, že jsou hodinky odemčené."},
+      {"title": "Prohlížeč nemá přístup k USB", "body": "Prohlížeč nainstalovaný jako balíček Snap nemusí dostat přístup k USB. Použijte prohlížeč z jeho oficiálního balíčku .deb nebo .rpm."}
+    ],
+    "cta_eyebrow": "Připraveno?",
+    "cta_title": "Otevřete webový instalátor a připojte hodinky.",
+    "cta_link": "Otevřít webový instalátor"
+  },
+  "it": {
+    "title": "Installa mappe Garmin su Linux da Chrome — Terento",
+    "description": "Installa mappe OpenStreetMap gratuite su un orologio Garmin da Linux con Chrome, Microsoft Edge, Opera o Brave. Aggiungi una regola udev, collega l’orologio con un cavo USB e invia la mappa. Nessuna app necessaria.",
+    "h1": "Installare mappe Garmin su Linux",
+    "eyebrow": "Guida Linux",
+    "intro": "Su Linux l’installer web di Terento mette mappe gratuite sugli orologi Garmin che supportano le mappe, direttamente dal browser. Prima Linux ha bisogno di una regola di autorizzazione, così il browser può usare l’orologio via USB.",
+    "skip": "Vai al contenuto",
+    "breadcrumb_home": "Home",
+    "breadcrumb_current": "Guida Linux",
+    "needs_title": "Cosa ti serve",
+    "needs": [
+      "Chrome, Microsoft Edge, Opera o Brave su un computer Linux. Firefox non può collegarsi ai dispositivi USB.",
+      "Un cavo USB per dati, non solo di ricarica.",
+      "Un orologio Garmin che supporta le mappe, sbloccato."
+    ],
+    "steps_eyebrow": "Tre passaggi",
+    "steps_title": "Installa una mappa dal browser",
+    "steps": [
+      {"title": "Dai al browser l’accesso USB", "body": "Apri il Terminale e incolla questo comando. Aggiunge una regola udev per i dispositivi Garmin e chiede una volta la password di amministratore. Poi scollega l’orologio e ricollegalo.", "command": true},
+      {"title": "Apri l’installer web e collega", "body": "Apri l’installer web, scegli “Collega il tuo orologio” e poi la voce con “Garmin” nel nome. L’elenco può restare vuoto per un minuto o due mentre l’orologio si prepara."},
+      {"title": "Scegli le mappe e installa", "body": "Scegli un paese o una regione e poi “Installa mappe”. Lascia la scheda aperta e l’orologio collegato fino al completamento."}
+    ],
+    "command_label": "Comando per il Terminale",
+    "problems_eyebrow": "Risoluzione dei problemi",
+    "problems_title": "Se non funziona",
+    "problems": [
+      {"title": "Il browser non riesce ad aprire l’orologio", "body": "Il gestore file potrebbe usare l’orologio. Espellilo da lì senza scollegarlo, poi ricarica la pagina. Se hai aggiunto la regola con l’orologio collegato, scollegalo e ricollegalo."},
+      {"title": "L’elenco del browser resta vuoto", "body": "Lascia l’elenco aperto fino a due minuti. Se non appare una voce con “Garmin” nel nome, prova un altro cavo USB per dati e controlla che l’orologio sia sbloccato."},
+      {"title": "Il browser non ha accesso USB", "body": "Un browser installato come pacchetto Snap potrebbe non avere accesso USB. Usa il browser dal suo pacchetto ufficiale .deb o .rpm."}
+    ],
+    "cta_eyebrow": "Pronto?",
+    "cta_title": "Apri l’installer web e collega l’orologio.",
+    "cta_link": "Apri l’installer web"
+  }
+}

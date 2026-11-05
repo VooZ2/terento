@@ -7,7 +7,7 @@ Terento
 
 # Stáhnout Terento
 
-Nativní aplikace pro Mac k instalaci a správě komunitních map na hodinkách Garmin s podporou map.
+Nativní aplikace pro Mac k instalaci a správě map třetích stran na hodinkách Garmin s podporou map.
 
 - Zdarma
 - Notarizovaná
@@ -27,7 +27,7 @@ Před instalací
 - macOS 13 nebo novější
 - Mac s Apple Silicon
 - Hodinky Garmin s podporou map
-[Přečíst průvodce instalací na Macu](https://terento.app/cs/guides/install-garmin-maps-mac/) [Nemáte Mac s Apple Silicon? Použijte webový instalátor](https://terento.app/cs/install/)
+[Přečíst průvodce instalací na Macu](https://terento.app/cs/guides/install-garmin-maps-mac/) [Nemáte Mac s Apple Silicon? Použijte webový instalátor](https://terento.app/cs/install/) [Linux? Přečtěte si návod pro Linux](https://terento.app/cs/guides/install-garmin-maps-linux/) [Garmin Edge? Přečtěte si průvodce pro Edge](https://terento.app/cs/guides/install-garmin-maps-edge-mac/)
 
 ## Stav verze
 

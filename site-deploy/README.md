@@ -37,6 +37,12 @@ secrets have been removed; these workflows use only the scoped environment keys.
 The update manifest is deliberately sent with `Cache-Control: no-store` so an
 old app-update response cannot remain cached after a release.
 
+Brand fonts under `/assets/fonts/*.woff2` send
+`Access-Control-Allow-Origin: https://api.terento.app` so Terento Admin, which
+references them from the API origin, can load them; no other origin is allowed.
+Cloudflare may keep a font copy without that header for up to the seven-day
+asset cache lifetime unless the cached font URLs are purged after deploy.
+
 ### IndexNow key provisioning
 
 The public Caddy image contains no IndexNow key. The owner provisions the same
@@ -264,6 +270,11 @@ visible email spans only when the decoded values occur in the expected source;
 the complete restored page must still match exactly.
 
 ### Search and AI discovery
+
+`site/.well-known/security.txt` (RFC 9116) points security reports to GitHub private
+vulnerability reporting, as `SECURITY.md` does. Its `Expires` is 2027-11-01: renew it
+before then. `/index.html` (and `/<locale>/index.html`) redirect permanently to the
+directory URL, the only canonical form.
 
 See [AI_DISCOVERABILITY.md](AI_DISCOVERABILITY.md) for crawler policy, static
 compatibility content, canonical/sitemap/IndexNow contracts and local checks.

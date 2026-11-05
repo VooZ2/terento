@@ -96,17 +96,50 @@ decided by the original epix row alone and counted as that model. The
 MARQ (Gen 2) lines are not aliased because first-generation MARQ editions exist
 under the same names; those first-generation names are real Maps=Yes rows, so
 a Gen 2 watch that reported a plain first-generation name would also be
-approved correctly. Edge models stay absent and `PENDING`.
+approved correctly. No Edge name is aliased; Edge rows decide under their own
+reported base model.
 
 The public Compatibility directory and its `TESTED`/`SUPPORTED`/`VERIFIED`
 evidence categories, `successfulInstallations`, Admin `support_status`, and
 prior successful installs neither grant nor revoke write authority. Catalog
 `mapCapable` is the stored nullable value; separately observed or inferred
-map capability is diagnostic evidence only. The current Garmin Edge models
-are absent from the API catalog and therefore `PENDING`, not permanently
-unsupported. A future reliably identified, active Edge catalog model with
-Maps=Yes follows the same rule without a dedicated blacklist, whitelist, or
-feature flag. Public product claims remain independently evidence-gated.
+map capability is diagnostic evidence only. Edge cycling computers follow the
+same rule without a dedicated blacklist, whitelist, or feature flag: an Edge
+base model absent from the API catalog is `PENDING`, and a reliably identified,
+active Edge catalog model with Maps=Yes is `APPROVED`. Public product claims
+remain independently evidence-gated.
+
+**Edge test rows (owner, 2026-11-02).** So the owner can test Edge installs
+before deciding to keep or withdraw them, migration 090 adds active Maps=Yes
+rows for the Edge generations that connect over MTP, the only Terento
+transport: Edge 540, 840, 1040, 1050, 550, 850, 1060 and Edge Explore 2. Each
+row records the Garmin product specification row `Ability to add maps: yes`
+(checked 2026-11-02) in `specification_evidence.map_capable`. Migration 091
+(owner: real status, Garmin's names and images, every Edge model) makes them
+ordinary Garmin catalog rows: the collector reads Garmin's cycling category
+(Edge products only), so current Edge models are `CURRENT_RETAIL` collector
+rows and models that leave the category are retired from retail like watches.
+It adds Edge MTB, Explore 3, Explore 3 Plus and the Solar editions (540, 840,
+1040 Solar) of the same generation with Maps=Yes from the same specification
+row; a Solar row must match its base row, because a base model is approved
+only when all its rows are Maps=Yes. Every older Edge model Garmin sold (Edge
+1030 Plus and earlier, back to Edge 205) is a `HISTORICAL_REVIEWED` row with
+Maps Unknown, so it stays `PENDING` until an install is verified; many of them
+connect as USB mass storage, which Terento does not use. A new Edge model that
+appears in the cycling category takes its Maps value from its specification
+row like any new collector model. Every released native client
+approves these models under the ordinary rule; no client change is involved.
+The web installer approves a reported plain base model (for example `Edge 840`)
+but strips only a trailing case size, so a reported Solar name (`Edge 1040
+Solar`) is not found there and fails closed. The rows are not a public support claim: the public site and README
+keep Edge outside the public scope, and public Compatibility shows an Edge model
+only after the separate Admin publication. Withdrawing Edge is a later reviewed
+catalog change shipped as a migration, because Admin has no Maps editor. For a
+collector-managed Edge row (current or retired from retail) the migration must
+write Maps=`false` (`BLOCKED`): the next collection that sees the model makes
+the row active again and replaces a NULL Maps value with the specification's
+`yes`, but it never replaces a stored `false`. A historical Edge row, which the
+collector does not touch, may be withdrawn with NULL (`PENDING`) or `false`.
 
 The stored catalog Maps value of a **new** collector-managed model comes only
 from the official Garmin product specifications the collector already reads:
@@ -133,7 +166,8 @@ evidence row, source page and check time are recorded in
 `specification_evidence.map_capable`. A stored `true`/`false` (reviewed,
 backfilled or set by an administrator) is never replaced by the collector; an
 Unknown row may be filled later from the same specification evidence.
-Administrators still set Maps manually; Devices filtered to `Maps: Unknown`
+Admin has no Maps editor: a stored value changes only through a reviewed
+migration (as 075, 076 and 090 do). Devices filtered to `Maps: Unknown`
 and active models (`/admin/devices?maps=unknown&active=1`) lists active models
 whose value is Unknown.
 
@@ -166,8 +200,8 @@ Migration 075 applies these decisions; the per-row evidence is stored in
   fēnix 6X Pro), from the Garmin product specifications or the fēnix 6 Pro
   Series owner's manual. The standard fēnix 6 and 6S Dual Power editions are
   not added: Garmin publishes no map row for them, so they stay `PENDING`.
-  Edge, handheld and
-  non-map products are not added. Current-category models (for example
+  Handheld and
+  non-map products are not added (Edge rows: migrations 090 and 091, above). Current-category models (for example
   Enduro 4, Approach S72) are added by the weekly collector from their
   specification rows.
 - *Golf watches (owner rule, 2026-10-09).* A golf watch has Maps=Yes only

@@ -4,6 +4,12 @@
 
 # Catalog API contract
 
+Every API response carries `X-Content-Type-Options: nosniff`,
+`Referrer-Policy: no-referrer`, `Strict-Transport-Security: max-age=31536000`
+and `X-Frame-Options: DENY`. Non-HTML responses also carry
+`Content-Security-Policy: default-src 'none'; frame-ancestors 'none'`; Admin
+HTML pages send only their own nonce-based CSP.
+
 ## Local provider recovery and update diagnostic additions — 2026-10-02
 
 Requires additive migrations `064_provider_rechecks_update_diagnostics.sql` and

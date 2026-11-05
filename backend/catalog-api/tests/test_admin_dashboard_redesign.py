@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import threading
 import unittest
 from http.client import HTTPConnection
@@ -9,8 +10,12 @@ from http.server import ThreadingHTTPServer
 from urllib.parse import urlencode
 
 from api_test_fixtures import FakeProviderDatabase
+from datetime import datetime, timedelta, timezone
+
 from terento_catalog.admin import (
-    ADMIN_STYLES, _overview_period_script, _provider_problem_state, first_run_page, overview_page,
+    ADMIN_STYLES, _map_statistics_summary, _sparkline, _overview_period_script, _provider_problem_state,
+    _chart_axis_labels, _nice_tick_step, _overview_downloads_chart, _overview_trend_chart,
+    first_run_page, map_statistics_page, overview_page,
 )
 from terento_catalog.http_api import CatalogService, make_handler
 
@@ -92,23 +97,36 @@ class DashboardPresentationTests(unittest.TestCase):
         payload.update(overview)
         return overview_page(payload, {"username": "operator", "admin_review_summary": review}, "csrf").decode()
 
+    def test_all_time_dashboard_passes_the_map_start_to_app_downloads(self):
+        months = ["2026-08-01T00:00:00Z", "2026-09-01T00:00:00Z"]
+        page = self.render(
+            period="all",
+            all={"bucket": "month", "trend": [{"bucket": month, "success_count": 1} for month in months]},
+            downloads={"hasData": True, "dmgTotal": 3, "zipTotal": 1, "bucket": "month",
+                       "trend": [{"bucket": months[1], "dmg_count": 3, "zip_count": 1}]},
+        )
+        card = page[page.index("id='overview-downloads'"):]
+        self.assertIn(">Aug 2026</text>", card[:card.index("</svg>")])
+
     def test_card_headers_carry_period_totals_and_the_legend_names_series(self):
         body = self.render()
         self.assertNotIn("Dashboard summary", body)
         self.assertNotIn("overview-tiles", body)
         installs = body.split("id='overview-trend-title'", 1)[1].split("</section>", 1)[0]
         head = installs.split("</header>", 1)[0]
-        self.assertIn("data-scope='period'>Last 7 days</span>", head)
-        # One badge, numbers only (owner 2026-10-11): successful / failed / rate.
-        self.assertIn("<span class='overview-card-total overview-card-result'>"
-                      "<strong data-stat='completedInstallCount'>12</strong><span class='sr-only'> successful,</span>"
-                      "<span class='overview-card-total-separator' aria-hidden='true'>/</span>"
-                      "<strong class='admin-error-counter is-positive' data-stat='failedInstallCount'>2</strong>"
-                      "<span class='sr-only'> failed,</span>"
-                      "<span class='overview-card-total-separator' aria-hidden='true'>/</span>"
-                      "<strong data-stat='installSuccessRate'>85.7%</strong><span class='sr-only'> success rate</span>",
-                      head)
-        self.assertNotIn("<small>", head)
+        # The period lives in the picker; cards repeat no period chip.
+        self.assertNotIn("data-scope='period'", head)
+        # Owner 2026-11-03: the period totals live once, in the headline
+        # tiles (successful, rate, failed in the danger tone); the chart card
+        # header holds only its title.
+        self.assertNotIn("data-stat=", head)
+        strip = body.split("class='admin-card overview-kpi-strip'", 1)[1].split("</section>", 1)[0]
+        installs_cell = next(cell for cell in strip.split("<div class='overview-kpi-cell'>") if "<span>Installs</span>" in cell)
+        installs_tile = installs_cell.split("data-source-panel='app'", 1)[1].split("data-source-panel='appstore'", 1)[0]
+        for fragment in ("<span>Installs</span>", "<strong data-stat='installSuccessRate'>85.7%</strong>",
+                         "data-stat='completedInstallCount'>12</strong>",
+                         "<span class='overview-kpi-sub is-danger'><strong data-stat='failedInstallCount'>2</strong> failed"):
+            self.assertIn(fragment, installs_tile)
         self.assertNotIn("admin-icon", head)
         # One All/App/App Store/Web icon switch beside the period picker swaps
         # both chart cards; All is shown first (owner decisions 2026-10-11 and
@@ -137,6 +155,14 @@ class DashboardPresentationTests(unittest.TestCase):
             rest = card.split("</ul>", 1)[1].replace("</div>", "").strip()
             self.assertTrue(rest.startswith("<div data-source-panel='appstore' hidden>"), rest[:80])
 
+    def test_sparkline_scales_to_its_own_peak_and_skips_single_points(self):
+        self.assertEqual(_sparkline([]), "")
+        self.assertEqual(_sparkline([5]), "")
+        line = _sparkline([0, 10, 5])
+        # x spans 0..100; the peak touches y=2, zero sits on y=28.
+        self.assertIn("points='0.0,28.0 50.0,2.0 100.0,15.0'", line)
+        self.assertIn("aria-hidden='true'", line)
+
     def test_needs_attention_lists_only_nonzero_rows_and_a_total(self):
         body = self.render(supportReports={"openCount": 2}, mapsUnknown={"modelCount": 4})
         attention = body.split("id='overview-attention-title'", 1)[1].split("</section>", 1)[0]
@@ -160,7 +186,9 @@ class DashboardPresentationTests(unittest.TestCase):
         self.assertIn("href='/admin/support-reports'", attention)
         head = attention.split("</header>", 1)[0]
         # The header total is exactly the sum of the rendered category rows.
-        self.assertIn(f"data-stat='attentionTotal'>{sum(rows)}</strong><small>Total</small>", head)
+        # The total is the Needs attention headline tile (owner 2026-11-03).
+        self.assertNotIn("attentionTotal", head)
+        self.assertIn(f"data-stat='attentionTotal'>{sum(rows)}</strong>", body)
 
     def test_needs_attention_with_nothing_open_says_so_in_the_middle(self):
         # Owner 2026-10-10: cards in a Dashboard row share one height, so an
@@ -170,7 +198,7 @@ class DashboardPresentationTests(unittest.TestCase):
         body = self.render(review=zero_review, supportReports={"openCount": 0})
         attention = body.split("id='overview-attention-title'", 1)[1].split("</section>", 1)[0]
         self.assertNotIn("overview-attention-row", attention)
-        self.assertIn("data-stat='attentionTotal'>0</strong>", attention)
+        self.assertIn("data-stat='attentionTotal'>0</strong>", body)
         self.assertTrue(attention.endswith(
             "</header><p class='admin-empty overview-empty-state' data-state='empty'><span>Nothing to review.</span></p>"))
         self.assertIn("overview-panel overview-attention-panel overview-attention-empty", body)
@@ -179,18 +207,62 @@ class DashboardPresentationTests(unittest.TestCase):
         self.assertNotIn(".overview-attention-empty{align-self:start}", ADMIN_STYLES)
 
     def test_dashboard_rows_pair_cards_of_similar_height(self):
-        # Owner 2026-10-11: Needs attention beside Activity, First run beside
-        # App downloads; cards in a row stretch to one height.
+        # Owner 2026-11-03: Needs attention beside First run, then the charts,
+        # then Activity beside App downloads; cards in a row stretch to one height.
         body = self.render(funnel=_funnel(**self.FIRST_RUN), downloads={
             "hasData": True, "dmgTotal": 3, "zipTotal": 1, "bucket": "day", "trend": [
                 {"bucket": "2026-10-01T00:00:00Z", "observed_at": "2026-10-01T00:00:00Z",
                  "state": "observed_increase", "dmg_count": 1, "zip_count": 0}]})
-        grid = body.split("<div class='overview-composition-grid'>", 1)[1].split("</main>", 1)[0]
+        grid = body.split("<div class='overview-composition-grid overview-review-grid'>", 1)[1].split("</main>", 1)[0]
         order = [grid.index(f"id='{card}-title'") for card in
-                 ("overview-attention", "overview-activity", "overview-funnel", "overview-downloads")]
+                 ("overview-attention", "overview-funnel", "overview-download-trend", "overview-trend",
+                  "overview-activity", "overview-downloads")]
         self.assertEqual(order, sorted(order))
         self.assertIn(".overview-composition-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));"
                       "align-items:stretch;", ADMIN_STYLES)
+
+    def test_period_totals_are_not_repeated_outside_the_tiles(self):
+        # Owner 2026-11-03: totals appear once, in the tiles. The App downloads
+        # legend only names .dmg and .zip; Maps chart cards carry the title only.
+        body = self.render(downloads={
+            "hasData": True, "dmgTotal": 3, "zipTotal": 1, "bucket": "day", "trend": [
+                {"bucket": "2026-10-01T00:00:00Z", "observed_at": "2026-10-01T00:00:00Z",
+                 "state": "observed_increase", "dmg_count": 5, "zip_count": 2}]})
+        card = body.split("id='overview-downloads-title'", 1)[1].split("</section>", 1)[0]
+        legend = card.split("<ul class='overview-chart-legend", 1)[1].split("</ul>", 1)[0]
+        self.assertIn("<span>.dmg</span></li>", legend)
+        self.assertNotIn("<strong>", legend)
+        self.assertNotIn("overview-card-totals", body)
+        tile = next(cell for cell in body.split("<div class='overview-kpi-cell'>") if "<span>App downloads</span>" in cell)
+        self.assertIn("<span class='overview-kpi-aside'></span>", tile)
+        self.assertIn("<span class='overview-kpi-sub'>.dmg 5 · .zip 2</span>", tile)
+        row = {"provider_id": "p", "event_type": "INSTALL_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 3}
+        maps = map_statistics_page({"rows": [row], "summary": _map_statistics_summary([row])},
+                                   [{"id": "p", "name": "Provider"}], {"username": "operator"}, "csrf").decode()
+        self.assertIn("data-stat='completedInstalls'>3</strong>", maps)
+        trends = maps.split("class='overview-primary-grid map-statistics-trends'", 1)[1].split("</section>\n", 1)[0]
+        self.assertNotIn("data-stat=", trends)
+
+    def test_headline_tiles_follow_their_number_and_say_when_unavailable(self):
+        body = self.render(data={
+            "hasData": True, "completedInstallCount": 0, "failedInstallCount": 2, "installSuccessRate": 0.0,
+            "completedDownloadCount": 4, "failedDownloadCount": 0, "downloadSuccessRate": 100.0,
+            "recentActivity": [], "bucket": "day", "trend": [
+                {"bucket": "2026-10-01T00:00:00Z", "success_count": 0, "failed_count": 2,
+                 "download_success_count": 4, "download_failed_count": 0},
+                {"bucket": "2026-10-02T00:00:00Z", "success_count": 0, "failed_count": 0,
+                 "download_success_count": 1, "download_failed_count": 9}],
+        }, funnel={"available": False})
+        strip = body.split("class='admin-card overview-kpi-strip'", 1)[1].split("</section>", 1)[0]
+        cell = lambda label: next(c for c in strip.split("<div class='overview-kpi-cell'>") if f"<span>{label}</span>" in c)
+        # 0 successful of 2 still shows its 0% rate.
+        self.assertIn("<strong data-stat='installSuccessRate'>0%</strong>", cell("Installs"))
+        # The sparkline follows the successful number, not failures (4 then 1).
+        downloads = cell("Map downloads").split("data-source-panel='app'", 1)[1].split("data-source-panel=", 1)[0]
+        self.assertIn(_sparkline([4, 1]), downloads)
+        self.assertIn("<strong class='overview-kpi-value'>—</strong><span class='overview-kpi-sub'>Unavailable</span>",
+                      cell("First run"))
+        self.assertIn('@media(max-width:900px){.overview-kpi-head{flex-direction:column;gap:2px}', ADMIN_STYLES)
 
     FIRST_RUN = dict(
         sessions=5, connected=4, never_connected=1, no_usb=1, approved=3, pending=1, remote=4,
@@ -211,8 +283,10 @@ class DashboardPresentationTests(unittest.TestCase):
         card = body.split("id='overview-funnel-title'", 1)[1].split("</section>", 1)[0]
         head = card.split("</header>", 1)[0]
         self.assertIn("<a class='admin-card-action section-link' href='/admin/first-run?period=7d'>View all", head)
-        for value, noun in (("5", "Opened"), ("4", "Connected"), ("3", "Allowed")):
-            self.assertIn(f"<span class='overview-card-total'><strong>{value}</strong><small>{noun}</small></span>", head)
+        # The journey totals moved to the First run headline tile (owner 2026-11-03).
+        strip = body.split("class='admin-card overview-kpi-strip'", 1)[1].split("</section>", 1)[0]
+        for fragment in ("<span>First run</span>", "60% allowed", ">5</strong>", "4 connected"):
+            self.assertIn(fragment, strip)
         self.assertIn("<a href='/admin/first-run?period=7d#first-run-not-connected' "
                       "aria-label='Never connected: 1. Mostly: No watch plugged in (1)'>", card)
         self.assertIn("<span class='overview-attention-label'>Never connected"
@@ -421,6 +495,115 @@ class DashboardPresentationTests(unittest.TestCase):
         self.assertFalse(unknown["problem"])
 
 
+class ChartQaTests(unittest.TestCase):
+    """Owner QA 2026-11-03: round axes, a dashed bucket in progress and App
+    downloads drawn like the map charts."""
+
+    def test_axis_steps_are_round(self):
+        self.assertEqual([_nice_tick_step(value) * 4 for value in (4, 9, 76, 147)], [4, 12, 80, 160])
+
+    def test_bucket_in_progress_is_dashed_and_named(self):
+        now = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+        trend = [{"bucket": (now - timedelta(hours=1)).isoformat(), "success_count": 2},
+                 {"bucket": now.isoformat(), "success_count": 1}]
+        chart = _overview_trend_chart(trend, "hour")
+        self.assertEqual(chart.count("overview-chart-group is-partial"), 2)  # the last bar, desktop and mobile
+        self.assertIn("(in progress) · Total: 1", chart)
+        # One dashed outline per bar; segments keep full tone and no separators.
+        self.assertEqual(chart.count("class='overview-chart-partial-outline'"), 2)
+        self.assertNotIn("fill-opacity", ADMIN_STYLES.split(".overview-chart-partial-outline", 1)[1].split("}", 1)[0])
+        # Hourly App downloads use the same grid: a missing hour is an empty slot.
+        hourly = _overview_downloads_chart({"hasData": True, "bucket": "hour", "trend": [
+            {"bucket": f"2026-09-11T{hour}:00:00Z", "dmg_count": 1, "zip_count": 0} for hour in (10, 12)]})
+        slot = (720 - 42 - 12) / 3
+        self.assertIn(f"<rect class='overview-chart-download-dmg' data-stack-index='0' data-stack-total='1' "
+                      f"x='{42 + 2.5 * slot - min(slot * 0.72, 86) / 2:.1f}'", hourly)
+        self.assertNotIn("(in progress) · Total: 2", chart)
+        spark = _sparkline([2, 1], partial_last=True)
+        self.assertIn("<polyline points='0.0,2.0'/><polyline class='is-partial' points='0.0,2.0 100.0,15.0'/>", spark)
+        self.assertNotIn("is-partial", _sparkline([2, 1]))
+        self.assertIn(".overview-kpi-spark polyline.is-partial{stroke-dasharray:3 2}", ADMIN_STYLES)
+
+    def test_app_downloads_share_the_bucket_grid_and_pale_palette(self):
+        import xml.etree.ElementTree as ET
+
+        # Weekly buckets with one week missing: three bars on four even slots,
+        # placed by bucket start even when the last observation is recent.
+        trend = [{"bucket": f"2026-10-{day:02d}T00:00:00Z", "observed_at": f"2026-10-{day + 6:02d}T23:00:00Z",
+                  "dmg_count": 3, "zip_count": 1, "release_markers": [{"label": f"rc.{day}"}]}
+                 for day in (5, 12, 26)]
+        trend[-1]["observed_at"] = "2026-10-26T01:00:00Z"
+        body = _overview_downloads_chart({"hasData": True, "bucket": "week", "trend": trend}, period="30d")
+        desktop = ET.fromstring(body[body.index("<svg"):body.index("</svg>") + 6])
+        xs = [float(rect.get("x")) for rect in desktop.iter("rect") if rect.get("class") == "overview-chart-download-dmg"]
+        slot = (720 - 42 - 12) / 4
+        self.assertEqual([round(x, 1) for x in xs], [round(42 + (index + 0.5) * slot - min(slot * 0.72, 86) / 2, 1)
+                                                     for index in (0, 1, 3)])
+        mobile = body[body.rindex("<svg"):body.rindex("</svg>")]
+        # Phone: marker lines keep their titles, no visible text to collide.
+        self.assertIn("<title>New release: rc.5", mobile)
+        self.assertNotRegex(mobile, r"<text[^>]*>New release")
+        self.assertIn(".overview-chart-success,.overview-chart-download-success,.overview-chart-download-dmg{fill:color-mix(in srgb,var(--sky) 72%,var(--surface))", ADMIN_STYLES)
+        self.assertIn(".overview-chart-download-zip{fill:color-mix(in srgb,var(--sky) 40%,var(--surface))", ADMIN_STYLES)
+        self.assertNotIn("var(--status-success-text);background:var(--status-success-text)}", ADMIN_STYLES)
+
+    def test_live_qa_2026_11_04_one_frame_one_plot_area_and_quiet_markers(self):
+        import re as regex
+        now = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+        hours = [now - timedelta(hours=1), now]
+        trend = [{"bucket": hour.isoformat(), "success_count": 3, "failed_count": 1} for hour in hours]
+        chart = _overview_trend_chart(trend, "hour")
+        downloads = _overview_downloads_chart({"hasData": True, "bucket": "hour", "trend": [
+            {"bucket": hour.isoformat(), "dmg_count": 3, "zip_count": 1} for hour in hours]})
+        for body in (chart, downloads):
+            desktop = body[body.index("<svg"):body.index("</svg>")]
+            # One selection frame per bar (not a stroke per segment); the bar in
+            # progress keeps its dashed outline, and the value strip names it.
+            self.assertEqual(desktop.count("overview-chart-select-outline"), 2)
+            self.assertEqual(desktop.count("overview-chart-partial-outline"), 1)
+            self.assertIn(" (in progress)&quot;", desktop)
+            # Same plot area as the map charts: no clip, left 42, baseline 222, top 20.
+            self.assertNotIn("clipPath", desktop)
+            self.assertIn("<line class='overview-chart-grid' x1='42' x2='708' y1='222.0'", desktop)
+            self.assertIn("y1='20.0' y2='20.0'", desktop)
+        self.assertIn(".overview-chart-group.is-partial .overview-chart-select-outline{stroke-dasharray:4 3}", ADMIN_STYLES)
+        # Release and boundary lines are solid and sit behind the bars; the
+        # single release shows its version only.
+        marked = _overview_downloads_chart({"hasData": True, "bucket": "week", "trend": [
+            {"bucket": "2026-10-26T00:00:00Z", "dmg_count": 3, "zip_count": 1, "state": "discontinuity",
+             "discontinuity_reason": "population_change",
+             "release_markers": [{"label": "Terento 1.1.0 (build 46)", "tag": "v1.1.0-build46"}]}]}, period="30d")
+        desktop = marked[marked.index("<svg"):marked.index("</svg>")]
+        self.assertLess(desktop.index("overview-chart-download-marker"), desktop.index("overview-chart-group"))
+        self.assertIn(">New release · 1.1.0</text>", desktop)
+        self.assertIn("New release: Terento 1.1.0 (build 46)", desktop)
+        self.assertIn(".overview-chart-download-marker line{stroke-width:1.5}", ADMIN_STYLES)
+        self.assertNotRegex(ADMIN_STYLES, r"overview-chart-download-marker line\{[^}]*dasharray")
+
+    def test_all_time_app_downloads_start_with_the_map_charts(self):
+        # Map charts start in August; GitHub snapshots only in September. The
+        # empty August slot keeps every month on the map charts' x position.
+        months = ["2026-08-01T00:00:00Z", "2026-09-01T00:00:00Z", "2026-10-01T00:00:00Z", "2026-11-01T00:00:00Z"]
+        maps = _overview_trend_chart([{"bucket": month, "success_count": 2} for month in months], "month")
+        downloads = {"hasData": True, "bucket": "month", "trend": [
+            {"bucket": month, "dmg_count": 3, "zip_count": 1} for month in months[1:]]}
+        aligned = _overview_downloads_chart(downloads, period="all", grid_start=months[0])
+        for body in (maps, aligned):
+            desktop = body[body.index("<svg"):body.index("</svg>")]
+            self.assertIn(">Aug 2026</text>", desktop)
+        x = lambda body, css: re.findall(rf"<rect class='{css}'[^>]* x='([\d.]+)'", body[body.index("<svg"):body.index("</svg>")])
+        self.assertEqual(x(aligned, "overview-chart-download-dmg"), x(maps, "overview-chart-success")[1:])
+        # Without the map start the chart keeps its own first bucket.
+        self.assertNotIn(">Aug 2026<", _overview_downloads_chart(downloads, period="all"))
+
+    def test_axis_labels_keep_one_even_step(self):
+        # 25 hourly slots on a phone: the edge label never leaves a wider gap.
+        positions = [42 + (index + 0.5) * 12.24 for index in range(25)]
+        texts = [f"{hour % 24:02d}:00" for hour in range(11, 36)]
+        indexes = [index for index, _ in _chart_axis_labels(positions, texts, font_size=13, chart_width=360)]
+        self.assertEqual(indexes[-1], 24)
+        self.assertEqual(len({b - a for a, b in zip(indexes, indexes[1:])}), 1)
+
 class CountingDatabase(FakeProviderDatabase):
     def __init__(self) -> None:
         super().__init__()
@@ -527,7 +710,8 @@ class DashboardHttpTests(unittest.TestCase):
     def test_missing_reports_list_and_dismiss_return_to_the_list(self):
         response, body = self.request("GET", "/admin/review/missing-reports?offset=0")
         self.assertEqual(response.status, 200)
-        self.assertIn("<h1>Missing reports</h1>", body)
+        self.assertIn("<h1>Missing reports</h1></div><p class='page-meta'>", body)
+        self.assertNotIn("Missing report summary", body)
         self.assertEqual(self.database.missing_calls, [(50, 0)])
         response, _ = self.request(
             "POST", "/admin/review/missing-diagnostics/dismiss",

@@ -5,19 +5,20 @@ canonical: https://terento.app/
 
 Open-source project
 
-# Install maps on Garmin watches, simply
+# Install free maps on your Garmin device
 
-Install, update, and manage third-party maps from a native macOS app — without manual file transfers.
+Terento is a free, open-source way to install, update and manage third-party maps on Garmin watches and Edge bike computers: with a native Mac app or in your desktop browser.
 
-[Download](https://terento.app/download/) [Check compatibility](https://terento.app/compatibility/) [Or install from your browser](https://terento.app/install/)
+[Download for Mac](https://terento.app/download/)
+[Check compatibility](https://terento.app/compatibility/) [Install from your browser](https://terento.app/install/)
 
-Terento showing community map installation progress on macOS
+Terento showing third-party map installation progress on macOS
 
 How it works
 
 ## Connect Install Done
 
-Installing third-party maps should be simple and fast — without extra software, separate download steps, or technical know-how.
+Installing third-party maps should be simple and fast — no copying files by hand, no technical know-how.
 
 Terento brings the whole process together in three simple steps.
 
@@ -31,7 +32,7 @@ Choose maps from the catalog, or add your own compatible .img map.
 
 3. Done
 
-Your maps are installed and ready to use on your watch.
+Your maps are installed and ready to use on your Garmin.
 
 ## Install maps
 
@@ -49,11 +50,11 @@ Web installer
 
 ## No app? Install from your browser.
 
-Connect your Garmin with a USB cable, choose maps and install them straight from Chrome, Edge, Opera or Brave. Update or remove them later the same way.
+Connect your Garmin with a USB cable, choose maps and install them straight from Chrome, Microsoft Edge, Opera or Brave. Update or remove them later the same way.
 
 Works on a Mac and, still in testing, on Linux. Not on Windows, phones or tablets yet.
 
-Mac · Linux (testing)Chrome, Edge, Opera, BraveUSB data cable
+Mac · Linux (testing)Chrome, Microsoft Edge, Opera, BraveUSB data cable
 
 [Open the web installer](https://terento.app/install/)
 
@@ -105,11 +106,11 @@ Have questions?
 
 ## FAQ
 
-Which Garmin watches work with Terento?
+Which Garmin watches and Edge bike computers work with Terento?
 
-See the [Compatibility page](https://terento.app/compatibility/) for exact Garmin models and variants with at least one successful shared installation. A missing model is not necessarily unsupported.
+See the [Compatibility page](https://terento.app/compatibility/) for exact Garmin models and variants with at least one successful shared installation. A missing model is not necessarily unsupported. Newer Garmin Edge bike computers with map support, such as Edge 540, 840 and 1050, work too. [Read the Edge guide.](https://terento.app/guides/install-garmin-maps-edge-mac/)
 
-Can I install third-party maps on a Garmin watch from a Mac without BaseCamp?
+Can I install third-party maps on a Garmin watch from a Mac without Garmin Express or BaseCamp?
 
 Yes. Terento is designed to make third-party map management on macOS simple and fast — from choosing a map to installing, updating, and managing it on your Garmin watch. [Read the installation guide.](https://terento.app/guides/install-garmin-maps-mac/)
 
@@ -133,12 +134,10 @@ On the failed installation screen, choose “Report issue”. Terento opens GitH
 
 Can I install maps without installing the app?
 
-Yes. The [web installer](https://terento.app/install/) installs, updates and removes catalog maps from Chrome, Edge, Opera or Brave on a Mac, and on Linux, where it is still being tested. It does not work on Windows, phones or tablets yet, and it cannot add your own .img maps.
-
-Get started today
+Yes. The [web installer](https://terento.app/install/) installs, updates and removes catalog maps from Chrome, Microsoft Edge, Opera or Brave on a Mac, and on Linux, where it is still being tested. It does not work on Windows, phones or tablets yet, and it cannot add your own .img maps.
 
 ## Ready for an easier way to install maps?
 
-Download Terento and start managing third-party maps from your Mac.
+Download Terento for your Mac, or install maps straight from your browser.
 
-[Download](https://terento.app/download/)
+[Download](https://terento.app/download/) [Install from your browser](https://terento.app/install/)

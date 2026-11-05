@@ -5,7 +5,7 @@
             <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>${p_eyebrow}</p>
             <h1 id="hero-title">${hero_title}</h1>
             <p class="hero-lede">${hero_lede}</p>
-            <div class="hero-actions"><a class="download-action hero-download-action" href="${a_download_action_hero_download_action_href}" data-umami-event="download-cta-click" data-umami-event-location="home-hero">${a_download_action_hero_download_action}<span aria-hidden="true">→</span></a><a class="text-link hero-compatibility-link" href="${scope_href}" data-umami-event="compatibility-link-click" data-umami-event-location="home-hero">${a_text_link_hero_compatibility_link}<span aria-hidden="true">→</span></a><a class="text-link hero-web-installer-link" href="${web_installer_href}" data-umami-event="web-installer-link-click" data-umami-event-location="home-hero">${web_installer_hero}<span aria-hidden="true">→</span></a></div>
+            <div class="hero-actions"><a class="download-action hero-download-action" href="${a_download_action_hero_download_action_href}" data-umami-event="download-cta-click" data-umami-event-location="home-hero">${a_download_action_hero_download_action}<span aria-hidden="true">→</span></a><div class="hero-secondary-actions"><a class="text-link hero-compatibility-link" href="${scope_href}" data-umami-event="compatibility-link-click" data-umami-event-location="home-hero">${a_text_link_hero_compatibility_link}<span aria-hidden="true">→</span></a><a class="text-link hero-web-installer-link" href="${web_installer_href}" data-umami-event="web-installer-link-click" data-umami-event-location="home-hero">${web_installer_hero}<span aria-hidden="true">→</span></a></div></div>
           </div>
 
           <div class="hero-visual">
@@ -23,7 +23,7 @@
       <section class="experience section" id="how-it-works" aria-labelledby="experience-title">
         <div class="shell">
           <div class="section-heading">
-            <p class="eyebrow" id="experience-label">${experience_label}</p><h2 id="experience-title">${h2_experience_title}<span class="workflow-title-arrow" aria-hidden="true">→</span><span class="workflow-title-bullet" aria-hidden="true">•</span>${h2_experience_title_2}<span class="workflow-title-arrow" aria-hidden="true">→</span><span class="workflow-title-bullet" aria-hidden="true">•</span>${h2_experience_title_3}</h2>
+            <p class="eyebrow" id="experience-label">${experience_label}</p><h2 id="experience-title">${h2_experience_title}<span class="workflow-title-arrow" aria-hidden="true">→</span><span class="workflow-title-bullet" aria-hidden="true"></span>${h2_experience_title_2}<span class="workflow-title-arrow" aria-hidden="true">→</span><span class="workflow-title-bullet" aria-hidden="true"></span>${h2_experience_title_3}</h2>
           </div>
           <div class="problem-statement">
             <p>${problem}</p>
@@ -157,11 +157,10 @@
       <section class="final-cta" aria-labelledby="final-cta-title">
         <div class="shell final-cta-inner">
           <div class="final-cta-copy">
-            <p class="eyebrow">${final_cta_eyebrow}</p>
             <h2 id="final-cta-title">${final_cta_title}</h2>
             <p>${final_cta_body}</p>
           </div>
-          <a class="download-action" href="${a_download_action_href}" data-umami-event="download-cta-click" data-umami-event-location="home-final-cta">${download_label}</a>
+          <div class="final-cta-actions"><a class="download-action" href="${a_download_action_href}" data-umami-event="download-cta-click" data-umami-event-location="home-final-cta">${download_label}</a><a class="text-link" href="${web_installer_href}" data-umami-event="web-installer-link-click" data-umami-event-location="home-final-cta">${web_installer_hero}<span aria-hidden="true">→</span></a></div>
         </div>
       </section>
     </main>

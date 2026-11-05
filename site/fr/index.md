@@ -5,19 +5,20 @@ canonical: https://terento.app/fr/
 
 Projet open source
 
-# Installez simplement des cartes sur les montres Garmin
+# Installez des cartes gratuites sur votre appareil Garmin
 
-Installez, mettez à jour et gérez des cartes tierces depuis une application macOS native — sans transferts manuels de fichiers.
+Terento est un outil gratuit et open source pour installer, mettre à jour et gérer des cartes tierces sur les montres et compteurs vélo Edge Garmin : avec une application Mac native ou dans votre navigateur sur ordinateur.
 
-[Télécharger](https://terento.app/fr/download/) [Vérifier la compatibilité](https://terento.app/fr/compatibility/) [Ou installez depuis votre navigateur](https://terento.app/fr/install/)
+[Télécharger pour Mac](https://terento.app/fr/download/)
+[Vérifier la compatibilité](https://terento.app/fr/compatibility/) [Installer depuis votre navigateur](https://terento.app/fr/install/)
 
-Terento affiche la progression de l’installation de cartes communautaires sur macOS
+Terento affiche la progression de l’installation de cartes tierces sur macOS
 
 Comment ça marche
 
 ## Connecter Installer Terminé
 
-Installer des cartes tierces devrait être simple et rapide — sans logiciel supplémentaire, étapes de téléchargement séparées ni connaissances techniques.
+Installer des cartes tierces devrait être simple et rapide — sans copier de fichiers à la main ni connaissances techniques.
 
 Terento réunit tout le parcours en trois étapes simples.
 
@@ -31,7 +32,7 @@ Choisissez des cartes dans le catalogue ou ajoutez votre propre carte .img compa
 
 3. Terminé
 
-Vos cartes sont installées et prêtes à être utilisées sur votre montre.
+Vos cartes sont installées et prêtes à être utilisées sur votre Garmin.
 
 ## Installer les cartes
 
@@ -49,11 +50,11 @@ Installateur web
 
 ## Pas d’application ? Installez depuis votre navigateur.
 
-Branchez votre Garmin avec un câble USB, choisissez des cartes et installez-les directement depuis Chrome, Edge, Opera ou Brave. Mettez-les à jour ou supprimez-les plus tard de la même façon.
+Branchez votre Garmin avec un câble USB, choisissez des cartes et installez-les directement depuis Chrome, Microsoft Edge, Opera ou Brave. Mettez-les à jour ou supprimez-les plus tard de la même façon.
 
 Fonctionne sur Mac et, encore en test, sous Linux. Pas encore sous Windows, ni sur téléphone ou tablette.
 
-Mac · Linux (en test)Chrome, Edge, Opera, BraveCâble USB de données
+Mac · Linux (en test)Chrome, Microsoft Edge, Opera, BraveCâble USB de données
 
 [Ouvrir l’installateur web](https://terento.app/fr/install/)
 
@@ -105,11 +106,11 @@ Vous avez des questions ?
 
 ## FAQ
 
-Quelles montres Garmin fonctionnent avec Terento ?
+Quelles montres Garmin et quels compteurs Edge fonctionnent avec Terento ?
 
-Consultez la [page Compatibilité](https://terento.app/fr/compatibility/) pour voir les modèles et variantes Garmin exacts avec au moins une installation réussie partagée. L’absence d’un modèle ne signifie pas qu’il n’est pas pris en charge.
+Consultez la [page Compatibilité](https://terento.app/fr/compatibility/) pour voir les modèles et variantes Garmin exacts avec au moins une installation réussie partagée. L’absence d’un modèle ne signifie pas qu’il n’est pas pris en charge. Les compteurs vélo Garmin Edge récents prenant en charge les cartes, comme les Edge 540, 840 et 1050, fonctionnent aussi. [Lire le guide Edge.](https://terento.app/fr/guides/install-garmin-maps-edge-mac/)
 
-Puis-je installer des cartes tierces sur une montre Garmin depuis un Mac sans BaseCamp ?
+Puis-je installer des cartes tierces sur une montre Garmin depuis un Mac sans Garmin Express ni BaseCamp ?
 
 Oui. Terento est conçu pour rendre la gestion des cartes tierces sur macOS simple et rapide — du choix de la carte à son installation, sa mise à jour et sa gestion sur votre montre Garmin. [Lisez le guide d’installation.](https://terento.app/fr/guides/install-garmin-maps-mac/)
 
@@ -133,12 +134,10 @@ Sur l’écran d’échec de l’installation, choisissez « Report issue ». Te
 
 Puis-je installer des cartes sans installer l’application ?
 
-Oui. L’ [installateur web](https://terento.app/fr/install/) installe, met à jour et supprime les cartes du catalogue depuis Chrome, Edge, Opera ou Brave sur Mac, et sous Linux, où il est encore en test. Il ne fonctionne pas encore sous Windows, sur téléphone ou tablette, et ne permet pas d’ajouter vos propres cartes .img.
-
-Commencez aujourd’hui
+Oui. L’ [installateur web](https://terento.app/fr/install/) installe, met à jour et supprime les cartes du catalogue depuis Chrome, Microsoft Edge, Opera ou Brave sur Mac, et sous Linux, où il est encore en test. Il ne fonctionne pas encore sous Windows, sur téléphone ou tablette, et ne permet pas d’ajouter vos propres cartes .img.
 
 ## Prêt pour une façon plus simple d’installer vos cartes ?
 
-Téléchargez Terento et gérez vos cartes tierces depuis votre Mac.
+Téléchargez Terento pour votre Mac ou installez des cartes directement depuis votre navigateur.
 
-[Télécharger](https://terento.app/fr/download/)
+[Télécharger](https://terento.app/fr/download/) [Installer depuis votre navigateur](https://terento.app/fr/install/)
