@@ -1426,7 +1426,10 @@ The collector independently inspects optional official contour sources using
 bounded HTTP ranges (8 MiB total, 4 MiB per request), exact root IMG path,
 Garmin/provider/region header identity, stable strong ETag and Last-Modified.
 Unreachable or invalid optional sources are omitted without failing main.
-Shared Canada sources are inspected once and attached to both regions.
+A contour is attached only to the package whose region it describes
+(`sourceIdentity` `opentopomap:<providerRegionId>:contours`). The shared Canada
+archive linked from Canada East and West is therefore not listed: released apps
+reject its CANADA header for a CANADAEAST/CANADAWEST package (2026-11-05).
 Independent HTTP dates and metadata-derived source proofs are retained; revision
 is not a payload checksum. Legacy beta.9 URL/size fields always describe main,
 including when database rows arrive contours first. No map binaries are stored,

@@ -353,8 +353,10 @@ class OpenTopoMapProviderAdapter:
                 source_updated_at=link.source_updated_at,
             )
 
-        # Optional source inspection is isolated from the main snapshot. Shared
-        # URLs (Canada East/West) are measured once and attached to both packages.
+        # Optional source inspection is isolated from the main snapshot. A
+        # contour is attached only to the package whose region it describes.
+        # Shared sources (one Canada archive linked from Canada East and West)
+        # fail the released app's IMG identity check, so they stay unlisted.
         if self.contour_mode in {"shadow", "allowlist", "public"}:
             from .contour_source import inspect_contour
             contour_links = [link for link in all_links if link.kind == "contours" and link.region in packages_by_region]
@@ -369,6 +371,12 @@ class OpenTopoMapProviderAdapter:
             for link in contour_links:
                 measurement = inspected.get(link.source_url)
                 if measurement is None:
+                    continue
+                if measurement.source_proof.get("sourceIdentity") != f"opentopomap:{link.provider_region_id}:contours":
+                    logging.getLogger(__name__).warning(
+                        "Optional contour omitted: %s describes another region than %s",
+                        link.source_url, link.provider_region_id,
+                    )
                     continue
                 packages_by_region[link.region]["artifacts"]["contours"] = CatalogArtifact(
                     id=f"opentopomap-{link.provider_region_id}-contours",

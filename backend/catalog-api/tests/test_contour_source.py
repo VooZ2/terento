@@ -55,6 +55,37 @@ class ContourSourceTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 inspect_contour(url)
 
+    def test_shared_contour_is_attached_only_to_its_own_region(self):
+        html = (
+            '<table><tr class="country"><td>Andorra</td><td><a href="europe/andorra/otm-andorra.zip">Garmin</a></td>'
+            '<td><a href="europe/andorra/otm-andorra-contours.zip">Contours</a></td><td>2026-05-24 20:24:18</td></tr>'
+            '<tr class="country"><td>Canada-East</td><td><a href="north-america/canada-east/otm-canada-east.zip">Garmin</a></td>'
+            '<td><a href="north-america/canada/otm-canada-contours.zip">Contours</a></td><td>2026-06-22 02:35:32</td></tr>'
+            '<tr class="country"><td>Canada-West</td><td><a href="north-america/canada-west/otm-canada-west.zip">Garmin</a></td>'
+            '<td><a href="north-america/canada/otm-canada-contours.zip">Contours</a></td><td>2026-06-22 03:10:32</td></tr></table>'
+        )
+
+        class Fetcher:
+            def fetch_text(self, url):
+                return html
+
+            def measure_zip(self, url):
+                return SimpleNamespace(download_size_bytes=100, install_size_bytes=200, payload_path=url.rsplit('/', 1)[1].replace('.zip', '.img'))
+
+        def measured(url):
+            region = url.rsplit('/', 2)[1]
+            return SimpleNamespace(
+                download_size_bytes=300, install_size_bytes=400, payload_path=f'otm-{region}-contours.img',
+                source_updated_at=datetime(2021, 6, 18, tzinfo=timezone.utc),
+                source_proof={'sourceIdentity': f'opentopomap:{region}:contours'})
+
+        with patch('terento_catalog.contour_source.inspect_contour', side_effect=measured) as inspect:
+            snapshot = OpenTopoMapProviderAdapter(fetcher=Fetcher(), expected_main_package_count=3, contour_mode='public').collect()
+        kinds = {p.provider_region_id: [a.kind for a in p.artifacts] for p in snapshot.packages}
+        self.assertEqual(kinds, {'andorra': ['main', 'contours'], 'canada-east': ['main'], 'canada-west': ['main']})
+        self.assertEqual({p.provider_region_id: p.capabilities for p in snapshot.packages}['canada-west'], ('main',))
+        self.assertEqual(inspect.call_count, 2)
+
     def test_optional_failure_retains_main_and_off_skips_inspection(self):
         class Fetcher:
             def fetch_text(self, url):
