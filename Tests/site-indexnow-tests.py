@@ -136,7 +136,7 @@ def test_sitemap_contract() -> None:
     rendered = sitemap.render_sitemap(manifest)
     assert rendered == (ROOT / "site/sitemap.xml").read_text(encoding="utf-8")
     indexable = [page for page in manifest["pages"] if page["indexable"]]
-    assert len(indexable) == 54
+    assert len(indexable) == 60
     # The web installer (another service on this host): listed with its reviewed lastmod.
     external = [page for page in indexable if page.get("external")]
     assert [page["path"] for page in external] == ["/install/", "/de/install/", "/fr/install/", "/pl/install/", "/cs/install/", "/it/install/"]
