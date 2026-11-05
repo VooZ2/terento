@@ -144,7 +144,8 @@ def _table(caption: str, headers: list[str], rows: list[list[str]], empty: str) 
 
 
 def _browser(value: Any) -> str:
-    """Browser name with its Font Awesome logo; the name stays as text."""
+    """Browser name with its Font Awesome brand logo (Lucide globe for other
+    browsers); the name stays as text."""
     if not value:
         return _text(value)
     family = str(value).split()[0].lower()

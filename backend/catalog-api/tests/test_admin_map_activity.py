@@ -1,6 +1,6 @@
 import unittest
 
-from terento_catalog.admin import _overview_map_activity_row
+from terento_catalog.admin import ADMIN_STYLES, _overview_map_activity_row
 
 
 class AdminMapActivityTests(unittest.TestCase):
@@ -52,16 +52,18 @@ class AdminMapActivityTests(unittest.TestCase):
         row['lifecycle'][0]['at'] = None
         self.assertNotIn('download-elapsed', _overview_map_activity_row(row))
 
-    def test_download_history_uses_requested_fontawesome_icons(self):
+    def test_download_history_uses_requested_lucide_icons(self):
         phases = ('STARTED', 'PROCESSING', 'SUCCEEDED')
         row = dict(event_type='DOWNLOAD_SUCCEEDED', lifecycle=[
             dict(type='DOWNLOAD_' + phase, at='2026-09-14T12:00:00Z') for phase in phases])
         markup = _overview_map_activity_row(row)
-        for phase, icon in zip(phases, ('hourglass-start', 'spinner', 'hourglass-end')):
-            self.assertIn('fa-' + icon, markup)
+        for phase, icon in zip(phases, ('hourglass', 'loader-circle', 'circle-check')):
+            self.assertIn('download-phase-icon-' + icon, markup)
             self.assertIn(phase.title(), markup)
-        self.assertEqual(markup.count('Font Awesome Free 7.3.1'), 4)
-        self.assertNotIn('fa-spin', markup.replace('fa-spinner', ''))
+        self.assertEqual(markup.count("stroke-width='1.75'"), 4)
+        self.assertNotIn('Font Awesome', markup)
+        # Historical phases stay static: no spinning loader.
+        self.assertNotRegex(ADMIN_STYLES, r"download-phase-icon[^{}]*\{[^}]*animation")
 
     def test_admin_shows_component_and_timeline(self):
         row = dict(event_type='DOWNLOAD_INTERRUPTED', component_kind='contours',
