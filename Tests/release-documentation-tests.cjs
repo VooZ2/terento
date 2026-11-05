@@ -225,7 +225,7 @@ assert.match(
 );
 assert.match(compatibilitySection, /list grows[\s\S]*installations are shared/i);
 assert.match(compatibilitySection, /missing from the list does not mean it[\s\S]*unsupported/i);
-assert.match(compatibilitySection, /Garmin smartwatches with map support/i);
+assert.match(compatibilitySection, /Garmin smartwatches and newer Garmin\s+Edge bike computers with map support/i);
 assert.doesNotMatch(compatibilitySection, /official public list|single public list/i);
 assert.doesNotMatch(
   compatibilitySection,

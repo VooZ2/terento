@@ -1,13 +1,13 @@
 ---
-title: "Garmin-Kompatibilität & erfolgreiche Installationen — Terento"
+title: "Garmin-Uhren & Edge: erfolgreiche Installationen — Terento"
 canonical: https://terento.app/de/compatibility/
 ---
 
 Kompatibilität
 
-# Kompatibilität von Garmin-Uhren
+# Kompatibilität von Garmin-Uhren und Edge
 
-Terento ist für Garmin-Smartwatches mit Kartenunterstützung entwickelt. Unten siehst du genaue Modelle und Varianten, auf denen mindestens eine Drittanbieter-Karte erfolgreich installiert wurde. Die Liste wächst, wenn weitere erfolgreiche Installationen geteilt werden.
+Terento ist für Garmin-Smartwatches und neuere Garmin-Edge-Radcomputer mit Kartenunterstützung entwickelt. Unten siehst du genaue Modelle und Varianten, auf denen mindestens eine Drittanbieter-Karte erfolgreich installiert wurde. Die Liste wächst, wenn weitere erfolgreiche Installationen geteilt werden.
 
 Wenn dein Modell nicht aufgeführt ist, bedeutet das nicht, dass es nicht unterstützt wird — möglicherweise wurde für genau dieses Modell und diese Variante noch keine erfolgreiche Installation geteilt.
 
@@ -15,7 +15,7 @@ Wenn dein Modell nicht aufgeführt ist, bedeutet das nicht, dass es nicht unters
 
 So funktioniert diese Liste
 
-Diese Liste basiert auf echten erfolgreichen Terento-Installationen, die Nutzer geteilt haben. Sie zeigt nur genaue Garmin-Modelle und -Varianten mit mindestens einer erfolgreichen Installation einer Drittanbieter-Karte. Sie ist keine vollständige Liste aller Garmin-Uhren, mit denen Terento funktionieren kann.
+Diese Liste basiert auf echten erfolgreichen Terento-Installationen, die Nutzer geteilt haben. Sie zeigt nur genaue Garmin-Modelle und -Varianten mit mindestens einer erfolgreichen Installation einer Drittanbieter-Karte. Sie ist keine vollständige Liste aller Garmin-Uhren und Edge-Geräte, mit denen Terento funktionieren kann.
 
 Die Installationsergebnisse wurden von Nutzern mit Terento geteilt; sie sind keine Garmin-Zertifizierung.
 
@@ -417,7 +417,7 @@ Ergebnisse aus der Community
 
 ## Dein Garmin ist nicht dabei?
 
-Wenn deine Garmin-Smartwatch Karten unterstützt, kannst du Terento trotzdem ausprobieren. Diese Liste wächst, wenn erfolgreiche Installationen für weitere genaue Modelle und Varianten geteilt werden.
+Wenn deine Garmin-Smartwatch oder dein Edge-Radcomputer Karten unterstützt, kannst du Terento trotzdem ausprobieren. Diese Liste wächst, wenn erfolgreiche Installationen für weitere genaue Modelle und Varianten geteilt werden.
 
 [Zum ersten Mal Drittanbieter-Karten installieren? Lies die Mac-Anleitung](https://terento.app/de/guides/install-garmin-maps-mac/) [Kein Mac mit Apple Silicon? Nutze den Web-Installer](https://terento.app/de/install/)
 [Herunterladen](https://terento.app/de/download/)

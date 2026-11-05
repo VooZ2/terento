@@ -6,7 +6,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
-    <meta name="description" content="Votre montre Garmin n’apparaît pas sur le Mac ? Mode USB (MTP), Garmin Express qui bloque la montre, espace insuffisant, téléchargements échoués.">
+    <meta name="description" content="Votre montre Garmin ou votre Edge n’apparaît pas sur le Mac ? Mode USB (MTP), Garmin Express qui bloque l’appareil, espace insuffisant, téléchargements échoués.">
     <meta name="robots" content="index,follow">
     <link rel="canonical" href="https://terento.app/fr/guides/troubleshooting/">
     <link rel="alternate" hreflang="en" href="https://terento.app/guides/troubleshooting/">
@@ -19,7 +19,7 @@
     <meta property="og:type" content="article">
     <meta property="og:site_name" content="Terento">
     <meta property="og:title" content="Montre Garmin non détectée sur Mac ? Dépannage — Terento">
-    <meta property="og:description" content="Votre montre Garmin n’apparaît pas sur le Mac ? Mode USB (MTP), Garmin Express qui bloque la montre, espace insuffisant, téléchargements échoués.">
+    <meta property="og:description" content="Votre montre Garmin ou votre Edge n’apparaît pas sur le Mac ? Mode USB (MTP), Garmin Express qui bloque l’appareil, espace insuffisant, téléchargements échoués.">
     <meta property="og:url" content="https://terento.app/fr/guides/troubleshooting/">
     <meta property="og:image" content="https://terento.app/assets/social/terento-og.png">
     <meta property="og:image:type" content="image/png">
@@ -29,7 +29,7 @@
     <meta property="og:locale" content="fr_FR">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Montre Garmin non détectée sur Mac ? Dépannage — Terento">
-    <meta name="twitter:description" content="Votre montre Garmin n’apparaît pas sur le Mac ? Mode USB (MTP), Garmin Express qui bloque la montre, espace insuffisant, téléchargements échoués.">
+    <meta name="twitter:description" content="Votre montre Garmin ou votre Edge n’apparaît pas sur le Mac ? Mode USB (MTP), Garmin Express qui bloque l’appareil, espace insuffisant, téléchargements échoués.">
     <meta name="twitter:image" content="https://terento.app/assets/social/terento-og.png">
     <title>Montre Garmin non détectée sur Mac ? Dépannage — Terento</title>
 
@@ -62,7 +62,7 @@
       "headline": "Résoudre les problèmes de montre Garmin et de cartes sur Mac",
       "description": "Résolvez les problèmes Garmin sur Mac : montre non détectée, Garmin Express ou Android File Transfer qui utilise la montre, mode USB (MTP), espace insuffisant et échec du téléchargement des cartes.",
       "datePublished": "2026-10-06T00:00:00Z",
-      "dateModified": "2026-11-02T00:00:00Z",
+      "dateModified": "2026-11-05T00:00:00Z",
       "mainEntityOfPage": {
         "@id": "https://terento.app/fr/guides/troubleshooting/"
       },
@@ -144,15 +144,23 @@
         </header>
 
         <div class="shell guide-content">
+          <section class="guide-preflight" id="garmin-edge" aria-labelledby="garmin-edge-title">
+            <div class="guide-section-heading"><p class="eyebrow">Garmin Edge</p><h2 id="garmin-edge-title">Garmin Edge non détecté sur Mac</h2></div>
+            <div class="guide-preflight-copy">
+              <p>Les compteurs vélo Garmin Edge récents qui prennent en charge les cartes se connectent au Mac comme les montres Garmin actuelles : la plupart des étapes de cette page valent donc aussi pour un Edge. Utilisez un câble USB de données, quittez Garmin Express et attendez jusqu’à 2 minutes. Les anciens Edge qui apparaissent comme un disque dans le Finder fonctionnent autrement.</p>
+              <a class="text-link" href="/fr/guides/install-garmin-maps-edge-mac/" data-umami-event="guide-link-click" data-umami-event-location="troubleshooting-edge">Lire le guide Garmin Edge <span aria-hidden="true">→</span></a>
+            </div>
+          </section>
+
           <section class="troubleshooting" id="topic-connection" aria-labelledby="topic-connection-title">
             <div class="guide-section-heading"><p class="eyebrow">Connexion</p><h2 id="topic-connection-title">Problèmes de connexion de la montre Garmin</h2></div>
             <div class="troubleshooting-list"><section class="troubleshooting-item" id="connect-watch" aria-labelledby="connect-watch-title">
               <h3 id="connect-watch-title">Montre Garmin non détectée sur Mac</h3>
               <p>Connectez la montre directement à votre Mac avec un câble USB qui transfère les données, déverrouillez-la et attendez jusqu’à 2 minutes : Terento la détecte automatiquement.</p>
-              <ol class="troubleshooting-steps"><li>Utilisez un câble de données. Les câbles de recharge seule et certains hubs USB ne fonctionnent pas.</li><li>Il est normal que la montre n’apparaisse pas dans le Finder : macOS n’ouvre pas la plupart des montres Garmin actuelles comme un disque. Terento dialogue directement avec la montre.</li><li>Sur un Mac portable, si macOS demande d’autoriser la connexion de l’accessoire, choisissez Autoriser.</li><li>Attendez jusqu’à 2 minutes pendant que Terento vérifie la connexion.</li><li>Si la montre n’apparaît toujours pas, débranchez-la, attendez quelques secondes et reconnectez-la.</li><li>Si une autre app est ouverte, voir <a href="#garmin-busy" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin Express ou une autre app utilise la montre</a>.</li></ol>
+              <ol class="troubleshooting-steps"><li>Utilisez un câble de données. Les câbles de recharge seule et certains hubs USB ne fonctionnent pas.</li><li>Il est normal que la montre ou l’Edge n’apparaisse pas dans le Finder : macOS n’ouvre pas la plupart des montres Garmin actuelles ni des Edge récents comme un disque. Terento dialogue directement avec l’appareil.</li><li>Sur un Mac portable, si macOS demande d’autoriser la connexion de l’accessoire, choisissez Autoriser.</li><li>Attendez jusqu’à 2 minutes pendant que Terento vérifie la connexion.</li><li>Si la montre n’apparaît toujours pas, débranchez-la, attendez quelques secondes et reconnectez-la.</li><li>Si une autre app est ouverte, voir <a href="#garmin-busy" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin Express ou une autre app utilise la montre</a>.</li></ol>
             </section><section class="troubleshooting-item" id="garmin-busy" aria-labelledby="garmin-busy-title">
               <h3 id="garmin-busy-title">Garmin Express ou une autre app utilise la montre</h3>
-              <p>Quittez Garmin Express et les apps de transfert de fichiers comme Android File Transfer, OpenMTP ou MacDroid : une seule app à la fois peut utiliser la connexion de la montre.</p>
+              <p>Quittez Garmin Express et les apps de transfert de fichiers comme Android File Transfer, OpenMTP ou MacDroid : une seule app à la fois peut utiliser la connexion de la montre ou de l’Edge.</p>
               <ol class="troubleshooting-steps"><li>Quittez Garmin Express, Android File Transfer, OpenMTP, MacDroid et les autres apps MTP. Si Terento nomme une app, quittez-la en premier.</li><li>Fermez aussi Transfert d’images, Photos et Aperçu s’ils sont ouverts.</li><li>Si la montre apparaît dans le Finder, éjectez-la.</li><li>Débranchez la montre, reconnectez-la, puis choisissez « Refresh » dans Terento.</li></ol>
             </section><section class="troubleshooting-item" id="multiple-garmin" aria-labelledby="multiple-garmin-title">
               <h3 id="multiple-garmin-title">Plusieurs appareils Garmin connectés</h3>

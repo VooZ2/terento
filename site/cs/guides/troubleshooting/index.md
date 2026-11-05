@@ -9,6 +9,14 @@ canonical: https://terento.app/cs/guides/troubleshooting/
 
 Najděte svou potíž – od hodinek Garmin, které Mac nevidí, po nezdařené stažení mapy – a postupujte podle krátkých kroků. Pokud nic nepomůže, pošlete zprávu, abychom se na to mohli podívat.
 
+Garmin Edge
+
+## Mac nevidí Garmin Edge
+
+Novější cyklopočítače Garmin Edge s podporou map se k Macu připojují stejně jako současné hodinky Garmin, takže většina kroků na této stránce platí i pro Edge: použijte USB kabel pro přenos dat, ukončete Garmin Express a počkejte až 2 minuty. Starší modely Edge, které se ve Finderu zobrazí jako disk, fungují jinak.
+
+[Přečíst průvodce pro Garmin Edge](https://terento.app/cs/guides/install-garmin-maps-edge-mac/)
+
 Připojení
 
 ## Potíže s připojením hodinek Garmin
@@ -18,7 +26,7 @@ Připojení
 Připojte hodinky přímo k Macu USB kabelem pro přenos dat, odemkněte je a počkejte až 2 minuty: Terento je najde automaticky.
 
 1. Použijte datový kabel. Kabely jen pro nabíjení a některé USB huby nefungují.
-2. Je normální, že se hodinky nezobrazí ve Finderu: macOS většinu současných hodinek Garmin neotevře jako disk. Terento s hodinkami komunikuje přímo.
+2. Je normální, že se hodinky nebo Edge nezobrazí ve Finderu: macOS většinu současných hodinek Garmin ani novější modely Edge neotevře jako disk. Terento se zařízením komunikuje přímo.
 3. Pokud se macOS na notebooku Mac zeptá, zda povolit připojení příslušenství, zvolte Povolit.
 4. Počkejte až 2 minuty, než Terento ověří připojení.
 5. Pokud se hodinky stále nezobrazí, odpojte je, počkejte několik sekund a připojte je znovu.
@@ -26,7 +34,7 @@ Připojte hodinky přímo k Macu USB kabelem pro přenos dat, odemkněte je a po
 
 ### Hodinky používá Garmin Express nebo jiná aplikace
 
-Ukončete Garmin Express a aplikace pro přenos souborů, jako je Android File Transfer, OpenMTP nebo MacDroid: připojení k hodinkám může v jednu chvíli používat jen jedna aplikace.
+Ukončete Garmin Express a aplikace pro přenos souborů, jako je Android File Transfer, OpenMTP nebo MacDroid: připojení k hodinkám nebo Edge může v jednu chvíli používat jen jedna aplikace.
 
 1. Ukončete Garmin Express, Android File Transfer, OpenMTP, MacDroid a další MTP aplikace. Pokud Terento aplikaci jmenuje, ukončete nejdřív ji.
 2. Zavřete také Přenos obrázků, Fotky a Náhled, pokud jsou otevřené.

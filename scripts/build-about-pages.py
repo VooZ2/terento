@@ -43,7 +43,7 @@ def localized_path(locale: str, suffix: str = "") -> str:
 
 COPY = {'en': {'title': 'About Terento — Free, Open-Source Garmin Maps for Mac',
         'description': 'Terento is a free, open-source Mac app for choosing, installing, and managing '
-                       'third-party maps on Garmin smartwatches with map support. Built to make getting ready for your '
+                       'third-party maps on Garmin smartwatches and Edge bike computers with map support. Built to make getting ready for your '
                        'next trip simpler.',
         'skip': 'Skip to content',
         'story_eyebrow': 'A note from the maker',
@@ -75,7 +75,7 @@ COPY = {'en': {'title': 'About Terento — Free, Open-Source Garmin Maps for Mac
         'download': 'Download'},
  'de': {'title': 'Über Terento — Kostenlose Open-Source-Garmin-Karten für den Mac',
         'description': 'Terento ist eine kostenlose Open-Source-Mac-App zum Auswählen, Installieren und '
-                       'Verwalten von Drittanbieter-Karten auf Garmin-Smartwatches mit Kartenunterstützung. Damit die Vorbereitung '
+                       'Verwalten von Drittanbieter-Karten auf Garmin-Smartwatches und Edge-Radcomputern mit Kartenunterstützung. Damit die Vorbereitung '
                        'auf deine nächste Reise einfacher wird.',
         'skip': 'Zum Inhalt springen',
         'story_eyebrow': 'Eine Notiz vom Entwickler',
@@ -109,7 +109,7 @@ COPY = {'en': {'title': 'About Terento — Free, Open-Source Garmin Maps for Mac
         'download': 'Download'},
  'fr': {'title': 'À propos de Terento — Cartes Garmin gratuites et open source sur Mac',
         'description': 'Terento est une application Mac gratuite et open source pour choisir, installer et '
-                       'gérer des cartes tierces sur les montres Garmin prenant en charge les cartes. Pour préparer '
+                       'gérer des cartes tierces sur les montres et compteurs vélo Edge Garmin prenant en charge les cartes. Pour préparer '
                        'plus simplement votre prochaine escapade.',
         'skip': 'Aller au contenu',
         'story_eyebrow': 'Une note du créateur',
@@ -144,7 +144,7 @@ COPY = {'en': {'title': 'About Terento — Free, Open-Source Garmin Maps for Mac
         'download': 'Télécharger'},
  'pl': {'title': 'O Terento — Bezpłatne, otwartoźródłowe mapy Garmina na Macu',
         'description': 'Terento to bezpłatna aplikacja open source na Maca do wybierania, instalowania i '
-                       'zarządzania mapami innych firm na zegarkach Garmin obsługujących mapy. Ułatwia '
+                       'zarządzania mapami innych firm na zegarkach Garmin i licznikach rowerowych Edge obsługujących mapy. Ułatwia '
                        'przygotowania do kolejnej podróży.',
         'skip': 'Przejdź do treści',
         'story_eyebrow': 'Notatka od twórcy',
@@ -177,7 +177,7 @@ COPY = {'en': {'title': 'About Terento — Free, Open-Source Garmin Maps for Mac
         'download': 'Pobierz'},
  'cs': {'title': 'O Terento — Bezplatné open-source mapy Garminu na Macu',
         'description': 'Terento je bezplatná open-source aplikace pro Mac k výběru, instalaci a správě '
-                       'map třetích stran na hodinkách Garmin s podporou map. Usnadňuje přípravu na další '
+                       'map třetích stran na hodinkách Garmin a cyklopočítačích Edge s podporou map. Usnadňuje přípravu na další '
                        'cestu.',
         'skip': 'Přejít k obsahu',
         'story_eyebrow': 'Poznámka od tvůrce',
@@ -211,7 +211,7 @@ COPY = {'en': {'title': 'About Terento — Free, Open-Source Garmin Maps for Mac
         'download': 'Stáhnout'},
  'it': {'title': 'Informazioni su Terento — Mappe Garmin gratuite e open source su Mac',
         'description': 'Terento è un’app Mac gratuita e open source per scegliere, installare e gestire '
-                       'mappe di terze parti sugli smartwatch Garmin con supporto alle mappe. Per prepararti più facilmente '
+                       'mappe di terze parti su smartwatch Garmin e ciclocomputer Edge con supporto alle mappe. Per prepararti più facilmente '
                        'al prossimo viaggio.',
         'skip': 'Vai al contenuto',
         'story_eyebrow': 'Una nota dal creatore',

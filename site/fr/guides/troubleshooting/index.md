@@ -9,6 +9,14 @@ Dépannage
 
 Trouvez votre problème, d’une montre Garmin que le Mac ne détecte pas à un téléchargement de carte qui échoue, et suivez les étapes courtes. Si rien ne fonctionne, envoyez un rapport pour que nous puissions l’examiner.
 
+Garmin Edge
+
+## Garmin Edge non détecté sur Mac
+
+Les compteurs vélo Garmin Edge récents qui prennent en charge les cartes se connectent au Mac comme les montres Garmin actuelles : la plupart des étapes de cette page valent donc aussi pour un Edge. Utilisez un câble USB de données, quittez Garmin Express et attendez jusqu’à 2 minutes. Les anciens Edge qui apparaissent comme un disque dans le Finder fonctionnent autrement.
+
+[Lire le guide Garmin Edge](https://terento.app/fr/guides/install-garmin-maps-edge-mac/)
+
 Connexion
 
 ## Problèmes de connexion de la montre Garmin
@@ -18,7 +26,7 @@ Connexion
 Connectez la montre directement à votre Mac avec un câble USB qui transfère les données, déverrouillez-la et attendez jusqu’à 2 minutes : Terento la détecte automatiquement.
 
 1. Utilisez un câble de données. Les câbles de recharge seule et certains hubs USB ne fonctionnent pas.
-2. Il est normal que la montre n’apparaisse pas dans le Finder : macOS n’ouvre pas la plupart des montres Garmin actuelles comme un disque. Terento dialogue directement avec la montre.
+2. Il est normal que la montre ou l’Edge n’apparaisse pas dans le Finder : macOS n’ouvre pas la plupart des montres Garmin actuelles ni des Edge récents comme un disque. Terento dialogue directement avec l’appareil.
 3. Sur un Mac portable, si macOS demande d’autoriser la connexion de l’accessoire, choisissez Autoriser.
 4. Attendez jusqu’à 2 minutes pendant que Terento vérifie la connexion.
 5. Si la montre n’apparaît toujours pas, débranchez-la, attendez quelques secondes et reconnectez-la.
@@ -26,7 +34,7 @@ Connectez la montre directement à votre Mac avec un câble USB qui transfère l
 
 ### Garmin Express ou une autre app utilise la montre
 
-Quittez Garmin Express et les apps de transfert de fichiers comme Android File Transfer, OpenMTP ou MacDroid : une seule app à la fois peut utiliser la connexion de la montre.
+Quittez Garmin Express et les apps de transfert de fichiers comme Android File Transfer, OpenMTP ou MacDroid : une seule app à la fois peut utiliser la connexion de la montre ou de l’Edge.
 
 1. Quittez Garmin Express, Android File Transfer, OpenMTP, MacDroid et les autres apps MTP. Si Terento nomme une app, quittez-la en premier.
 2. Fermez aussi Transfert d’images, Photos et Aperçu s’ils sont ouverts.

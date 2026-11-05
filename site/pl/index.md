@@ -7,7 +7,7 @@ Projekt open source
 
 # Instaluj darmowe mapy na zegarku Garmin
 
-Terento to darmowe narzędzie open source do instalowania, aktualizowania i zarządzania mapami innych firm na zegarkach Garmin: w natywnej aplikacji na Maca lub w przeglądarce na komputerze.
+Terento to darmowe narzędzie open source do instalowania, aktualizowania i zarządzania mapami innych firm na zegarkach Garmin i licznikach rowerowych Edge: w natywnej aplikacji na Maca lub w przeglądarce na komputerze.
 
 [Pobierz na Maca](https://terento.app/pl/download/)
 [Sprawdź kompatybilność](https://terento.app/pl/compatibility/) [Zainstaluj z przeglądarki](https://terento.app/pl/install/)
@@ -32,7 +32,7 @@ Wybierz mapy z katalogu albo dodaj własną zgodną mapę .img.
 
 3. Gotowe
 
-Twoje mapy są zainstalowane i gotowe do użycia na zegarku.
+Twoje mapy są zainstalowane i gotowe do użycia na Twoim Garminie.
 
 ## Zainstaluj mapy
 
@@ -50,11 +50,11 @@ Instalator webowy
 
 ## Bez aplikacji? Instaluj z przeglądarki.
 
-Podłącz zegarek Garmin kablem USB, wybierz mapy i zainstaluj je prosto z Chrome, Edge, Opery lub Brave. Później tak samo je zaktualizujesz lub usuniesz.
+Podłącz zegarek Garmin kablem USB, wybierz mapy i zainstaluj je prosto z Chrome, Microsoft Edge, Opery lub Brave. Później tak samo je zaktualizujesz lub usuniesz.
 
 Działa na Macu oraz, jeszcze w fazie testów, na Linuksie. Jeszcze nie na Windowsie, telefonach ani tabletach.
 
-Mac · Linux (w testach)Chrome, Edge, Opera, BraveKabel USB do transmisji danych
+Mac · Linux (w testach)Chrome, Microsoft Edge, Opera, BraveKabel USB do transmisji danych
 
 [Otwórz instalator webowy](https://terento.app/pl/install/)
 
@@ -106,9 +106,9 @@ Masz pytania?
 
 ## FAQ
 
-Jakie zegarki Garmin działają z Terento?
+Jakie zegarki Garmin i liczniki Edge działają z Terento?
 
-Na [stronie zgodności](https://terento.app/pl/compatibility/) znajdziesz dokładne modele i warianty Garmin z co najmniej jedną udaną, udostępnioną instalacją. Brak modelu nie oznacza, że nie jest obsługiwany.
+Na [stronie zgodności](https://terento.app/pl/compatibility/) znajdziesz dokładne modele i warianty Garmin z co najmniej jedną udaną, udostępnioną instalacją. Brak modelu nie oznacza, że nie jest obsługiwany. Działają też nowsze liczniki rowerowe Garmin Edge obsługujące mapy, np. Edge 540, 840 i 1050. [Przeczytaj instrukcję dla Edge.](https://terento.app/pl/guides/install-garmin-maps-edge-mac/)
 
 Czy mogę instalować mapy innych firm na zegarku Garmin z Maca bez Garmin Express i BaseCamp?
 
@@ -134,7 +134,7 @@ Na ekranie nieudanej instalacji wybierz „Report issue”. Terento otwiera GitH
 
 Czy mogę zainstalować mapy bez instalowania aplikacji?
 
-Tak. [Instalator webowy](https://terento.app/pl/install/) instaluje, aktualizuje i usuwa mapy z katalogu w Chrome, Edge, Operze lub Brave na Macu oraz na Linuksie, gdzie jest jeszcze testowany. Nie działa jeszcze na Windowsie, telefonach ani tabletach i nie dodaje własnych map .img.
+Tak. [Instalator webowy](https://terento.app/pl/install/) instaluje, aktualizuje i usuwa mapy z katalogu w Chrome, Microsoft Edge, Operze lub Brave na Macu oraz na Linuksie, gdzie jest jeszcze testowany. Nie działa jeszcze na Windowsie, telefonach ani tabletach i nie dodaje własnych map .img.
 
 ## Gotowy na prostszy sposób instalowania map?
 

@@ -7,7 +7,7 @@ Progetto open source
 
 # Installa mappe gratuite sul tuo smartwatch Garmin
 
-Terento è uno strumento gratuito e open source per installare, aggiornare e gestire mappe di terze parti sugli smartwatch Garmin: con un’app Mac nativa o nel browser del computer.
+Terento è uno strumento gratuito e open source per installare, aggiornare e gestire mappe di terze parti su smartwatch Garmin e ciclocomputer Edge: con un’app Mac nativa o nel browser del computer.
 
 [Scarica per Mac](https://terento.app/it/download/)
 [Verifica la compatibilità](https://terento.app/it/compatibility/) [Installa dal browser](https://terento.app/it/install/)
@@ -32,7 +32,7 @@ Scegli le mappe dal catalogo oppure aggiungi la tua mappa .img compatibile.
 
 3. Fatto
 
-Le tue mappe sono installate e pronte per essere usate sullo smartwatch.
+Le tue mappe sono installate e pronte per essere usate sul tuo Garmin.
 
 ## Installa le mappe
 
@@ -50,11 +50,11 @@ Installer web
 
 ## Niente app? Installa dal browser.
 
-Collega il tuo Garmin con un cavo USB, scegli le mappe e installale direttamente da Chrome, Edge, Opera o Brave. In seguito le aggiorni o le rimuovi allo stesso modo.
+Collega il tuo Garmin con un cavo USB, scegli le mappe e installale direttamente da Chrome, Microsoft Edge, Opera o Brave. In seguito le aggiorni o le rimuovi allo stesso modo.
 
 Funziona su Mac e, ancora in fase di test, su Linux. Non ancora su Windows, telefoni o tablet.
 
-Mac · Linux (in test)Chrome, Edge, Opera, BraveCavo USB dati
+Mac · Linux (in test)Chrome, Microsoft Edge, Opera, BraveCavo USB dati
 
 [Apri l’installer web](https://terento.app/it/install/)
 
@@ -106,9 +106,9 @@ Hai domande?
 
 ## FAQ
 
-Quali smartwatch Garmin funzionano con Terento?
+Quali smartwatch Garmin e ciclocomputer Edge funzionano con Terento?
 
-Consulta la pagina [Compatibilità](https://terento.app/it/compatibility/) per i modelli e le varianti Garmin esatti con almeno un’installazione riuscita condivisa. L’assenza di un modello non significa necessariamente che non sia supportato.
+Consulta la pagina [Compatibilità](https://terento.app/it/compatibility/) per i modelli e le varianti Garmin esatti con almeno un’installazione riuscita condivisa. L’assenza di un modello non significa necessariamente che non sia supportato. Funzionano anche i ciclocomputer Garmin Edge più recenti con supporto alle mappe, come Edge 540, 840 e 1050. [Leggi la guida Edge.](https://terento.app/it/guides/install-garmin-maps-edge-mac/)
 
 Posso installare mappe di terze parti su uno smartwatch Garmin da un Mac senza Garmin Express né BaseCamp?
 
@@ -134,7 +134,7 @@ Nella schermata di installazione non riuscita, scegli “Report issue”. Terent
 
 Posso installare le mappe senza installare l’app?
 
-Sì. L’ [installer web](https://terento.app/it/install/) installa, aggiorna e rimuove le mappe del catalogo da Chrome, Edge, Opera o Brave su Mac e su Linux, dove è ancora in fase di test. Non funziona ancora su Windows, telefoni o tablet e non può aggiungere mappe .img personali.
+Sì. L’ [installer web](https://terento.app/it/install/) installa, aggiorna e rimuove le mappe del catalogo da Chrome, Microsoft Edge, Opera o Brave su Mac e su Linux, dove è ancora in fase di test. Non funziona ancora su Windows, telefoni o tablet e non può aggiungere mappe .img personali.
 
 ## Pronto per un modo più semplice di installare le mappe?
 

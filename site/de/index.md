@@ -7,7 +7,7 @@ Open-Source-Projekt
 
 # Kostenlose Karten auf deiner Garmin-Uhr installieren
 
-Terento ist ein kostenloses Open-Source-Tool, mit dem du Drittanbieter-Karten auf Garmin-Uhren installierst, aktualisierst und verwaltest: mit einer nativen Mac-App oder im Desktop-Browser.
+Terento ist ein kostenloses Open-Source-Tool, mit dem du Drittanbieter-Karten auf Garmin-Uhren und Edge-Radcomputern installierst, aktualisierst und verwaltest: mit einer nativen Mac-App oder im Desktop-Browser.
 
 [Für Mac herunterladen](https://terento.app/de/download/)
 [Kompatibilität prüfen](https://terento.app/de/compatibility/) [Direkt aus dem Browser installieren](https://terento.app/de/install/)
@@ -32,7 +32,7 @@ Wähle Karten aus dem Katalog oder füge deine eigene kompatible .img-Karte hinz
 
 3. Fertig
 
-Deine Karten sind installiert und auf deiner Uhr einsatzbereit.
+Deine Karten sind installiert und auf deinem Garmin einsatzbereit.
 
 ## Karten installieren
 
@@ -50,11 +50,11 @@ Web-Installer
 
 ## Keine App? Installiere aus dem Browser.
 
-Verbinde deine Garmin-Uhr per USB-Kabel, wähle Karten und installiere sie direkt aus Chrome, Edge, Opera oder Brave. Später aktualisierst oder entfernst du sie genauso.
+Verbinde deine Garmin-Uhr per USB-Kabel, wähle Karten und installiere sie direkt aus Chrome, Microsoft Edge, Opera oder Brave. Später aktualisierst oder entfernst du sie genauso.
 
 Funktioniert auf dem Mac und, noch im Test, unter Linux. Noch nicht unter Windows, auf Smartphones oder Tablets.
 
-Mac · Linux (im Test)Chrome, Edge, Opera, BraveUSB-Datenkabel
+Mac · Linux (im Test)Chrome, Microsoft Edge, Opera, BraveUSB-Datenkabel
 
 [Web-Installer öffnen](https://terento.app/de/install/)
 
@@ -106,9 +106,9 @@ Hast du Fragen?
 
 ## FAQ
 
-Welche Garmin-Uhren funktionieren mit Terento?
+Welche Garmin-Uhren und Edge-Radcomputer funktionieren mit Terento?
 
-Auf der [Kompatibilitätsseite](https://terento.app/de/compatibility/) findest du genaue Garmin-Modelle und Varianten mit mindestens einer erfolgreich geteilten Installation. Ein fehlendes Modell ist nicht unbedingt ununterstützt.
+Auf der [Kompatibilitätsseite](https://terento.app/de/compatibility/) findest du genaue Garmin-Modelle und Varianten mit mindestens einer erfolgreich geteilten Installation. Ein fehlendes Modell ist nicht unbedingt ununterstützt. Auch neuere Garmin-Edge-Radcomputer mit Kartenunterstützung wie Edge 540, 840 und 1050 funktionieren. [Zur Edge-Anleitung.](https://terento.app/de/guides/install-garmin-maps-edge-mac/)
 
 Kann ich Drittanbieter-Karten von einem Mac ohne Garmin Express oder BaseCamp auf einer Garmin-Uhr installieren?
 
@@ -134,7 +134,7 @@ Wähle nach einer fehlgeschlagenen Installation „Report issue“. Terento öff
 
 Kann ich Karten installieren, ohne die App zu installieren?
 
-Ja. Der [Web-Installer](https://terento.app/de/install/) installiert, aktualisiert und entfernt Karten aus dem Katalog in Chrome, Edge, Opera oder Brave auf dem Mac und unter Linux, wo er noch getestet wird. Unter Windows, auf Smartphones und Tablets funktioniert er noch nicht, und eigene .img-Karten kann er nicht hinzufügen.
+Ja. Der [Web-Installer](https://terento.app/de/install/) installiert, aktualisiert und entfernt Karten aus dem Katalog in Chrome, Microsoft Edge, Opera oder Brave auf dem Mac und unter Linux, wo er noch getestet wird. Unter Windows, auf Smartphones und Tablets funktioniert er noch nicht, und eigene .img-Karten kann er nicht hinzufügen.
 
 ## Bereit für eine einfachere Karteninstallation?
 

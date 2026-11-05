@@ -6,7 +6,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
-    <meta name="description" content="Mac nie widzi zegarka Garmin? Rozwiąż problemy z trybem USB (MTP), Garmin Express blokującym zegarek, brakiem miejsca i pobieraniem map.">
+    <meta name="description" content="Mac nie widzi zegarka Garmin lub Edge? Rozwiąż problemy z trybem USB (MTP), Garmin Express blokującym urządzenie, brakiem miejsca i pobieraniem map.">
     <meta name="robots" content="index,follow">
     <link rel="canonical" href="https://terento.app/pl/guides/troubleshooting/">
     <link rel="alternate" hreflang="en" href="https://terento.app/guides/troubleshooting/">
@@ -19,7 +19,7 @@
     <meta property="og:type" content="article">
     <meta property="og:site_name" content="Terento">
     <meta property="og:title" content="Mac nie widzi zegarka Garmin? Rozwiązywanie problemów — Terento">
-    <meta property="og:description" content="Mac nie widzi zegarka Garmin? Rozwiąż problemy z trybem USB (MTP), Garmin Express blokującym zegarek, brakiem miejsca i pobieraniem map.">
+    <meta property="og:description" content="Mac nie widzi zegarka Garmin lub Edge? Rozwiąż problemy z trybem USB (MTP), Garmin Express blokującym urządzenie, brakiem miejsca i pobieraniem map.">
     <meta property="og:url" content="https://terento.app/pl/guides/troubleshooting/">
     <meta property="og:image" content="https://terento.app/assets/social/terento-og.png">
     <meta property="og:image:type" content="image/png">
@@ -29,7 +29,7 @@
     <meta property="og:locale" content="pl_PL">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Mac nie widzi zegarka Garmin? Rozwiązywanie problemów — Terento">
-    <meta name="twitter:description" content="Mac nie widzi zegarka Garmin? Rozwiąż problemy z trybem USB (MTP), Garmin Express blokującym zegarek, brakiem miejsca i pobieraniem map.">
+    <meta name="twitter:description" content="Mac nie widzi zegarka Garmin lub Edge? Rozwiąż problemy z trybem USB (MTP), Garmin Express blokującym urządzenie, brakiem miejsca i pobieraniem map.">
     <meta name="twitter:image" content="https://terento.app/assets/social/terento-og.png">
     <title>Mac nie widzi zegarka Garmin? Rozwiązywanie problemów — Terento</title>
 
@@ -62,7 +62,7 @@
       "headline": "Rozwiązywanie problemów z zegarkiem Garmin i mapami na Macu",
       "description": "Rozwiąż problemy z Garminem na Macu: zegarek niewidoczny, Garmin Express lub Android File Transfer blokuje zegarek, tryb USB (MTP), za mało miejsca i nieudane pobieranie map.",
       "datePublished": "2026-10-06T00:00:00Z",
-      "dateModified": "2026-11-02T00:00:00Z",
+      "dateModified": "2026-11-05T00:00:00Z",
       "mainEntityOfPage": {
         "@id": "https://terento.app/pl/guides/troubleshooting/"
       },
@@ -144,15 +144,23 @@
         </header>
 
         <div class="shell guide-content">
+          <section class="guide-preflight" id="garmin-edge" aria-labelledby="garmin-edge-title">
+            <div class="guide-section-heading"><p class="eyebrow">Garmin Edge</p><h2 id="garmin-edge-title">Mac nie widzi Garmin Edge</h2></div>
+            <div class="guide-preflight-copy">
+              <p>Nowsze liczniki rowerowe Garmin Edge z obsługą map łączą się z Makiem tak samo jak obecne zegarki Garmin, więc większość kroków na tej stronie działa też dla Edge: użyj kabla USB do przesyłania danych, zamknij Garmin Express i poczekaj do 2 minut. Starsze modele Edge, które pojawiają się w Finderze jako dysk, działają inaczej.</p>
+              <a class="text-link" href="/pl/guides/install-garmin-maps-edge-mac/" data-umami-event="guide-link-click" data-umami-event-location="troubleshooting-edge">Przeczytaj poradnik dla Garmin Edge <span aria-hidden="true">→</span></a>
+            </div>
+          </section>
+
           <section class="troubleshooting" id="topic-connection" aria-labelledby="topic-connection-title">
             <div class="guide-section-heading"><p class="eyebrow">Połączenie</p><h2 id="topic-connection-title">Problemy z połączeniem zegarka Garmin</h2></div>
             <div class="troubleshooting-list"><section class="troubleshooting-item" id="connect-watch" aria-labelledby="connect-watch-title">
               <h3 id="connect-watch-title">Mac nie widzi zegarka Garmin</h3>
               <p>Podłącz zegarek bezpośrednio do Maca kablem USB do przesyłania danych, odblokuj go i poczekaj do 2 minut: Terento wykryje go automatycznie.</p>
-              <ol class="troubleshooting-steps"><li>Użyj kabla do przesyłania danych. Kable tylko do ładowania i niektóre huby USB nie działają.</li><li>To normalne, że zegarek nie pojawia się w Finderze: macOS nie otwiera większości obecnych zegarków Garmin jako dysku. Terento komunikuje się z zegarkiem bezpośrednio.</li><li>Jeśli na MacBooku macOS zapyta, czy zezwolić akcesorium na połączenie, wybierz Zezwól.</li><li>Poczekaj do 2 minut, aż Terento sprawdzi połączenie.</li><li>Jeśli zegarek nadal się nie pojawia, odłącz go, odczekaj kilka sekund i podłącz ponownie.</li><li>Jeśli otwarta jest inna aplikacja, zobacz <a href="#garmin-busy" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin Express lub inna aplikacja używa zegarka</a>.</li></ol>
+              <ol class="troubleshooting-steps"><li>Użyj kabla do przesyłania danych. Kable tylko do ładowania i niektóre huby USB nie działają.</li><li>To normalne, że zegarek lub Edge nie pojawia się w Finderze: macOS nie otwiera większości obecnych zegarków Garmin ani nowszych modeli Edge jako dysku. Terento komunikuje się z urządzeniem bezpośrednio.</li><li>Jeśli na MacBooku macOS zapyta, czy zezwolić akcesorium na połączenie, wybierz Zezwól.</li><li>Poczekaj do 2 minut, aż Terento sprawdzi połączenie.</li><li>Jeśli zegarek nadal się nie pojawia, odłącz go, odczekaj kilka sekund i podłącz ponownie.</li><li>Jeśli otwarta jest inna aplikacja, zobacz <a href="#garmin-busy" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin Express lub inna aplikacja używa zegarka</a>.</li></ol>
             </section><section class="troubleshooting-item" id="garmin-busy" aria-labelledby="garmin-busy-title">
               <h3 id="garmin-busy-title">Garmin Express lub inna aplikacja używa zegarka</h3>
-              <p>Zamknij Garmin Express i aplikacje do przesyłania plików, takie jak Android File Transfer, OpenMTP czy MacDroid: z połączenia z zegarkiem może korzystać tylko jedna aplikacja naraz.</p>
+              <p>Zamknij Garmin Express i aplikacje do przesyłania plików, takie jak Android File Transfer, OpenMTP czy MacDroid: z połączenia z zegarkiem lub Edge może korzystać tylko jedna aplikacja naraz.</p>
               <ol class="troubleshooting-steps"><li>Zamknij Garmin Express, Android File Transfer, OpenMTP, MacDroid i inne aplikacje MTP. Jeśli Terento wskaże aplikację, zamknij najpierw ją.</li><li>Zamknij też Pobieranie obrazów, Zdjęcia i Podgląd, jeśli są otwarte.</li><li>Jeśli zegarek widać w Finderze, wysuń go tam.</li><li>Odłącz zegarek, podłącz go ponownie, a następnie wybierz w Terento „Refresh”.</li></ol>
             </section><section class="troubleshooting-item" id="multiple-garmin" aria-labelledby="multiple-garmin-title">
               <h3 id="multiple-garmin-title">Podłączono kilka urządzeń Garmin</h3>

@@ -11,7 +11,7 @@ On Linux, the Terento web installer puts free maps on Garmin watches with map su
 
 ## What you need
 
-- Chrome, Edge, Opera or Brave on a Linux computer. Firefox can’t connect to USB devices.
+- Chrome, Microsoft Edge, Opera or Brave on a Linux computer. Firefox can’t connect to USB devices.
 - A USB data cable, not a charge-only cable.
 - A Garmin watch that supports maps, unlocked.
 

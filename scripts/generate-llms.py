@@ -8,11 +8,11 @@ ROOT = Path(__file__).resolve().parents[1]
 # One product fact sheet for answer engines. Keep it to released behaviour:
 # the same facts as Home, About, Download and the web installer pages.
 FACTS = (
-    'Terento is a free, open-source (GPL-3.0-or-later) project that installs and manages third-party maps on Garmin smartwatches with map support.',
-    'Two ways to use it: the Terento app for Apple Silicon Macs with macOS 13 or later, or the web installer at https://terento.app/install/ in desktop Chrome, Edge, Opera or Brave, with no app to install.',
+    'Terento is a free, open-source (GPL-3.0-or-later) project that installs and manages third-party maps on Garmin smartwatches and newer Garmin Edge bike computers (such as Edge 540, 840, 1040 and 1050) with map support. Handheld GPS and automotive devices are outside its scope.',
+    'Two ways to use it: the Terento app for Apple Silicon Macs with macOS 13 or later, or the web installer at https://terento.app/install/ in desktop Chrome, Microsoft Edge, Opera or Brave, with no app to install.',
     'The maps are free community maps based on OpenStreetMap data: Freizeitkarte, OpenTopoMap, MapRando, BBBike and OSMapaPL. The Mac app downloads each map directly from its provider and can also install your own compatible .img map file.',
     'Terento does not update Garmin firmware or official Garmin maps and does not replace Garmin Express.',
-    'The Compatibility page lists exact watch models and variants with at least one successful installation. A model missing from it is not necessarily unsupported.',
+    'The Compatibility page lists exact Garmin watch and Edge models and variants with at least one successful installation. A model missing from it is not necessarily unsupported.',
 )
 
 

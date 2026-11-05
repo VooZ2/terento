@@ -9,7 +9,7 @@ const locales = new Map([
   ["en", {
     file: path.join(root, "site", "index.html"),
     h1: "Install free maps on your Garmin watch",
-    hero: "Terento is a free, open-source way to install, update and manage third-party maps on Garmin watches: with a native Mac app or in your desktop browser.",
+    hero: "Terento is a free, open-source way to install, update and manage third-party maps on Garmin watches and Edge bike computers: with a native Mac app or in your desktop browser.",
     experienceLabel: "How it works",
     experienceTitle: "Connect → Install → Done",
     featureTabsLabel: "Map features",
@@ -19,7 +19,7 @@ const locales = new Map([
     problemSecondary: "Terento brings the whole process together in three simple steps.",
     installStep: "Choose maps from the catalog, or add your own compatible .img map.",
     doneLabel: "Done",
-    doneStep: "Your maps are installed and ready to use on your watch.",
+    doneStep: "Your maps are installed and ready to use on your Garmin.",
     installShowcase: "Choose maps from the catalog by region, or add your own compatible .img map.",
     manageShowcase: "See what's installed, update maps when newer releases are available, and remove third-party maps managed by Terento. Original Garmin maps remain protected.",
     providerEyebrow: "Available maps",
@@ -32,7 +32,7 @@ const locales = new Map([
   ["de", {
     file: path.join(root, "site", "de", "index.html"),
     h1: "Kostenlose Karten auf deiner Garmin-Uhr installieren",
-    hero: "Terento ist ein kostenloses Open-Source-Tool, mit dem du Drittanbieter-Karten auf Garmin-Uhren installierst, aktualisierst und verwaltest: mit einer nativen Mac-App oder im Desktop-Browser.",
+    hero: "Terento ist ein kostenloses Open-Source-Tool, mit dem du Drittanbieter-Karten auf Garmin-Uhren und Edge-Radcomputern installierst, aktualisierst und verwaltest: mit einer nativen Mac-App oder im Desktop-Browser.",
     experienceLabel: "So funktioniert es",
     experienceTitle: "Verbinden → Installieren → Fertig",
     featureTabsLabel: "Kartenfunktionen",
@@ -42,7 +42,7 @@ const locales = new Map([
     problemSecondary: "Terento bündelt den gesamten Ablauf in drei einfachen Schritten.",
     installStep: "Wähle Karten aus dem Katalog oder füge deine eigene kompatible .img-Karte hinzu.",
     doneLabel: "Fertig",
-    doneStep: "Deine Karten sind installiert und auf deiner Uhr einsatzbereit.",
+    doneStep: "Deine Karten sind installiert und auf deinem Garmin einsatzbereit.",
     installShowcase: "Wähle Karten aus dem Katalog nach Region oder füge deine eigene kompatible .img-Karte hinzu.",
     manageShowcase: "Sieh, was installiert ist, aktualisiere Karten, wenn neuere Versionen verfügbar sind, und entferne von Terento verwaltete Drittanbieter-Karten. Originale Garmin-Karten bleiben geschützt.",
     providerEyebrow: "Verfügbare Karten",
@@ -55,7 +55,7 @@ const locales = new Map([
   ["fr", {
     file: path.join(root, "site", "fr", "index.html"),
     h1: "Installez des cartes gratuites sur votre montre Garmin",
-    hero: "Terento est un outil gratuit et open source pour installer, mettre à jour et gérer des cartes tierces sur les montres Garmin : avec une application Mac native ou dans votre navigateur sur ordinateur.",
+    hero: "Terento est un outil gratuit et open source pour installer, mettre à jour et gérer des cartes tierces sur les montres et compteurs vélo Edge Garmin : avec une application Mac native ou dans votre navigateur sur ordinateur.",
     experienceLabel: "Comment ça marche",
     experienceTitle: "Connecter → Installer → Terminé",
     featureTabsLabel: "Fonctions cartographiques",
@@ -65,7 +65,7 @@ const locales = new Map([
     problemSecondary: "Terento réunit tout le parcours en trois étapes simples.",
     installStep: "Choisissez des cartes dans le catalogue ou ajoutez votre propre carte .img compatible.",
     doneLabel: "Terminé",
-    doneStep: "Vos cartes sont installées et prêtes à être utilisées sur votre montre.",
+    doneStep: "Vos cartes sont installées et prêtes à être utilisées sur votre Garmin.",
     installShowcase: "Choisissez des cartes dans le catalogue par région ou ajoutez votre propre carte .img compatible.",
     manageShowcase: "Consultez les cartes installées, mettez-les à jour lorsqu’une version plus récente est disponible et supprimez les cartes tierces gérées par Terento. Les cartes Garmin d’origine restent protégées.",
     providerEyebrow: "Cartes disponibles",
@@ -78,7 +78,7 @@ const locales = new Map([
   ["pl", {
     file: path.join(root, "site", "pl", "index.html"),
     h1: "Instaluj darmowe mapy na zegarku Garmin",
-    hero: "Terento to darmowe narzędzie open source do instalowania, aktualizowania i zarządzania mapami innych firm na zegarkach Garmin: w natywnej aplikacji na Maca lub w przeglądarce na komputerze.",
+    hero: "Terento to darmowe narzędzie open source do instalowania, aktualizowania i zarządzania mapami innych firm na zegarkach Garmin i licznikach rowerowych Edge: w natywnej aplikacji na Maca lub w przeglądarce na komputerze.",
     experienceLabel: "Jak to działa",
     experienceTitle: "Połącz → Zainstaluj → Gotowe",
     featureTabsLabel: "Funkcje map",
@@ -88,7 +88,7 @@ const locales = new Map([
     problemSecondary: "Terento łączy cały proces w trzech prostych krokach.",
     installStep: "Wybierz mapy z katalogu albo dodaj własną zgodną mapę .img.",
     doneLabel: "Gotowe",
-    doneStep: "Twoje mapy są zainstalowane i gotowe do użycia na zegarku.",
+    doneStep: "Twoje mapy są zainstalowane i gotowe do użycia na Twoim Garminie.",
     installShowcase: "Wybieraj mapy z katalogu według regionu albo dodaj własną zgodną mapę .img.",
     manageShowcase: "Sprawdź, co jest zainstalowane, aktualizuj mapy, gdy dostępne są nowsze wydania, i usuwaj mapy innych firm zarządzane przez Terento. Oryginalne mapy Garmin pozostają chronione.",
     providerEyebrow: "Dostępne mapy",
@@ -101,7 +101,7 @@ const locales = new Map([
   ["cs", {
     file: path.join(root, "site", "cs", "index.html"),
     h1: "Nainstalujte do hodinek Garmin mapy zdarma",
-    hero: "Terento je bezplatný open-source nástroj pro instalaci, aktualizaci a správu map třetích stran v hodinkách Garmin: v nativní aplikaci pro Mac nebo v prohlížeči na počítači.",
+    hero: "Terento je bezplatný open-source nástroj pro instalaci, aktualizaci a správu map třetích stran v hodinkách Garmin a cyklopočítačích Edge: v nativní aplikaci pro Mac nebo v prohlížeči na počítači.",
     experienceLabel: "Jak to funguje",
     experienceTitle: "Připojit → Instalovat → Hotovo",
     featureTabsLabel: "Funkce map",
@@ -111,7 +111,7 @@ const locales = new Map([
     problemSecondary: "Terento celý proces spojuje do tří jednoduchých kroků.",
     installStep: "Vybírejte mapy z katalogu podle oblasti nebo přidejte vlastní kompatibilní mapu .img.",
     doneLabel: "Hotovo",
-    doneStep: "Vaše mapy jsou nainstalované a připravené k použití v hodinkách.",
+    doneStep: "Vaše mapy jsou nainstalované a připravené k použití ve vašem Garminu.",
     installShowcase: "Vybírejte mapy z katalogu podle oblasti nebo přidejte vlastní kompatibilní mapu .img.",
     manageShowcase: "Prohlédněte si nainstalované mapy, aktualizujte je, když je k dispozici novější vydání, a odstraňte mapy třetích stran spravované aplikací Terento. Původní mapy Garmin zůstávají chráněné.",
     providerEyebrow: "Dostupné mapy",
@@ -124,7 +124,7 @@ const locales = new Map([
   ["it", {
     file: path.join(root, "site", "it", "index.html"),
     h1: "Installa mappe gratuite sul tuo smartwatch Garmin",
-    hero: "Terento è uno strumento gratuito e open source per installare, aggiornare e gestire mappe di terze parti sugli smartwatch Garmin: con un’app Mac nativa o nel browser del computer.",
+    hero: "Terento è uno strumento gratuito e open source per installare, aggiornare e gestire mappe di terze parti su smartwatch Garmin e ciclocomputer Edge: con un’app Mac nativa o nel browser del computer.",
     experienceLabel: "Come funziona",
     experienceTitle: "Connetti → Installa → Fatto",
     featureTabsLabel: "Funzioni delle mappe",
@@ -134,7 +134,7 @@ const locales = new Map([
     problemSecondary: "Terento riunisce l’intero processo in tre semplici passaggi.",
     installStep: "Scegli le mappe dal catalogo oppure aggiungi la tua mappa .img compatibile.",
     doneLabel: "Fatto",
-    doneStep: "Le tue mappe sono installate e pronte per essere usate sullo smartwatch.",
+    doneStep: "Le tue mappe sono installate e pronte per essere usate sul tuo Garmin.",
     installShowcase: "Scegli le mappe dal catalogo per regione oppure aggiungi la tua mappa .img compatibile.",
     manageShowcase: "Visualizza le mappe installate, aggiornatele quando è disponibile una versione più recente e rimuovi le mappe di terze parti gestite da Terento. Le mappe Garmin originali restano protette.",
     providerEyebrow: "Mappe disponibili",
@@ -298,10 +298,10 @@ for (const [locale, expected] of locales) {
 }
 
 const englishHome = pageFor("en");
-assert.match(englishHome, /<p class="hero-lede">Terento is a free, open-source way to install, update and manage third-party maps on Garmin watches: with a native Mac app or in your desktop browser\.<\/p>/);
+assert.match(englishHome, /<p class="hero-lede">Terento is a free, open-source way to install, update and manage third-party maps on Garmin watches and Edge bike computers: with a native Mac app or in your desktop browser\.<\/p>/);
 assert.match(englishHome, /<h1 id="hero-title">Install free maps on your Garmin watch<\/h1>/);
 assert.doesNotMatch(englishHome, /<p class="hero-lede">[^<]*Freizeitkarte/i);
-assert.match(englishHome, /<meta name="description" content="Install and manage third-party maps on Garmin smartwatches with map support using Terento, a free macOS app for Apple Silicon\.">/);
+assert.match(englishHome, /<meta name="description" content="Install and manage third-party maps on Garmin watches and Edge bike computers with map support using Terento, a free macOS app for Apple Silicon\.">/);
 assert.match(englishHome, /<p class="eyebrow"><span class="status-dot" aria-hidden="true"><\/span>Open-source project<\/p>/);
 assert.doesNotMatch(englishHome, /Compatibility varies by Garmin model\./);
 

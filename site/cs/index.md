@@ -7,7 +7,7 @@ Open-source projekt
 
 # Nainstalujte do hodinek Garmin mapy zdarma
 
-Terento je bezplatný open-source nástroj pro instalaci, aktualizaci a správu map třetích stran v hodinkách Garmin: v nativní aplikaci pro Mac nebo v prohlížeči na počítači.
+Terento je bezplatný open-source nástroj pro instalaci, aktualizaci a správu map třetích stran v hodinkách Garmin a cyklopočítačích Edge: v nativní aplikaci pro Mac nebo v prohlížeči na počítači.
 
 [Stáhnout pro Mac](https://terento.app/cs/download/)
 [Ověřit kompatibilitu](https://terento.app/cs/compatibility/) [Instalovat z prohlížeče](https://terento.app/cs/install/)
@@ -32,7 +32,7 @@ Vybírejte mapy z katalogu podle oblasti nebo přidejte vlastní kompatibilní m
 
 3. Hotovo
 
-Vaše mapy jsou nainstalované a připravené k použití v hodinkách.
+Vaše mapy jsou nainstalované a připravené k použití ve vašem Garminu.
 
 ## Instalovat mapy
 
@@ -50,11 +50,11 @@ Webový instalátor
 
 ## Bez aplikace? Instalujte z prohlížeče.
 
-Připojte hodinky Garmin kabelem USB, vyberte mapy a nainstalujte je přímo z Chrome, Edge, Opery nebo Brave. Později je stejně aktualizujete nebo odeberete.
+Připojte hodinky Garmin kabelem USB, vyberte mapy a nainstalujte je přímo z Chrome, Microsoft Edge, Opery nebo Brave. Později je stejně aktualizujete nebo odeberete.
 
 Funguje na Macu a, zatím ve zkušebním provozu, na Linuxu. Zatím ne ve Windows, na telefonech ani tabletech.
 
-Mac · Linux (v testu)Chrome, Edge, Opera, BraveDatový kabel USB
+Mac · Linux (v testu)Chrome, Microsoft Edge, Opera, BraveDatový kabel USB
 
 [Otevřít webový instalátor](https://terento.app/cs/install/)
 
@@ -106,9 +106,9 @@ Máte otázky?
 
 ## FAQ
 
-Které hodinky Garmin fungují s Terento?
+Které hodinky Garmin a cyklopočítače Edge fungují s Terento?
 
-Na stránce [Kompatibilita](https://terento.app/cs/compatibility/) najdete konkrétní modely a varianty Garmin s alespoň jednou úspěšnou sdílenou instalací. Chybějící model nemusí znamenat, že není podporován.
+Na stránce [Kompatibilita](https://terento.app/cs/compatibility/) najdete konkrétní modely a varianty Garmin s alespoň jednou úspěšnou sdílenou instalací. Chybějící model nemusí znamenat, že není podporován. Fungují i novější cyklopočítače Garmin Edge s podporou map, například Edge 540, 840 a 1050. [Přečtěte si průvodce pro Edge.](https://terento.app/cs/guides/install-garmin-maps-edge-mac/)
 
 Mohu instalovat mapy třetích stran do hodinek Garmin z Macu bez Garmin Express a BaseCamp?
 
@@ -134,7 +134,7 @@ Na obrazovce neúspěšné instalace zvolte „Report issue“. Terento otevře 
 
 Mohu instalovat mapy bez instalace aplikace?
 
-Ano. [Webový instalátor](https://terento.app/cs/install/) instaluje, aktualizuje a odebírá mapy z katalogu v Chrome, Edge, Opeře nebo Brave na Macu a na Linuxu, kde se ještě testuje. Zatím nefunguje ve Windows, na telefonech ani tabletech a nepřidá vlastní mapy .img.
+Ano. [Webový instalátor](https://terento.app/cs/install/) instaluje, aktualizuje a odebírá mapy z katalogu v Chrome, Microsoft Edge, Opeře nebo Brave na Macu a na Linuxu, kde se ještě testuje. Zatím nefunguje ve Windows, na telefonech ani tabletech a nepřidá vlastní mapy .img.
 
 ## Chcete jednodušší způsob instalace map?
 

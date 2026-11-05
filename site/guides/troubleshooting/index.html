@@ -6,7 +6,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
-    <meta name="description" content="Garmin watch not showing up on your Mac? Fix USB mode (MTP), Garmin Express using the watch, low storage and failed map downloads.">
+    <meta name="description" content="Garmin watch or Edge not showing up on your Mac? Fix USB mode (MTP), Garmin Express using the device, low storage and failed map downloads.">
     <meta name="robots" content="index,follow">
     <link rel="canonical" href="https://terento.app/guides/troubleshooting/">
     <link rel="alternate" hreflang="en" href="https://terento.app/guides/troubleshooting/">
@@ -19,7 +19,7 @@
     <meta property="og:type" content="article">
     <meta property="og:site_name" content="Terento">
     <meta property="og:title" content="Garmin Watch Not Showing Up on Mac? Troubleshooting — Terento">
-    <meta property="og:description" content="Garmin watch not showing up on your Mac? Fix USB mode (MTP), Garmin Express using the watch, low storage and failed map downloads.">
+    <meta property="og:description" content="Garmin watch or Edge not showing up on your Mac? Fix USB mode (MTP), Garmin Express using the device, low storage and failed map downloads.">
     <meta property="og:url" content="https://terento.app/guides/troubleshooting/">
     <meta property="og:image" content="https://terento.app/assets/social/terento-og.png">
     <meta property="og:image:type" content="image/png">
@@ -29,7 +29,7 @@
     <meta property="og:locale" content="en_US">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Garmin Watch Not Showing Up on Mac? Troubleshooting — Terento">
-    <meta name="twitter:description" content="Garmin watch not showing up on your Mac? Fix USB mode (MTP), Garmin Express using the watch, low storage and failed map downloads.">
+    <meta name="twitter:description" content="Garmin watch or Edge not showing up on your Mac? Fix USB mode (MTP), Garmin Express using the device, low storage and failed map downloads.">
     <meta name="twitter:image" content="https://terento.app/assets/social/terento-og.png">
     <title>Garmin Watch Not Showing Up on Mac? Troubleshooting — Terento</title>
 
@@ -62,7 +62,7 @@
       "headline": "Fix Garmin watch and map problems on Mac",
       "description": "Fix Garmin watch and map problems on a Mac: watch not showing up, Garmin Express or Android File Transfer using the watch, USB mode (MTP), not enough space and failed map downloads.",
       "datePublished": "2026-10-06T00:00:00Z",
-      "dateModified": "2026-11-02T00:00:00Z",
+      "dateModified": "2026-11-05T00:00:00Z",
       "mainEntityOfPage": {
         "@id": "https://terento.app/guides/troubleshooting/"
       },
@@ -144,15 +144,23 @@
         </header>
 
         <div class="shell guide-content">
+          <section class="guide-preflight" id="garmin-edge" aria-labelledby="garmin-edge-title">
+            <div class="guide-section-heading"><p class="eyebrow">Garmin Edge</p><h2 id="garmin-edge-title">Garmin Edge not showing up on Mac</h2></div>
+            <div class="guide-preflight-copy">
+              <p>Newer Garmin Edge bike computers with map support connect to a Mac the same way current Garmin watches do, so most steps on this page work for an Edge too: use a USB data cable, quit Garmin Express and wait up to 2 minutes. Older Edge models that show up as a drive in Finder work differently.</p>
+              <a class="text-link" href="/guides/install-garmin-maps-edge-mac/" data-umami-event="guide-link-click" data-umami-event-location="troubleshooting-edge">Read the Garmin Edge guide <span aria-hidden="true">→</span></a>
+            </div>
+          </section>
+
           <section class="troubleshooting" id="topic-connection" aria-labelledby="topic-connection-title">
             <div class="guide-section-heading"><p class="eyebrow">Connection</p><h2 id="topic-connection-title">Garmin watch connection problems</h2></div>
             <div class="troubleshooting-list"><section class="troubleshooting-item" id="connect-watch" aria-labelledby="connect-watch-title">
               <h3 id="connect-watch-title">Garmin watch not showing up on Mac</h3>
               <p>Connect the watch directly to your Mac with a USB cable that supports data, unlock it and wait up to 2 minutes: Terento finds it automatically.</p>
-              <ol class="troubleshooting-steps"><li>Use a USB data cable. Charge-only cables and some USB hubs don’t work.</li><li>Your watch won’t appear in Finder, and that’s normal: macOS doesn’t open most current Garmin watches as a drive. Terento talks to the watch directly.</li><li>On a Mac laptop, if macOS asks whether to allow the accessory to connect, choose Allow.</li><li>Wait up to 2 minutes while Terento checks the connection.</li><li>If the watch still doesn’t appear, unplug it, wait a few seconds and connect it again.</li><li>If another app is open, see <a href="#garmin-busy" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin Express or another app is using the watch</a>.</li></ol>
+              <ol class="troubleshooting-steps"><li>Use a USB data cable. Charge-only cables and some USB hubs don’t work.</li><li>Your watch or Edge won’t appear in Finder, and that’s normal: macOS doesn’t open most current Garmin watches and newer Edge models as a drive. Terento talks to the device directly.</li><li>On a Mac laptop, if macOS asks whether to allow the accessory to connect, choose Allow.</li><li>Wait up to 2 minutes while Terento checks the connection.</li><li>If the watch still doesn’t appear, unplug it, wait a few seconds and connect it again.</li><li>If another app is open, see <a href="#garmin-busy" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin Express or another app is using the watch</a>.</li></ol>
             </section><section class="troubleshooting-item" id="garmin-busy" aria-labelledby="garmin-busy-title">
               <h3 id="garmin-busy-title">Garmin Express or another app is using the watch</h3>
-              <p>Quit Garmin Express and file-transfer apps such as Android File Transfer, OpenMTP or MacDroid: only one app at a time can use the watch connection.</p>
+              <p>Quit Garmin Express and file-transfer apps such as Android File Transfer, OpenMTP or MacDroid: only one app at a time can use the connection to the watch or Edge.</p>
               <ol class="troubleshooting-steps"><li>Quit Garmin Express, Android File Transfer, OpenMTP, MacDroid and other MTP apps. If Terento names an app, quit that one first.</li><li>Also close Image Capture, Photos and Preview if they are open.</li><li>If the watch appears in Finder, eject it there.</li><li>Unplug the watch, connect it again, then choose “Refresh” in Terento.</li></ol>
             </section><section class="troubleshooting-item" id="multiple-garmin" aria-labelledby="multiple-garmin-title">
               <h3 id="multiple-garmin-title">More than one Garmin device connected</h3>

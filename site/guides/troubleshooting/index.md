@@ -9,6 +9,14 @@ Troubleshooting
 
 Find the problem you see, from a Garmin watch that doesn’t show up on your Mac to a map download that fails, and follow the short steps. If nothing helps, send a report so we can take a look.
 
+Garmin Edge
+
+## Garmin Edge not showing up on Mac
+
+Newer Garmin Edge bike computers with map support connect to a Mac the same way current Garmin watches do, so most steps on this page work for an Edge too: use a USB data cable, quit Garmin Express and wait up to 2 minutes. Older Edge models that show up as a drive in Finder work differently.
+
+[Read the Garmin Edge guide](https://terento.app/guides/install-garmin-maps-edge-mac/)
+
 Connection
 
 ## Garmin watch connection problems
@@ -18,7 +26,7 @@ Connection
 Connect the watch directly to your Mac with a USB cable that supports data, unlock it and wait up to 2 minutes: Terento finds it automatically.
 
 1. Use a USB data cable. Charge-only cables and some USB hubs don’t work.
-2. Your watch won’t appear in Finder, and that’s normal: macOS doesn’t open most current Garmin watches as a drive. Terento talks to the watch directly.
+2. Your watch or Edge won’t appear in Finder, and that’s normal: macOS doesn’t open most current Garmin watches and newer Edge models as a drive. Terento talks to the device directly.
 3. On a Mac laptop, if macOS asks whether to allow the accessory to connect, choose Allow.
 4. Wait up to 2 minutes while Terento checks the connection.
 5. If the watch still doesn’t appear, unplug it, wait a few seconds and connect it again.
@@ -26,7 +34,7 @@ Connect the watch directly to your Mac with a USB cable that supports data, unlo
 
 ### Garmin Express or another app is using the watch
 
-Quit Garmin Express and file-transfer apps such as Android File Transfer, OpenMTP or MacDroid: only one app at a time can use the watch connection.
+Quit Garmin Express and file-transfer apps such as Android File Transfer, OpenMTP or MacDroid: only one app at a time can use the connection to the watch or Edge.
 
 1. Quit Garmin Express, Android File Transfer, OpenMTP, MacDroid and other MTP apps. If Terento names an app, quit that one first.
 2. Also close Image Capture, Photos and Preview if they are open.

@@ -1,13 +1,13 @@
 ---
-title: "Kompatibilita hodinek Garmin a úspěšné instalace — Terento"
+title: "Hodinky Garmin a Edge: úspěšné instalace map — Terento"
 canonical: https://terento.app/cs/compatibility/
 ---
 
 Kompatibilita
 
-# Kompatibilita hodinek Garmin
+# Kompatibilita hodinek a cyklopočítačů Garmin Edge
 
-Terento je navrženo pro hodinky Garmin s podporou map. Níže jsou uvedeny konkrétní modely a varianty, na kterých již proběhla alespoň jedna úspěšná instalace mapy třetí strany. Seznam se rozšiřuje s dalšími sdílenými úspěšnými instalacemi.
+Terento je navrženo pro hodinky Garmin a novější cyklopočítače Garmin Edge s podporou map. Níže jsou uvedeny konkrétní modely a varianty, na kterých již proběhla alespoň jedna úspěšná instalace mapy třetí strany. Seznam se rozšiřuje s dalšími sdílenými úspěšnými instalacemi.
 
 Pokud zde svůj model nevidíte, neznamená to, že není podporován — pro daný model a variantu zatím možná nebyla sdílena žádná úspěšná instalace.
 
@@ -15,7 +15,7 @@ Pokud zde svůj model nevidíte, neznamená to, že není podporován — pro da
 
 Jak tento seznam funguje
 
-Tento seznam vychází ze skutečných úspěšných instalací Terento sdílených uživateli. Zobrazuje pouze konkrétní modely a varianty Garmin s alespoň jednou úspěšnou instalací mapy třetí strany. Nejde o úplný seznam všech hodinek Garmin, se kterými může Terento fungovat.
+Tento seznam vychází ze skutečných úspěšných instalací Terento sdílených uživateli. Zobrazuje pouze konkrétní modely a varianty Garmin s alespoň jednou úspěšnou instalací mapy třetí strany. Nejde o úplný seznam všech hodinek a cyklopočítačů Garmin Edge, se kterými může Terento fungovat.
 
 Výsledky instalací sdílejí s Terento uživatelé; nejde o certifikaci Garmin.
 
@@ -417,7 +417,7 @@ Výsledky komunity
 
 ## Nevidíte zde svůj Garmin?
 
-Pokud vaše hodinky Garmin podporují mapy, můžete Terento přesto vyzkoušet. Seznam se rozšiřuje s dalšími sdílenými úspěšnými instalacemi pro konkrétní modely a varianty.
+Pokud vaše hodinky Garmin nebo cyklopočítač Edge podporují mapy, můžete Terento přesto vyzkoušet. Seznam se rozšiřuje s dalšími sdílenými úspěšnými instalacemi pro konkrétní modely a varianty.
 
 [Instalujete mapy třetích stran poprvé? Přečtěte si průvodce pro Mac](https://terento.app/cs/guides/install-garmin-maps-mac/) [Nemáte Mac s Apple Silicon? Použijte webový instalátor](https://terento.app/cs/install/)
 [Stáhnout](https://terento.app/cs/download/)

@@ -1,0 +1,350 @@
+{
+  "en": {
+    "title": "Install Maps on Garmin Edge from a Mac — Terento",
+    "description": "Garmin Edge 1050, 840 or 540 not showing up on your Mac? Install free OpenStreetMap maps or your own map file on newer Edge bike computers with Terento.",
+    "h1": "Install maps on your Garmin Edge from a Mac",
+    "eyebrow": "Garmin Edge guide",
+    "intro": "Newer Garmin Edge bike computers don’t show up on a Mac as a drive, so you can’t simply copy a map file to them. Terento installs free OpenStreetMap maps, or your own compatible map file, on an Edge with map support in three steps.",
+    "skip": "Skip to content",
+    "breadcrumb_home": "Home",
+    "breadcrumb_current": "Garmin Edge guide",
+    "why_eyebrow": "Why it’s different",
+    "why_title": "Why your Garmin Edge doesn’t show up on your Mac",
+    "why_body": "Newer Edge models, such as the Edge 540, 840 and 1050, share files over USB the way Android phones do, using MTP (Media Transfer Protocol). macOS has no built-in support for it, so the Edge doesn’t appear in Finder as a drive, and guides that tell you to copy a map file into the Garmin folder don’t work for these models. Terento talks to the Edge directly, so you don’t need Android File Transfer or OpenMTP.",
+    "needs_eyebrow": "A quick check",
+    "needs_title": "Before you start",
+    "needs": [
+      "Apple Silicon Mac with macOS 13 or later",
+      "Newer Garmin Edge with map support",
+      "USB cable that supports data transfer"
+    ],
+    "models_body": "Terento is designed for newer Edge models with map support that connect this way: Edge 540, Edge 540 Solar, Edge 840, Edge 840 Solar, Edge 1040, Edge 1040 Solar, Edge 1050, Edge 550, Edge 850, Edge 1060, Edge MTB, Edge Explore 2, Edge Explore 3 and Edge Explore 3 Plus. After you connect, Terento checks the Edge and tells you whether it can install maps. The Compatibility page lists the exact models with successful installations; a model missing from it is not necessarily unsupported.",
+    "compatibility_link": "See current compatibility evidence",
+    "web_installer_body": "No Apple Silicon Mac? The [web installer](install/) installs catalog maps from Chrome and other Chromium browsers with WebUSB.",
+    "steps_eyebrow": "Three steps",
+    "steps_title": "Install a map on your Edge",
+    "steps": [
+      {
+        "title": "Connect the Edge",
+        "body": "[Download Terento](download/) and open it. Quit Garmin Express, connect the Edge directly to your Mac with a USB data cable and wait up to 2 minutes while Terento finds it."
+      },
+      {
+        "title": "Choose a map",
+        "body": "Choose a provider and a region from the catalog, or add your own compatible .img map file from your Mac. [Compare map styles](map-styles/) to see how each map draws roads and trails."
+      },
+      {
+        "title": "Install",
+        "body": "Start the installation and keep the Edge connected until Terento says the installation is complete. Then disconnect the Edge."
+      }
+    ],
+    "after_eyebrow": "After installing",
+    "after_title": "Show the map on your Edge",
+    "after": [
+      {
+        "title": "Turn the map on",
+        "body": "Disconnect the Edge, open its map settings and make sure the new map is enabled. If it isn’t listed, restart the Edge. If several maps cover the same area, turn off the ones you don’t want to see."
+      },
+      {
+        "title": "Garmin Edge not showing up in Terento",
+        "body": "Use a USB data cable, connect the Edge directly instead of through a hub, quit Garmin Express and file-transfer apps, and wait up to 2 minutes. The [troubleshooting guide](guides/troubleshooting/) has more steps; most of them work the same for a watch and an Edge."
+      },
+      {
+        "title": "Older Edge models",
+        "body": "Older models, such as the Edge 1030 Plus and earlier, usually show up on a Mac as a USB drive. On those, you can copy a compatible .img map file into the Garmin folder on the drive yourself, without Terento. Terento is not designed for these models."
+      }
+    ],
+    "cta_eyebrow": "Ready?",
+    "cta_title": "Download Terento and connect your Edge.",
+    "cta_link": "Download Terento"
+  },
+  "de": {
+    "title": "Karten auf Garmin Edge vom Mac installieren — Terento",
+    "description": "Garmin Edge 1050, 840 oder 540 erscheint nicht am Mac? Installiere mit Terento kostenlose OpenStreetMap-Karten oder eigene Kartendateien auf neueren Edge-Geräten.",
+    "h1": "Karten vom Mac auf deinen Garmin Edge installieren",
+    "eyebrow": "Anleitung für Garmin Edge",
+    "intro": "Neuere Garmin-Edge-Radcomputer erscheinen am Mac nicht als Laufwerk, deshalb kannst du nicht einfach eine Kartendatei darauf kopieren. Terento installiert kostenlose OpenStreetMap-Karten oder deine eigene kompatible Kartendatei in drei Schritten auf einem Edge mit Kartenunterstützung.",
+    "skip": "Zum Inhalt springen",
+    "breadcrumb_home": "Startseite",
+    "breadcrumb_current": "Anleitung für Garmin Edge",
+    "why_eyebrow": "Warum es anders ist",
+    "why_title": "Warum dein Garmin Edge am Mac nicht erscheint",
+    "why_body": "Neuere Edge-Modelle wie Edge 540, 840 und 1050 übertragen Dateien per USB wie Android-Smartphones, über MTP (Media Transfer Protocol). macOS unterstützt das nicht von Haus aus. Deshalb erscheint der Edge nicht als Laufwerk im Finder, und Anleitungen, nach denen du eine Kartendatei in den Garmin-Ordner kopierst, funktionieren bei diesen Modellen nicht. Terento spricht direkt mit dem Edge, du brauchst also weder Android File Transfer noch OpenMTP.",
+    "needs_eyebrow": "Kurz prüfen",
+    "needs_title": "Bevor du startest",
+    "needs": [
+      "Apple-Silicon-Mac mit macOS 13 oder neuer",
+      "Neuerer Garmin Edge mit Kartenunterstützung",
+      "USB-Kabel mit Datenübertragung"
+    ],
+    "models_body": "Terento ist für neuere Edge-Modelle mit Kartenunterstützung gedacht, die sich so verbinden: Edge 540, Edge 540 Solar, Edge 840, Edge 840 Solar, Edge 1040, Edge 1040 Solar, Edge 1050, Edge 550, Edge 850, Edge 1060, Edge MTB, Edge Explore 2, Edge Explore 3 und Edge Explore 3 Plus. Nach dem Verbinden prüft Terento den Edge und sagt dir, ob es Karten installieren kann. Die Kompatibilitätsseite zeigt die genauen Modelle mit erfolgreichen Installationen; ein fehlendes Modell ist nicht unbedingt nicht unterstützt.",
+    "compatibility_link": "Aktuelle Kompatibilitätsnachweise ansehen",
+    "web_installer_body": "Kein Mac mit Apple Silicon? Der [Web-Installer](install/) installiert Karten aus dem Katalog aus Chrome und anderen Chromium-Browsern mit WebUSB.",
+    "steps_eyebrow": "Drei Schritte",
+    "steps_title": "Eine Karte auf deinem Edge installieren",
+    "steps": [
+      {
+        "title": "Edge verbinden",
+        "body": "[Lade Terento herunter](download/) und öffne es. Beende Garmin Express, verbinde den Edge über ein USB-Datenkabel direkt mit deinem Mac und warte bis zu 2 Minuten, bis Terento ihn findet."
+      },
+      {
+        "title": "Karte wählen",
+        "body": "Wähle einen Anbieter und eine Region aus dem Katalog oder füge eine eigene kompatible .img-Kartendatei von deinem Mac hinzu. [Vergleiche die Kartenstile](map-styles/), um zu sehen, wie jede Karte Straßen und Wege darstellt."
+      },
+      {
+        "title": "Installieren",
+        "body": "Starte die Installation und lass den Edge verbunden, bis Terento meldet, dass die Installation abgeschlossen ist. Trenne den Edge danach."
+      }
+    ],
+    "after_eyebrow": "Nach der Installation",
+    "after_title": "Die Karte auf dem Edge anzeigen",
+    "after": [
+      {
+        "title": "Karte einschalten",
+        "body": "Trenne den Edge, öffne seine Karteneinstellungen und prüfe, ob die neue Karte aktiviert ist. Fehlt sie in der Liste, starte den Edge neu. Decken mehrere Karten dasselbe Gebiet ab, schalte die aus, die du nicht sehen möchtest."
+      },
+      {
+        "title": "Garmin Edge erscheint nicht in Terento",
+        "body": "Nutze ein USB-Datenkabel, verbinde den Edge direkt statt über einen Hub, beende Garmin Express und Dateiübertragungs-Apps und warte bis zu 2 Minuten. Die [Fehlerbehebung](guides/troubleshooting/) hat weitere Schritte; die meisten gelten für eine Uhr und einen Edge gleichermaßen."
+      },
+      {
+        "title": "Ältere Edge-Modelle",
+        "body": "Ältere Modelle wie der Edge 1030 Plus und frühere erscheinen am Mac meist als USB-Laufwerk. Dort kannst du eine kompatible .img-Kartendatei selbst in den Garmin-Ordner auf dem Laufwerk kopieren, ohne Terento. Terento ist nicht für diese Modelle gedacht."
+      }
+    ],
+    "cta_eyebrow": "Bereit?",
+    "cta_title": "Lade Terento herunter und verbinde deinen Edge.",
+    "cta_link": "Terento herunterladen"
+  },
+  "fr": {
+    "title": "Installer des cartes sur un Garmin Edge depuis un Mac — Terento",
+    "description": "Votre Garmin Edge 1050, 840 ou 540 n’apparaît pas sur le Mac ? Installez des cartes OpenStreetMap gratuites ou votre propre carte sur les Edge récents avec Terento.",
+    "h1": "Installer des cartes sur votre Garmin Edge depuis un Mac",
+    "eyebrow": "Guide Garmin Edge",
+    "intro": "Les compteurs vélo Garmin Edge récents n’apparaissent pas comme un disque sur un Mac : impossible d’y copier simplement un fichier de carte. Terento installe en trois étapes des cartes OpenStreetMap gratuites, ou votre propre fichier de carte compatible, sur un Edge qui prend en charge les cartes.",
+    "skip": "Aller au contenu",
+    "breadcrumb_home": "Accueil",
+    "breadcrumb_current": "Guide Garmin Edge",
+    "why_eyebrow": "Pourquoi c’est différent",
+    "why_title": "Pourquoi votre Garmin Edge n’apparaît pas sur votre Mac",
+    "why_body": "Les Edge récents, comme les Edge 540, 840 et 1050, échangent des fichiers en USB comme les téléphones Android, avec le MTP (Media Transfer Protocol). macOS ne le prend pas en charge nativement : l’Edge n’apparaît donc pas comme un disque dans le Finder, et les guides qui conseillent de copier un fichier de carte dans le dossier Garmin ne fonctionnent pas pour ces modèles. Terento dialogue directement avec l’Edge : vous n’avez besoin ni d’Android File Transfer ni d’OpenMTP.",
+    "needs_eyebrow": "Vérification rapide",
+    "needs_title": "Avant de commencer",
+    "needs": [
+      "Mac Apple Silicon avec macOS 13 ou version ultérieure",
+      "Garmin Edge récent prenant en charge les cartes",
+      "Câble USB permettant le transfert de données"
+    ],
+    "models_body": "Terento est conçu pour les Edge récents prenant en charge les cartes qui se connectent de cette façon : Edge 540, Edge 540 Solar, Edge 840, Edge 840 Solar, Edge 1040, Edge 1040 Solar, Edge 1050, Edge 550, Edge 850, Edge 1060, Edge MTB, Edge Explore 2, Edge Explore 3 et Edge Explore 3 Plus. Après la connexion, Terento vérifie l’Edge et vous indique s’il peut installer des cartes. La page Compatibilité liste les modèles exacts avec des installations réussies ; l’absence d’un modèle ne signifie pas forcément qu’il n’est pas pris en charge.",
+    "compatibility_link": "Voir les preuves de compatibilité actuelles",
+    "web_installer_body": "Pas de Mac Apple Silicon ? L’[installateur web](install/) installe les cartes du catalogue depuis Chrome et d’autres navigateurs Chromium compatibles WebUSB.",
+    "steps_eyebrow": "Trois étapes",
+    "steps_title": "Installer une carte sur votre Edge",
+    "steps": [
+      {
+        "title": "Connecter l’Edge",
+        "body": "[Téléchargez Terento](download/) et ouvrez-le. Quittez Garmin Express, connectez l’Edge directement au Mac avec un câble USB de données et attendez jusqu’à 2 minutes que Terento le détecte."
+      },
+      {
+        "title": "Choisir une carte",
+        "body": "Choisissez un fournisseur et une région dans le catalogue, ou ajoutez depuis votre Mac votre propre fichier de carte .img compatible. [Comparez les styles de carte](map-styles/) pour voir comment chaque carte affiche routes et sentiers."
+      },
+      {
+        "title": "Installer",
+        "body": "Lancez l’installation et gardez l’Edge connecté jusqu’à ce que Terento indique que l’installation est terminée. Déconnectez ensuite l’Edge."
+      }
+    ],
+    "after_eyebrow": "Après l’installation",
+    "after_title": "Afficher la carte sur votre Edge",
+    "after": [
+      {
+        "title": "Activer la carte",
+        "body": "Déconnectez l’Edge, ouvrez ses réglages de carte et vérifiez que la nouvelle carte est activée. Si elle n’est pas listée, redémarrez l’Edge. Si plusieurs cartes couvrent la même zone, désactivez celles que vous ne voulez pas voir."
+      },
+      {
+        "title": "Le Garmin Edge n’apparaît pas dans Terento",
+        "body": "Utilisez un câble USB de données, connectez l’Edge directement plutôt que via un hub, quittez Garmin Express et les apps de transfert de fichiers, puis attendez jusqu’à 2 minutes. Le [guide de dépannage](guides/troubleshooting/) propose d’autres étapes ; la plupart s’appliquent de la même façon à une montre et à un Edge."
+      },
+      {
+        "title": "Anciens modèles Edge",
+        "body": "Les modèles plus anciens, comme l’Edge 1030 Plus et les précédents, apparaissent généralement sur un Mac comme un disque USB. Sur ceux-ci, vous pouvez copier vous-même un fichier de carte .img compatible dans le dossier Garmin du disque, sans Terento. Terento n’est pas conçu pour ces modèles."
+      }
+    ],
+    "cta_eyebrow": "Prêt ?",
+    "cta_title": "Téléchargez Terento et connectez votre Edge.",
+    "cta_link": "Télécharger Terento"
+  },
+  "pl": {
+    "title": "Instalacja map na Garmin Edge z Maca — Terento",
+    "description": "Garmin Edge 1050, 840 lub 540 nie pojawia się na Macu? Zainstaluj darmowe mapy OpenStreetMap lub własny plik mapy na nowszych licznikach Edge z Terento.",
+    "h1": "Zainstaluj mapy na Garmin Edge z Maca",
+    "eyebrow": "Poradnik dla Garmin Edge",
+    "intro": "Nowsze liczniki rowerowe Garmin Edge nie pojawiają się na Macu jako dysk, więc nie da się po prostu skopiować na nie pliku mapy. Terento w trzech krokach instaluje darmowe mapy OpenStreetMap albo Twój własny zgodny plik mapy na Edge z obsługą map.",
+    "skip": "Przejdź do treści",
+    "breadcrumb_home": "Strona główna",
+    "breadcrumb_current": "Poradnik dla Garmin Edge",
+    "why_eyebrow": "Dlaczego to działa inaczej",
+    "why_title": "Dlaczego Garmin Edge nie pojawia się na Macu",
+    "why_body": "Nowsze modele Edge, takie jak Edge 540, 840 i 1050, przesyłają pliki przez USB tak jak telefony z Androidem, za pomocą MTP (Media Transfer Protocol). macOS nie obsługuje go fabrycznie, dlatego Edge nie pojawia się w Finderze jako dysk, a poradniki, które każą skopiować plik mapy do folderu Garmin, nie działają w przypadku tych modeli. Terento komunikuje się z Edge bezpośrednio, więc nie potrzebujesz Android File Transfer ani OpenMTP.",
+    "needs_eyebrow": "Szybka kontrola",
+    "needs_title": "Zanim zaczniesz",
+    "needs": [
+      "Mac z Apple Silicon i macOS 13 lub nowszym",
+      "Nowszy Garmin Edge z obsługą map",
+      "Kabel USB obsługujący przesyłanie danych"
+    ],
+    "models_body": "Terento jest przeznaczone dla nowszych modeli Edge z obsługą map, które łączą się w ten sposób: Edge 540, Edge 540 Solar, Edge 840, Edge 840 Solar, Edge 1040, Edge 1040 Solar, Edge 1050, Edge 550, Edge 850, Edge 1060, Edge MTB, Edge Explore 2, Edge Explore 3 i Edge Explore 3 Plus. Po podłączeniu Terento sprawdzi Edge i powie, czy może zainstalować mapy. Strona zgodności pokazuje dokładne modele z udanymi instalacjami; brak modelu nie oznacza, że nie jest obsługiwany.",
+    "compatibility_link": "Zobacz aktualne dowody zgodności",
+    "web_installer_body": "Nie masz Maca z Apple Silicon? [Instalator webowy](install/) instaluje mapy z katalogu z Chrome i innych przeglądarek Chromium z WebUSB.",
+    "steps_eyebrow": "Trzy kroki",
+    "steps_title": "Zainstaluj mapę na Edge",
+    "steps": [
+      {
+        "title": "Podłącz Edge",
+        "body": "[Pobierz Terento](download/) i otwórz je. Zamknij Garmin Express, podłącz Edge bezpośrednio do Maca kablem USB do przesyłania danych i poczekaj do 2 minut, aż Terento go wykryje."
+      },
+      {
+        "title": "Wybierz mapę",
+        "body": "Wybierz dostawcę i region z katalogu albo dodaj z Maca własny zgodny plik mapy .img. [Porównaj style map](map-styles/), aby zobaczyć, jak każda mapa pokazuje drogi i szlaki."
+      },
+      {
+        "title": "Zainstaluj",
+        "body": "Rozpocznij instalację i nie odłączaj Edge, dopóki Terento nie poinformuje, że instalacja się zakończyła. Potem odłącz Edge."
+      }
+    ],
+    "after_eyebrow": "Po instalacji",
+    "after_title": "Wyświetl mapę na Edge",
+    "after": [
+      {
+        "title": "Włącz mapę",
+        "body": "Odłącz Edge, otwórz jego ustawienia map i sprawdź, czy nowa mapa jest włączona. Jeśli nie ma jej na liście, uruchom Edge ponownie. Jeśli kilka map obejmuje ten sam obszar, wyłącz te, których nie chcesz widzieć."
+      },
+      {
+        "title": "Garmin Edge nie pojawia się w Terento",
+        "body": "Użyj kabla USB do przesyłania danych, podłącz Edge bezpośrednio zamiast przez hub, zamknij Garmin Express i aplikacje do przesyłania plików, a potem poczekaj do 2 minut. W [poradniku rozwiązywania problemów](guides/troubleshooting/) znajdziesz więcej kroków; większość działa tak samo dla zegarka i dla Edge."
+      },
+      {
+        "title": "Starsze modele Edge",
+        "body": "Starsze modele, takie jak Edge 1030 Plus i wcześniejsze, zwykle pojawiają się na Macu jako dysk USB. Na nich możesz samodzielnie skopiować zgodny plik mapy .img do folderu Garmin na dysku, bez Terento. Terento nie jest przeznaczone dla tych modeli."
+      }
+    ],
+    "cta_eyebrow": "Gotowe?",
+    "cta_title": "Pobierz Terento i podłącz Edge.",
+    "cta_link": "Pobierz Terento"
+  },
+  "cs": {
+    "title": "Instalace map do Garmin Edge z Macu — Terento",
+    "description": "Mac nevidí Garmin Edge 1050, 840 nebo 540? Nainstalujte bezplatné mapy OpenStreetMap nebo vlastní mapový soubor do novějších cyklopočítačů Edge s Terento.",
+    "h1": "Instalace map do Garmin Edge z Macu",
+    "eyebrow": "Průvodce pro Garmin Edge",
+    "intro": "Novější cyklopočítače Garmin Edge se na Macu nezobrazí jako disk, takže do nich nelze jednoduše zkopírovat mapový soubor. Terento ve třech krocích nainstaluje bezplatné mapy OpenStreetMap nebo váš vlastní kompatibilní mapový soubor do Edge s podporou map.",
+    "skip": "Přejít na obsah",
+    "breadcrumb_home": "Domů",
+    "breadcrumb_current": "Průvodce pro Garmin Edge",
+    "why_eyebrow": "Proč je to jinak",
+    "why_title": "Proč se Garmin Edge na Macu nezobrazí",
+    "why_body": "Novější modely Edge, například Edge 540, 840 a 1050, přenášejí soubory přes USB stejně jako telefony s Androidem, pomocí MTP (Media Transfer Protocol). macOS ho sám nepodporuje, proto se Edge ve Finderu nezobrazí jako disk a návody, podle kterých máte mapový soubor zkopírovat do složky Garmin, u těchto modelů nefungují. Terento s Edge komunikuje přímo, takže nepotřebujete Android File Transfer ani OpenMTP.",
+    "needs_eyebrow": "Rychlá kontrola",
+    "needs_title": "Než začnete",
+    "needs": [
+      "Mac s Apple Silicon a macOS 13 nebo novějším",
+      "Novější Garmin Edge s podporou map",
+      "USB kabel s podporou přenosu dat"
+    ],
+    "models_body": "Terento je určené pro novější modely Edge s podporou map, které se připojují tímto způsobem: Edge 540, Edge 540 Solar, Edge 840, Edge 840 Solar, Edge 1040, Edge 1040 Solar, Edge 1050, Edge 550, Edge 850, Edge 1060, Edge MTB, Edge Explore 2, Edge Explore 3 a Edge Explore 3 Plus. Po připojení Terento Edge zkontroluje a řekne vám, zda do něj může mapy nainstalovat. Stránka Kompatibilita uvádí přesné modely s úspěšnými instalacemi; chybějící model nemusí znamenat, že není podporován.",
+    "compatibility_link": "Zobrazit aktuální doklady kompatibility",
+    "web_installer_body": "Nemáte Mac s Apple Silicon? [Webový instalátor](install/) instaluje mapy z katalogu z Chrome a dalších prohlížečů Chromium s WebUSB.",
+    "steps_eyebrow": "Tři kroky",
+    "steps_title": "Instalace mapy do Edge",
+    "steps": [
+      {
+        "title": "Připojte Edge",
+        "body": "[Stáhněte Terento](download/) a otevřete ho. Ukončete Garmin Express, připojte Edge přímo k Macu USB kabelem pro přenos dat a počkejte až 2 minuty, než ho Terento najde."
+      },
+      {
+        "title": "Vyberte mapu",
+        "body": "Vyberte poskytovatele a oblast z katalogu, nebo přidejte z Macu vlastní kompatibilní mapový soubor .img. [Porovnejte styly map](map-styles/) a podívejte se, jak každá mapa zobrazuje silnice a stezky."
+      },
+      {
+        "title": "Instalujte",
+        "body": "Spusťte instalaci a nechte Edge připojený, dokud Terento neoznámí, že je instalace hotová. Potom Edge odpojte."
+      }
+    ],
+    "after_eyebrow": "Po instalaci",
+    "after_title": "Zobrazení mapy v Edge",
+    "after": [
+      {
+        "title": "Zapněte mapu",
+        "body": "Odpojte Edge, otevřete jeho nastavení map a zkontrolujte, že je nová mapa zapnutá. Pokud v seznamu není, Edge restartujte. Pokud stejnou oblast pokrývá více map, vypněte ty, které vidět nechcete."
+      },
+      {
+        "title": "Terento nevidí Garmin Edge",
+        "body": "Použijte USB kabel pro přenos dat, připojte Edge přímo, ne přes rozbočovač, ukončete Garmin Express a aplikace pro přenos souborů a počkejte až 2 minuty. Další kroky najdete v [průvodci řešením potíží](guides/troubleshooting/); většina z nich platí stejně pro hodinky i Edge."
+      },
+      {
+        "title": "Starší modely Edge",
+        "body": "Starší modely, například Edge 1030 Plus a dřívější, se na Macu obvykle zobrazí jako USB disk. U nich můžete kompatibilní mapový soubor .img sami zkopírovat do složky Garmin na disku, bez Terento. Terento není pro tyto modely určené."
+      }
+    ],
+    "cta_eyebrow": "Připraveno?",
+    "cta_title": "Stáhněte Terento a připojte Edge.",
+    "cta_link": "Stáhnout Terento"
+  },
+  "it": {
+    "title": "Installa mappe su Garmin Edge da Mac — Terento",
+    "description": "Il tuo Garmin Edge 1050, 840 o 540 non compare sul Mac? Installa mappe OpenStreetMap gratuite o un tuo file di mappa sui ciclocomputer Edge più recenti con Terento.",
+    "h1": "Installa mappe sul tuo Garmin Edge da Mac",
+    "eyebrow": "Guida Garmin Edge",
+    "intro": "I ciclocomputer Garmin Edge più recenti non compaiono sul Mac come disco, quindi non puoi semplicemente copiarci un file di mappa. Terento installa in tre passaggi mappe OpenStreetMap gratuite, o un tuo file di mappa compatibile, su un Edge con supporto alle mappe.",
+    "skip": "Vai al contenuto",
+    "breadcrumb_home": "Home",
+    "breadcrumb_current": "Guida Garmin Edge",
+    "why_eyebrow": "Perché è diverso",
+    "why_title": "Perché il tuo Garmin Edge non compare sul Mac",
+    "why_body": "I modelli Edge più recenti, come Edge 540, 840 e 1050, scambiano file via USB come i telefoni Android, usando MTP (Media Transfer Protocol). macOS non lo supporta in modo nativo, quindi l’Edge non compare nel Finder come disco e le guide che dicono di copiare un file di mappa nella cartella Garmin non funzionano con questi modelli. Terento comunica direttamente con l’Edge, quindi non ti servono Android File Transfer o OpenMTP.",
+    "needs_eyebrow": "Un controllo rapido",
+    "needs_title": "Prima di iniziare",
+    "needs": [
+      "Mac Apple Silicon con macOS 13 o versioni successive",
+      "Garmin Edge recente con supporto alle mappe",
+      "Cavo USB che supporti il trasferimento dati"
+    ],
+    "models_body": "Terento è pensato per i modelli Edge più recenti con supporto alle mappe che si collegano in questo modo: Edge 540, Edge 540 Solar, Edge 840, Edge 840 Solar, Edge 1040, Edge 1040 Solar, Edge 1050, Edge 550, Edge 850, Edge 1060, Edge MTB, Edge Explore 2, Edge Explore 3 ed Edge Explore 3 Plus. Dopo il collegamento, Terento controlla l’Edge e ti dice se può installare mappe. La pagina Compatibilità elenca i modelli esatti con installazioni riuscite; un modello assente non è necessariamente non supportato.",
+    "compatibility_link": "Vedi le prove di compatibilità attuali",
+    "web_installer_body": "Niente Mac con Apple Silicon? L’[installer web](install/) installa le mappe del catalogo da Chrome e da altri browser Chromium con WebUSB.",
+    "steps_eyebrow": "Tre passaggi",
+    "steps_title": "Installa una mappa sul tuo Edge",
+    "steps": [
+      {
+        "title": "Collega l’Edge",
+        "body": "[Scarica Terento](download/) e aprilo. Chiudi Garmin Express, collega l’Edge direttamente al Mac con un cavo USB dati e attendi fino a 2 minuti che Terento lo rilevi."
+      },
+      {
+        "title": "Scegli una mappa",
+        "body": "Scegli un provider e una regione dal catalogo, oppure aggiungi dal Mac un tuo file di mappa .img compatibile. [Confronta gli stili di mappa](map-styles/) per vedere come ogni mappa mostra strade e sentieri."
+      },
+      {
+        "title": "Installa",
+        "body": "Avvia l’installazione e lascia l’Edge collegato finché Terento non indica che l’installazione è completa. Poi scollega l’Edge."
+      }
+    ],
+    "after_eyebrow": "Dopo l’installazione",
+    "after_title": "Mostra la mappa sul tuo Edge",
+    "after": [
+      {
+        "title": "Attiva la mappa",
+        "body": "Scollega l’Edge, apri le impostazioni delle mappe e verifica che la nuova mappa sia attiva. Se non è nell’elenco, riavvia l’Edge. Se più mappe coprono la stessa zona, disattiva quelle che non vuoi vedere."
+      },
+      {
+        "title": "Il Garmin Edge non compare in Terento",
+        "body": "Usa un cavo USB dati, collega l’Edge direttamente invece che tramite un hub, chiudi Garmin Express e le app di trasferimento file e attendi fino a 2 minuti. La [guida alla risoluzione dei problemi](guides/troubleshooting/) ha altri passaggi; la maggior parte vale allo stesso modo per un orologio e per un Edge."
+      },
+      {
+        "title": "Modelli Edge meno recenti",
+        "body": "I modelli meno recenti, come Edge 1030 Plus e precedenti, di solito compaiono sul Mac come disco USB. Su questi puoi copiare tu stesso un file di mappa .img compatibile nella cartella Garmin del disco, senza Terento. Terento non è pensato per questi modelli."
+      }
+    ],
+    "cta_eyebrow": "Pronto?",
+    "cta_title": "Scarica Terento e collega il tuo Edge.",
+    "cta_link": "Scarica Terento"
+  }
+}

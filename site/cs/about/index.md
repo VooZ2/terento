@@ -7,7 +7,7 @@ Terento
 
 # Mapy zdarma. Jednodušeji do vašeho Garminu
 
-Terento je bezplatná open-source aplikace pro Mac k výběru, instalaci a správě map třetích stran na hodinkách Garmin s podporou map. Usnadňuje přípravu na další cestu.
+Terento je bezplatná open-source aplikace pro Mac k výběru, instalaci a správě map třetích stran na hodinkách Garmin a cyklopočítačích Edge s podporou map. Usnadňuje přípravu na další cestu.
 
 Pro Macy s Apple Silicon. Stránka Kompatibilita zobrazuje konkrétní modely a varianty s alespoň jednou úspěšnou sdílenou instalací; není to úplný seznam podporovaných zařízení. [Ověřit kompatibilitu](https://terento.app/cs/compatibility/)
 

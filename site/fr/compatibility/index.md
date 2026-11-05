@@ -1,13 +1,13 @@
 ---
-title: "Compatibilité Garmin et installations réussies — Terento"
+title: "Montres Garmin et Edge : installations réussies — Terento"
 canonical: https://terento.app/fr/compatibility/
 ---
 
 Compatibilité
 
-# Compatibilité des montres Garmin
+# Compatibilité des montres et compteurs Edge Garmin
 
-Terento est conçu pour les montres Garmin prenant en charge les cartes. Vous trouverez ci-dessous les modèles et variantes exacts pour lesquels au moins une installation de carte tierce a réussi. La liste s’allonge à mesure que de nouvelles installations réussies sont partagées.
+Terento est conçu pour les montres Garmin et les compteurs vélo Garmin Edge récents prenant en charge les cartes. Vous trouverez ci-dessous les modèles et variantes exacts pour lesquels au moins une installation de carte tierce a réussi. La liste s’allonge à mesure que de nouvelles installations réussies sont partagées.
 
 L’absence de votre modèle dans la liste ne signifie pas qu’il n’est pas pris en charge — il se peut simplement qu’aucune installation réussie n’ait encore été partagée pour ce modèle et cette variante précis.
 
@@ -15,7 +15,7 @@ L’absence de votre modèle dans la liste ne signifie pas qu’il n’est pas p
 
 Comment fonctionne cette liste
 
-Cette liste repose sur de vraies installations Terento réussies partagées par les utilisateurs. Elle affiche uniquement les modèles et variantes Garmin exacts ayant au moins une installation réussie de carte tierce. Ce n’est pas une liste exhaustive des montres Garmin avec lesquelles Terento peut fonctionner.
+Cette liste repose sur de vraies installations Terento réussies partagées par les utilisateurs. Elle affiche uniquement les modèles et variantes Garmin exacts ayant au moins une installation réussie de carte tierce. Ce n’est pas une liste exhaustive des montres et compteurs Edge Garmin avec lesquels Terento peut fonctionner.
 
 Les résultats d’installation sont partagés avec Terento par les utilisateurs ; ils ne constituent pas une certification Garmin.
 
@@ -417,7 +417,7 @@ Résultats de la communauté
 
 ## Votre Garmin n’apparaît pas ?
 
-Si votre montre Garmin prend en charge les cartes, vous pouvez tout de même essayer Terento. Cette liste s’allonge à mesure que des installations réussies sont partagées pour d’autres modèles et variantes exacts.
+Si votre montre Garmin ou votre compteur Edge prend en charge les cartes, vous pouvez tout de même essayer Terento. Cette liste s’allonge à mesure que des installations réussies sont partagées pour d’autres modèles et variantes exacts.
 
 [Vous installez des cartes tierces pour la première fois ? Lisez le guide Mac](https://terento.app/fr/guides/install-garmin-maps-mac/) [Pas de Mac Apple Silicon ? Utilisez l’installateur web](https://terento.app/fr/install/)
 [Télécharger](https://terento.app/fr/download/)

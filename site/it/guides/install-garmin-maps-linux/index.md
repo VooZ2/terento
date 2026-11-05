@@ -11,7 +11,7 @@ Su Linux l’installer web di Terento mette mappe gratuite sugli orologi Garmin 
 
 ## Cosa ti serve
 
-- Chrome, Edge, Opera o Brave su un computer Linux. Firefox non può collegarsi ai dispositivi USB.
+- Chrome, Microsoft Edge, Opera o Brave su un computer Linux. Firefox non può collegarsi ai dispositivi USB.
 - Un cavo USB per dati, non solo di ricarica.
 - Un orologio Garmin che supporta le mappe, sbloccato.
 

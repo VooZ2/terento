@@ -11,7 +11,7 @@ Sous Linux, l’installateur web Terento installe des cartes gratuites sur les m
 
 ## Ce qu’il vous faut
 
-- Chrome, Edge, Opera ou Brave sur un ordinateur Linux. Firefox ne peut pas se connecter aux appareils USB.
+- Chrome, Microsoft Edge, Opera ou Brave sur un ordinateur Linux. Firefox ne peut pas se connecter aux appareils USB.
 - Un câble USB de données, pas un câble de charge seule.
 - Une montre Garmin compatible avec les cartes, déverrouillée.
 
