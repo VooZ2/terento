@@ -11,7 +11,7 @@ Terento ist für Garmin-Smartwatches und neuere Garmin-Edge-Radcomputer mit Kart
 
 Wenn dein Modell nicht aufgeführt ist, bedeutet das nicht, dass es nicht unterstützt wird — möglicherweise wurde für genau dieses Modell und diese Variante noch keine erfolgreiche Installation geteilt.
 
-**39** Modelle mit erfolgreichen Installationen**353** erfolgreiche InstallationenLetzte erfolgreiche Installation 5. November 2026
+**40** Modelle mit erfolgreichen Installationen**356** erfolgreiche InstallationenLetzte erfolgreiche Installation 5. November 2026
 
 So funktioniert diese Liste
 
@@ -21,7 +21,7 @@ Die Installationsergebnisse wurden von Nutzern mit Terento geteilt; sie sind kei
 
 Die aktuelle Version umfasst alle Kartenanbieter im Katalog. Diese Produktinformation ist von den hier gezeigten Geräteergebnissen getrennt.
 
-39 Modelle
+40 Modelle
 
 fēnix
 
@@ -262,6 +262,16 @@ fēnix
 App 4
 
 Letzte erfolgreiche Installation 23. September 2026
+
+Edge
+
+### Edge 540 Smartwatch
+
+3 erfolgreiche Installationen
+
+App 3
+
+Letzte erfolgreiche Installation 5. November 2026
 
 Enduro
 

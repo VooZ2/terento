@@ -5,7 +5,7 @@ canonical: https://terento.app/fr/
 
 Projet open source
 
-# Installez des cartes gratuites sur votre montre Garmin
+# Installez des cartes gratuites sur votre appareil Garmin
 
 Terento est un outil gratuit et open source pour installer, mettre à jour et gérer des cartes tierces sur les montres et compteurs vélo Edge Garmin : avec une application Mac native ou dans votre navigateur sur ordinateur.
 

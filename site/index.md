@@ -5,7 +5,7 @@ canonical: https://terento.app/
 
 Open-source project
 
-# Install free maps on your Garmin watch
+# Install free maps on your Garmin device
 
 Terento is a free, open-source way to install, update and manage third-party maps on Garmin watches and Edge bike computers: with a native Mac app or in your desktop browser.
 
