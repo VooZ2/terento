@@ -73,7 +73,7 @@ section card
 explanatory paragraph), a status pill (icon plus sentence-case text; colour
 supports but never replaces the text), table conventions (identity first,
 numbers and dates trailing, `—` for unknown; every data table sorts by any
-labelled column through its header button with a Font Awesome sort icon and
+labelled column through its header button with a Lucide sort icon and
 `aria-sort`, `—` always last; server-paginated tables sort the loaded page and
 ranking lists with a visually hidden header keep their ranking order), empty states (empty, filtered,
 unavailable with Retry) and chart legends. Labels and card titles carry no
@@ -83,8 +83,14 @@ decision 2026-10-06); term definitions are owned by
 contract.
 Colours, radii and focus rings come only from the generated brand tokens; the
 focus ring is Interactive Primary (≥3:1). Every icon, including chevrons,
-arrows and placeholders, is an unchanged Font Awesome Free solid icon from the
-pinned revision in `THIRD_PARTY_NOTICES.md`, inlined (no external origin);
+arrows and placeholders, is an unchanged Lucide 0.460.0 outline icon, the
+same set as the public website (owner decision 2026-11-05, replacing the
+2026-10-06 Font Awesome rule), inlined (no external origin) with a 1.75 px
+stroke on the 24 px grid; `data:` CSS masks keep the same outline stroke.
+Icons are 16 px in rows and beside text, 20 px in icon-only buttons and 24 px
+in empty states and placeholders. Brand logos (App Store and the Web
+installer browser logos) are the only exception and stay unchanged Font
+Awesome Free brands SVGs. Both sources are pinned in `THIRD_PARTY_NOTICES.md`.
 Admin never uses hand-drawn SVG, CSS-drawn shapes or text glyphs as icons.
 
 Filter bar (owner decision 2026-10-06): every Admin filter bar uses the
@@ -121,7 +127,7 @@ Filter dropdown (owner decision 2026-10-06): every remaining filter-type
 provider, the Dashboard period, rows-per-page and the mobile sort selects —
 carries `data-admin-dropdown` and is enhanced by one shared,
 nonce-delivered Admin script. A combobox button shows the selected option and
-a Font Awesome chevron; its listbox popover opens directly below the field,
+a Lucide chevron; its listbox popover opens directly below the field,
 left-aligned and at least the field's width, flips above only when there is no
 room below, and never covers the field. It uses the white surface, a 1px
 border, the control radius, the existing card shadow, Inter at the field's
@@ -334,8 +340,8 @@ titles. One `All`/`App`/`App Store`/`Web` switch beside the
 period picker, in the picker's height, swaps both chart cards at once (owner
 decisions 2026-10-10 and 2026-10-11; All is the default and the choice
 survives a period change) and the matching headline tiles. The switch shows
-Font Awesome icons (layer-group All, laptop App, app-store-ios App Store,
-globe Web) with their names visible from 1024 px and for screen readers below
+icons (Lucide layers All, laptop App and globe Web, the app-store-ios brand
+logo App Store) with their names visible from 1024 px and for screen readers below
 (owner decision 2026-11-03). App and App Store split the
 app-only statistic below into the directly downloaded app and the Mac App Store
 build (owner request 2026-10-30;
@@ -933,7 +939,7 @@ accessible text; independently retained authoritative release markers may add
 card width with only axis and clipping margins.
 
 History remains compact and explicit. Icons and color supplement status text.
-Download phase icons remain static. Timestamps use the selected time zone.
+Download phase icons remain static (the Processing loader never spins: it marks a past phase). Timestamps use the selected time zone.
 
 ### Diagnostics
 
@@ -951,7 +957,7 @@ report, then the Preview issue report and Link or manage an existing issue
 disclosures); Review administration; Technical details; and Device identity
 last. Every `<details>` in the dialog, including the per-result Technical
 details, uses the one `admin-disclosure diagnostic-disclosure` presentation
-(white surface, border, card radius, Font Awesome chevron, same summary font).
+(white surface, border, card radius, Lucide chevron, same summary font).
 Review administration holds the resolve/reopen and workflow forms in one
 collapsed disclosure, each form a compact row with its button aligned to its
 fields; it is omitted when no lifecycle or workflow action applies. There is no
