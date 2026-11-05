@@ -1,13 +1,13 @@
 ---
-title: "Garmin Watch Compatibility & Successful Installs — Terento"
+title: "Garmin Watch & Edge Map Compatibility — Terento"
 canonical: https://terento.app/compatibility/
 ---
 
 Compatibility
 
-# Garmin watch compatibility
+# Garmin watch and Edge compatibility
 
-Terento is designed for Garmin smartwatches with map support. Below are exact models and variants where at least one third-party map installation has completed successfully. The list grows as more successful installations are shared.
+Terento is designed for Garmin smartwatches and newer Garmin Edge bike computers with map support. Below are exact models and variants where at least one third-party map installation has completed successfully. The list grows as more successful installations are shared.
 
 Not seeing your model does not mean it is unsupported — we may simply not have a successful shared installation for that exact model and variant yet.
 
@@ -15,7 +15,7 @@ Not seeing your model does not mean it is unsupported — we may simply not have
 
 How this list works
 
-This list is built from real successful Terento installations shared by users. It shows only exact Garmin models and variants with at least one successful third-party map installation. It is not a complete list of every Garmin watch Terento can work with.
+This list is built from real successful Terento installations shared by users. It shows only exact Garmin models and variants with at least one successful third-party map installation. It is not a complete list of every Garmin watch or Edge Terento can work with.
 
 Installation results are shared with Terento by users. They are not Garmin certification.
 
@@ -417,7 +417,7 @@ Community results
 
 ## Don’t see your Garmin here?
 
-If your Garmin smartwatch supports maps, you can still try Terento. This list grows as successful installations are shared from more exact models and variants.
+If your Garmin smartwatch or Edge bike computer supports maps, you can still try Terento. This list grows as successful installations are shared from more exact models and variants.
 
 [First time installing third-party maps? Read the Mac guide](https://terento.app/guides/install-garmin-maps-mac/) [No Apple Silicon Mac? Use the web installer](https://terento.app/install/)
 [Download](https://terento.app/download/)

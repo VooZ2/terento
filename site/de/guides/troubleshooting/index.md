@@ -9,6 +9,14 @@ Fehlerbehebung
 
 Finde dein Problem – von einer Garmin-Uhr, die der Mac nicht erkennt, bis zu einem fehlgeschlagenen Karten-Download – und folge den kurzen Schritten. Wenn nichts hilft, sende einen Bericht, damit wir es uns ansehen können.
 
+Garmin Edge
+
+## Garmin Edge wird am Mac nicht erkannt
+
+Neuere Garmin-Edge-Radcomputer mit Kartenunterstützung verbinden sich mit dem Mac genauso wie aktuelle Garmin-Uhren. Die meisten Schritte auf dieser Seite gelten deshalb auch für einen Edge: USB-Datenkabel nutzen, Garmin Express beenden und bis zu 2 Minuten warten. Ältere Edge-Modelle, die im Finder als Laufwerk erscheinen, funktionieren anders.
+
+[Anleitung für Garmin Edge lesen](https://terento.app/de/guides/install-garmin-maps-edge-mac/)
+
 Verbindung
 
 ## Verbindungsprobleme mit der Garmin-Uhr
@@ -18,7 +26,7 @@ Verbindung
 Verbinde die Uhr direkt mit deinem Mac über ein USB-Kabel mit Datenübertragung, entsperre sie und warte bis zu 2 Minuten: Terento findet sie automatisch.
 
 1. Verwende ein Datenkabel. Reine Ladekabel und manche USB-Hubs funktionieren nicht.
-2. Dass die Uhr nicht im Finder erscheint, ist normal: macOS öffnet die meisten aktuellen Garmin-Uhren nicht als Laufwerk. Terento spricht direkt mit der Uhr.
+2. Dass die Uhr oder der Edge nicht im Finder erscheint, ist normal: macOS öffnet die meisten aktuellen Garmin-Uhren und neueren Edge-Modelle nicht als Laufwerk. Terento spricht direkt mit dem Gerät.
 3. Fragt macOS auf einem Mac-Laptop, ob das Zubehör verbunden werden darf, wähle Erlauben.
 4. Warte bis zu 2 Minuten, während Terento die Verbindung prüft.
 5. Erscheint die Uhr weiterhin nicht, trenne sie, warte ein paar Sekunden und verbinde sie erneut.
@@ -26,7 +34,7 @@ Verbinde die Uhr direkt mit deinem Mac über ein USB-Kabel mit Datenübertragung
 
 ### Garmin Express oder eine andere App blockiert die Uhr
 
-Beende Garmin Express und Dateiübertragungs-Apps wie Android File Transfer, OpenMTP oder MacDroid: Die Verbindung zur Uhr kann immer nur ein Programm nutzen.
+Beende Garmin Express und Dateiübertragungs-Apps wie Android File Transfer, OpenMTP oder MacDroid: Die Verbindung zur Uhr oder zum Edge kann immer nur ein Programm nutzen.
 
 1. Beende Garmin Express, Android File Transfer, OpenMTP, MacDroid und andere MTP-Apps. Nennt Terento ein Programm, beende zuerst dieses.
 2. Schließe auch Digitale Bilder, Fotos und Vorschau, falls sie geöffnet sind.

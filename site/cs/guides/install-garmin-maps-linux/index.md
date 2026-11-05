@@ -11,7 +11,7 @@ V Linuxu webový instalátor Terento nahraje bezplatné mapy do hodinek Garmin s
 
 ## Co potřebujete
 
-- Chrome, Edge, Operu nebo Brave na počítači s Linuxem. Firefox se nemůže připojit k zařízením USB.
+- Chrome, Microsoft Edge, Operu nebo Brave na počítači s Linuxem. Firefox se nemůže připojit k zařízením USB.
 - Datový kabel USB, ne kabel jen pro nabíjení.
 - Odemčené hodinky Garmin s podporou map.
 

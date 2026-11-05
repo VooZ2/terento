@@ -1,13 +1,13 @@
 ---
-title: "Zgodność zegarków Garmin i udane instalacje — Terento"
+title: "Zgodność map: zegarki Garmin i liczniki Edge — Terento"
 canonical: https://terento.app/pl/compatibility/
 ---
 
 Kompatybilność
 
-# Zgodność zegarków Garmin
+# Zgodność zegarków Garmin i liczników Edge
 
-Terento jest przeznaczone dla zegarków Garmin obsługujących mapy. Poniżej pokazujemy dokładne modele i warianty, na których co najmniej jedna instalacja mapy innej firmy zakończyła się powodzeniem. Lista rośnie wraz z kolejnymi udostępnionymi udanymi instalacjami.
+Terento jest przeznaczone dla zegarków Garmin i nowszych liczników rowerowych Garmin Edge obsługujących mapy. Poniżej pokazujemy dokładne modele i warianty, na których co najmniej jedna instalacja mapy innej firmy zakończyła się powodzeniem. Lista rośnie wraz z kolejnymi udostępnionymi udanymi instalacjami.
 
 Brak Twojego modelu na liście nie oznacza, że nie jest obsługiwany — być może nie otrzymaliśmy jeszcze udanej instalacji dla dokładnie tego modelu i wariantu.
 
@@ -15,7 +15,7 @@ Brak Twojego modelu na liście nie oznacza, że nie jest obsługiwany — być m
 
 Jak działa ta lista
 
-Lista powstaje na podstawie rzeczywistych, udanych instalacji Terento udostępnianych przez użytkowników. Pokazuje tylko dokładne modele i warianty Garmin z co najmniej jedną udaną instalacją mapy innej firmy. Nie jest to pełna lista wszystkich zegarków Garmin, z którymi Terento może działać.
+Lista powstaje na podstawie rzeczywistych, udanych instalacji Terento udostępnianych przez użytkowników. Pokazuje tylko dokładne modele i warianty Garmin z co najmniej jedną udaną instalacją mapy innej firmy. Nie jest to pełna lista wszystkich zegarków Garmin i liczników Edge, z którymi Terento może działać.
 
 Wyniki instalacji są udostępniane Terento przez użytkowników; nie są certyfikacją Garmin.
 
@@ -417,7 +417,7 @@ Wyniki społeczności
 
 ## Nie widzisz swojego Garmina?
 
-Jeśli Twój zegarek Garmin obsługuje mapy, nadal możesz wypróbować Terento. Lista rośnie wraz z udanymi instalacjami udostępnianymi dla kolejnych dokładnych modeli i wariantów.
+Jeśli Twój zegarek Garmin lub licznik Edge obsługuje mapy, nadal możesz wypróbować Terento. Lista rośnie wraz z udanymi instalacjami udostępnianymi dla kolejnych dokładnych modeli i wariantów.
 
 [Instalujesz mapy innych firm pierwszy raz? Przeczytaj instrukcję na Macu](https://terento.app/pl/guides/install-garmin-maps-mac/) [Nie masz Maca z Apple Silicon? Użyj instalatora webowego](https://terento.app/pl/install/)
 [Pobierz](https://terento.app/pl/download/)

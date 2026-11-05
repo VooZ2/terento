@@ -7,7 +7,7 @@ Projet open source
 
 # Installez des cartes gratuites sur votre montre Garmin
 
-Terento est un outil gratuit et open source pour installer, mettre à jour et gérer des cartes tierces sur les montres Garmin : avec une application Mac native ou dans votre navigateur sur ordinateur.
+Terento est un outil gratuit et open source pour installer, mettre à jour et gérer des cartes tierces sur les montres et compteurs vélo Edge Garmin : avec une application Mac native ou dans votre navigateur sur ordinateur.
 
 [Télécharger pour Mac](https://terento.app/fr/download/)
 [Vérifier la compatibilité](https://terento.app/fr/compatibility/) [Installer depuis votre navigateur](https://terento.app/fr/install/)
@@ -32,7 +32,7 @@ Choisissez des cartes dans le catalogue ou ajoutez votre propre carte .img compa
 
 3. Terminé
 
-Vos cartes sont installées et prêtes à être utilisées sur votre montre.
+Vos cartes sont installées et prêtes à être utilisées sur votre Garmin.
 
 ## Installer les cartes
 
@@ -50,11 +50,11 @@ Installateur web
 
 ## Pas d’application ? Installez depuis votre navigateur.
 
-Branchez votre Garmin avec un câble USB, choisissez des cartes et installez-les directement depuis Chrome, Edge, Opera ou Brave. Mettez-les à jour ou supprimez-les plus tard de la même façon.
+Branchez votre Garmin avec un câble USB, choisissez des cartes et installez-les directement depuis Chrome, Microsoft Edge, Opera ou Brave. Mettez-les à jour ou supprimez-les plus tard de la même façon.
 
 Fonctionne sur Mac et, encore en test, sous Linux. Pas encore sous Windows, ni sur téléphone ou tablette.
 
-Mac · Linux (en test)Chrome, Edge, Opera, BraveCâble USB de données
+Mac · Linux (en test)Chrome, Microsoft Edge, Opera, BraveCâble USB de données
 
 [Ouvrir l’installateur web](https://terento.app/fr/install/)
 
@@ -106,9 +106,9 @@ Vous avez des questions ?
 
 ## FAQ
 
-Quelles montres Garmin fonctionnent avec Terento ?
+Quelles montres Garmin et quels compteurs Edge fonctionnent avec Terento ?
 
-Consultez la [page Compatibilité](https://terento.app/fr/compatibility/) pour voir les modèles et variantes Garmin exacts avec au moins une installation réussie partagée. L’absence d’un modèle ne signifie pas qu’il n’est pas pris en charge.
+Consultez la [page Compatibilité](https://terento.app/fr/compatibility/) pour voir les modèles et variantes Garmin exacts avec au moins une installation réussie partagée. L’absence d’un modèle ne signifie pas qu’il n’est pas pris en charge. Les compteurs vélo Garmin Edge récents prenant en charge les cartes, comme les Edge 540, 840 et 1050, fonctionnent aussi. [Lire le guide Edge.](https://terento.app/fr/guides/install-garmin-maps-edge-mac/)
 
 Puis-je installer des cartes tierces sur une montre Garmin depuis un Mac sans Garmin Express ni BaseCamp ?
 
@@ -134,7 +134,7 @@ Sur l’écran d’échec de l’installation, choisissez « Report issue ». Te
 
 Puis-je installer des cartes sans installer l’application ?
 
-Oui. L’ [installateur web](https://terento.app/fr/install/) installe, met à jour et supprime les cartes du catalogue depuis Chrome, Edge, Opera ou Brave sur Mac, et sous Linux, où il est encore en test. Il ne fonctionne pas encore sous Windows, sur téléphone ou tablette, et ne permet pas d’ajouter vos propres cartes .img.
+Oui. L’ [installateur web](https://terento.app/fr/install/) installe, met à jour et supprime les cartes du catalogue depuis Chrome, Microsoft Edge, Opera ou Brave sur Mac, et sous Linux, où il est encore en test. Il ne fonctionne pas encore sous Windows, sur téléphone ou tablette, et ne permet pas d’ajouter vos propres cartes .img.
 
 ## Prêt pour une façon plus simple d’installer vos cartes ?
 

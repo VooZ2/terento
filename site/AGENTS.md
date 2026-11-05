@@ -38,8 +38,10 @@ preserve the same meaning in each locale.
   failed-only or zero-success models stay out of the public list.
 - A missing model is not unsupported. Internal `TESTING`/`TESTED`/`SUPPORTED`/
   `VERIFIED` values are not public support badges.
-- Public device copy describes a Garmin smartwatch with map support rather than a
-  finite supported-model list.
+- Public device copy describes a Garmin smartwatch or a newer Garmin Edge bike
+  computer with map support rather than a finite supported-model list. Write
+  "Garmin Edge" or "Edge bike computer" for the device and "Microsoft Edge" for
+  the browser. Never claim every Edge, handheld GPS or automotive device.
 - `successfulInstallations` counts app and web-installer successes. Each card
   shows that total and its split (`appSuccessfulInstallations`,
   `webSuccessfulInstallations`; a snapshot or payload without them counts every

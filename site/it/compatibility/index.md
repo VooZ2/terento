@@ -1,13 +1,13 @@
 ---
-title: "Compatibilità Garmin e installazioni riuscite — Terento"
+title: "Compatibilità mappe smartwatch Garmin ed Edge — Terento"
 canonical: https://terento.app/it/compatibility/
 ---
 
 Compatibilità
 
-# Compatibilità Garmin
+# Compatibilità smartwatch Garmin ed Edge
 
-Terento è progettato per gli smartwatch Garmin con supporto alle mappe. Qui sotto trovi i modelli e le varianti esatti sui quali è già stata completata con successo almeno un’installazione di una mappa di terze parti. L’elenco cresce man mano che vengono condivise altre installazioni riuscite.
+Terento è progettato per gli smartwatch Garmin e i ciclocomputer Garmin Edge più recenti con supporto alle mappe. Qui sotto trovi i modelli e le varianti esatti sui quali è già stata completata con successo almeno un’installazione di una mappa di terze parti. L’elenco cresce man mano che vengono condivise altre installazioni riuscite.
 
 Se il tuo modello non è nell’elenco, non significa che non sia supportato — potrebbe semplicemente non esserci ancora un’installazione riuscita condivisa per quel modello e quella variante esatti.
 
@@ -15,7 +15,7 @@ Se il tuo modello non è nell’elenco, non significa che non sia supportato —
 
 Come funziona questo elenco
 
-Questo elenco si basa su installazioni Terento reali e riuscite condivise dagli utenti. Mostra solo modelli e varianti Garmin esatti con almeno un’installazione riuscita di una mappa di terze parti. Non è un elenco completo di tutti gli smartwatch Garmin con cui Terento può funzionare.
+Questo elenco si basa su installazioni Terento reali e riuscite condivise dagli utenti. Mostra solo modelli e varianti Garmin esatti con almeno un’installazione riuscita di una mappa di terze parti. Non è un elenco completo di tutti gli smartwatch e ciclocomputer Edge Garmin con cui Terento può funzionare.
 
 I risultati delle installazioni sono condivisi con Terento dagli utenti; non costituiscono una certificazione Garmin.
 
@@ -417,7 +417,7 @@ Risultati della community
 
 ## Non vedi il tuo Garmin?
 
-Se il tuo smartwatch Garmin supporta le mappe, puoi comunque provare Terento. L’elenco cresce man mano che vengono condivise installazioni riuscite per altri modelli e varianti esatti.
+Se il tuo smartwatch Garmin o il tuo ciclocomputer Edge supporta le mappe, puoi comunque provare Terento. L’elenco cresce man mano che vengono condivise installazioni riuscite per altri modelli e varianti esatti.
 
 [Installi mappe di terze parti per la prima volta? Leggi la guida per Mac](https://terento.app/it/guides/install-garmin-maps-mac/) [Niente Mac con Apple Silicon? Usa l’installer web](https://terento.app/it/install/)
 [Scarica](https://terento.app/it/download/)

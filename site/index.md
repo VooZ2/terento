@@ -7,7 +7,7 @@ Open-source project
 
 # Install free maps on your Garmin watch
 
-Terento is a free, open-source way to install, update and manage third-party maps on Garmin watches: with a native Mac app or in your desktop browser.
+Terento is a free, open-source way to install, update and manage third-party maps on Garmin watches and Edge bike computers: with a native Mac app or in your desktop browser.
 
 [Download for Mac](https://terento.app/download/)
 [Check compatibility](https://terento.app/compatibility/) [Install from your browser](https://terento.app/install/)
@@ -32,7 +32,7 @@ Choose maps from the catalog, or add your own compatible .img map.
 
 3. Done
 
-Your maps are installed and ready to use on your watch.
+Your maps are installed and ready to use on your Garmin.
 
 ## Install maps
 
@@ -50,11 +50,11 @@ Web installer
 
 ## No app? Install from your browser.
 
-Connect your Garmin with a USB cable, choose maps and install them straight from Chrome, Edge, Opera or Brave. Update or remove them later the same way.
+Connect your Garmin with a USB cable, choose maps and install them straight from Chrome, Microsoft Edge, Opera or Brave. Update or remove them later the same way.
 
 Works on a Mac and, still in testing, on Linux. Not on Windows, phones or tablets yet.
 
-Mac · Linux (testing)Chrome, Edge, Opera, BraveUSB data cable
+Mac · Linux (testing)Chrome, Microsoft Edge, Opera, BraveUSB data cable
 
 [Open the web installer](https://terento.app/install/)
 
@@ -106,9 +106,9 @@ Have questions?
 
 ## FAQ
 
-Which Garmin watches work with Terento?
+Which Garmin watches and Edge bike computers work with Terento?
 
-See the [Compatibility page](https://terento.app/compatibility/) for exact Garmin models and variants with at least one successful shared installation. A missing model is not necessarily unsupported.
+See the [Compatibility page](https://terento.app/compatibility/) for exact Garmin models and variants with at least one successful shared installation. A missing model is not necessarily unsupported. Newer Garmin Edge bike computers with map support, such as Edge 540, 840 and 1050, work too. [Read the Edge guide.](https://terento.app/guides/install-garmin-maps-edge-mac/)
 
 Can I install third-party maps on a Garmin watch from a Mac without Garmin Express or BaseCamp?
 
@@ -134,7 +134,7 @@ On the failed installation screen, choose “Report issue”. Terento opens GitH
 
 Can I install maps without installing the app?
 
-Yes. The [web installer](https://terento.app/install/) installs, updates and removes catalog maps from Chrome, Edge, Opera or Brave on a Mac, and on Linux, where it is still being tested. It does not work on Windows, phones or tablets yet, and it cannot add your own .img maps.
+Yes. The [web installer](https://terento.app/install/) installs, updates and removes catalog maps from Chrome, Microsoft Edge, Opera or Brave on a Mac, and on Linux, where it is still being tested. It does not work on Windows, phones or tablets yet, and it cannot add your own .img maps.
 
 ## Ready for an easier way to install maps?
 

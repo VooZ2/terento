@@ -5,12 +5,13 @@
 [![Swift CI](https://github.com/VooZ2/terento/actions/workflows/swift-ci.yml/badge.svg?branch=main)](https://github.com/VooZ2/terento/actions/workflows/swift-ci.yml)
 [![License: GPL-3.0-or-later](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](LICENSE)
 
-Get your Garmin ready for your next hike or ride. Connect your watch, choose a
-map, and let Terento handle the download, installation, and transfer checks
+Get your Garmin ready for your next hike or ride. Connect your watch or Edge
+bike computer, choose a map, and let Terento handle the download, installation, and transfer checks
 from your Mac.
 
-Terento is **free and open source**, built for Apple Silicon Macs and Garmin
-smartwatches with map support. Choose from
+Terento is **free and open source**, built for Apple Silicon Macs, Garmin
+smartwatches with map support and newer Garmin Edge bike computers with map
+support. Choose from
 [Freizeitkarte](https://www.freizeitkarte-osm.de/),
 [OpenTopoMap](https://garmin.opentopomap.org/),
 [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/),
@@ -139,7 +140,8 @@ for what it records.
 ## Requirements and compatibility
 
 - macOS 13 or later on an Apple Silicon Mac; Intel Macs are not supported.
-- A Garmin smartwatch with map support.
+- A Garmin smartwatch with map support, or a newer Garmin Edge bike computer
+  with map support (such as Edge 540, 840, 1040, 1050 or Explore 2).
 - A USB cable that supports data transfer.
 - An Internet connection for downloading catalog maps.
 
@@ -148,13 +150,14 @@ installation evidence. The Compatibility page is a successful-installation
 directory: it shows exact Garmin models and variants with at least one
 successful shared installation. The list grows as more successful
 installations are shared, and a model missing from the list does not mean it
-is unsupported. Terento is intended for Garmin smartwatches with map support.
+is unsupported. Terento is intended for Garmin smartwatches and newer Garmin
+Edge bike computers with map support.
 
-**[Check your watch's compatibility](https://terento.app/compatibility/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_compatibility)**
+**[Check your Garmin's compatibility](https://terento.app/compatibility/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_compatibility)**
 
 Evidence for one model does not establish compatibility with every Garmin
-watch. Handheld GPS devices, Edge cycling computers, and automotive devices
-are outside the current public scope.
+watch or Edge. Older Edge models that connect as a USB drive, handheld GPS
+devices, and automotive devices are outside the current public scope.
 
 ## Download and release status
 

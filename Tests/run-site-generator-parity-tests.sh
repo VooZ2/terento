@@ -69,6 +69,12 @@ site/fr/guides/troubleshooting/index.html
 site/pl/guides/troubleshooting/index.html
 site/cs/guides/troubleshooting/index.html
 site/it/guides/troubleshooting/index.html
+site/guides/install-garmin-maps-edge-mac/index.html
+site/de/guides/install-garmin-maps-edge-mac/index.html
+site/fr/guides/install-garmin-maps-edge-mac/index.html
+site/pl/guides/install-garmin-maps-edge-mac/index.html
+site/cs/guides/install-garmin-maps-edge-mac/index.html
+site/it/guides/install-garmin-maps-edge-mac/index.html
 site/index.html
 site/de/index.html
 site/fr/index.html

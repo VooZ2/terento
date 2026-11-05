@@ -1,7 +1,7 @@
 {
   "en": {
     "title": "Install Garmin Maps on Linux from Chrome — Terento",
-    "description": "Install free OpenStreetMap maps on a Garmin watch from Linux in Chrome, Edge, Opera or Brave. Add one udev rule, connect the watch with a USB cable and send the map. No app needed.",
+    "description": "Install free OpenStreetMap maps on a Garmin watch from Linux in Chrome, Microsoft Edge, Opera or Brave. Add one udev rule, connect the watch with a USB cable and send the map. No app needed.",
     "h1": "Install Garmin maps on Linux",
     "eyebrow": "Linux guide",
     "intro": "On Linux, the Terento web installer puts free maps on Garmin watches with map support, straight from your browser. Linux needs one permission rule first, so the browser can use the watch over USB.",
@@ -10,7 +10,7 @@
     "breadcrumb_current": "Linux guide",
     "needs_title": "What you need",
     "needs": [
-      "Chrome, Edge, Opera or Brave on a Linux computer. Firefox can’t connect to USB devices.",
+      "Chrome, Microsoft Edge, Opera or Brave on a Linux computer. Firefox can’t connect to USB devices.",
       "A USB data cable, not a charge-only cable.",
       "A Garmin watch that supports maps, unlocked."
     ],
@@ -35,7 +35,7 @@
   },
   "de": {
     "title": "Garmin-Karten unter Linux aus Chrome installieren — Terento",
-    "description": "Installiere kostenlose OpenStreetMap-Karten unter Linux aus Chrome, Edge, Opera oder Brave auf deine Garmin-Uhr. Eine udev-Regel anlegen, die Uhr per USB-Kabel verbinden und die Karte senden. Keine App nötig.",
+    "description": "Installiere kostenlose OpenStreetMap-Karten unter Linux aus Chrome, Microsoft Edge, Opera oder Brave auf deine Garmin-Uhr. Eine udev-Regel anlegen, die Uhr per USB-Kabel verbinden und die Karte senden. Keine App nötig.",
     "h1": "Garmin-Karten unter Linux installieren",
     "eyebrow": "Linux-Anleitung",
     "intro": "Unter Linux installiert der Terento-Web-Installer kostenlose Karten auf Garmin-Uhren mit Kartenunterstützung, direkt aus dem Browser. Linux braucht zuerst eine Berechtigungsregel, damit der Browser die Uhr über USB nutzen kann.",
@@ -44,7 +44,7 @@
     "breadcrumb_current": "Linux-Anleitung",
     "needs_title": "Das brauchst du",
     "needs": [
-      "Chrome, Edge, Opera oder Brave auf einem Linux-Computer. Firefox kann keine USB-Geräte verbinden.",
+      "Chrome, Microsoft Edge, Opera oder Brave auf einem Linux-Computer. Firefox kann keine USB-Geräte verbinden.",
       "Ein USB-Datenkabel, kein reines Ladekabel.",
       "Eine entsperrte Garmin-Uhr mit Kartenunterstützung."
     ],
@@ -69,7 +69,7 @@
   },
   "fr": {
     "title": "Installer des cartes Garmin sous Linux depuis Chrome — Terento",
-    "description": "Installez des cartes OpenStreetMap gratuites sur une montre Garmin sous Linux depuis Chrome, Edge, Opera ou Brave. Ajoutez une règle udev, branchez la montre avec un câble USB et envoyez la carte. Aucune application nécessaire.",
+    "description": "Installez des cartes OpenStreetMap gratuites sur une montre Garmin sous Linux depuis Chrome, Microsoft Edge, Opera ou Brave. Ajoutez une règle udev, branchez la montre avec un câble USB et envoyez la carte. Aucune application nécessaire.",
     "h1": "Installer des cartes Garmin sous Linux",
     "eyebrow": "Guide Linux",
     "intro": "Sous Linux, l’installateur web Terento installe des cartes gratuites sur les montres Garmin compatibles avec les cartes, directement depuis votre navigateur. Linux a d’abord besoin d’une règle d’autorisation pour que le navigateur puisse utiliser la montre en USB.",
@@ -78,7 +78,7 @@
     "breadcrumb_current": "Guide Linux",
     "needs_title": "Ce qu’il vous faut",
     "needs": [
-      "Chrome, Edge, Opera ou Brave sur un ordinateur Linux. Firefox ne peut pas se connecter aux appareils USB.",
+      "Chrome, Microsoft Edge, Opera ou Brave sur un ordinateur Linux. Firefox ne peut pas se connecter aux appareils USB.",
       "Un câble USB de données, pas un câble de charge seule.",
       "Une montre Garmin compatible avec les cartes, déverrouillée."
     ],
@@ -103,7 +103,7 @@
   },
   "pl": {
     "title": "Instaluj mapy Garmin w Linuksie z Chrome — Terento",
-    "description": "Instaluj darmowe mapy OpenStreetMap na zegarku Garmin w Linuksie z Chrome, Edge, Opery lub Brave. Dodaj jedną regułę udev, podłącz zegarek kablem USB i wyślij mapę. Bez aplikacji.",
+    "description": "Instaluj darmowe mapy OpenStreetMap na zegarku Garmin w Linuksie z Chrome, Microsoft Edge, Opery lub Brave. Dodaj jedną regułę udev, podłącz zegarek kablem USB i wyślij mapę. Bez aplikacji.",
     "h1": "Instalowanie map Garmin w Linuksie",
     "eyebrow": "Poradnik dla Linuksa",
     "intro": "W Linuksie instalator webowy Terento wgrywa darmowe mapy na zegarki Garmin obsługujące mapy, prosto z przeglądarki. Najpierw Linux potrzebuje jednej reguły uprawnień, aby przeglądarka mogła używać zegarka przez USB.",
@@ -112,7 +112,7 @@
     "breadcrumb_current": "Poradnik dla Linuksa",
     "needs_title": "Czego potrzebujesz",
     "needs": [
-      "Chrome, Edge, Opery lub Brave na komputerze z Linuksem. Firefox nie łączy się z urządzeniami USB.",
+      "Chrome, Microsoft Edge, Opery lub Brave na komputerze z Linuksem. Firefox nie łączy się z urządzeniami USB.",
       "Kabla USB do transmisji danych, nie tylko do ładowania.",
       "Odblokowanego zegarka Garmin obsługującego mapy."
     ],
@@ -137,7 +137,7 @@
   },
   "cs": {
     "title": "Instalace map Garmin v Linuxu z Chrome — Terento",
-    "description": "Nainstalujte bezplatné mapy OpenStreetMap do hodinek Garmin v Linuxu z Chrome, Edge, Opery nebo Brave. Přidejte jedno pravidlo udev, připojte hodinky kabelem USB a odešlete mapu. Bez aplikace.",
+    "description": "Nainstalujte bezplatné mapy OpenStreetMap do hodinek Garmin v Linuxu z Chrome, Microsoft Edge, Opery nebo Brave. Přidejte jedno pravidlo udev, připojte hodinky kabelem USB a odešlete mapu. Bez aplikace.",
     "h1": "Instalace map Garmin v Linuxu",
     "eyebrow": "Průvodce pro Linux",
     "intro": "V Linuxu webový instalátor Terento nahraje bezplatné mapy do hodinek Garmin s podporou map přímo z prohlížeče. Linux nejdřív potřebuje jedno pravidlo oprávnění, aby prohlížeč mohl hodinky používat přes USB.",
@@ -146,7 +146,7 @@
     "breadcrumb_current": "Průvodce pro Linux",
     "needs_title": "Co potřebujete",
     "needs": [
-      "Chrome, Edge, Operu nebo Brave na počítači s Linuxem. Firefox se nemůže připojit k zařízením USB.",
+      "Chrome, Microsoft Edge, Operu nebo Brave na počítači s Linuxem. Firefox se nemůže připojit k zařízením USB.",
       "Datový kabel USB, ne kabel jen pro nabíjení.",
       "Odemčené hodinky Garmin s podporou map."
     ],
@@ -171,7 +171,7 @@
   },
   "it": {
     "title": "Installa mappe Garmin su Linux da Chrome — Terento",
-    "description": "Installa mappe OpenStreetMap gratuite su un orologio Garmin da Linux con Chrome, Edge, Opera o Brave. Aggiungi una regola udev, collega l’orologio con un cavo USB e invia la mappa. Nessuna app necessaria.",
+    "description": "Installa mappe OpenStreetMap gratuite su un orologio Garmin da Linux con Chrome, Microsoft Edge, Opera o Brave. Aggiungi una regola udev, collega l’orologio con un cavo USB e invia la mappa. Nessuna app necessaria.",
     "h1": "Installare mappe Garmin su Linux",
     "eyebrow": "Guida Linux",
     "intro": "Su Linux l’installer web di Terento mette mappe gratuite sugli orologi Garmin che supportano le mappe, direttamente dal browser. Prima Linux ha bisogno di una regola di autorizzazione, così il browser può usare l’orologio via USB.",
@@ -180,7 +180,7 @@
     "breadcrumb_current": "Guida Linux",
     "needs_title": "Cosa ti serve",
     "needs": [
-      "Chrome, Edge, Opera o Brave su un computer Linux. Firefox non può collegarsi ai dispositivi USB.",
+      "Chrome, Microsoft Edge, Opera o Brave su un computer Linux. Firefox non può collegarsi ai dispositivi USB.",
       "Un cavo USB per dati, non solo di ricarica.",
       "Un orologio Garmin che supporta le mappe, sbloccato."
     ],

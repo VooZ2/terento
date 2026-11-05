@@ -28,7 +28,7 @@
       "path": "/",
       "locale": "en",
       "title": "Terento — Third-Party Maps for Garmin on Mac",
-      "description": "Install and manage third-party maps on Garmin smartwatches with map support using Terento, a free macOS app for Apple Silicon.",
+      "description": "Install and manage third-party maps on Garmin watches and Edge bike computers with map support using Terento, a free macOS app for Apple Silicon.",
       "alternates": true
     },
     {
@@ -36,7 +36,7 @@
       "path": "/de/",
       "locale": "de",
       "title": "Terento — Drittanbieter-Karten für Garmin auf dem Mac",
-      "description": "Installiere und verwalte Drittanbieter-Karten auf Garmin-Smartwatches mit Kartenunterstützung mit Terento, einer kostenlosen macOS-App für Apple Silicon.",
+      "description": "Installiere und verwalte Drittanbieter-Karten auf Garmin-Uhren und Edge-Radcomputern mit Kartenunterstützung mit Terento, der kostenlosen macOS-App für Apple Silicon.",
       "alternates": true
     },
     {
@@ -44,7 +44,7 @@
       "path": "/fr/",
       "locale": "fr",
       "title": "Terento — Cartes tierces pour Garmin sur Mac",
-      "description": "Installez et gérez des cartes tierces sur les montres Garmin prenant en charge les cartes avec Terento, l’app macOS gratuite pour Apple Silicon.",
+      "description": "Installez et gérez des cartes tierces sur les montres Garmin et les compteurs vélo Edge compatibles cartes avec Terento, l’app macOS gratuite pour Apple Silicon.",
       "alternates": true
     },
     {
@@ -52,7 +52,7 @@
       "path": "/pl/",
       "locale": "pl",
       "title": "Terento — Mapy innych firm dla Garmina na Macu",
-      "description": "Instaluj i zarządzaj mapami innych firm na zegarkach Garmin obsługujących mapy za pomocą bezpłatnej aplikacji Terento dla Maców z Apple Silicon.",
+      "description": "Instaluj mapy innych firm na zegarkach Garmin i licznikach rowerowych Edge obsługujących mapy dzięki bezpłatnej aplikacji Terento dla Maców z Apple Silicon.",
       "alternates": true
     },
     {
@@ -60,7 +60,7 @@
       "path": "/cs/",
       "locale": "cs",
       "title": "Terento — Mapy třetích stran pro Garmin na Macu",
-      "description": "Instalujte a spravujte mapy třetích stran na hodinkách Garmin s podporou map pomocí bezplatné aplikace Terento pro Macy s Apple Silicon.",
+      "description": "Instalujte a spravujte mapy třetích stran na hodinkách Garmin a cyklopočítačích Edge s podporou map pomocí bezplatné aplikace Terento pro Macy s Apple Silicon.",
       "alternates": true
     },
     {
@@ -68,7 +68,7 @@
       "path": "/it/",
       "locale": "it",
       "title": "Terento — Mappe di terze parti per Garmin su Mac",
-      "description": "Installa e gestisci mappe di terze parti sugli smartwatch Garmin con supporto alle mappe usando Terento, l’app macOS gratuita per Apple Silicon.",
+      "description": "Installa e gestisci mappe di terze parti su smartwatch Garmin e ciclocomputer Edge con supporto mappe usando Terento, l’app macOS gratuita per Apple Silicon.",
       "alternates": true
     },
     {
@@ -76,7 +76,7 @@
       "path": "/about/",
       "locale": "en",
       "title": "About Terento — Free, Open-Source Garmin Maps for Mac",
-      "description": "Learn why Terento exists: a free, open-source macOS app for installing and managing third-party maps on Garmin smartwatches.",
+      "description": "Learn why Terento exists: a free, open-source macOS app for installing and managing third-party maps on Garmin smartwatches and Edge bike computers.",
       "alternates": true
     },
     {
@@ -84,7 +84,7 @@
       "path": "/de/about/",
       "locale": "de",
       "title": "Über Terento — Kostenlose Open-Source-Garmin-Karten für den Mac",
-      "description": "Warum es Terento gibt: eine kostenlose Open-Source-macOS-App zum Installieren und Verwalten von Drittanbieter-Karten auf Garmin-Smartwatches.",
+      "description": "Warum es Terento gibt: eine kostenlose Open-Source-macOS-App zum Installieren und Verwalten von Drittanbieter-Karten auf Garmin-Uhren und Edge-Radcomputern.",
       "alternates": true
     },
     {
@@ -92,7 +92,7 @@
       "path": "/fr/about/",
       "locale": "fr",
       "title": "À propos de Terento — Cartes Garmin gratuites et open source",
-      "description": "Découvrez pourquoi Terento existe : une application macOS gratuite et open source pour installer et gérer des cartes tierces sur les montres Garmin.",
+      "description": "Découvrez pourquoi Terento existe : une application macOS gratuite et open source pour installer et gérer des cartes tierces sur les montres et compteurs Edge Garmin.",
       "alternates": true
     },
     {
@@ -100,7 +100,7 @@
       "path": "/pl/about/",
       "locale": "pl",
       "title": "O Terento — Bezpłatne, otwartoźródłowe mapy Garmina na Macu",
-      "description": "Dowiedz się, dlaczego powstało Terento: bezpłatna aplikacja macOS open source do instalowania i zarządzania mapami innych firm na zegarkach Garmin.",
+      "description": "Dowiedz się, dlaczego powstało Terento: bezpłatna aplikacja macOS open source do instalowania map innych firm na zegarkach Garmin i licznikach Edge.",
       "alternates": true
     },
     {
@@ -108,7 +108,7 @@
       "path": "/cs/about/",
       "locale": "cs",
       "title": "O Terento — Bezplatné open-source mapy Garminu na Macu",
-      "description": "Zjistěte, proč Terento vzniklo: bezplatná open-source aplikace pro macOS k instalaci a správě map třetích stran na hodinkách Garmin.",
+      "description": "Zjistěte, proč Terento vzniklo: bezplatná open-source aplikace pro macOS k instalaci a správě map třetích stran na hodinkách a cyklopočítačích Garmin Edge.",
       "alternates": true
     },
     {
@@ -116,7 +116,7 @@
       "path": "/it/about/",
       "locale": "it",
       "title": "Informazioni su Terento — Mappe Garmin gratuite e open source",
-      "description": "Scopri perché esiste Terento: un’app macOS gratuita e open source per installare e gestire mappe di terze parti sugli smartwatch Garmin.",
+      "description": "Scopri perché esiste Terento: un’app macOS gratuita e open source per installare e gestire mappe di terze parti su smartwatch e ciclocomputer Edge Garmin.",
       "alternates": true
     },
     {
@@ -124,7 +124,7 @@
       "path": "/download/",
       "locale": "en",
       "title": "Download Terento for Mac — Third-Party Maps for Garmin",
-      "description": "Download the free, notarized Terento app for Apple Silicon Macs to install and manage third-party maps on Garmin smartwatches with map support.",
+      "description": "Download the free, notarized Terento app for Apple Silicon Macs to install and manage third-party maps on Garmin watches and Edge bike computers with map support.",
       "alternates": true
     },
     {
@@ -132,7 +132,7 @@
       "path": "/de/download/",
       "locale": "de",
       "title": "Terento für Mac herunterladen — Drittanbieter-Karten für Garmin",
-      "description": "Lade die kostenlose, notarisierte Terento-App für Apple-Silicon-Macs herunter und installiere Drittanbieter-Karten auf Garmin-Uhren mit Kartenunterstützung.",
+      "description": "Lade die kostenlose, notarisierte Terento-App für Apple-Silicon-Macs herunter und installiere Drittanbieter-Karten auf Garmin-Uhren und Edge-Radcomputern.",
       "alternates": true
     },
     {
@@ -140,7 +140,7 @@
       "path": "/fr/download/",
       "locale": "fr",
       "title": "Télécharger Terento pour Mac — Cartes tierces pour Garmin",
-      "description": "Téléchargez Terento, l’app gratuite et notariée pour Mac Apple Silicon, et installez des cartes tierces sur les montres Garmin avec cartes.",
+      "description": "Téléchargez Terento, l’app gratuite et notariée pour Mac Apple Silicon, et installez des cartes tierces sur les montres Garmin et compteurs Edge avec cartes.",
       "alternates": true
     },
     {
@@ -148,7 +148,7 @@
       "path": "/pl/download/",
       "locale": "pl",
       "title": "Pobierz Terento na Maca — Mapy innych firm dla Garmina",
-      "description": "Pobierz bezpłatną, notaryzowaną aplikację Terento na Maci z Apple Silicon, aby instalować i zarządzać mapami innych firm na zegarkach Garmin obsługujących mapy.",
+      "description": "Pobierz bezpłatną, notaryzowaną aplikację Terento na Maki z Apple Silicon i instaluj mapy innych firm na zegarkach Garmin i licznikach Edge obsługujących mapy.",
       "alternates": true
     },
     {
@@ -156,7 +156,7 @@
       "path": "/cs/download/",
       "locale": "cs",
       "title": "Stáhnout Terento pro Mac — Mapy třetích stran pro Garmin",
-      "description": "Stáhněte si bezplatnou, notářsky ověřenou aplikaci Terento pro Macy s Apple Silicon k instalaci a správě map třetích stran na hodinkách Garmin s podporou map.",
+      "description": "Stáhněte si bezplatnou, notářsky ověřenou aplikaci Terento pro Macy s Apple Silicon k instalaci map třetích stran na hodinky a cyklopočítače Garmin Edge s mapami.",
       "alternates": true
     },
     {
@@ -164,55 +164,55 @@
       "path": "/it/download/",
       "locale": "it",
       "title": "Scarica Terento per Mac — Mappe di terze parti per Garmin",
-      "description": "Scarica Terento, l’app gratuita e notarizzata per Mac Apple Silicon, e installa mappe di terze parti sugli smartwatch Garmin con supporto mappe.",
+      "description": "Scarica Terento, l’app gratuita e notarizzata per Mac Apple Silicon, e installa mappe di terze parti su smartwatch Garmin e ciclocomputer Edge con supporto mappe.",
       "alternates": true
     },
     {
       "file": "site/compatibility/index.html",
       "path": "/compatibility/",
       "locale": "en",
-      "title": "Garmin Watch Compatibility & Successful Installs — Terento",
-      "description": "Terento is designed for Garmin smartwatches with map support. See exact models and variants with successful third-party map installations.",
+      "title": "Garmin Watch & Edge Map Compatibility — Terento",
+      "description": "Terento is designed for Garmin smartwatches and newer Edge bike computers with map support. See exact models and variants with successful map installs.",
       "alternates": true
     },
     {
       "file": "site/de/compatibility/index.html",
       "path": "/de/compatibility/",
       "locale": "de",
-      "title": "Garmin-Kompatibilität & erfolgreiche Installationen — Terento",
-      "description": "Terento ist für Garmin-Smartwatches mit Kartenunterstützung gemacht. Hier stehen Modelle und Varianten mit erfolgreichen Karteninstallationen.",
+      "title": "Garmin-Uhren & Edge: Karten-Kompatibilität — Terento",
+      "description": "Terento ist für Garmin-Smartwatches und neuere Edge-Radcomputer mit Kartenunterstützung gemacht. Hier stehen Modelle mit erfolgreichen Karteninstallationen.",
       "alternates": true
     },
     {
       "file": "site/fr/compatibility/index.html",
       "path": "/fr/compatibility/",
       "locale": "fr",
-      "title": "Compatibilité Garmin et installations réussies — Terento",
-      "description": "Terento est conçu pour les montres Garmin avec cartes. Voici les modèles et variantes exacts avec des installations de cartes réussies.",
+      "title": "Compatibilité cartes montres Garmin et Edge — Terento",
+      "description": "Terento est conçu pour les montres Garmin et les compteurs vélo Edge récents avec cartes. Voici les modèles et variantes exacts avec des installations réussies.",
       "alternates": true
     },
     {
       "file": "site/pl/compatibility/index.html",
       "path": "/pl/compatibility/",
       "locale": "pl",
-      "title": "Zgodność zegarków Garmin i udane instalacje — Terento",
-      "description": "Terento jest przeznaczone dla zegarków Garmin obsługujących mapy. Zobacz dokładne modele i warianty z udanymi instalacjami map innych firm.",
+      "title": "Zgodność map: zegarki Garmin i liczniki Edge — Terento",
+      "description": "Terento jest przeznaczone dla zegarków Garmin i nowszych liczników rowerowych Edge obsługujących mapy. Zobacz modele i warianty z udanymi instalacjami map.",
       "alternates": true
     },
     {
       "file": "site/cs/compatibility/index.html",
       "path": "/cs/compatibility/",
       "locale": "cs",
-      "title": "Kompatibilita hodinek Garmin a úspěšné instalace — Terento",
-      "description": "Terento je navrženo pro hodinky Garmin s podporou map. Podívejte se na konkrétní modely a varianty s úspěšnými instalacemi map třetích stran.",
+      "title": "Kompatibilita map: hodinky Garmin a Edge — Terento",
+      "description": "Terento je navrženo pro hodinky Garmin a novější cyklopočítače Edge s podporou map. Podívejte se na modely a varianty s úspěšnými instalacemi map.",
       "alternates": true
     },
     {
       "file": "site/it/compatibility/index.html",
       "path": "/it/compatibility/",
       "locale": "it",
-      "title": "Compatibilità Garmin e installazioni riuscite — Terento",
-      "description": "Terento è progettato per gli smartwatch Garmin con supporto alle mappe. Scopri modelli e varianti esatti con installazioni riuscite di mappe di terze parti.",
+      "title": "Compatibilità mappe smartwatch Garmin ed Edge — Terento",
+      "description": "Terento è progettato per smartwatch Garmin e ciclocomputer Edge recenti con supporto mappe. Scopri modelli e varianti esatti con installazioni riuscite.",
       "alternates": true
     },
     {
@@ -274,7 +274,7 @@
       "path": "/guides/troubleshooting/",
       "locale": "en",
       "title": "Garmin Watch Not Showing Up on Mac? Troubleshooting — Terento",
-      "description": "Garmin watch not showing up on your Mac? Fix USB mode (MTP), Garmin Express using the watch, low storage and failed map downloads.",
+      "description": "Garmin watch or Edge not showing up on your Mac? Fix USB mode (MTP), Garmin Express using the device, low storage and failed map downloads.",
       "ogType": "article",
       "alternates": true
     },
@@ -283,7 +283,7 @@
       "path": "/de/guides/troubleshooting/",
       "locale": "de",
       "title": "Garmin-Uhr wird am Mac nicht erkannt? Fehlerbehebung — Terento",
-      "description": "Garmin-Uhr wird am Mac nicht erkannt? Hilfe zu USB-Modus (MTP), blockierendem Garmin Express, wenig Speicher und fehlgeschlagenen Downloads.",
+      "description": "Garmin-Uhr oder Edge wird am Mac nicht erkannt? Hilfe zu USB-Modus (MTP), blockierendem Garmin Express, wenig Speicher und fehlgeschlagenen Downloads.",
       "ogType": "article",
       "alternates": true
     },
@@ -292,7 +292,7 @@
       "path": "/fr/guides/troubleshooting/",
       "locale": "fr",
       "title": "Montre Garmin non détectée sur Mac ? Dépannage — Terento",
-      "description": "Votre montre Garmin n’apparaît pas sur le Mac ? Mode USB (MTP), Garmin Express qui bloque la montre, espace insuffisant, téléchargements échoués.",
+      "description": "Votre montre Garmin ou votre Edge n’apparaît pas sur le Mac ? Mode USB (MTP), Garmin Express qui bloque l’appareil, espace insuffisant, téléchargements échoués.",
       "ogType": "article",
       "alternates": true
     },
@@ -301,7 +301,7 @@
       "path": "/pl/guides/troubleshooting/",
       "locale": "pl",
       "title": "Mac nie widzi zegarka Garmin? Rozwiązywanie problemów — Terento",
-      "description": "Mac nie widzi zegarka Garmin? Rozwiąż problemy z trybem USB (MTP), Garmin Express blokującym zegarek, brakiem miejsca i pobieraniem map.",
+      "description": "Mac nie widzi zegarka Garmin lub Edge? Rozwiąż problemy z trybem USB (MTP), Garmin Express blokującym urządzenie, brakiem miejsca i pobieraniem map.",
       "ogType": "article",
       "alternates": true
     },
@@ -310,7 +310,7 @@
       "path": "/cs/guides/troubleshooting/",
       "locale": "cs",
       "title": "Mac nevidí hodinky Garmin? Řešení potíží — Terento",
-      "description": "Mac nevidí hodinky Garmin? Vyřešte režim USB (MTP), Garmin Express, který blokuje hodinky, nedostatek místa a nezdařené stažení map.",
+      "description": "Mac nevidí hodinky Garmin nebo Edge? Vyřešte režim USB (MTP), Garmin Express, který blokuje zařízení, nedostatek místa a nezdařené stažení map.",
       "ogType": "article",
       "alternates": true
     },
@@ -319,7 +319,7 @@
       "path": "/it/guides/troubleshooting/",
       "locale": "it",
       "title": "Il Mac non rileva il Garmin? Risoluzione problemi — Terento",
-      "description": "Il Mac non rileva l’orologio Garmin? Risolvi modalità USB (MTP), Garmin Express che blocca l’orologio, spazio insufficiente e download falliti.",
+      "description": "Il Mac non rileva l’orologio Garmin o l’Edge? Risolvi modalità USB (MTP), Garmin Express che blocca il dispositivo, spazio insufficiente e download falliti.",
       "ogType": "article",
       "alternates": true
     },
@@ -328,7 +328,7 @@
       "path": "/guides/install-garmin-maps-linux/",
       "locale": "en",
       "title": "Install Garmin Maps on Linux from Chrome — Terento",
-      "description": "Install free OpenStreetMap maps on a Garmin watch from Linux in Chrome, Edge, Opera or Brave: add one udev rule, connect the watch, send the map.",
+      "description": "Install free OpenStreetMap maps on a Garmin watch from Linux in Chrome, Microsoft Edge, Opera or Brave: add one udev rule, connect the watch, send the map.",
       "ogType": "article",
       "alternates": true
     },
@@ -337,7 +337,7 @@
       "path": "/de/guides/install-garmin-maps-linux/",
       "locale": "de",
       "title": "Garmin-Karten unter Linux aus Chrome installieren — Terento",
-      "description": "Kostenlose OpenStreetMap-Karten unter Linux aus Chrome, Edge, Opera oder Brave auf die Garmin-Uhr: udev-Regel anlegen, Uhr verbinden, senden.",
+      "description": "Kostenlose OpenStreetMap-Karten unter Linux aus Chrome, Microsoft Edge, Opera oder Brave auf die Garmin-Uhr: udev-Regel anlegen, Uhr verbinden, senden.",
       "ogType": "article",
       "alternates": true
     },
@@ -346,7 +346,7 @@
       "path": "/fr/guides/install-garmin-maps-linux/",
       "locale": "fr",
       "title": "Installer des cartes Garmin sous Linux depuis Chrome — Terento",
-      "description": "Cartes OpenStreetMap gratuites sur une montre Garmin sous Linux avec Chrome, Edge, Opera ou Brave : une règle udev, la montre en USB, et c’est envoyé.",
+      "description": "Cartes OpenStreetMap gratuites sur une montre Garmin sous Linux avec Chrome, Microsoft Edge, Opera ou Brave : une règle udev, la montre en USB, et c’est envoyé.",
       "ogType": "article",
       "alternates": true
     },
@@ -355,7 +355,7 @@
       "path": "/pl/guides/install-garmin-maps-linux/",
       "locale": "pl",
       "title": "Instaluj mapy Garmin w Linuksie z Chrome — Terento",
-      "description": "Darmowe mapy OpenStreetMap na zegarku Garmin w Linuksie z Chrome, Edge, Opery lub Brave: dodaj regułę udev, podłącz zegarek i wyślij mapę.",
+      "description": "Darmowe mapy OpenStreetMap na zegarku Garmin w Linuksie z Chrome, Microsoft Edge, Opery lub Brave: dodaj regułę udev, podłącz zegarek i wyślij mapę.",
       "ogType": "article",
       "alternates": true
     },
@@ -364,7 +364,7 @@
       "path": "/cs/guides/install-garmin-maps-linux/",
       "locale": "cs",
       "title": "Instalace map Garmin v Linuxu z Chrome — Terento",
-      "description": "Bezplatné mapy OpenStreetMap do hodinek Garmin v Linuxu z Chrome, Edge, Opery nebo Brave: přidejte pravidlo udev, připojte hodinky, odešlete.",
+      "description": "Bezplatné mapy OpenStreetMap do hodinek Garmin v Linuxu z Chrome, Microsoft Edge, Opery nebo Brave: přidejte pravidlo udev, připojte hodinky, odešlete.",
       "ogType": "article",
       "alternates": true
     },
@@ -373,7 +373,61 @@
       "path": "/it/guides/install-garmin-maps-linux/",
       "locale": "it",
       "title": "Installa mappe Garmin su Linux da Chrome — Terento",
-      "description": "Mappe OpenStreetMap gratuite sul Garmin da Linux con Chrome, Edge, Opera o Brave: aggiungi una regola udev, collega l’orologio e invia la mappa.",
+      "description": "Mappe OpenStreetMap gratuite sul Garmin da Linux con Chrome, Microsoft Edge, Opera o Brave: aggiungi una regola udev, collega l’orologio e invia la mappa.",
+      "ogType": "article",
+      "alternates": true
+    },
+    {
+      "file": "site/guides/install-garmin-maps-edge-mac/index.html",
+      "path": "/guides/install-garmin-maps-edge-mac/",
+      "locale": "en",
+      "title": "Install Maps on Garmin Edge from a Mac — Terento",
+      "description": "Garmin Edge 1050, 840 or 540 not showing up on your Mac? Install free OpenStreetMap maps or your own map file on newer Edge bike computers with Terento.",
+      "ogType": "article",
+      "alternates": true
+    },
+    {
+      "file": "site/de/guides/install-garmin-maps-edge-mac/index.html",
+      "path": "/de/guides/install-garmin-maps-edge-mac/",
+      "locale": "de",
+      "title": "Karten auf Garmin Edge vom Mac installieren — Terento",
+      "description": "Garmin Edge 1050, 840 oder 540 erscheint nicht am Mac? Installiere mit Terento kostenlose OpenStreetMap-Karten oder eigene Kartendateien auf neueren Edge-Geräten.",
+      "ogType": "article",
+      "alternates": true
+    },
+    {
+      "file": "site/fr/guides/install-garmin-maps-edge-mac/index.html",
+      "path": "/fr/guides/install-garmin-maps-edge-mac/",
+      "locale": "fr",
+      "title": "Installer des cartes sur un Garmin Edge depuis un Mac — Terento",
+      "description": "Votre Garmin Edge 1050, 840 ou 540 n’apparaît pas sur le Mac ? Installez des cartes OpenStreetMap gratuites ou votre propre carte sur les Edge récents avec Terento.",
+      "ogType": "article",
+      "alternates": true
+    },
+    {
+      "file": "site/pl/guides/install-garmin-maps-edge-mac/index.html",
+      "path": "/pl/guides/install-garmin-maps-edge-mac/",
+      "locale": "pl",
+      "title": "Instalacja map na Garmin Edge z Maca — Terento",
+      "description": "Garmin Edge 1050, 840 lub 540 nie pojawia się na Macu? Zainstaluj darmowe mapy OpenStreetMap lub własny plik mapy na nowszych licznikach Edge z Terento.",
+      "ogType": "article",
+      "alternates": true
+    },
+    {
+      "file": "site/cs/guides/install-garmin-maps-edge-mac/index.html",
+      "path": "/cs/guides/install-garmin-maps-edge-mac/",
+      "locale": "cs",
+      "title": "Instalace map do Garmin Edge z Macu — Terento",
+      "description": "Mac nevidí Garmin Edge 1050, 840 nebo 540? Nainstalujte bezplatné mapy OpenStreetMap nebo vlastní mapový soubor do novějších cyklopočítačů Edge s Terento.",
+      "ogType": "article",
+      "alternates": true
+    },
+    {
+      "file": "site/it/guides/install-garmin-maps-edge-mac/index.html",
+      "path": "/it/guides/install-garmin-maps-edge-mac/",
+      "locale": "it",
+      "title": "Installa mappe su Garmin Edge da Mac — Terento",
+      "description": "Il tuo Garmin Edge 1050, 840 o 540 non compare sul Mac? Installa mappe OpenStreetMap gratuite o un tuo file di mappa sui ciclocomputer Edge più recenti con Terento.",
       "ogType": "article",
       "alternates": true
     },
