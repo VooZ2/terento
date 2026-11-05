@@ -5,7 +5,7 @@ canonical: https://terento.app/cs/
 
 Open-source projekt
 
-# Nainstalujte do hodinek Garmin mapy zdarma
+# Nainstalujte do zařízení Garmin mapy zdarma
 
 Terento je bezplatný open-source nástroj pro instalaci, aktualizaci a správu map třetích stran v hodinkách Garmin a cyklopočítačích Edge: v nativní aplikaci pro Mac nebo v prohlížeči na počítači.
 

@@ -5,7 +5,7 @@ canonical: https://terento.app/pl/
 
 Projekt open source
 
-# Instaluj darmowe mapy na zegarku Garmin
+# Instaluj darmowe mapy na urządzeniu Garmin
 
 Terento to darmowe narzędzie open source do instalowania, aktualizowania i zarządzania mapami innych firm na zegarkach Garmin i licznikach rowerowych Edge: w natywnej aplikacji na Maca lub w przeglądarce na komputerze.
 
