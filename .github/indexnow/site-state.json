@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "status": "published",
   "published": {
-    "commit": "c52481e4f58587c58f8f931906e81f1398b125de",
+    "commit": "c1e180543e70a3cd45e9418a3d1c67dc6240a3a4",
     "pages": [
       {
         "path": "/",
@@ -108,8 +108,8 @@
         "url": "https://terento.app/cs/install/",
         "locale": "cs",
         "indexable": true,
-        "fingerprint": "5da74e3611dd393d7d946ee77885e8b07a501cc4fcbb75a377f0e21dee24ffb5",
-        "lastmod": "2026-11-05"
+        "fingerprint": "da0721625321f2dac2fb323bff69f7f0fa476abdf9315be4b4191a453be9aaea",
+        "lastmod": "2026-11-06"
       },
       {
         "path": "/cs/map-styles/",
@@ -197,8 +197,8 @@
         "url": "https://terento.app/de/install/",
         "locale": "de",
         "indexable": true,
-        "fingerprint": "fb62ace5c93cf079df96f05b0a305b6c5dfc158249f010870a2836204e746b7f",
-        "lastmod": "2026-11-05"
+        "fingerprint": "de810a588f07f2a4a04cc33882bc671c399483fd5db04bed5249960633a7f939",
+        "lastmod": "2026-11-06"
       },
       {
         "path": "/de/map-styles/",
@@ -295,8 +295,8 @@
         "url": "https://terento.app/fr/install/",
         "locale": "fr",
         "indexable": true,
-        "fingerprint": "7aa5437da1a2b3f062218424932c84aea3a5b3ab2cff99818c5379883cf7a498",
-        "lastmod": "2026-11-05"
+        "fingerprint": "5d7a936c3102800ef8e4959e10c0ceb84cf56b6920bfe6a22433f88addcf691f",
+        "lastmod": "2026-11-06"
       },
       {
         "path": "/fr/map-styles/",
@@ -348,8 +348,8 @@
         "url": "https://terento.app/install/",
         "locale": "en",
         "indexable": true,
-        "fingerprint": "9f1c67f88da04d77f71139805ea5683e468297c80d104ec1b21399abbcb0452c",
-        "lastmod": "2026-11-05"
+        "fingerprint": "d9a7e2cb4ddb9ae7d16e6562f4ccf3a9ba768ad61c15b5dedaa5299de1a1dff2",
+        "lastmod": "2026-11-06"
       },
       {
         "path": "/it/",
@@ -428,8 +428,8 @@
         "url": "https://terento.app/it/install/",
         "locale": "it",
         "indexable": true,
-        "fingerprint": "0a35cbc85dd52aaf6fa8338a3e1ea680bba460ce5b4eb2f92d54fb5a34ed35db",
-        "lastmod": "2026-11-05"
+        "fingerprint": "acbcfe6508c95e98d425154f5ac65f05f1ff0d2c864d9e3f7bf045e196386321",
+        "lastmod": "2026-11-06"
       },
       {
         "path": "/it/map-styles/",
@@ -535,8 +535,8 @@
         "url": "https://terento.app/pl/install/",
         "locale": "pl",
         "indexable": true,
-        "fingerprint": "cc7f578b2aab4a1119a40b11b3f3c3af90939ddbdd0c1316fcad0bb2d49bc58b",
-        "lastmod": "2026-11-05"
+        "fingerprint": "8cfba7dce11dcb491e405e22a16b22fc0dee8e5b75cc2e65bbcb5922bbdaf1a2",
+        "lastmod": "2026-11-06"
       },
       {
         "path": "/pl/map-styles/",
@@ -6877,21 +6877,57 @@
         "fingerprint": "c4951d6c8ba87cb7606c4cfb8652fec59494e2b13ef764d4971891e9e021ecc7",
         "status": 200,
         "acceptedAt": "2026-11-06T07:37:18Z"
+      },
+      {
+        "url": "https://terento.app/cs/install/",
+        "fingerprint": "da0721625321f2dac2fb323bff69f7f0fa476abdf9315be4b4191a453be9aaea",
+        "status": 200,
+        "acceptedAt": "2026-11-06T10:07:03Z"
+      },
+      {
+        "url": "https://terento.app/de/install/",
+        "fingerprint": "de810a588f07f2a4a04cc33882bc671c399483fd5db04bed5249960633a7f939",
+        "status": 200,
+        "acceptedAt": "2026-11-06T10:07:03Z"
+      },
+      {
+        "url": "https://terento.app/fr/install/",
+        "fingerprint": "5d7a936c3102800ef8e4959e10c0ceb84cf56b6920bfe6a22433f88addcf691f",
+        "status": 200,
+        "acceptedAt": "2026-11-06T10:07:03Z"
+      },
+      {
+        "url": "https://terento.app/install/",
+        "fingerprint": "d9a7e2cb4ddb9ae7d16e6562f4ccf3a9ba768ad61c15b5dedaa5299de1a1dff2",
+        "status": 200,
+        "acceptedAt": "2026-11-06T10:07:03Z"
+      },
+      {
+        "url": "https://terento.app/it/install/",
+        "fingerprint": "acbcfe6508c95e98d425154f5ac65f05f1ff0d2c864d9e3f7bf045e196386321",
+        "status": 200,
+        "acceptedAt": "2026-11-06T10:07:03Z"
+      },
+      {
+        "url": "https://terento.app/pl/install/",
+        "fingerprint": "8cfba7dce11dcb491e405e22a16b22fc0dee8e5b75cc2e65bbcb5922bbdaf1a2",
+        "status": 200,
+        "acceptedAt": "2026-11-06T10:07:03Z"
       }
     ],
     "pending": [],
-    "lastSubmissionAt": "2026-11-06T07:37:18Z",
-    "lastSuccessfulSubmissionAt": "2026-11-06T07:37:18Z",
+    "lastSubmissionAt": "2026-11-06T10:07:02Z",
+    "lastSuccessfulSubmissionAt": "2026-11-06T10:07:02Z",
     "lastResult": "submitted",
     "lastErrorCode": null
   },
   "lastRun": {
-    "at": "2026-11-06T07:37:18Z",
+    "at": "2026-11-06T10:07:03Z",
     "status": "accepted",
     "bootstrap": false,
     "planned": 6,
     "accepted": 6,
     "pending": 0,
-    "previousAccepted": 1047
+    "previousAccepted": 1053
   }
 }
