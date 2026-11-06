@@ -200,7 +200,7 @@ OpenMTP and go-mtpfs were inspected for metadata resilience only. No OpenMTP
 or Go dependency or source code is incorporated. Reference:
 <https://github.com/ganeshrvel/go-mtpfs/pull/1> (optional USB descriptors).
 
-## Lucide icons (Admin)
+## Lucide icons
 
 - Source: [lucide-static](https://github.com/lucide-icons/lucide) v0.460.0,
   original 24 px outline SVGs from
@@ -209,10 +209,47 @@ or Go dependency or source code is incorporated. Reference:
 - Copyright: Copyright (c) for portions of Lucide are held by Cole Bemis
   2013-2022 as part of Feather (MIT). All other copyright (c) for Lucide are
   held by Lucide Contributors 2022.
-- Use: every Admin interface icon (owner decision 2026-11-05: one icon system
-  with the public website, replacing the 2026-10-06 Font Awesome decision; no
-  hand-drawn icons): `external-link`, `arrow-right`, `arrow-left`,
-  `arrow-left-right`, `check`, `clock`, `x`, `circle-x`, `triangle-alert`,
+- One icon system for the public website, the web installer and Admin (owner
+  decision 2026-11-05). Path data is unchanged; only the stroke width
+  (1.75 px, the brand icon spec) and presentation and accessibility attributes
+  are set. No Lucide font, package or runtime and no external icon origin is
+  used.
+
+### Public website
+
+- Icons used: `laptop` and `globe` (Compatibility successful installs, in
+  `scripts/build-compatibility-pages.py` and
+  `site/compatibility/compatibility.js`), `x` (Compatibility clear filters) and
+  `copy` and `check` (Linux guide command copy, in
+  `scripts/build-guide-pages.py`), `clock` (Download "coming soon" in
+  `scripts/normalize-release-pages.py`) and the Map styles controls (`search`,
+  `x`, `map-pin`, `square`, `columns-2`, `chevrons-left-right`, `link`,
+  `arrow-left-right`, `plus`, `minus`, `info`, `chevron-right`, `star`,
+  `circle-minus`, `clock`, in `scripts/build-map-style-pages.py` and
+  `site/map-styles/map-styles.js`) and `heart` (footer Support link, in
+  `scripts/normalize-public-shell.py`).
+- Each SVG carries the `@license lucide-static v0.460.0 - ISC` comment
+  (except the Download clock and the footer heart, which appear on the
+  Download page whose HTML must carry only the release version).
+
+### Web installer
+
+The web installer at terento.app/install/ (source in `terento-internal`,
+`lab/web-installer/public/index.html`) uses the same lucide-static v0.460.0
+original SVGs: `map`, `circle-check`, `triangle-alert`, `info`, `unplug`, `refresh-cw`, `check`, `clock`,
+`trash-2`, `chevron-down`, `laptop`, `loader-circle`, `usb`, `cable`,
+`lock-open`, `square-x`, `heart` and `github`. They are `<symbol>` elements
+of the page's inline sprite under the comment
+`@license lucide-static v0.460.0 - ISC`, with unchanged path data and
+viewBox; stroke (`currentColor`, 1.75, round caps and joins) and size come
+from the page CSS, and each use sets `aria-hidden="true"` and
+`focusable="false"`. No Lucide font, package or runtime is loaded.
+
+### Admin
+
+- Icons used: every Admin interface icon (replacing the 2026-10-06 Font
+  Awesome decision; no hand-drawn icons): `external-link`, `arrow-right`,
+  `arrow-left`, `arrow-left-right`, `check`, `clock`, `x`, `circle-x`, `triangle-alert`,
   `info`, `circle-help`, `circle-minus`, `download`, `message-square`,
   `circle-check`, `circle-alert`, `chevron-down`, `chevron-right`,
   `chevron-up`, `chevrons-up-down`, `image`, `ellipsis`, `layers`, `laptop`,
@@ -220,10 +257,7 @@ or Go dependency or source code is incorporated. Reference:
   `loader-circle`, `ban` and `refresh-cw` (download history and map activity).
 - The child elements are copied unchanged into `_LUCIDE_ICONS` in
   `backend/catalog-api/src/terento_catalog/admin.py` under the Lucide licence
-  comment; only the stroke width (1.75 px, the brand icon spec) and
-  presentation and accessibility attributes are set. They are rendered as
-  inline SVG or as outline `data:` CSS masks. No Lucide font, package or
-  runtime and no external icon origin is used.
+  comment and rendered as inline SVG or as outline `data:` CSS masks.
 
 Permission to use, copy, modify, and/or distribute this software for any
 purpose with or without fee is hereby granted, provided that the above
@@ -236,20 +270,6 @@ INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
 OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
 TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 THIS SOFTWARE.
-
-### Web installer icons
-
-The web installer at terento.app/install/ (source in `terento-internal`,
-`lab/web-installer/public/index.html`) uses the same lucide-static v0.460.0
-original SVGs under the ISC licence above: `map`, `circle-check`,
-`triangle-alert`, `info`, `unplug`, `refresh-cw`, `check`, `clock`,
-`trash-2`, `chevron-down`, `laptop`, `loader-circle`, `usb`, `cable`,
-`lock-open`, `square-x`, `heart` and `github`. They are `<symbol>` elements
-of the page's inline sprite under the comment
-`@license lucide-static v0.460.0 - ISC`, with unchanged path data and
-viewBox; stroke (`currentColor`, 1.75, round caps and joins) and size come
-from the page CSS, and each use sets `aria-hidden="true"` and
-`focusable="false"`. No Lucide font, package or runtime is loaded.
 
 ## Font Awesome Free
 
@@ -279,40 +299,3 @@ original solid `circle-check` SVG from the same pinned Font Awesome Free 7.3.1
 revision, under CC BY 4.0. The unchanged SVG, with its attribution comment, is
 `app/Terento/Assets.xcassets/CircleCheck.imageset/circle-check.svg`; the app
 only tints it. No Font Awesome font, CSS or runtime is bundled.
-
-## Lucide icons (public website)
-
-- Source: [lucide-static](https://github.com/lucide-icons/lucide) v0.460.0,
-  original 24 px outline SVGs.
-- License: ISC License.
-- Copyright: Copyright (c) for portions of Lucide are held by Cole Bemis
-  2013-2022 as part of Feather (MIT). All other copyright (c) for Lucide are
-  held by Lucide Contributors 2022.
-- Icons used: `laptop` and `globe` (Compatibility successful installs, in
-  `scripts/build-compatibility-pages.py` and
-  `site/compatibility/compatibility.js`), `x` (Compatibility clear filters) and
-  `copy` and `check` (Linux guide command copy, in
-  `scripts/build-guide-pages.py`), `clock` (Download "coming soon" in
-  `scripts/normalize-release-pages.py`) and the Map styles controls (`search`,
-  `x`, `map-pin`, `square`, `columns-2`, `chevrons-left-right`, `link`,
-  `arrow-left-right`, `plus`, `minus`, `info`, `chevron-right`, `star`,
-  `circle-minus`, `clock`, in `scripts/build-map-style-pages.py` and
-  `site/map-styles/map-styles.js`) and `heart` (footer Support link, in
-  `scripts/normalize-public-shell.py`).
-- Path data is unchanged and carries the `@license lucide-static v0.460.0 - ISC`
-  comment (except the Download clock and the footer heart, which appear on the
-  Download page whose HTML must carry only the release version); only the stroke width (1.75 px, the brand icon spec) and
-  presentation and accessibility attributes are set. No Lucide font, package or
-  runtime is bundled.
-
-Permission to use, copy, modify, and/or distribute this software for any
-purpose with or without fee is hereby granted, provided that the above
-copyright notice and this permission notice appear in all copies.
-
-THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
-REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
-FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
-INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
-OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
-TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
-THIS SOFTWARE.
