@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "status": "published",
   "published": {
-    "commit": "43c6ac3df40394367002e006b854ac78c0207d95",
+    "commit": "78946749bbcfe6bbf973ed89d4ad64a0b0163ab8",
     "pages": [
       {
         "path": "/",
@@ -10,7 +10,7 @@
         "file": "site/index.html",
         "locale": "en",
         "indexable": true,
-        "fingerprint": "64e819a5ad6161d6fc8db224a19225cef7ac99a147b4e950fc6e838c9636707e",
+        "fingerprint": "9a300975ec94428e92a93ac4a4ab4f92d473bbe71aeb6d6dde70a271cf281146",
         "lastmod": "2026-11-05"
       },
       {
@@ -19,7 +19,7 @@
         "file": "site/about/index.html",
         "locale": "en",
         "indexable": true,
-        "fingerprint": "9c7acdcaef11399e6a7898c16f24b90f6a882c2563dd8f9e1d418c905f70c09c",
+        "fingerprint": "213c6ee16a625ad75991a47a5f7c5b5ffafa1cc631cc3b8f48d8e5cc651d9309",
         "lastmod": "2026-11-05"
       },
       {
@@ -28,8 +28,8 @@
         "file": "site/compatibility/index.html",
         "locale": "en",
         "indexable": true,
-        "fingerprint": "f95a017c6b20b00037931f0a0fba43279c8746906ffa452c0f9cd24acab61ee0",
-        "lastmod": "2026-11-05"
+        "fingerprint": "57e155e8b0ec67a131cfb45a10396ddebca3baedd39b91e7790d6e4e2bfe22bf",
+        "lastmod": "2026-11-06"
       },
       {
         "path": "/cs/",
@@ -37,7 +37,7 @@
         "file": "site/cs/index.html",
         "locale": "cs",
         "indexable": true,
-        "fingerprint": "211c541a4a6d2c979351cb73fb1f9c8fc7d532bdd332bdfc250829f11584129d",
+        "fingerprint": "411cce5ca41216e649f3e42bbc373972469d0018f1fe1fae379efc86bd69db24",
         "lastmod": "2026-11-05"
       },
       {
@@ -46,7 +46,7 @@
         "file": "site/cs/about/index.html",
         "locale": "cs",
         "indexable": true,
-        "fingerprint": "68900ef5d86fc5e06eb0dd070f6b6277a2a1c3aff3b68bce6f5c48b14f1a1636",
+        "fingerprint": "9bf43a847d60119ec8293727638eb453387adfbe4dc7ff2d69cb09b8318e2eea",
         "lastmod": "2026-11-05"
       },
       {
@@ -55,8 +55,8 @@
         "file": "site/cs/compatibility/index.html",
         "locale": "cs",
         "indexable": true,
-        "fingerprint": "23b7a39c958be8c2d91ae939c6c8b473a41c9fa80c45f09b94497841d42df74d",
-        "lastmod": "2026-11-05"
+        "fingerprint": "5661e6dc78921c3d95958132b664fe1f325da5a068eb6b4bcc3c24812f742add",
+        "lastmod": "2026-11-06"
       },
       {
         "path": "/cs/download/",
@@ -64,7 +64,7 @@
         "file": "site/cs/download/index.html",
         "locale": "cs",
         "indexable": true,
-        "fingerprint": "eb6b984182830c3d7557ac1c52f5ebe1574c01e9fca3925b6d1d91a96ae13c08",
+        "fingerprint": "6cf402e56663e1833b9a360cf9220df93a5ef5fc6fbdb25e82e621532a2348d3",
         "lastmod": "2026-11-05"
       },
       {
@@ -73,7 +73,7 @@
         "file": "site/cs/guides/install-garmin-maps-edge-mac/index.html",
         "locale": "cs",
         "indexable": true,
-        "fingerprint": "2a2735313631c6414d4469af2af12e7d115b11991d5854196b4d0bcfc97f3a49",
+        "fingerprint": "66a12daf9ff6d19cf0e53f266de941db7d4cd77e8fddd3d77aad4ae700e7cbb3",
         "lastmod": "2026-11-05"
       },
       {
@@ -82,7 +82,7 @@
         "file": "site/cs/guides/install-garmin-maps-linux/index.html",
         "locale": "cs",
         "indexable": true,
-        "fingerprint": "72264125f037b18a5176658bc0cb44468d6ca4179f6d1e54723917dc50cacd49",
+        "fingerprint": "2afbc8021dbe6023d537991bbd218ee53531240470b80853011b124a85d52cec",
         "lastmod": "2026-11-05"
       },
       {
@@ -91,8 +91,8 @@
         "file": "site/cs/guides/install-garmin-maps-mac/index.html",
         "locale": "cs",
         "indexable": true,
-        "fingerprint": "c41a5bbd6ca5ba36d162f5944d3e9c4a975e669f6adbd531b0fdd9b7f80c72bb",
-        "lastmod": "2026-11-02"
+        "fingerprint": "461eca1d75ec80100fe5fb340f833ab5989f141fa02eea36a984f29d79242bd6",
+        "lastmod": "2026-11-05"
       },
       {
         "path": "/cs/guides/troubleshooting/",
@@ -100,7 +100,7 @@
         "file": "site/cs/guides/troubleshooting/index.html",
         "locale": "cs",
         "indexable": true,
-        "fingerprint": "a968ec927c753864ac51aa887f79529518fba8c3397b43d4564c426b962197a4",
+        "fingerprint": "a6916800f6a4391db6dbea49e16b73ed440d75c5fc2eb5e0b060eadd6a9bb16c",
         "lastmod": "2026-11-05"
       },
       {
@@ -117,8 +117,8 @@
         "file": "site/cs/map-styles/index.html",
         "locale": "cs",
         "indexable": true,
-        "fingerprint": "55418795ad1c065d095e43132db1d81b3c343702f405b5523cac46ec9f3f82c1",
-        "lastmod": "2026-11-02"
+        "fingerprint": "d095540206bfd6809d609b2452b8dd5c61c1387a8d70cf4781f9bfcad71802af",
+        "lastmod": "2026-11-05"
       },
       {
         "path": "/de/",
@@ -126,7 +126,7 @@
         "file": "site/de/index.html",
         "locale": "de",
         "indexable": true,
-        "fingerprint": "8a1da012637cf07b4a502088c4c084092eab7b23c40ebc2cc146976fdb28ad08",
+        "fingerprint": "88f4bd86f33a6e8aa5d752fc0733a70d1a6300839c7d1bad53b31c84ccc31ee3",
         "lastmod": "2026-11-05"
       },
       {
@@ -135,7 +135,7 @@
         "file": "site/de/about/index.html",
         "locale": "de",
         "indexable": true,
-        "fingerprint": "8d00644f35c349dc2dff789c431cf63890ddbbf05a5a5d53746ecfc5861c63fd",
+        "fingerprint": "32e7aff096f4b616b47636433f8534d261578d8336fe1aad4a2880e94f0c2f64",
         "lastmod": "2026-11-05"
       },
       {
@@ -144,8 +144,8 @@
         "file": "site/de/compatibility/index.html",
         "locale": "de",
         "indexable": true,
-        "fingerprint": "63c23a65fd6c805796eb5574858840a27805ad7e69ab889da2f22f2ca265b6a0",
-        "lastmod": "2026-11-05"
+        "fingerprint": "8e6d177193e9a76f6922f7f489e7c6c7f33296b3db31b5426ba4e2e7715d873a",
+        "lastmod": "2026-11-06"
       },
       {
         "path": "/de/download/",
@@ -153,7 +153,7 @@
         "file": "site/de/download/index.html",
         "locale": "de",
         "indexable": true,
-        "fingerprint": "a6f1f27117765737bf192cacb76d2f412a0d1e883528a389af6c18a97dad06d9",
+        "fingerprint": "9ff527d9aa1af605486b198f3ba275a044a191d4ed53cae996eb0e61882ecc4d",
         "lastmod": "2026-11-05"
       },
       {
@@ -162,7 +162,7 @@
         "file": "site/de/guides/install-garmin-maps-edge-mac/index.html",
         "locale": "de",
         "indexable": true,
-        "fingerprint": "e3918126fda91f21463699d5f3f00cb6af5e4e115597763a0ee212a5868c0664",
+        "fingerprint": "6ac103ebdad4f4ed781da9e74411125ed444c3c6748969db72eb2e5798e646ba",
         "lastmod": "2026-11-05"
       },
       {
@@ -171,7 +171,7 @@
         "file": "site/de/guides/install-garmin-maps-linux/index.html",
         "locale": "de",
         "indexable": true,
-        "fingerprint": "40002cf67fc9458f21b79ae101d8909e9103af8b13cb061f6a4fe68274b1e28f",
+        "fingerprint": "4e14ea77020101bc2539c94d36d6bd079ea842581095526d3724ccd65f276026",
         "lastmod": "2026-11-05"
       },
       {
@@ -180,8 +180,8 @@
         "file": "site/de/guides/install-garmin-maps-mac/index.html",
         "locale": "de",
         "indexable": true,
-        "fingerprint": "12605f6bdcff1ddc8f38da700cb57e32383b06ce129d418dcd0bd06cd845e9ae",
-        "lastmod": "2026-11-02"
+        "fingerprint": "5498d41bf498db2ed4edb7f35bc490162d869bc3b166cdcf8684d43ec33efc2c",
+        "lastmod": "2026-11-05"
       },
       {
         "path": "/de/guides/troubleshooting/",
@@ -189,7 +189,7 @@
         "file": "site/de/guides/troubleshooting/index.html",
         "locale": "de",
         "indexable": true,
-        "fingerprint": "0c1232631907a23214082d82186db5fcf05471e0ae77094a4b4ea63eba6971de",
+        "fingerprint": "d3386073f9efcecf83216e7b2fc558c33d5bd85c9406f7387c14452636af6604",
         "lastmod": "2026-11-05"
       },
       {
@@ -206,8 +206,8 @@
         "file": "site/de/map-styles/index.html",
         "locale": "de",
         "indexable": true,
-        "fingerprint": "c3d0428db4b9b6d9333b9db90128f09c78c5f6a9f4bf600a66f34217748474ff",
-        "lastmod": "2026-11-02"
+        "fingerprint": "05c6cd53015d25244974a07989b90dd4fb17f59322d297d6fd34d359e2277394",
+        "lastmod": "2026-11-05"
       },
       {
         "path": "/download/",
@@ -215,7 +215,7 @@
         "file": "site/download/index.html",
         "locale": "en",
         "indexable": true,
-        "fingerprint": "1927f50620199b0596dbafe23cfcabecbd94ec19cf241798fb2325d6c16608d9",
+        "fingerprint": "90fe918c1bc3818d08c9ae3a795933de2b450a870311ea2188a1125cf81562e9",
         "lastmod": "2026-11-05"
       },
       {
@@ -224,7 +224,7 @@
         "file": "site/fr/index.html",
         "locale": "fr",
         "indexable": true,
-        "fingerprint": "c959d4344f6bfa628815aedc347225339e0c8bc5490f49762fb5cd289ed52969",
+        "fingerprint": "dd47d8bbf6863bb72dc3dcfefebe6f492f0aabc5308b0f63314541116fdf6e0a",
         "lastmod": "2026-11-05"
       },
       {
@@ -233,7 +233,7 @@
         "file": "site/fr/about/index.html",
         "locale": "fr",
         "indexable": true,
-        "fingerprint": "4fc318ccb03baa16770cd4278be768662188a4ac7d4f41667a0bfc413144981f",
+        "fingerprint": "bb9916238f7071522b0b8ff35cffe0975b268462268c9ae9fe84664ab85c40eb",
         "lastmod": "2026-11-05"
       },
       {
@@ -242,8 +242,8 @@
         "file": "site/fr/compatibility/index.html",
         "locale": "fr",
         "indexable": true,
-        "fingerprint": "1f2d12ba8e5b62c3b8b3cec386fac4e6ac8401ecd259771e4800be80c18a6fd9",
-        "lastmod": "2026-11-05"
+        "fingerprint": "24b6e23de3a6d4faf5777fc4aa595e0eea13e4c2a511fd510b7e8fe718d90f9f",
+        "lastmod": "2026-11-06"
       },
       {
         "path": "/fr/download/",
@@ -251,7 +251,7 @@
         "file": "site/fr/download/index.html",
         "locale": "fr",
         "indexable": true,
-        "fingerprint": "fbb52d8ac00bc98f5bda4d4b6f15d09681ca7fbdcbbc4561ceb455bdf13d74d3",
+        "fingerprint": "5518c381b971768021f53db093313c5672f45d741a0eaeea4728d485418ad3bb",
         "lastmod": "2026-11-05"
       },
       {
@@ -260,7 +260,7 @@
         "file": "site/fr/guides/install-garmin-maps-edge-mac/index.html",
         "locale": "fr",
         "indexable": true,
-        "fingerprint": "33bc842fd87147ab02f7e8d4cb8935a24a5010e6832c019d963101394b3b6fec",
+        "fingerprint": "b73cae680221a33be45ee6cb6cd16b23bfa93dfa7522d174769dfa2e58e5222e",
         "lastmod": "2026-11-05"
       },
       {
@@ -269,7 +269,7 @@
         "file": "site/fr/guides/install-garmin-maps-linux/index.html",
         "locale": "fr",
         "indexable": true,
-        "fingerprint": "66a9c513fef0ae99f6a57733859b61dfb542c42be1a3c804b6af7416baa07fcd",
+        "fingerprint": "2549a4e8bae599d136a8471de54ff18907db806e7c7303f530efed8f17806982",
         "lastmod": "2026-11-05"
       },
       {
@@ -278,8 +278,8 @@
         "file": "site/fr/guides/install-garmin-maps-mac/index.html",
         "locale": "fr",
         "indexable": true,
-        "fingerprint": "cc582e637a8dde91658bd9af10c0106d52614869ea47a5ae8315f84034f46eaa",
-        "lastmod": "2026-11-02"
+        "fingerprint": "dce590f76960b0c85733868f7296af1d31a1047117139dcce6546f4aa9d34463",
+        "lastmod": "2026-11-05"
       },
       {
         "path": "/fr/guides/troubleshooting/",
@@ -287,7 +287,7 @@
         "file": "site/fr/guides/troubleshooting/index.html",
         "locale": "fr",
         "indexable": true,
-        "fingerprint": "cb14ac6297a581695dc3f10a27b597f2c1fbc4a1919164ec2fae2c364946cbf9",
+        "fingerprint": "51b4708b3262a332c9dec8837095229460fa942ab0500df00e2cbe8b2d7a9c9d",
         "lastmod": "2026-11-05"
       },
       {
@@ -304,8 +304,8 @@
         "file": "site/fr/map-styles/index.html",
         "locale": "fr",
         "indexable": true,
-        "fingerprint": "351e6d75e27b5a9d131abf1c927ca5eb515a391467e4bc5734ba6e9ab4229d62",
-        "lastmod": "2026-11-02"
+        "fingerprint": "bb1db99a6e07a6312400d8c75cd68f4c7be6c11289ba60a58d9ec77870be44b9",
+        "lastmod": "2026-11-05"
       },
       {
         "path": "/guides/install-garmin-maps-edge-mac/",
@@ -313,7 +313,7 @@
         "file": "site/guides/install-garmin-maps-edge-mac/index.html",
         "locale": "en",
         "indexable": true,
-        "fingerprint": "fa199c48cba8d4d72a8d53e5311074f223102998cf6eccd7fb366e7cecdabab8",
+        "fingerprint": "6ab2a2e8e76bf23ed051cb55852884303b30f196b64e47fd1c511edb624636a8",
         "lastmod": "2026-11-05"
       },
       {
@@ -322,7 +322,7 @@
         "file": "site/guides/install-garmin-maps-linux/index.html",
         "locale": "en",
         "indexable": true,
-        "fingerprint": "4055b24a9d91005673dc797b646a96a71f73ca37d8b8e2a1d79874737401dd5c",
+        "fingerprint": "5b40d468b3ce97517455dae8840c78946e1d3d4367252ee919304361198e2aa1",
         "lastmod": "2026-11-05"
       },
       {
@@ -331,8 +331,8 @@
         "file": "site/guides/install-garmin-maps-mac/index.html",
         "locale": "en",
         "indexable": true,
-        "fingerprint": "9c9c5d6bfbd1096ce940ea1d1d97dd30b2a08f8933adf91a86f72c56398072e4",
-        "lastmod": "2026-11-02"
+        "fingerprint": "a54b772a1a45a3ebca4775de877ee1110482171cbde4e86a9dc92ed64fc83a2e",
+        "lastmod": "2026-11-05"
       },
       {
         "path": "/guides/troubleshooting/",
@@ -340,7 +340,7 @@
         "file": "site/guides/troubleshooting/index.html",
         "locale": "en",
         "indexable": true,
-        "fingerprint": "f7b36ee94bc97ebdbd8f7a82563d868a3af4dfe371e62e4e4f7a8127acb07656",
+        "fingerprint": "cfec75d27581b4029e278f10a96493609265bcb3c2ae203493f7cc86db87acd4",
         "lastmod": "2026-11-05"
       },
       {
@@ -357,7 +357,7 @@
         "file": "site/it/index.html",
         "locale": "it",
         "indexable": true,
-        "fingerprint": "755c162567b40b9d318b8222b2f8b3bbbb5e85eca9143f706f9c29ced0862169",
+        "fingerprint": "6e8d12df474a0c341ffb645cdecdf510c3c9f5ce402e6b77e430609eda85907c",
         "lastmod": "2026-11-05"
       },
       {
@@ -366,7 +366,7 @@
         "file": "site/it/about/index.html",
         "locale": "it",
         "indexable": true,
-        "fingerprint": "0af4d1cb3ba8a7f250a24bf4553380a3201bc8c4ca7fcfd3e09bde86bcbf63e5",
+        "fingerprint": "421aae5d878c21922d5603e2d08fd5d84fcf4bbcbb7febf6c6a379f5b6d31e3d",
         "lastmod": "2026-11-05"
       },
       {
@@ -375,8 +375,8 @@
         "file": "site/it/compatibility/index.html",
         "locale": "it",
         "indexable": true,
-        "fingerprint": "1b2356dfcac4fad979ab1018a97e9a3c1e8b9c3bac53527571f4f992708e3be5",
-        "lastmod": "2026-11-05"
+        "fingerprint": "4b61a479ca0eaef7e094992c324713de86106b53085aa2278ca89d0f49f4210b",
+        "lastmod": "2026-11-06"
       },
       {
         "path": "/it/download/",
@@ -384,7 +384,7 @@
         "file": "site/it/download/index.html",
         "locale": "it",
         "indexable": true,
-        "fingerprint": "9f6c67f9d98a9dcccc18ad917e2ec83053cf869fc68a973b8e3e4082f2d5dd87",
+        "fingerprint": "ff79c2c29607e2c1bdf7fc6324dd1c05ab26849ef37edfa87082b319411e0517",
         "lastmod": "2026-11-05"
       },
       {
@@ -393,7 +393,7 @@
         "file": "site/it/guides/install-garmin-maps-edge-mac/index.html",
         "locale": "it",
         "indexable": true,
-        "fingerprint": "cc58e85f3b2f5f42154abb70f07c9c27eb3d56fdaeb8e680736cb3d7cea8eff3",
+        "fingerprint": "9adc3037152b73013fc0ab98480964e839167f2cc9290995f5ab17c42047ead5",
         "lastmod": "2026-11-05"
       },
       {
@@ -402,7 +402,7 @@
         "file": "site/it/guides/install-garmin-maps-linux/index.html",
         "locale": "it",
         "indexable": true,
-        "fingerprint": "16342429536857006763b679105bd0359e20c872a350ae7524655d0650c2c2a6",
+        "fingerprint": "c520f5e5e3ae1461e72bd28f7aee244681a5f20e2c5a2f679be580be8178b935",
         "lastmod": "2026-11-05"
       },
       {
@@ -411,8 +411,8 @@
         "file": "site/it/guides/install-garmin-maps-mac/index.html",
         "locale": "it",
         "indexable": true,
-        "fingerprint": "4dbcf2624e3b1f98a9d5f590dd7e35f3f4ebcdf11b03c08e2e1684606df77ffe",
-        "lastmod": "2026-11-02"
+        "fingerprint": "d553a83c9291c7e8e9f60a0cad4066783bb847f4747d7bbb837eb5404013fea4",
+        "lastmod": "2026-11-05"
       },
       {
         "path": "/it/guides/troubleshooting/",
@@ -420,7 +420,7 @@
         "file": "site/it/guides/troubleshooting/index.html",
         "locale": "it",
         "indexable": true,
-        "fingerprint": "a326fa5b3adc39f404ec8108d361236f0b534d21151665f2bec7ba5a1aa54a2c",
+        "fingerprint": "fb6262fa54d9c839ee97da96d3a20cfc78c478a6b7494749c136e4ef1a1d3a1a",
         "lastmod": "2026-11-05"
       },
       {
@@ -437,8 +437,8 @@
         "file": "site/it/map-styles/index.html",
         "locale": "it",
         "indexable": true,
-        "fingerprint": "65ea2b35c8fa7c634f3d146b5b3fc16ed57ea91c3dcb5708d90d97e4544dff81",
-        "lastmod": "2026-11-02"
+        "fingerprint": "9eb1393642d436d0f49ea52d200335e919c2384b0f56d68140fb2cdb27ef6142",
+        "lastmod": "2026-11-05"
       },
       {
         "path": "/legal/",
@@ -446,8 +446,8 @@
         "file": "site/legal/index.html",
         "locale": "en",
         "indexable": false,
-        "fingerprint": "703318e004b3e31d57fdee14a3fadf2facccdbe46e58dd42007683ce65406bdf",
-        "lastmod": "2026-10-29"
+        "fingerprint": "f4ba0bc691fc7d035d3bd8f7ba781448558fea41624f3ad83664ae5472008f2c",
+        "lastmod": "2026-11-05"
       },
       {
         "path": "/map-styles/",
@@ -455,8 +455,8 @@
         "file": "site/map-styles/index.html",
         "locale": "en",
         "indexable": true,
-        "fingerprint": "2d9fa953f40811daac686be796af42d75187591eb3504abe11218ab29acf5d16",
-        "lastmod": "2026-11-02"
+        "fingerprint": "1b52a06e9068fa7753f599217e44de19a1d059d613c986139bf3072049ca5f1e",
+        "lastmod": "2026-11-05"
       },
       {
         "path": "/pl/",
@@ -464,7 +464,7 @@
         "file": "site/pl/index.html",
         "locale": "pl",
         "indexable": true,
-        "fingerprint": "ff266611fd82f887144013900f85d998d48750d2d61c21c3496b6bf839840004",
+        "fingerprint": "e193cd14a79eeebca13cac061876e14b77e0f95328890cc4ee78ce571f24e524",
         "lastmod": "2026-11-05"
       },
       {
@@ -473,7 +473,7 @@
         "file": "site/pl/about/index.html",
         "locale": "pl",
         "indexable": true,
-        "fingerprint": "c6451081563412ee7deebc1cfc4bded17bb5b59952faa48e9099438deee06119",
+        "fingerprint": "385cbc9a699c7a20d7ec5a761a7af37fd1442dbc5191786597c4d66784d05e8d",
         "lastmod": "2026-11-05"
       },
       {
@@ -482,8 +482,8 @@
         "file": "site/pl/compatibility/index.html",
         "locale": "pl",
         "indexable": true,
-        "fingerprint": "49b3a93b1da257677a2a391352306e1fd16160f84f1aad049cf0630b9efe0d9d",
-        "lastmod": "2026-11-05"
+        "fingerprint": "b9d0c42500e1be29342ada01a87e9ad314cf8cecc1c33af18bfb68d5b560e956",
+        "lastmod": "2026-11-06"
       },
       {
         "path": "/pl/download/",
@@ -491,7 +491,7 @@
         "file": "site/pl/download/index.html",
         "locale": "pl",
         "indexable": true,
-        "fingerprint": "daf69edbfda9b0d148321e608103e439f54f24b5e8d7f4c558f3d03a050c7a09",
+        "fingerprint": "3c1f33a701efe1cc7ee0d1146c9bf2940039777853df6f689fbb9334e3e56ba8",
         "lastmod": "2026-11-05"
       },
       {
@@ -500,7 +500,7 @@
         "file": "site/pl/guides/install-garmin-maps-edge-mac/index.html",
         "locale": "pl",
         "indexable": true,
-        "fingerprint": "49909c8bd31cfe727af888ad6e952bf8c1c80dbffb51d7097ed38c996a4ba5e2",
+        "fingerprint": "17f9335e7bbd247ceeccc3aa5f7b03550f944a3f165795fa6416e4233797a879",
         "lastmod": "2026-11-05"
       },
       {
@@ -509,7 +509,7 @@
         "file": "site/pl/guides/install-garmin-maps-linux/index.html",
         "locale": "pl",
         "indexable": true,
-        "fingerprint": "4a8116b5f248af1889a16239445587fccfbfd4e6ed031709cc7ac42ec2945695",
+        "fingerprint": "69d8456e81c9a5a98575f423acd3156bad51029d7241a8ad3d4d4a0c5032d407",
         "lastmod": "2026-11-05"
       },
       {
@@ -518,8 +518,8 @@
         "file": "site/pl/guides/install-garmin-maps-mac/index.html",
         "locale": "pl",
         "indexable": true,
-        "fingerprint": "dae8aa6124ac84f8bfa3caefcd7714a59bd9582a87db96ce67314fd3a1ca5ead",
-        "lastmod": "2026-11-02"
+        "fingerprint": "5569da9ddd93234e34a587e4c23f69f5e410f57cff94ae9c43fbd50fee09b1c6",
+        "lastmod": "2026-11-05"
       },
       {
         "path": "/pl/guides/troubleshooting/",
@@ -527,7 +527,7 @@
         "file": "site/pl/guides/troubleshooting/index.html",
         "locale": "pl",
         "indexable": true,
-        "fingerprint": "b491f70445f42f39a09af8c4e311c663fa06fa62450448970129e78f390ff0ea",
+        "fingerprint": "f73afb2cdb3f1d95655fab66fb73ec713a868007dc7d8e512b26bf35a9054fae",
         "lastmod": "2026-11-05"
       },
       {
@@ -544,8 +544,8 @@
         "file": "site/pl/map-styles/index.html",
         "locale": "pl",
         "indexable": true,
-        "fingerprint": "24685dd3b033582f14703979c9abf55990ceb5b8c5667c628f4ef3a6418e020e",
-        "lastmod": "2026-11-02"
+        "fingerprint": "e9c94d420b464134482d6d9a540462eb79b14dbc77dfd2a9c6af3047edf9e9d7",
+        "lastmod": "2026-11-05"
       },
       {
         "path": "/privacy/",
@@ -553,8 +553,8 @@
         "file": "site/privacy/index.html",
         "locale": "en",
         "indexable": false,
-        "fingerprint": "9d2d254c034e73ef2b8090a2103ac7a59a7fd04524c2bf8c3fa097cb40b9fece",
-        "lastmod": "2026-11-02"
+        "fingerprint": "095afcd9f64e23b2df56270b6d366fae19a2e91b6642228787abc3f70109e014",
+        "lastmod": "2026-11-05"
       }
     ]
   },
@@ -6505,21 +6505,357 @@
         "fingerprint": "cc7f578b2aab4a1119a40b11b3f3c3af90939ddbdd0c1316fcad0bb2d49bc58b",
         "status": 200,
         "acceptedAt": "2026-11-05T21:20:17Z"
+      },
+      {
+        "url": "https://terento.app/",
+        "fingerprint": "9a300975ec94428e92a93ac4a4ab4f92d473bbe71aeb6d6dde70a271cf281146",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/about/",
+        "fingerprint": "213c6ee16a625ad75991a47a5f7c5b5ffafa1cc631cc3b8f48d8e5cc651d9309",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/compatibility/",
+        "fingerprint": "57e155e8b0ec67a131cfb45a10396ddebca3baedd39b91e7790d6e4e2bfe22bf",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/cs/",
+        "fingerprint": "411cce5ca41216e649f3e42bbc373972469d0018f1fe1fae379efc86bd69db24",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/cs/about/",
+        "fingerprint": "9bf43a847d60119ec8293727638eb453387adfbe4dc7ff2d69cb09b8318e2eea",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/cs/compatibility/",
+        "fingerprint": "5661e6dc78921c3d95958132b664fe1f325da5a068eb6b4bcc3c24812f742add",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/cs/download/",
+        "fingerprint": "6cf402e56663e1833b9a360cf9220df93a5ef5fc6fbdb25e82e621532a2348d3",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/cs/guides/install-garmin-maps-edge-mac/",
+        "fingerprint": "66a12daf9ff6d19cf0e53f266de941db7d4cd77e8fddd3d77aad4ae700e7cbb3",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/cs/guides/install-garmin-maps-linux/",
+        "fingerprint": "2afbc8021dbe6023d537991bbd218ee53531240470b80853011b124a85d52cec",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/cs/guides/install-garmin-maps-mac/",
+        "fingerprint": "461eca1d75ec80100fe5fb340f833ab5989f141fa02eea36a984f29d79242bd6",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/cs/guides/troubleshooting/",
+        "fingerprint": "a6916800f6a4391db6dbea49e16b73ed440d75c5fc2eb5e0b060eadd6a9bb16c",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/cs/map-styles/",
+        "fingerprint": "d095540206bfd6809d609b2452b8dd5c61c1387a8d70cf4781f9bfcad71802af",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/de/",
+        "fingerprint": "88f4bd86f33a6e8aa5d752fc0733a70d1a6300839c7d1bad53b31c84ccc31ee3",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/de/about/",
+        "fingerprint": "32e7aff096f4b616b47636433f8534d261578d8336fe1aad4a2880e94f0c2f64",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/de/compatibility/",
+        "fingerprint": "8e6d177193e9a76f6922f7f489e7c6c7f33296b3db31b5426ba4e2e7715d873a",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/de/download/",
+        "fingerprint": "9ff527d9aa1af605486b198f3ba275a044a191d4ed53cae996eb0e61882ecc4d",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/de/guides/install-garmin-maps-edge-mac/",
+        "fingerprint": "6ac103ebdad4f4ed781da9e74411125ed444c3c6748969db72eb2e5798e646ba",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/de/guides/install-garmin-maps-linux/",
+        "fingerprint": "4e14ea77020101bc2539c94d36d6bd079ea842581095526d3724ccd65f276026",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/de/guides/install-garmin-maps-mac/",
+        "fingerprint": "5498d41bf498db2ed4edb7f35bc490162d869bc3b166cdcf8684d43ec33efc2c",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/de/guides/troubleshooting/",
+        "fingerprint": "d3386073f9efcecf83216e7b2fc558c33d5bd85c9406f7387c14452636af6604",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/de/map-styles/",
+        "fingerprint": "05c6cd53015d25244974a07989b90dd4fb17f59322d297d6fd34d359e2277394",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/download/",
+        "fingerprint": "90fe918c1bc3818d08c9ae3a795933de2b450a870311ea2188a1125cf81562e9",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/fr/",
+        "fingerprint": "dd47d8bbf6863bb72dc3dcfefebe6f492f0aabc5308b0f63314541116fdf6e0a",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/fr/about/",
+        "fingerprint": "bb9916238f7071522b0b8ff35cffe0975b268462268c9ae9fe84664ab85c40eb",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/fr/compatibility/",
+        "fingerprint": "24b6e23de3a6d4faf5777fc4aa595e0eea13e4c2a511fd510b7e8fe718d90f9f",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/fr/download/",
+        "fingerprint": "5518c381b971768021f53db093313c5672f45d741a0eaeea4728d485418ad3bb",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/fr/guides/install-garmin-maps-edge-mac/",
+        "fingerprint": "b73cae680221a33be45ee6cb6cd16b23bfa93dfa7522d174769dfa2e58e5222e",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/fr/guides/install-garmin-maps-linux/",
+        "fingerprint": "2549a4e8bae599d136a8471de54ff18907db806e7c7303f530efed8f17806982",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/fr/guides/install-garmin-maps-mac/",
+        "fingerprint": "dce590f76960b0c85733868f7296af1d31a1047117139dcce6546f4aa9d34463",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/fr/guides/troubleshooting/",
+        "fingerprint": "51b4708b3262a332c9dec8837095229460fa942ab0500df00e2cbe8b2d7a9c9d",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/fr/map-styles/",
+        "fingerprint": "bb1db99a6e07a6312400d8c75cd68f4c7be6c11289ba60a58d9ec77870be44b9",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/guides/install-garmin-maps-edge-mac/",
+        "fingerprint": "6ab2a2e8e76bf23ed051cb55852884303b30f196b64e47fd1c511edb624636a8",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/guides/install-garmin-maps-linux/",
+        "fingerprint": "5b40d468b3ce97517455dae8840c78946e1d3d4367252ee919304361198e2aa1",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/guides/install-garmin-maps-mac/",
+        "fingerprint": "a54b772a1a45a3ebca4775de877ee1110482171cbde4e86a9dc92ed64fc83a2e",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/guides/troubleshooting/",
+        "fingerprint": "cfec75d27581b4029e278f10a96493609265bcb3c2ae203493f7cc86db87acd4",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/it/",
+        "fingerprint": "6e8d12df474a0c341ffb645cdecdf510c3c9f5ce402e6b77e430609eda85907c",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/it/about/",
+        "fingerprint": "421aae5d878c21922d5603e2d08fd5d84fcf4bbcbb7febf6c6a379f5b6d31e3d",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/it/compatibility/",
+        "fingerprint": "4b61a479ca0eaef7e094992c324713de86106b53085aa2278ca89d0f49f4210b",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/it/download/",
+        "fingerprint": "ff79c2c29607e2c1bdf7fc6324dd1c05ab26849ef37edfa87082b319411e0517",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/it/guides/install-garmin-maps-edge-mac/",
+        "fingerprint": "9adc3037152b73013fc0ab98480964e839167f2cc9290995f5ab17c42047ead5",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/it/guides/install-garmin-maps-linux/",
+        "fingerprint": "c520f5e5e3ae1461e72bd28f7aee244681a5f20e2c5a2f679be580be8178b935",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/it/guides/install-garmin-maps-mac/",
+        "fingerprint": "d553a83c9291c7e8e9f60a0cad4066783bb847f4747d7bbb837eb5404013fea4",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/it/guides/troubleshooting/",
+        "fingerprint": "fb6262fa54d9c839ee97da96d3a20cfc78c478a6b7494749c136e4ef1a1d3a1a",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/it/map-styles/",
+        "fingerprint": "9eb1393642d436d0f49ea52d200335e919c2384b0f56d68140fb2cdb27ef6142",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/legal/",
+        "fingerprint": "f4ba0bc691fc7d035d3bd8f7ba781448558fea41624f3ad83664ae5472008f2c",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/map-styles/",
+        "fingerprint": "1b52a06e9068fa7753f599217e44de19a1d059d613c986139bf3072049ca5f1e",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/pl/",
+        "fingerprint": "e193cd14a79eeebca13cac061876e14b77e0f95328890cc4ee78ce571f24e524",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/pl/about/",
+        "fingerprint": "385cbc9a699c7a20d7ec5a761a7af37fd1442dbc5191786597c4d66784d05e8d",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/pl/compatibility/",
+        "fingerprint": "b9d0c42500e1be29342ada01a87e9ad314cf8cecc1c33af18bfb68d5b560e956",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/pl/download/",
+        "fingerprint": "3c1f33a701efe1cc7ee0d1146c9bf2940039777853df6f689fbb9334e3e56ba8",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/pl/guides/install-garmin-maps-edge-mac/",
+        "fingerprint": "17f9335e7bbd247ceeccc3aa5f7b03550f944a3f165795fa6416e4233797a879",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/pl/guides/install-garmin-maps-linux/",
+        "fingerprint": "69d8456e81c9a5a98575f423acd3156bad51029d7241a8ad3d4d4a0c5032d407",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/pl/guides/install-garmin-maps-mac/",
+        "fingerprint": "5569da9ddd93234e34a587e4c23f69f5e410f57cff94ae9c43fbd50fee09b1c6",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/pl/guides/troubleshooting/",
+        "fingerprint": "f73afb2cdb3f1d95655fab66fb73ec713a868007dc7d8e512b26bf35a9054fae",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/pl/map-styles/",
+        "fingerprint": "e9c94d420b464134482d6d9a540462eb79b14dbc77dfd2a9c6af3047edf9e9d7",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
+      },
+      {
+        "url": "https://terento.app/privacy/",
+        "fingerprint": "095afcd9f64e23b2df56270b6d366fae19a2e91b6642228787abc3f70109e014",
+        "status": 200,
+        "acceptedAt": "2026-11-06T06:06:28Z"
       }
     ],
     "pending": [],
-    "lastSubmissionAt": "2026-11-05T21:20:17Z",
-    "lastSuccessfulSubmissionAt": "2026-11-05T21:20:17Z",
+    "lastSubmissionAt": "2026-11-06T06:06:27Z",
+    "lastSuccessfulSubmissionAt": "2026-11-06T06:06:27Z",
     "lastResult": "submitted",
     "lastErrorCode": null
   },
   "lastRun": {
-    "at": "2026-11-05T21:20:17Z",
+    "at": "2026-11-06T06:06:28Z",
     "status": "accepted",
     "bootstrap": false,
-    "planned": 12,
-    "accepted": 12,
+    "planned": 56,
+    "accepted": 56,
     "pending": 0,
-    "previousAccepted": 979
+    "previousAccepted": 991
   }
 }
