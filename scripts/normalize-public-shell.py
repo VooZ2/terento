@@ -12,10 +12,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SHELL_VERSION = "20261105-copy-command-v1"
 PROVIDER_SCRIPT_VERSION = "20261026-osmapa-v1"
-STYLE_VERSION = "20261105-type-scale-v1"
+STYLE_VERSION = "20261106-audit-fixes-v1"
 IMAGE_VERSION = "20260912-app-screens-v2"
 LANGUAGE_VERSION = "20260926-static-shell-v1"
-COMPATIBILITY_LOCALES_VERSION = "20261105-compatibility-edge-v1"
+COMPATIBILITY_LOCALES_VERSION = "20261106-compatibility-title-v1"
 COMPATIBILITY_VERSION = "20261105-compatibility-clear-v2"
 UMAMI_SCRIPT_VERSION = "20261105-outbound-links"
 PAGE_LANGUAGE_VERSION = "20261015-shared-page-language-v3"
@@ -259,7 +259,12 @@ def normalize_email_links(source: str, page: str) -> str:
         tag = _add_attribute(tag, "data-umami-event-location", location)
         return _add_attribute(tag, "data-umami-event-channel", "email")
 
-    return re.sub(r'<a\b[^>]*href="mailto:[^"]+"[^>]*>', replace, source, flags=re.IGNORECASE)
+    source = re.sub(r'<a\b[^>]*href="mailto:[^"]+"[^>]*>', replace, source, flags=re.IGNORECASE)
+    # Cloudflare Email Obfuscation would rewrite these to /cdn-cgi/ links that crawlers see as 404.
+    return re.sub(
+        r'(?<!<!--email_off-->)(<a\b[^>]*href="mailto:[^"]+"[^>]*>.*?</a>)',
+        r'<!--email_off-->\1<!--/email_off-->', source, flags=re.IGNORECASE | re.DOTALL,
+    )
 
 
 def files() -> list[tuple[str, str, str]]:

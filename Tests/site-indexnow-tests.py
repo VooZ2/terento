@@ -38,6 +38,10 @@ def test_live_page_cloudflare_email_equivalence() -> None:
     decoder = (b'<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/'
                b'cloudflare-static/email-decode.min.js"></script>')
     assert live_site.page_matches(expected, expected)
+    marked = expected.replace(b'<a ', b'<!--email_off--><a ').replace(b'</a>', b'</a><!--/email_off-->')
+    assert live_site.page_matches(marked, marked)
+    assert live_site.page_matches(marked, expected)
+    assert not live_site.page_matches(marked, expected.replace(b'Support', b'Wrong'))
     for key in (1, 14, 255):
         encoded = bytes([key] + [value ^ key for value in email]).hex().encode()
         live = expected.replace(b'mailto:' + email, b'/cdn-cgi/l/email-protection#' + encoded)
