@@ -9,7 +9,7 @@ Terento funktioniert mit Garmin-Uhren und neueren Garmin Edge Fahrradcomputern m
 
 Wenn dein Modell fehlt, heißt das nicht, dass es nicht funktioniert. Vielleicht hat noch niemand eine erfolgreiche Installation damit geteilt.
 
-**40** Modelle mit erfolgreichen Installationen**359** erfolgreiche InstallationenLetzte erfolgreiche Installation 6. November 2026
+**40** Modelle mit erfolgreichen Installationen**365** erfolgreiche InstallationenLetzte erfolgreiche Installation 6. November 2026
 
 So funktioniert diese Liste
 
@@ -55,21 +55,21 @@ fēnix
 
 ### fēnix 9 Pro 51 mm, AMOLED
 
-19 erfolgreiche Installationen
+21 erfolgreiche Installationen
 
-App 19
+App 21
 
-Letzte erfolgreiche Installation 22. Oktober 2026
+Letzte erfolgreiche Installation 6. November 2026
 
 epix
 
 ### epix Pro (Gen 2) 51 mm, AMOLED
 
-18 erfolgreiche Installationen
+20 erfolgreiche Installationen
 
-App 17 Web 1
+App 19 Web 1
 
-Letzte erfolgreiche Installation 26. Oktober 2026
+Letzte erfolgreiche Installation 6. November 2026
 
 fēnix
 
@@ -123,6 +123,16 @@ Letzte erfolgreiche Installation 17. Oktober 2026
 
 fēnix
 
+### fēnix 9 Pro 47 mm, AMOLED
+
+12 erfolgreiche Installationen
+
+App 12
+
+Letzte erfolgreiche Installation 6. November 2026
+
+fēnix
+
 ### fēnix 8 51 mm, AMOLED
 
 11 erfolgreiche Installationen
@@ -140,16 +150,6 @@ epix
 App 6 Web 4
 
 Letzte erfolgreiche Installation 3. November 2026
-
-fēnix
-
-### fēnix 9 Pro 47 mm, AMOLED
-
-10 erfolgreiche Installationen
-
-App 10
-
-Letzte erfolgreiche Installation 22. Oktober 2026
 
 fēnix
 
