@@ -514,49 +514,49 @@
     {
       "path": "/install/",
       "locale": "en",
-      "title": "Install Maps on a Garmin Watch or Edge from the Browser — Terento",
+      "title": "Install Garmin Watch & Edge Maps in Your Browser — Terento",
       "description": "Install free OpenStreetMap-based maps on your Garmin watch or Edge bike computer from Chrome, Microsoft Edge, Opera or Brave: connect by USB, choose, send.",
-      "lastmod": "2026-11-05",
+      "lastmod": "2026-11-06",
       "service": "web installer (VooZ2/terento-internal lab/web-installer; title and description = server.py HEAD)"
     },
     {
       "path": "/de/install/",
       "locale": "de",
-      "title": "Karten im Browser auf Garmin-Uhr oder Edge installieren — Terento",
+      "title": "Garmin-Uhr & Edge: Karten im Browser installieren — Terento",
       "description": "Kostenlose OpenStreetMap-Karten aus Chrome, Microsoft Edge, Opera oder Brave auf Garmin-Uhr oder Edge-Radcomputer: per USB verbinden, wählen, senden.",
-      "lastmod": "2026-11-05",
+      "lastmod": "2026-11-06",
       "service": "web installer (VooZ2/terento-internal lab/web-installer; title and description = server.py HEAD)"
     },
     {
       "path": "/fr/install/",
       "locale": "fr",
-      "title": "Cartes pour montre Garmin ou Edge depuis le navigateur — Terento",
+      "title": "Cartes montre Garmin et Edge depuis le navigateur — Terento",
       "description": "Cartes gratuites OpenStreetMap pour montre Garmin ou compteur vélo Edge, depuis Chrome, Microsoft Edge, Opera ou Brave : branchez en USB, choisissez, envoyez.",
-      "lastmod": "2026-11-05",
+      "lastmod": "2026-11-06",
       "service": "web installer (VooZ2/terento-internal lab/web-installer; title and description = server.py HEAD)"
     },
     {
       "path": "/pl/install/",
       "locale": "pl",
-      "title": "Instaluj mapy na zegarku Garmin lub Edge z przeglądarki — Terento",
+      "title": "Mapy na zegarek Garmin i Edge z przeglądarki — Terento",
       "description": "Darmowe mapy OpenStreetMap na zegarku Garmin lub liczniku rowerowym Edge z Chrome, Microsoft Edge, Opery lub Brave: podłącz USB, wybierz mapę, wyślij.",
-      "lastmod": "2026-11-05",
+      "lastmod": "2026-11-06",
       "service": "web installer (VooZ2/terento-internal lab/web-installer; title and description = server.py HEAD)"
     },
     {
       "path": "/cs/install/",
       "locale": "cs",
-      "title": "Instalace map do hodinek Garmin a Edge z prohlížeče — Terento",
+      "title": "Mapy do hodinek Garmin a Edge z prohlížeče — Terento",
       "description": "Bezplatné mapy z OpenStreetMap do hodinek Garmin a cyklopočítačů Edge z Chrome, Microsoft Edge, Opery nebo Brave: připojte USB, vyberte mapu, odešlete.",
-      "lastmod": "2026-11-05",
+      "lastmod": "2026-11-06",
       "service": "web installer (VooZ2/terento-internal lab/web-installer; title and description = server.py HEAD)"
     },
     {
       "path": "/it/install/",
       "locale": "it",
-      "title": "Installa mappe su orologio Garmin o Edge dal browser — Terento",
+      "title": "Mappe su orologio Garmin o Edge dal browser — Terento",
       "description": "Mappe gratuite OpenStreetMap su orologio Garmin o ciclocomputer Edge da Chrome, Microsoft Edge, Opera o Brave: collega via USB, scegli e invia. Senza app.",
-      "lastmod": "2026-11-05",
+      "lastmod": "2026-11-06",
       "service": "web installer (VooZ2/terento-internal lab/web-installer; title and description = server.py HEAD)"
     }
   ]
