@@ -22,7 +22,9 @@ def page_matches(expected: bytes, live: bytes) -> bool:
     Every decoded href must already occur in the expected source. Other edge
     injections, changed content and unexpected decoder shapes still fail closed.
     """
-    if live == expected:
+    # Cloudflare may strip the <!--email_off--> markers it honours.
+    unmarked = expected.replace(b"<!--email_off-->", b"").replace(b"<!--/email_off-->", b"")
+    if live in (expected, unmarked):
         return True
     restored = 0
 

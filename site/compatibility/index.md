@@ -1,5 +1,5 @@
 ---
-title: "Garmin Watch & Edge Compatibility: Successful Installs — Terento"
+title: "Garmin Watches & Edge: Successful Map Installs — Terento"
 canonical: https://terento.app/compatibility/
 ---
 

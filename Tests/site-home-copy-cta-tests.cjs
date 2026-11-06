@@ -117,13 +117,14 @@ const anchorFor = (page, className) => {
 
 for (const [locale, expected] of locales) {
   const page = pageFor(locale);
-  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20261105-type-scale-v1">/, `${locale}: Home stylesheet cache bust`);
+  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20261106-audit-fixes-v1">/, `${locale}: Home stylesheet cache bust`);
   assert.match(page, /<script defer src="\/home-features\.js\?v=20261105-home-map-switch-v4"><\/script>/, `${locale}: Home feature script cache bust`);
   assert.match(page, /installing-maps-1600\.png\?v=20260912-app-screens-v2/, `${locale}: installation screenshot cache bust`);
   const heroDevice = page.match(/<figure class="home-device" data-map-switch>[\s\S]*?<\/figure>/)?.[0];
   assert.ok(heroDevice, `${locale}: hero shows the drawn watch with a real map`);
   assert.match(heroDevice, /<img class="home-watch-map" data-map-image src="\/assets\/home\/hero-opentopomap\.webp\?v=[^"]+" width="520" height="520" alt="[^"]+" fetchpriority="high"/);
   assert.match(heroDevice, /<img class="home-watch-body" src="\/assets\/home\/watch-front\.webp\?v=[^"]+"[^>]* alt=""/);
+  assert.match(heroDevice, /<img class="home-watch-body"[^>]* srcset="\/assets\/home\/watch-front-680\.webp\?v=[^"]+ 680w, [^"]+ 1080w"[^>]* fetchpriority="high"/, `${locale}: watch frame loads with the map`);
   assert.equal((heroDevice.match(/<button type="button" class="home-switch-button" data-map-style="[a-z]+"[^>]*aria-pressed="(?:true|false)"[^>]*>/g) || []).length, 3, `${locale}: three map styles`);
   assert.equal((heroDevice.match(/aria-pressed="true"/g) || []).length, 1);
   assert.doesNotMatch(heroDevice, /data-map-attribution/, `${locale}: owner removed the visible hero map credit`);
