@@ -9,7 +9,7 @@ Terento działa z zegarkami Garmin i nowszymi licznikami rowerowymi Garmin Edge 
 
 Brak Twojego modelu nie oznacza, że nie zadziała. Być może nikt jeszcze nie udostępnił z niego udanej instalacji.
 
-**40** modele z udanymi instalacjami**356** udane instalacjeOstatnia udana instalacja 5 listopada 2026
+**40** modele z udanymi instalacjami**359** udane instalacjeOstatnia udana instalacja 6 listopada 2026
 
 Jak działa ta lista
 
@@ -83,6 +83,16 @@ Ostatnia udana instalacja 26 października 2026
 
 fēnix
 
+### fēnix 8 47 mm, MIP, Solar
+
+15 udanych instalacji
+
+App 15
+
+Ostatnia udana instalacja 6 listopada 2026
+
+fēnix
+
 ### fēnix 9 Pro 51 mm, AMOLED, inReach
 
 15 udanych instalacji
@@ -110,16 +120,6 @@ fēnix
 App 11 Web 1
 
 Ostatnia udana instalacja 17 października 2026
-
-fēnix
-
-### fēnix 8 47 mm, MIP, Solar
-
-12 udanych instalacji
-
-App 12
-
-Ostatnia udana instalacja 5 listopada 2026
 
 fēnix
 
