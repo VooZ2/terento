@@ -103,6 +103,13 @@ a {
   color: inherit;
 }
 
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
 a:focus-visible,
 button:focus-visible,
 summary:focus-visible {
@@ -766,7 +773,7 @@ h1 {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  min-height: 46px;
+  min-height: 44px;
   padding: 10px 16px;
   border: 1px solid var(--interactive);
   border-radius: 10px;
@@ -821,7 +828,7 @@ h1 {
 .primary-nav .download-action {
   min-height: 40px;
   padding: 8px 14px;
-  border-radius: 9px;
+  border-radius: 10px;
   font-size: 15px;
 }
 
@@ -2441,7 +2448,7 @@ details p {
 .compatibility-filters label > .sr-only { position: static; width: auto; height: auto; margin: 0; overflow: visible; clip: auto; clip-path: none; white-space: nowrap; text-overflow: ellipsis; color: var(--muted-text); font: 500 13px/1.3 var(--font-ui); }
 .compatibility-freshness { font-size: 0.875rem; line-height: 1.5; }
 .compatibility-clear, #compatibility-retry { min-height: 40px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: transparent; color: inherit; cursor: pointer; }
-.compatibility-clear { display: inline-flex; align-items: center; gap: 6px; min-height: 46px; padding: 0 12px; border-color: transparent; border-radius: 10px; color: var(--link-text); font: 500 15px/1.2 var(--font-ui); white-space: nowrap; }
+.compatibility-clear { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 12px; border-color: transparent; border-radius: 10px; color: var(--link-text); font: 500 15px/1.2 var(--font-ui); white-space: nowrap; }
 .compatibility-clear:disabled { display: none; }
 .compatibility-clear:hover { background: var(--surface); color: var(--link-text-hover); }
 .compatibility-clear:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 1px; }
@@ -2456,7 +2463,7 @@ details p {
 .compatibility-filters input,
 .compatibility-filters select {
   width: 100%;
-  min-height: 46px;
+  min-height: 44px;
   padding: 0 14px;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -3571,13 +3578,13 @@ details p {
 .map-styles-dock { bottom: 34px; left: 50%; display: grid; justify-items: center; gap: 4px; max-width: calc(100% - 200px); padding: 6px; transform: translateX(-50%); }
 .map-styles-pills { display: flex; gap: 2px; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
 .map-styles-pills::-webkit-scrollbar { display: none; }
-.map-styles-pill { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 16px; border: 0; border-radius: 11px; background: transparent; color: var(--graphite); font: 600 15px/1.2 var(--font-ui); white-space: nowrap; cursor: pointer; }
+.map-styles-pill { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 16px; border: 0; border-radius: 10px; background: transparent; color: var(--graphite); font: 600 15px/1.2 var(--font-ui); white-space: nowrap; cursor: pointer; }
 .map-styles-pill:hover { background: var(--surface-muted); }
 .map-styles-pill[aria-checked="true"] { background: var(--interactive); color: var(--interactive-primary-text); }
 .map-styles-pill[aria-disabled="true"] { color: var(--muted-text); font-weight: 500; text-decoration: line-through; cursor: not-allowed; }
 .map-styles-pill[aria-disabled="true"] .map-styles-icon { width: 16px; height: 16px; }
 .map-styles-compare { display: flex; align-items: center; gap: 8px; padding: 2px; }
-.map-styles-compare select { min-height: 44px; padding: 8px 34px 8px 14px; border: 1px solid var(--border); border-radius: 11px; background-color: color-mix(in srgb, var(--surface) 45%, transparent); color: var(--graphite); font: 600 15px var(--font-ui); }
+.map-styles-compare select { min-height: 44px; padding: 8px 34px 8px 14px; border: 1px solid var(--border); border-radius: 10px; background-color: color-mix(in srgb, var(--surface) 45%, transparent); color: var(--graphite); font: 600 15px var(--font-ui); }
 .map-styles-zoom { position: absolute; right: 16px; bottom: 34px; z-index: 700; display: grid; overflow: hidden; border: 1px solid color-mix(in srgb, var(--surface) 55%, transparent); border-radius: 12px; background: color-mix(in srgb, var(--surface) 50%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 2px 10px rgba(34, 42, 43, 0.2); }
 .map-styles-zoom button { display: flex; align-items: center; justify-content: center; width: 46px; height: 44px; border: 0; background: transparent; color: var(--graphite); cursor: pointer; }
 .map-styles-zoom button:hover { background: color-mix(in srgb, var(--surface) 70%, transparent); }
@@ -3759,7 +3766,7 @@ details p {
   min-height: 44px;
   padding: 8px 14px;
   border: 0;
-  border-radius: 9px;
+  border-radius: 10px;
   background: transparent;
   color: var(--graphite);
   font: 600 15px var(--font-ui);
@@ -4435,7 +4442,7 @@ details p {
   align-items: center;
   min-height: 44px;
   padding: 8px 14px;
-  border-radius: 9px;
+  border-radius: 10px;
   color: var(--graphite);
   font: 600 15px/1.2 var(--font-ui);
   text-decoration: none;
@@ -4571,20 +4578,23 @@ details p {
   .guide-v2-switch-link { flex: 1 1 auto; justify-content: center; }
 }
 
-/* One type scale for every public page: display, section, item and label headings plus the intro lede.
+/* One type scale for every public page. Desktop sizes are brand/DESIGN_TOKENS.json typography.scale
+   (hero 64/70, h1 52/60, h2 40/48, h3 30/38, uiHeading 22/28); clamp() only shrinks them on smaller screens.
    The #main-content prefix lets it win over older page-specific sizes without !important. */
 :root {
-  --type-display: clamp(40px, 5.2vw, 72px);
-  --type-section: clamp(30px, 3.6vw, 46px);
-  --type-item: clamp(20px, 1.9vw, 24px);
-  --type-label: 18px;
+  --type-hero: clamp(40px, 5.2vw, 64px);
+  --type-display: clamp(38px, 4.6vw, 52px);
+  --type-section: clamp(28px, 3.2vw, 40px);
+  --type-item: clamp(22px, 2.2vw, 30px);
+  --type-label: 22px;
   --type-lede: clamp(18px, 1.9vw, 21px);
 }
-#main-content h1 { max-width: 20ch; margin-top: 0; margin-bottom: 20px; font-size: var(--type-display); line-height: 1.02; }
-#main-content h2 { font-size: var(--type-section); line-height: 1.1; }
-#main-content h3 { font-size: var(--type-item); line-height: 1.2; }
-#main-content :is(.legal-item h2) { font-size: var(--type-item); line-height: 1.2; }
-#main-content :is(.guide-v2-help-item h3, .map-styles-v2-variants h3, .about-social-label) { font: 600 var(--type-label)/1.3 var(--font-ui); letter-spacing: 0; }
+#main-content h1 { max-width: 20ch; margin-top: 0; margin-bottom: 20px; font-size: var(--type-display); line-height: 1.15; }
+#main-content #hero-title { font-size: var(--type-hero); line-height: 1.094; }
+#main-content h2 { font-size: var(--type-section); line-height: 1.2; }
+#main-content h3 { font-size: var(--type-item); line-height: 1.267; }
+#main-content :is(.legal-item h2) { font-size: var(--type-item); line-height: 1.267; }
+#main-content :is(.guide-v2-help-item h3, .map-styles-v2-variants h3, .about-social-label) { font: 600 var(--type-label)/28px var(--font-ui); letter-spacing: 0; }
 #main-content :is(.hero-lede, .download-intro, .about-intro-copy, .guide-lede, .legal-summary p) { max-width: 62ch; font-size: var(--type-lede); line-height: 1.5; }
 #main-content :is(.step p, .provider-copy, .about-bullet-list li, .download-v2-needs li, .download-v2-steps p, .guide-step-copy p, .guide-v2-help-item p, .guide-v2-section > p, .guide-v2-more, .guide-preflight-copy p, .troubleshooting-guide-link, .map-styles-v2-map-copy p, .about-story-copy p, .map-styles-v2-map-summary) { font-size: 17px; line-height: 1.55; }
 :root { --section-space: clamp(64px, 8vw, 96px); }
@@ -4592,7 +4602,7 @@ details p {
 #main-content > .home-manage { padding-bottom: var(--section-space); }
 #main-content .compatibility-missing-note { margin-top: 16px; font-size: 17px; line-height: 1.55; }
 @media (max-width: 480px) { .home-switch { flex-wrap: nowrap; max-width: 100%; } .home-switch-button { padding: 8px 9px; font-size: 13px; white-space: nowrap; } }
-main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); line-height: 1.02; }
+main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); line-height: 1.15; }
 
 .guide-command-block { position: relative; }
 .guide-command-block .guide-command { padding-right: 60px; }
@@ -4604,3 +4614,6 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
 .guide-copy.is-copied .guide-copied-icon { visibility: visible; }
 .guide-copy.is-copied { color: var(--graphite); }
 .guide-command code { font: inherit; }
+
+/* Standalone text links get a 44px tap area; the negative margin keeps the layout unchanged. */
+:is(.home-edge-copy p, .provider-compare, .map-styles-v2-table th) > .text-link:only-child { padding-block: 11px; margin-block: -11px; }

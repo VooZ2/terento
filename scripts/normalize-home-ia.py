@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 LOCALES = ("en", "de", "fr", "pl", "cs", "it")
 PROVIDER_SCRIPT_VERSION = "20261026-osmapa-v1"
 FEATURE_SCRIPT_VERSION = "20261105-home-map-switch-v4"
-ASSET_VERSION = "20261105-home-edge4"
+ASSET_VERSION = "20261106-home-watch-srcset"
 # Empty until Apple approves the listing; the button renders only once this is set.
 APP_STORE_URL = ""
 # Hero watch map styles (Königssee previews), self-hosted in site/assets/home/.

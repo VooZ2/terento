@@ -33,7 +33,7 @@
     Cache-Control "public, max-age=300"
   }
 
-  @assets path *.css *.js *.svg *.png *.ico *.woff2 *.webmanifest *.xml
+  @assets path *.css *.js *.svg *.png *.jpg *.jpeg *.webp *.avif *.ico *.woff2 *.webmanifest *.xml
 
   # Admin on api.terento.app loads the brand fonts cross-origin; its CSP font-src already allows this host.
   @brandFonts path /assets/fonts/*.woff2
