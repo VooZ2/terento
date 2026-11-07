@@ -64,7 +64,7 @@ static char *fake_model(LIBMTP_mtpdevice_t *d) { return strdup("Test Watch"); }
 static int fake_storage(LIBMTP_mtpdevice_t *d, int sort) { return 0; }
 static void fake_release(LIBMTP_mtpdevice_t *d) {}
 static void fake_clear(LIBMTP_mtpdevice_t *d) {}
-static LIBMTP_error_t *error_stack;
+static LIBMTP_error_t *error_stack, *send_error_stack;
 static LIBMTP_error_t *fake_error(LIBMTP_mtpdevice_t *d) { return error_stack; }
 static LIBMTP_file_t *entry(const char *name, uint32_t id, int is_folder, uint64_t size) {
     LIBMTP_file_t *f=LIBMTP_new_file_t(); f->filename=strdup(name); f->item_id=id;
@@ -86,7 +86,9 @@ static LIBMTP_file_t *fake_files(LIBMTP_mtpdevice_t *d, uint32_t s, uint32_t par
 }
 static int fake_send(LIBMTP_mtpdevice_t *d,const char *path,LIBMTP_file_t *f,LIBMTP_progressfunc_t progress,const void *ctx) {
     assert(f->storage_id==1 && f->parent_id==10 && !strcmp(f->filename,filename));
-    ++sends; f->item_id=77; return send_failure;
+    ++sends; f->item_id=77;
+    if (send_failure) error_stack=send_error_stack;
+    return send_failure;
 }
 static int fake_delete(LIBMTP_mtpdevice_t *d,uint32_t id) { assert(id==77); ++deletes; return 0; }
 static int fake_partial(LIBMTP_mtpdevice_t *d,uint32_t id,uint64_t offset,uint32_t size,unsigned char **out,unsigned int *count) {
@@ -170,12 +172,12 @@ static void send_failure_diagnostics(void) {
     for (size_t i=0;i<sizeof(cases)/sizeof(cases[0]);++i) {
         reset_matrix_fixture(); present=0; send_failure=-1;
         LIBMTP_error_t entries[3]={{0}};
-        error_stack=NULL;
+        error_stack=send_error_stack=NULL;
         for (int j=2;j>=0;--j) {
             if (!cases[i].texts[j]) continue;
             entries[j].errornumber=LIBMTP_ERROR_PTP_LAYER;
             entries[j].error_text=(char *)cases[i].texts[j];
-            entries[j].next=error_stack; error_stack=&entries[j];
+            entries[j].next=send_error_stack; send_error_stack=&entries[j];
         }
         TerentoMTPMapOperationProfile p=profile(); TerentoMTPMutationRecord r;
         TerentoMTPMutationAuthorization a=grant(TERENTO_MUTATION_INSTALL,TERENTO_MUTATION_SEND);
@@ -184,7 +186,7 @@ static void send_failure_diagnostics(void) {
         assert(last_write_failure.step==cases[i].step && last_write_failure.ptp_response==cases[i].ptp);
         printf("PASS: send failure %s | step=%d ptp=0x%04x\n",cases[i].name,last_write_failure.step,last_write_failure.ptp_response);
     }
-    error_stack=NULL;
+    error_stack=send_error_stack=NULL;
     reset_matrix_fixture(); present=0;
     TerentoMTPMapOperationProfile p=profile(); TerentoMTPMutationRecord r;
     TerentoMTPMutationAuthorization a=grant(TERENTO_MUTATION_INSTALL,TERENTO_MUTATION_SEND);
