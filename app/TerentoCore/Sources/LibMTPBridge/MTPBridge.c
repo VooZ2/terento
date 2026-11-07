@@ -2156,6 +2156,65 @@ static int deletion_target_still_matches(LIBMTP_mtpdevice_t *device, uint32_t st
         error, sizeof(error)) == 0 && count == 1 && id == expected_id && size == expected_size;
 }
 
+/* Reads the step and PTP response of a failed LIBMTP_Send_File_From_File from
+ * the exact libmtp 1.1.23 error-stack texts (Packaging/NativeDependencies
+ * verifies them against the pinned source). Unknown wording stays unknown. */
+static void describe_map_send_failure(LIBMTP_mtpdevice_t *device, TerentoMTPWriteFailure *failure) {
+    if (failure == NULL) {
+        return;
+    }
+    failure->step = TERENTO_WRITE_STEP_UNKNOWN;
+    failure->ptp_response = 0;
+    static const struct { const char *text; int32_t step; } plain[] = {
+        {"LIBMTP_Send_File_From_File(): Could not open source file.", TERENTO_WRITE_STEP_SOURCE_OPEN},
+        {"LIBMTP_Send_File_From_File_Descriptor(): Cancelled transfer.", TERENTO_WRITE_STEP_CANCELLED},
+        {"LIBMTP_Send_File_From_File_Descriptor(): Could not retrieve updated metadata.", TERENTO_WRITE_STEP_OBJECT_METADATA},
+    };
+    static const struct { const char *text; int32_t step; } ptp[] = {
+        {"send_file_object_info(): Could not send object info.", TERENTO_WRITE_STEP_OBJECT_INFO},
+        {"send_file_object_info():Could not send object property list.", TERENTO_WRITE_STEP_OBJECT_INFO},
+        {"LIBMTP_Send_File_From_File_Descriptor(): Could not send object.", TERENTO_WRITE_STEP_OBJECT_DATA},
+    };
+    static const char ptp_prefix[] = "PTP Layer error ";
+    const size_t prefix_length = sizeof(ptp_prefix) - 1;
+    for (LIBMTP_error_t *error = device != NULL ? LIBMTP_Get_Errorstack(device) : NULL;
+         error != NULL; error = error->next) {
+        const char *text = error->error_text;
+        if (text == NULL) {
+            continue;
+        }
+        for (size_t index = 0; index < sizeof(plain) / sizeof(plain[0]); ++index) {
+            if (strcmp(text, plain[index].text) == 0) {
+                failure->step = plain[index].step;
+                return;
+            }
+        }
+        if (strncmp(text, ptp_prefix, prefix_length) != 0) {
+            continue;
+        }
+        const char *digits = text + prefix_length;
+        uint32_t code = 0;
+        int valid = 1;
+        for (size_t index = 0; index < 4 && valid; ++index) {
+            unsigned char digit = (unsigned char)digits[index];
+            if (digit >= '0' && digit <= '9') code = code * 16 + (uint32_t)(digit - '0');
+            else if (digit >= 'a' && digit <= 'f') code = code * 16 + (uint32_t)(digit - 'a' + 10);
+            else if (digit >= 'A' && digit <= 'F') code = code * 16 + (uint32_t)(digit - 'A' + 10);
+            else valid = 0;
+        }
+        if (!valid || code == 0 || digits[4] != ':' || digits[5] != ' ') {
+            continue;
+        }
+        for (size_t index = 0; index < sizeof(ptp) / sizeof(ptp[0]); ++index) {
+            if (strcmp(digits + 6, ptp[index].text) == 0) {
+                failure->step = ptp[index].step;
+                failure->ptp_response = code;
+                return;
+            }
+        }
+    }
+}
+
 /* Transfer the catalog-validated artifact on an already-open device.
  * Keeping this part separate lets the production install path perform its
  * sampled verification after the write session is released. */
@@ -2164,6 +2223,7 @@ static int send_stage42_map_file(
     const TerentoMTPMapOperationProfile *profile,
     const TerentoMTPMutationAuthorization *authorization,
     TerentoMTPMutationRecord *record,
+    TerentoMTPWriteFailure *write_failure,
     const char *local_path,
     const char *target_filename,
     const struct stat *source_stat,
@@ -2255,6 +2315,13 @@ static int send_stage42_map_file(
     LIBMTP_destroy_file_t(file);
 
     if (result != 0) {
+        if (record == NULL || !record->attempted) {
+            /* The final gate refused; libmtp was never called. */
+            set_error(error_message, error_message_capacity,
+                "The map write was not authorized; nothing was sent to the watch");
+            return TERENTO_MTP_MUTATION_REFUSED;
+        }
+        describe_map_send_failure(device, write_failure);
         set_write_test_device_error(
             error_message,
             error_message_capacity,
@@ -2295,6 +2362,7 @@ int terento_mtp_install_map_file_authorized(
     const TerentoMTPMapOperationProfile *profile,
     const TerentoMTPMutationAuthorization *authorization,
     TerentoMTPMutationRecord *record,
+    TerentoMTPWriteFailure *write_failure,
     const char *local_path,
     const char *target_filename,
     uint32_t *item_id,
@@ -2305,6 +2373,7 @@ int terento_mtp_install_map_file_authorized(
     size_t error_message_capacity
 ) {
     if (record) { memset(record, 0, sizeof(*record)); record->native_result = TERENTO_MTP_MUTATION_REFUSED; }
+    if (write_failure) { memset(write_failure, 0, sizeof(*write_failure)); }
     if (!authorization || !record) return TERENTO_MTP_MUTATION_REFUSED;
     if (validate_map_operation_profile(
             profile,
@@ -2362,6 +2431,7 @@ int terento_mtp_install_map_file_authorized(
         profile,
         authorization,
         record,
+        write_failure,
         local_path,
         target_filename,
         &source_stat,

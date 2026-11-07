@@ -42,6 +42,12 @@ matching split-send path, and a zero-length terminating USB write for
 packet-aligned transfers. This is a source-level dependency upgrade gate, not
 a substitute for a real-device transfer test.
 
+The script also fails unless the pinned libmtp source still contains the exact
+send-failure error-stack texts that the bridge reads to name the step of a
+failed map send and keep its PTP response (`verify-send-failure-texts.py`).
+That check patches nothing; without it a libmtp upgrade that rewords them
+would silently turn every step into `unknown`.
+
 The `partial-read-diagnostics-v1` local libmtp patch preserves a failed
 `GetPartialObject` PTP response in the existing error stack. The bridge exports
 only its numeric code in `read_ptp_response`; no raw error text is shared. USB

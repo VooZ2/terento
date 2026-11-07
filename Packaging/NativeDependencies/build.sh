@@ -207,6 +207,7 @@ if [ ! -f "$build_marker" ]; then
         tar -xOf "$download_dir/$LIBMTP_ARCHIVE" "libmtp-${LIBMTP_VERSION}/src/$patch_source" > "$libmtp_source/src/$patch_source"
     done
     assert_required_mtp_transport_behaviors "$libmtp_source"
+    /usr/bin/python3 "$script_dir/verify-send-failure-texts.py" "$libmtp_source/src/libmtp.c"
     /usr/bin/perl "$script_dir/patch-partial-read-diagnostics.pl" "$libmtp_source/src/libmtp.c"
     /usr/bin/perl "$script_dir/patch-usb-session-lifecycle.pl" "$libmtp_source/src/libusb1-glue.c"
     /usr/bin/python3 "$script_dir/patch-usb-recovery.py" "$libmtp_source/src/libusb1-glue.c" "$libmtp_source/src/libmtp.sym"

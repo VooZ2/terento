@@ -1,5 +1,22 @@
 # App–API compatibility and release contract
 
+## Next release server-first acceptance
+
+Not deployed yet. Deploy and verify this API before any client that sends it
+is published. It adds the optional failure-context fields `writeFailureStep`
+and `ptpResponseCode` for an attempted native map send that failed
+(`terento_map_write` -7): the step where it stopped and the numeric PTP
+response of the watch or the Mac's PTP layer
+([shared contract](README.md#structured-installation-failure-context)), shown
+in Admin technical details and the GitHub issue body. Released clients through
+1.1.0 never send them, so a -7 cannot say whether the watch refused the object
+(busy, full, access denied) or the USB transfer failed. The same client reports
+a final authorization refusal as `terento_map_write` -25 instead of -7; the
+API already accepts any signed code, so that needs no API change. The 1.1.0
+API rejects the two fields with `400`; a report sent to it would stay parked
+on the Mac until this API is deployed. No route, migration or other payload
+changes.
+
 ## 1.1.0 server-first acceptance
 
 Deployed: every addition below is in catalog API revision `80f54a77` (main

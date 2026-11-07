@@ -249,6 +249,81 @@ class FailureContextTests(unittest.TestCase):
                          phaseOutcome='FAILED', automaticFinishingResult='FAILED', nativeFailureCode='SEND_OBJECT_FAILED')
         self.check(candidate)
 
+    def test_map_write_send_step_and_ptp_response(self):
+        # Next client: the step of a failed native send and the PTP response
+        # the watch returned (or the Mac's PTP-layer error) for that step.
+        def send_failure(**context):
+            candidate = fixture('preflight')
+            candidate['failureContext'].update(boundary='write', operation='write', classificationSource='native',
+                                              resultKind='native_error', nativeCodeNamespace='terento_map_write',
+                                              nativeResultCode=-7, **context)
+            candidate['failureContext'].pop('nativeCategory', None)
+            candidate.update(failureStage='write', failureCode='INSTALL_FAILED_WRITE', writeStarted=True,
+                             phaseOutcome='FAILED', automaticFinishingResult='FAILED', nativeFailureCode='SEND_OBJECT_FAILED')
+            return candidate
+
+        for step in CONTEXT_ENUMS['writeFailureStep']:
+            with self.subTest(step=step):
+                self.check(send_failure(writeFailureStep=step))
+        for step, code in (('object_info', 0x2019), ('object_info', 0x200C), ('object_data', 0x02FF),
+                           ('object_data', 1), ('object_info', 0xFFFF)):
+            with self.subTest(step=step, code=code):
+                self.check(send_failure(writeFailureStep=step, ptpResponseCode=code))
+        for hostile in (
+            {'writeFailureStep': 'Object Info'}, {'writeFailureStep': ''}, {'writeFailureStep': None},
+            {'writeFailureStep': 'object_info', 'ptpResponseCode': 0},
+            {'writeFailureStep': 'object_info', 'ptpResponseCode': 0x10000},
+            {'writeFailureStep': 'object_info', 'ptpResponseCode': '0x2019'},
+            {'writeFailureStep': 'object_info', 'ptpResponseCode': True},
+            {'writeFailureStep': 'source_open', 'ptpResponseCode': 0x2019},
+            {'writeFailureStep': 'unknown', 'ptpResponseCode': 0x2019},
+            {'ptpResponseCode': 0x2019},
+            {'writeFailureStep': 'object_info', 'ptpText': 'Device Busy'},
+        ):
+            with self.subTest(hostile=hostile):
+                self.check(send_failure(**hostile), False)
+        # Only an attempted native send (-7) has a send step; a refusal (-25)
+        # or any other namespace never carries one.
+        refused = send_failure()
+        refused['failureContext']['nativeResultCode'] = -25
+        self.check(refused)
+        refused['failureContext']['writeFailureStep'] = 'object_info'
+        self.check(refused, False)
+        verify = fixture('preflight')
+        verify['failureContext'].update(boundary='readback', operation='readback', classificationSource='native',
+                                       executionMode='worker', resultKind='native_error',
+                                       nativeCodeNamespace='terento_map_verify', nativeResultCode=-7,
+                                       writeFailureStep='object_data', ptpResponseCode=0x02FF)
+        verify['failureContext'].pop('nativeCategory', None)
+        verify.update(failureStage='verify', failureCode='INSTALL_BLOCKED_VERIFICATION_REQUIRED', writeStarted=True,
+                      remoteObjectCreated=True, cleanupAttempted=False, cleanupSucceeded=False,
+                      transferProgressBucket='100', phaseOutcome='FAILED', automaticFinishingResult='FAILED',
+                      nativeFailureCode='READBACK_FAILED')
+        self.check(verify, False)
+        # Both schemas and the app's closed enum carry exactly these values.
+        support = json.loads((ROOT / 'contracts/support-report.schema.json').read_text())
+        self.assertEqual(support['$defs']['failureContext']['properties']['writeFailureStep']['enum'],
+                         list(CONTEXT_ENUMS['writeFailureStep']))
+        swift = (ROOT / 'app/TerentoCore/Sources/TerentoPoC/Installation/InstallationTransportProtocols.swift').read_text()
+        enum = swift.split('enum WriteFailureStep', 1)[1].split('\n    }\n', 1)[0]
+        self.assertEqual(re.findall(r'= "([^"]+)"', enum), list(CONTEXT_ENUMS['writeFailureStep']))
+        # Admin and the GitHub issue body show the step and a named PTP response.
+        context = send_failure(writeFailureStep='object_info', ptpResponseCode=0x2019)['failureContext']
+        row = {'map_result_index': 0, 'failure_context': context}
+        _, report = _github_issue_report('Edge 540', [row])
+        self.assertIn('Failure write failure step: object\\_info', report)
+        self.assertIn('Failure ptp response code: 0x2019 DeviceBusy', report)
+        details = _diagnostic_technical_details(row, 1)
+        self.assertIn('object_info', details)
+        self.assertIn('0x2019 DeviceBusy', details)
+        row['failure_context'] = send_failure(writeFailureStep='object_data', ptpResponseCode=0x7777)['failureContext']
+        _, report = _github_issue_report('Edge 540', [row])
+        self.assertIn('Failure ptp response code: 0x7777', report)
+        row['failure_context'] = send_failure()['failureContext']
+        _, report = _github_issue_report('Edge 540', [row])
+        self.assertIn('Failure write failure step: unavailable', report)
+        self.assertIn('Failure ptp response code: unavailable', report)
+
     def test_affected_folder_is_a_closed_coarse_location(self):
         schema = self.schema.schema['$defs']['failureContext']['properties']['protection']['properties']
         self.assertEqual(schema['affectedFolder']['enum'], list(AFFECTED_FOLDERS))

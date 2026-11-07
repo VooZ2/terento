@@ -221,6 +221,46 @@ with tempfile.TemporaryDirectory(prefix="terento-ptp-patch-") as directory:
 print("PASS: PTP diagnostics patch changes only failed response, is idempotent and rejects source drift")
 PYPATCH
 
+# The send-failure step texts the bridge reads are exactly the ones the build
+# verifies in the pinned libmtp source, and that check rejects drift.
+python3 - "$project_root/../../Packaging/NativeDependencies/verify-send-failure-texts.py" "$bridge" <<'PYSEND'
+import pathlib, re, subprocess, sys, tempfile
+verifier, bridge = sys.argv[1], pathlib.Path(sys.argv[2]).read_text()
+body = bridge.split("static void describe_map_send_failure(", 1)[1].split("\n}\n", 1)[0]
+bridge_texts = re.findall(r'\{"([^"]+)", TERENTO_WRITE_STEP_', body)
+assert len(bridge_texts) == 6, bridge_texts
+assert 'ptp_prefix[] = "PTP Layer error "' in body
+required = pathlib.Path(verifier).read_text().split("required = (", 1)[1].split("\n)", 1)[0]
+verified = re.findall(r"'\"([^\"]+)\"'", required)
+assert sorted(bridge_texts) == sorted(text for text in verified if "%" not in text), (bridge_texts, verified)
+pinned = """
+    snprintf(outstr, sizeof(outstr), "PTP Layer error %04x: %s", ptp_error, error_text);
+    add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL, "LIBMTP_Send_File_From_File(): Could not open source file.");
+    add_error_to_errorstack(device, LIBMTP_ERROR_CANCELLED, "LIBMTP_Send_File_From_File_Descriptor(): Cancelled transfer.");
+    add_ptp_error_to_errorstack(device, ret, "LIBMTP_Send_File_From_File_Descriptor(): "
+\t\t\t\t"Could not send object.");
+    add_error_to_errorstack(device, LIBMTP_ERROR_GENERAL,
+\t\t\t    "LIBMTP_Send_File_From_File_Descriptor(): "
+\t\t\t    "Could not retrieve updated metadata.");
+      add_ptp_error_to_errorstack(device, ret, "send_file_object_info():"
+\t\t\t\t  "Could not send object property list.");
+      add_ptp_error_to_errorstack(device, ret, "send_file_object_info(): "
+\t\t\t\t  "Could not send object info.");
+"""
+with tempfile.TemporaryDirectory(prefix="terento-send-texts-") as directory:
+    path = pathlib.Path(directory) / "libmtp.c"
+    path.write_text(pinned)
+    subprocess.run([sys.executable, verifier, str(path)], check=True)
+    for drift in ("Could not send object info.", "Cancelled transfer.", "PTP Layer error %04x: %s",
+                  "Could not send object."):
+        drifted = pinned.replace(drift, drift[:1] + "X" + drift[1:], 1)
+        assert drifted != pinned, drift
+        path.write_text(drifted)
+        result = subprocess.run([sys.executable, verifier, str(path)], capture_output=True)
+        assert result.returncode != 0, drift
+print("PASS: send-failure step texts match the pinned-source verification and reject drift")
+PYSEND
+
 # Exercise the pinned session patch and generated cleanup against fake USB.
 python3 "$project_root/Tests/TerentoPoCTests/USBLifecyclePatchTests.py" \
     "$project_root/../../Packaging/NativeDependencies/patch-usb-session-lifecycle.pl"

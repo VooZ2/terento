@@ -64,7 +64,8 @@ static char *fake_model(LIBMTP_mtpdevice_t *d) { return strdup("Test Watch"); }
 static int fake_storage(LIBMTP_mtpdevice_t *d, int sort) { return 0; }
 static void fake_release(LIBMTP_mtpdevice_t *d) {}
 static void fake_clear(LIBMTP_mtpdevice_t *d) {}
-static LIBMTP_error_t *fake_error(LIBMTP_mtpdevice_t *d) { return NULL; }
+static LIBMTP_error_t *error_stack;
+static LIBMTP_error_t *fake_error(LIBMTP_mtpdevice_t *d) { return error_stack; }
 static LIBMTP_file_t *entry(const char *name, uint32_t id, int is_folder, uint64_t size) {
     LIBMTP_file_t *f=LIBMTP_new_file_t(); f->filename=strdup(name); f->item_id=id;
     f->storage_id=1; f->filetype=is_folder?LIBMTP_FILETYPE_FOLDER:LIBMTP_FILETYPE_UNKNOWN; f->filesize=size; return f;
@@ -110,9 +111,11 @@ static TerentoMTPMutationAuthorization grant(uint32_t purpose,uint32_t kind) {
     return (TerentoMTPMutationAuthorization){1,id,claim,1,purpose,kind,filename,512,hash,
         "TEST-SERIAL",1,1,"/GARMIN"};
 }
+static TerentoMTPWriteFailure last_write_failure;
 static int install(TerentoMTPMapOperationProfile *p,TerentoMTPMutationAuthorization *a,TerentoMTPMutationRecord *r) {
     char error[256]={0};uint32_t id=0;uint64_t size=0;
-    return terento_mtp_install_map_file_authorized(p,a,r,source,filename,&id,&size,NULL,NULL,error,sizeof(error));
+    last_write_failure=(TerentoMTPWriteFailure){-1,0xFFFFFFFFu};
+    return terento_mtp_install_map_file_authorized(p,a,r,&last_write_failure,source,filename,&id,&size,NULL,NULL,error,sizeof(error));
 }
 static int remove_map(TerentoMTPMapOperationProfile *p,TerentoMTPMutationAuthorization *a,TerentoMTPMutationRecord *r) {
     char error[256]={0};
@@ -131,6 +134,65 @@ static void refused(const char *scenario, int result, int previous_sends, int pr
     assert(result!=0 && sends==previous_sends && deletes==previous_deletes);
     assert(!record->authorized && !record->attempted && !record->completed);
     printf("PASS: %s | authorized=0 send=0 delete=0 attempted=0 completed=0\n",scenario);
+}
+
+/* The step and PTP response of a failed send come only from the exact
+ * libmtp 1.1.23 error-stack texts; anything else stays unknown. */
+static void send_failure_diagnostics(void) {
+    struct { const char *texts[3]; int32_t step; uint32_t ptp; const char *name; } cases[] = {
+        {{"PTP Layer error 2019: send_file_object_info(): Could not send object info.", "Error 2019: Device Busy", NULL},
+            TERENTO_WRITE_STEP_OBJECT_INFO, 0x2019, "object info rejected (busy)"},
+        {{"PTP Layer error 200c: send_file_object_info():Could not send object property list.", NULL, NULL},
+            TERENTO_WRITE_STEP_OBJECT_INFO, 0x200c, "object property list rejected (store full)"},
+        {{"PTP Layer error 2002: send_file_object_info(): could not get property description.",
+          "PTP Layer error 200F: send_file_object_info(): Could not send object info.", "PTP Layer error 200f: ACCESS DENIED."},
+            TERENTO_WRITE_STEP_OBJECT_INFO, 0x200f, "non-fatal earlier entry is skipped"},
+        {{"PTP Layer error 02ff: LIBMTP_Send_File_From_File_Descriptor(): Could not send object.", NULL, NULL},
+            TERENTO_WRITE_STEP_OBJECT_DATA, 0x02ff, "object data failed (PTP-layer I/O)"},
+        {{"LIBMTP_Send_File_From_File(): Could not open source file.", NULL, NULL},
+            TERENTO_WRITE_STEP_SOURCE_OPEN, 0, "source file could not be opened"},
+        {{"LIBMTP_Send_File_From_File_Descriptor(): Cancelled transfer.", NULL, NULL},
+            TERENTO_WRITE_STEP_CANCELLED, 0, "transfer cancelled"},
+        {{"LIBMTP_Send_File_From_File_Descriptor(): Could not retrieve updated metadata.", NULL, NULL},
+            TERENTO_WRITE_STEP_OBJECT_METADATA, 0, "metadata after send unavailable"},
+        {{"PTP Layer error 2019: Could not send object info.", NULL, NULL},
+            TERENTO_WRITE_STEP_UNKNOWN, 0, "unrecognized wording"},
+        {{"PTP Layer error 0000: send_file_object_info(): Could not send object info.", NULL, NULL},
+            TERENTO_WRITE_STEP_UNKNOWN, 0, "zero response"},
+        {{"PTP Layer error 20g9: send_file_object_info(): Could not send object info.", NULL, NULL},
+            TERENTO_WRITE_STEP_UNKNOWN, 0, "non-hex response"},
+        {{"PTP Layer error 2019:send_file_object_info(): Could not send object info.", NULL, NULL},
+            TERENTO_WRITE_STEP_UNKNOWN, 0, "missing separator"},
+        {{"PTP Layer error 2019: send_file_object_info(): Could not send object info. /Users/x", NULL, NULL},
+            TERENTO_WRITE_STEP_UNKNOWN, 0, "trailing text"},
+        {{NULL, NULL, NULL}, TERENTO_WRITE_STEP_UNKNOWN, 0, "empty error stack"},
+    };
+    for (size_t i=0;i<sizeof(cases)/sizeof(cases[0]);++i) {
+        reset_matrix_fixture(); present=0; send_failure=-1;
+        LIBMTP_error_t entries[3]={{0}};
+        error_stack=NULL;
+        for (int j=2;j>=0;--j) {
+            if (!cases[i].texts[j]) continue;
+            entries[j].errornumber=LIBMTP_ERROR_PTP_LAYER;
+            entries[j].error_text=(char *)cases[i].texts[j];
+            entries[j].next=error_stack; error_stack=&entries[j];
+        }
+        TerentoMTPMapOperationProfile p=profile(); TerentoMTPMutationRecord r;
+        TerentoMTPMutationAuthorization a=grant(TERENTO_MUTATION_INSTALL,TERENTO_MUTATION_SEND);
+        int before_sends=sends;
+        assert(install(&p,&a,&r)==-7 && sends==before_sends+1 && r.attempted);
+        assert(last_write_failure.step==cases[i].step && last_write_failure.ptp_response==cases[i].ptp);
+        printf("PASS: send failure %s | step=%d ptp=0x%04x\n",cases[i].name,last_write_failure.step,last_write_failure.ptp_response);
+    }
+    error_stack=NULL;
+    reset_matrix_fixture(); present=0;
+    TerentoMTPMapOperationProfile p=profile(); TerentoMTPMutationRecord r;
+    TerentoMTPMutationAuthorization a=grant(TERENTO_MUTATION_INSTALL,TERENTO_MUTATION_SEND);
+    a.expected_size=513; int before_sends=sends;
+    assert(install(&p,&a,&r)==TERENTO_MTP_MUTATION_REFUSED && sends==before_sends && !r.attempted);
+    assert(last_write_failure.step==TERENTO_WRITE_STEP_UNKNOWN && last_write_failure.ptp_response==0);
+    puts("PASS: a refused send returns TERENTO_MTP_MUTATION_REFUSED, not -7, with no send step");
+    reset_matrix_fixture();
 }
 
 static void external_negative_matrix(void) {
@@ -242,7 +304,7 @@ int main(void) {
     TerentoMTPMapOperationProfile p=profile(); TerentoMTPMutationRecord r;
     TerentoMTPMutationAuthorization a=grant(TERENTO_MUTATION_INSTALL,TERENTO_MUTATION_SEND);
     assert(install(&p,&a,&r)==0 && sends==1 && r.authorized && r.attempted && r.completed && r.resulting_object_id==77);
-    assert(install(&p,&a,&r)!=0 && sends==1); /* in-process replay */
+    assert(install(&p,&a,&r)==TERENTO_MTP_MUTATION_REFUSED && sends==1); /* in-process replay */
     pid_t child=fork();assert(child>=0);
     if(!child){terento_consumed_count=0;_exit(install(&p,&a,&r)!=0 && sends==1?0:1);}
     int status;waitpid(child,&status,0);assert(WIFEXITED(status)&&WEXITSTATUS(status)==0);
@@ -292,8 +354,12 @@ int main(void) {
     xml_fixture="<!DOCTYPE GarminDevice><GarminDevice><Id>12345</Id></GarminDevice>";assert(!physical_identifier_matches(&p,&device));
     xml_fixture=NULL;
     p=profile();present=0;a=grant(1,1);send_failure=-123;
-    assert(install(&p,&a,&r)!=0 && sends==2 && r.attempted && r.completed && r.native_result==-123);
-    assert(install(&p,&a,&r)!=0 && sends==2);send_failure=0;
+    assert(install(&p,&a,&r)==-7 && sends==2 && r.attempted && r.completed && r.native_result==-123);
+    assert(last_write_failure.step==TERENTO_WRITE_STEP_UNKNOWN && last_write_failure.ptp_response==0);
+    /* A consumed claim refuses before libmtp: its own code, never the send failure -7. */
+    assert(install(&p,&a,&r)==TERENTO_MTP_MUTATION_REFUSED && sends==2 && !r.attempted);
+    assert(last_write_failure.step==TERENTO_WRITE_STEP_UNKNOWN && last_write_failure.ptp_response==0);
+    send_failure=0;
     char error[128];
     a=grant(6,2);assert(terento_mtp_delete_managed_map_authorized(&p,&a,&r,filename,77,512,read_progress,&progress_last,error,sizeof(error))==TERENTO_MTP_MUTATION_REFUSED&&deletes==1);
 assert(terento_mtp_delete_managed_map(&p,filename,77,512,error,sizeof(error))==TERENTO_MTP_MUTATION_REFUSED);
@@ -340,6 +406,7 @@ assert(terento_mtp_delete_managed_map(&p,filename,77,512,error,sizeof(error))==T
     puts("PASS: deletion read progress advances; completed corrupt reads cannot authorize deletion");
     external_negative_matrix();
     grant_negative_matrix();
+    send_failure_diagnostics();
     puts("PASS: native mutation authorization (real entrypoints, fake libmtp, no USB)");
     return 0;
 }

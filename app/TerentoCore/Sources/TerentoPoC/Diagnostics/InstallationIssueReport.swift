@@ -315,6 +315,8 @@ enum InstallationIssueReport {
             ("Native result code", context.nativeCodeNamespace == nil ? nil : context.nativeResultCode.map(String.init)),
             ("Retry count", context.retryCount.map(String.init)),
             ("Component", context.componentKind?.rawValue),
+            ("Write failure step", context.writeFailureStep?.rawValue),
+            ("PTP response code", context.ptpResponseCode.map { String(format: "0x%04X", UInt32($0)) }),
             ("Protection boundary", protection?.protectionBoundary.rawValue),
             ("Protection reason", protection?.protectionReason.rawValue),
             ("Comparison version", protection?.stableIdentityComparisonVersion.flatMap { (1...2).contains($0) ? String($0) : nil }),

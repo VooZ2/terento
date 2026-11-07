@@ -308,9 +308,43 @@ private actor DelayedAuthorizationResponse {
               && context?.nativeCodeNamespace == .terentoMapWrite && context?.nativeResultCode == -7
               && !error.isConfirmedDeviceDisconnected,
               "a generic native write failure keeps its write result code")
+        check(context?.writeFailureStep == nil && context?.ptpResponseCode == nil,
+              "without a native write observation no step or PTP response is invented")
         check(MTPMapInstallationTransport.writeError(
                 result: Int32(TERENTO_MTP_MAP_TARGET_EXISTS), message: "", createdItemID: nil) == .targetAlreadyExists,
               "specific native write results keep their own failure")
+        var failure = TerentoMTPWriteFailure()
+        failure.step = Int32(TERENTO_WRITE_STEP_OBJECT_INFO)
+        failure.ptp_response = 0x2019
+        let rejected = MTPMapInstallationTransport.writeError(
+            result: -7, message: "The selected map could not be transferred", createdItemID: nil, writeFailure: failure
+        ).failureContext
+        check(rejected?.nativeResultCode == -7 && rejected?.writeFailureStep == .objectInfo
+              && rejected?.ptpResponseCode == 0x2019,
+              "a send the watch rejected before any data keeps its step and PTP response")
+        failure.step = Int32(TERENTO_WRITE_STEP_OBJECT_DATA)
+        failure.ptp_response = 0x02FF
+        let data = MTPMapInstallationTransport.writeError(result: -7, message: "", createdItemID: 9, writeFailure: failure).failureContext
+        check(data?.writeFailureStep == .objectData && data?.ptpResponseCode == 0x02FF,
+              "a failed data phase keeps the Mac's PTP-layer error")
+        failure.step = Int32(TERENTO_WRITE_STEP_SOURCE_OPEN)
+        let opened = MTPMapInstallationTransport.writeError(result: -7, message: "", createdItemID: nil, writeFailure: failure).failureContext
+        check(opened?.writeFailureStep == .sourceOpen && opened?.ptpResponseCode == nil,
+              "a PTP response is kept only for the object-info and object-data steps")
+        failure.step = 99
+        check(MTPMapInstallationTransport.writeError(result: -7, message: "", createdItemID: nil, writeFailure: failure)
+                .failureContext?.writeFailureStep == .unknown,
+              "an unrecognized native step stays unknown")
+        failure.step = Int32(TERENTO_WRITE_STEP_OBJECT_INFO)
+        let refused = MTPMapInstallationTransport.writeError(
+            result: Int32(TERENTO_MTP_MUTATION_REFUSED), message: "", createdItemID: nil, writeFailure: failure
+        ).failureContext
+        check(refused?.nativeResultCode == Int32(TERENTO_MTP_MUTATION_REFUSED)
+              && refused?.writeFailureStep == nil && refused?.ptpResponseCode == nil,
+              "an authorization refusal keeps its own code and never a send step")
+        let encoded = String(decoding: try JSONEncoder().encode(rejected), as: UTF8.self)
+        check(encoded.contains("\"writeFailureStep\":\"object_info\"") && encoded.contains("\"ptpResponseCode\":8217"),
+              "the step and PTP response use the shared contract keys")
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
         let store = LocalInstallationEvidenceStore(rootURL: root)
@@ -319,14 +353,16 @@ private actor DelayedAuthorizationResponse {
         let operation = InstallationOperationDiagnostics(operationID: UUID(), identity: identity, plan: selection, controller: controller)
         let package = selection.installItems[0].package
         let artifact = selection.selectedPackagePlans[0].artifactPlan.selectedArtifacts[0]
-        operation.record(result(package: package, failure: .writeFailed, wrote: true, context: context),
+        operation.record(result(package: package, failure: .writeFailed, wrote: true, context: rejected),
                          packageID: package.id, artifactID: artifact.id)
         await operation.waitForDeliveryForTesting()
         let events = store.events()
         check(events.count == 1 && events[0].failureStage == .write
               && events[0].failureContext?.nativeCodeNamespace == .terentoMapWrite
-              && events[0].failureContext?.nativeResultCode == -7,
-              "the native write result reaches the installation report")
+              && events[0].failureContext?.nativeResultCode == -7
+              && events[0].failureContext?.writeFailureStep == .objectInfo
+              && events[0].failureContext?.ptpResponseCode == 0x2019,
+              "the native write result, step and PTP response reach the installation report")
         emittedFixtures += events
     }
 
