@@ -9,7 +9,7 @@ Terento fonctionne avec les montres Garmin et les compteurs vélo Garmin Edge r�
 
 L’absence de votre modèle ne veut pas dire qu’il ne fonctionne pas. Personne n’a peut-être encore partagé d’installation réussie avec ce modèle.
 
-**40** modèles avec des installations réussies**365** installations réussiesDernière installation réussie 6 novembre 2026
+**42** modèles avec des installations réussies**373** installations réussiesDernière installation réussie 7 novembre 2026
 
 Comment fonctionne cette liste
 
@@ -19,7 +19,7 @@ Les résultats d’installation sont partagés avec Terento par les utilisateurs
 
 La version actuelle comprend tous les fournisseurs de cartes du catalogue. Cette information produit est distincte des résultats d’appareils présentés ici.
 
-40 modèles
+42 modèles
 
 fēnix
 
@@ -55,11 +55,11 @@ fēnix
 
 ### fēnix 9 Pro 51 mm, AMOLED
 
-21 installations réussies
+23 installations réussies
 
-App 21
+App 23
 
-Dernière installation réussie 6 novembre 2026
+Dernière installation réussie 7 novembre 2026
 
 epix
 
@@ -185,11 +185,11 @@ fēnix
 
 ### fēnix 8 43 mm, AMOLED
 
-7 installations réussies
+8 installations réussies
 
-App 7
+App 8
 
-Dernière installation réussie 31 octobre 2026
+Dernière installation réussie 7 novembre 2026
 
 fēnix
 
@@ -221,6 +221,16 @@ App 6
 
 Dernière installation réussie 12 octobre 2026
 
+epix
+
+### epix (Gen 2) 47 mm
+
+5 installations réussies
+
+App 1 Web 4
+
+Dernière installation réussie 7 novembre 2026
+
 fēnix
 
 ### fēnix 8 Pro 47 mm, AMOLED, inReach
@@ -230,16 +240,6 @@ fēnix
 App 5
 
 Dernière installation réussie 21 octobre 2026
-
-epix
-
-### epix (Gen 2) 47 mm
-
-4 installations réussies
-
-Web 4
-
-Dernière installation réussie 19 octobre 2026
 
 fēnix
 
@@ -260,6 +260,16 @@ fēnix
 App 4
 
 Dernière installation réussie 23 septembre 2026
+
+Edge
+
+### Edge 1050 Smartwatch
+
+3 installations réussies
+
+App 3
+
+Dernière installation réussie 7 novembre 2026
 
 Edge
 
@@ -380,6 +390,16 @@ Venu
 App 2
 
 Dernière installation réussie 29 octobre 2026
+
+Enduro
+
+### Enduro 3 MIP, Solar
+
+1 installation réussie
+
+App 1
+
+Dernière installation réussie 7 novembre 2026
 
 fēnix
 
