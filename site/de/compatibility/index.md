@@ -9,7 +9,7 @@ Terento funktioniert mit Garmin-Uhren und neueren Garmin Edge Fahrradcomputern m
 
 Wenn dein Modell fehlt, heißt das nicht, dass es nicht funktioniert. Vielleicht hat noch niemand eine erfolgreiche Installation damit geteilt.
 
-**40** Modelle mit erfolgreichen Installationen**365** erfolgreiche InstallationenLetzte erfolgreiche Installation 6. November 2026
+**42** Modelle mit erfolgreichen Installationen**373** erfolgreiche InstallationenLetzte erfolgreiche Installation 7. November 2026
 
 So funktioniert diese Liste
 
@@ -19,7 +19,7 @@ Die Installationsergebnisse wurden von Nutzern mit Terento geteilt; sie sind kei
 
 Die aktuelle Version umfasst alle Kartenanbieter im Katalog. Diese Produktinformation ist von den hier gezeigten Geräteergebnissen getrennt.
 
-40 Modelle
+42 Modelle
 
 fēnix
 
@@ -55,11 +55,11 @@ fēnix
 
 ### fēnix 9 Pro 51 mm, AMOLED
 
-21 erfolgreiche Installationen
+23 erfolgreiche Installationen
 
-App 21
+App 23
 
-Letzte erfolgreiche Installation 6. November 2026
+Letzte erfolgreiche Installation 7. November 2026
 
 epix
 
@@ -185,11 +185,11 @@ fēnix
 
 ### fēnix 8 43 mm, AMOLED
 
-7 erfolgreiche Installationen
+8 erfolgreiche Installationen
 
-App 7
+App 8
 
-Letzte erfolgreiche Installation 31. Oktober 2026
+Letzte erfolgreiche Installation 7. November 2026
 
 fēnix
 
@@ -221,6 +221,16 @@ App 6
 
 Letzte erfolgreiche Installation 12. Oktober 2026
 
+epix
+
+### epix (Gen 2) 47 mm
+
+5 erfolgreiche Installationen
+
+App 1 Web 4
+
+Letzte erfolgreiche Installation 7. November 2026
+
 fēnix
 
 ### fēnix 8 Pro 47 mm, AMOLED, inReach
@@ -230,16 +240,6 @@ fēnix
 App 5
 
 Letzte erfolgreiche Installation 21. Oktober 2026
-
-epix
-
-### epix (Gen 2) 47 mm
-
-4 erfolgreiche Installationen
-
-Web 4
-
-Letzte erfolgreiche Installation 19. Oktober 2026
 
 fēnix
 
@@ -260,6 +260,16 @@ fēnix
 App 4
 
 Letzte erfolgreiche Installation 23. September 2026
+
+Edge
+
+### Edge 1050 Smartwatch
+
+3 erfolgreiche Installationen
+
+App 3
+
+Letzte erfolgreiche Installation 7. November 2026
 
 Edge
 
@@ -380,6 +390,16 @@ Venu
 App 2
 
 Letzte erfolgreiche Installation 29. Oktober 2026
+
+Enduro
+
+### Enduro 3 MIP, Solar
+
+1 erfolgreiche Installation
+
+App 1
+
+Letzte erfolgreiche Installation 7. November 2026
 
 fēnix
 

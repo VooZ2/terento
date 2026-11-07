@@ -60,10 +60,10 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-04337-05/g/cf-lg.jpg",
-      "successfulInstallations": 21,
-      "appSuccessfulInstallations": 21,
+      "successfulInstallations": 23,
+      "appSuccessfulInstallations": 23,
       "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-11-06T09:23:33+00:00"
+      "lastSuccessfulInstallation": "2026-11-07T19:38:47+00:00"
     },
     {
       "model": "epix Pro (Gen 2) · 51 mm, AMOLED",
@@ -268,10 +268,10 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-02903-10/g/cf-lg.jpg",
-      "successfulInstallations": 7,
-      "appSuccessfulInstallations": 7,
+      "successfulInstallations": 8,
+      "appSuccessfulInstallations": 8,
       "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-10-31T21:13:30+00:00"
+      "lastSuccessfulInstallation": "2026-11-07T18:03:52+00:00"
     },
     {
       "model": "fēnix 9 Pro · inReach, 47 mm",
@@ -322,6 +322,22 @@
       "lastSuccessfulInstallation": "2026-10-12T12:46:36+00:00"
     },
     {
+      "model": "epix (Gen 2) · 47 mm",
+      "variant": "47 mm",
+      "caseSizeMm": 47,
+      "displayType": null,
+      "screenTechnology": null,
+      "solar": null,
+      "inReach": null,
+      "family": "epix",
+      "familyName": "epix",
+      "imageUrl": "https://res.garmin.com/en/products/010-02582-01/v/cf-lg-58ede9b6-fbfa-43b9-a81a-9e114b29b58d.jpg",
+      "successfulInstallations": 5,
+      "appSuccessfulInstallations": 1,
+      "webSuccessfulInstallations": 4,
+      "lastSuccessfulInstallation": "2026-11-07T13:00:17+00:00"
+    },
+    {
       "model": "fēnix 8 Pro · 47 mm, AMOLED",
       "variant": "47 mm, AMOLED",
       "caseSizeMm": 47,
@@ -336,22 +352,6 @@
       "appSuccessfulInstallations": 5,
       "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-10-21T13:19:19+00:00"
-    },
-    {
-      "model": "epix (Gen 2) · 47 mm",
-      "variant": "47 mm",
-      "caseSizeMm": 47,
-      "displayType": null,
-      "screenTechnology": null,
-      "solar": null,
-      "inReach": null,
-      "family": "epix",
-      "familyName": "epix",
-      "imageUrl": "https://res.garmin.com/en/products/010-02582-01/v/cf-lg-58ede9b6-fbfa-43b9-a81a-9e114b29b58d.jpg",
-      "successfulInstallations": 4,
-      "appSuccessfulInstallations": 0,
-      "webSuccessfulInstallations": 4,
-      "lastSuccessfulInstallation": "2026-10-19T14:08:47+00:00"
     },
     {
       "model": "fēnix 7S Pro · Historical",
@@ -384,6 +384,22 @@
       "appSuccessfulInstallations": 4,
       "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-09-23T18:33:25+00:00"
+    },
+    {
+      "model": "Edge 1050",
+      "variant": null,
+      "caseSizeMm": null,
+      "displayType": null,
+      "screenTechnology": null,
+      "solar": null,
+      "inReach": null,
+      "family": "edge",
+      "familyName": "Edge",
+      "imageUrl": "https://res.garmin.com/en/products/010-02890-01/g/cf-lg.jpg",
+      "successfulInstallations": 3,
+      "appSuccessfulInstallations": 3,
+      "webSuccessfulInstallations": 0,
+      "lastSuccessfulInstallation": "2026-11-07T18:01:47+00:00"
     },
     {
       "model": "Edge 540",
@@ -578,6 +594,22 @@
       "lastSuccessfulInstallation": "2026-10-29T08:52:55+00:00"
     },
     {
+      "model": "Enduro 3",
+      "variant": null,
+      "caseSizeMm": null,
+      "displayType": null,
+      "screenTechnology": "MIP",
+      "solar": true,
+      "inReach": null,
+      "family": "enduro",
+      "familyName": "Enduro",
+      "imageUrl": "https://res.garmin.com/en/products/010-02751-00/g/cf-lg.jpg",
+      "successfulInstallations": 1,
+      "appSuccessfulInstallations": 1,
+      "webSuccessfulInstallations": 0,
+      "lastSuccessfulInstallation": "2026-11-07T14:33:01+00:00"
+    },
+    {
       "model": "fēnix 9 Pro · 43mm",
       "variant": "43mm",
       "caseSizeMm": 43,
@@ -642,5 +674,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-11-06T19:10:22.467008+00:00"
+  "generatedAt": "2026-11-07T21:40:24.191412+00:00"
 }

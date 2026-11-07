@@ -9,7 +9,7 @@ Terento works with Garmin watches and newer Garmin Edge bike computers with map 
 
 Not seeing your model? That doesn’t mean it won’t work. It may be that no one has shared a successful install from it yet.
 
-**40** models with successful installs**365** successful installsLatest successful install November 6, 2026
+**42** models with successful installs**373** successful installsLatest successful install November 7, 2026
 
 How this list works
 
@@ -19,7 +19,7 @@ Installation results are shared with Terento by users. They are not Garmin certi
 
 The current version includes every map provider in the catalog. This product information is separate from the device results shown here.
 
-40 models
+42 models
 
 fēnix
 
@@ -55,11 +55,11 @@ fēnix
 
 ### fēnix 9 Pro 51 mm, AMOLED
 
-21 successful installs
+23 successful installs
 
-App 21
+App 23
 
-Latest successful install November 6, 2026
+Latest successful install November 7, 2026
 
 epix
 
@@ -185,11 +185,11 @@ fēnix
 
 ### fēnix 8 43 mm, AMOLED
 
-7 successful installs
+8 successful installs
 
-App 7
+App 8
 
-Latest successful install October 31, 2026
+Latest successful install November 7, 2026
 
 fēnix
 
@@ -221,6 +221,16 @@ App 6
 
 Latest successful install October 12, 2026
 
+epix
+
+### epix (Gen 2) 47 mm
+
+5 successful installs
+
+App 1 Web 4
+
+Latest successful install November 7, 2026
+
 fēnix
 
 ### fēnix 8 Pro 47 mm, AMOLED, inReach
@@ -230,16 +240,6 @@ fēnix
 App 5
 
 Latest successful install October 21, 2026
-
-epix
-
-### epix (Gen 2) 47 mm
-
-4 successful installs
-
-Web 4
-
-Latest successful install October 19, 2026
 
 fēnix
 
@@ -260,6 +260,16 @@ fēnix
 App 4
 
 Latest successful install September 23, 2026
+
+Edge
+
+### Edge 1050 Smartwatch
+
+3 successful installs
+
+App 3
+
+Latest successful install November 7, 2026
 
 Edge
 
@@ -380,6 +390,16 @@ Venu
 App 2
 
 Latest successful install October 29, 2026
+
+Enduro
+
+### Enduro 3 MIP, Solar
+
+1 successful install
+
+App 1
+
+Latest successful install November 7, 2026
 
 fēnix
 
