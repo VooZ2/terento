@@ -39,7 +39,7 @@ from .compatibility_status import (
 from .device_catalog import _official_source_image_url
 from .models import RETAIL_RETIREMENT_MISSED_RUNS
 from .failure_reasons import failure_reason_label, normalize_failure_reason
-from .failure_context import validate_context
+from .failure_context import PTP_RESPONSE_NAMES, validate_context
 from .map_capability import classify_map_capable
 from .installation_policy import installation_authorization_for_row
 from .identity_assessment import preferred_candidates as _identity_presentation_candidates
@@ -942,7 +942,12 @@ def _failure_context_fields(result: dict[str, Any], key: str, *, technical: bool
             ('Last successful boundary', 'lastSuccessfulBoundary'), ('Operation', 'operation'),
             ('Execution mode', 'executionMode'), ('Result kind', 'resultKind'),
             ('Native code namespace', 'nativeCodeNamespace'), ('Native result code', 'nativeResultCode'),
+            ('Write failure step', 'writeFailureStep'),
         ))
+        code = context.get('ptpResponseCode')
+        fields.append(('PTP response code', None if code is None else ' '.join(
+            part for part in (f'0x{code:04X}', PTP_RESPONSE_NAMES.get(code)) if part
+        )))
         fields.extend((name, protection.get(name)) for name in (
             'protectionBoundary', 'stableIdentityComparisonVersion', 'beforeObjectCount', 'afterObjectCount',
             'addedObjectCount', 'removedObjectCount', 'changedObjectCount', 'affectedFolder', 'targetPresent', 'targetUnique',

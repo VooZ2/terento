@@ -227,15 +227,33 @@ Optional context fields have these controlled values:
 | `nativeResultCode` | Signed 32-bit integer; present if and only if `nativeCodeNamespace` is present |
 | `retryCount` | Integer 0–255; operation retries, not diagnostic upload attempts |
 | `componentKind` | `main`, `contours`, matching the artifact component kind |
+| `writeFailureStep` | `unknown`, `source_open`, `object_info`, `object_data`, `cancelled`, `object_metadata`; only with `terento_map_write` -7 |
+| `ptpResponseCode` | Integer 1–65535; only with `writeFailureStep` `object_info` or `object_data` |
 
 Booleans are not integers. Native codes describe the named Terento boundary
 (`terento_map_write` is the result of the native map write call, for example
--4 when no single watch session could be opened and -7 when the transfer
-itself failed; `terento_map_verify` is the result of the native sampled
+-4 when no single watch session could be opened, -7 when libmtp attempted the
+send and it failed, and -25 when the final authorization gate refused the send
+so libmtp was never called (clients through 1.1.0 report that refusal as -7
+too); `terento_map_verify` is the result of the native sampled
 read-back after the write, for example -8 when the fresh watch session could
 not be opened, -9 when a sample could not be read and -11 when the sampled
 bytes differ from the validated source);
-no libmtp namespace or invented libmtp result code is accepted. Optional
+no libmtp namespace or invented libmtp result code is accepted.
+
+Optional `writeFailureStep` (apps newer than 1.1.0) names where an attempted
+native send (`terento_map_write` -7) stopped, read only from the exact error
+texts of the pinned libmtp: `source_open` (the local map file could not be
+opened), `object_info` (the watch refused the object before any data, for
+example busy, full or access denied), `object_data` (the data transfer
+failed), `cancelled`, `object_metadata` (the object was sent but its details
+could not be read back), or `unknown` (any other or reworded text). Optional
+`ptpResponseCode` is the numeric response of that `object_info` or
+`object_data` step: a PTP/MTP response from the watch (`0x2000`–`0x2FFF`,
+`0xA800`–`0xAFFF`) or a PTP-layer error on the Mac (`0x02F9`–`0x02FF`, for
+example `0x02FF` USB I/O and `0x02FA` timeout). Device or libmtp text is never
+sent. They are diagnostic observations only and never change a result,
+classification or authorization. Optional
 `protection` is a nested closed object requiring `protectionBoundary`
 (`pre-write` or `post-write`) and `protectionReason`, one of:
 `target-present-before-write`, `non-target-object-added`,

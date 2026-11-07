@@ -89,6 +89,7 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
         }
         var itemID: UInt32 = 0
         var sizeBytes: UInt64 = 0
+        var writeFailure = TerentoMTPWriteFailure()
         var errorBuffer = [CChar](repeating: 0, count: Self.errorCapacity)
         let validatedSourceSize: UInt64? = {
             guard let attributes = try? FileManager.default.attributesOfItem(atPath: sourceURL.path),
@@ -125,7 +126,7 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
                             try authorizedMutation(purpose: mutationPurpose, filename: targetFilename,
                                 size: validatedSourceSize ?? 0, sha256: nil) { authorization, record in
                             terento_mtp_install_map_file_authorized(
-                                nativeProfile, authorization, record,
+                                nativeProfile, authorization, record, &writeFailure,
                                 sourcePath,
                                 filename,
                                 &itemID,
@@ -146,7 +147,8 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
             throw Self.writeError(
                 result: result,
                 message: errorMessage(from: errorBuffer),
-                createdItemID: itemID == 0 ? nil : itemID
+                createdItemID: itemID == 0 ? nil : itemID,
+                writeFailure: writeFailure
             )
         }
 
@@ -479,15 +481,24 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
     }
 
     /// A generic write failure keeps the native write result for diagnostics
-    /// (`terento_map_write`), e.g. -4 when no single watch session opened and
-    /// -7 when the transfer itself failed. Specific results keep their cases.
+    /// (`terento_map_write`), e.g. -4 when no single watch session opened, -7
+    /// when libmtp attempted the send and it failed (with its step and PTP
+    /// response) and -25 when the final authorization gate refused it.
+    /// Specific results keep their cases.
     static func writeError(
         result: Int32,
         message: String,
-        createdItemID: UInt32?
+        createdItemID: UInt32?,
+        writeFailure: TerentoMTPWriteFailure? = nil
     ) -> InstallationTransportError {
         let mapped = mapError(result: result, message: message, createdItemID: createdItemID)
         guard case .operationFailed(let readable, let createdID) = mapped else { return mapped }
+        let step = result == -7 ? writeFailure.map(Self.writeFailureStep) : nil
+        let ptpResponse: UInt16? = {
+            guard let writeFailure, step == .objectInfo || step == .objectData,
+                  (1...0xFFFF).contains(writeFailure.ptp_response) else { return nil }
+            return UInt16(writeFailure.ptp_response)
+        }()
         return .contextual(
             failure: .operationFailed,
             message: readable,
@@ -495,9 +506,21 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
             context: InstallationFailureContext(
                 boundary: .write, classificationSource: .native, devicePresence: .unknown,
                 operation: .write, executionMode: .inProcess, resultKind: .nativeError,
-                nativeCodeNamespace: .terentoMapWrite, nativeResultCode: result
+                nativeCodeNamespace: .terentoMapWrite, nativeResultCode: result,
+                writeFailureStep: step, ptpResponseCode: ptpResponse
             )
         )
+    }
+
+    static func writeFailureStep(_ failure: TerentoMTPWriteFailure) -> InstallationFailureContext.WriteFailureStep {
+        switch failure.step {
+        case Int32(TERENTO_WRITE_STEP_SOURCE_OPEN): return .sourceOpen
+        case Int32(TERENTO_WRITE_STEP_OBJECT_INFO): return .objectInfo
+        case Int32(TERENTO_WRITE_STEP_OBJECT_DATA): return .objectData
+        case Int32(TERENTO_WRITE_STEP_CANCELLED): return .cancelled
+        case Int32(TERENTO_WRITE_STEP_OBJECT_METADATA): return .objectMetadata
+        default: return .unknown
+        }
     }
 
     /// A generic sampled read-back failure keeps the native result for

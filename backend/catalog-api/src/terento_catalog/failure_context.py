@@ -16,6 +16,33 @@ CONTEXT_ENUMS = {
     'nativeCategory': ('detection', 'session_open', 'storage_read', 'inventory_read', 'object_read', 'allocation', 'invalid_argument', 'unspecified'),
     'nativeCodeNamespace': ('terento_snapshot', 'terento_inventory', 'terento_file_prefix', 'terento_file_range', 'terento_map_write', 'terento_map_verify'),
     'componentKind': ('main', 'contours'),
+    # Step of a failed native map send (terento_map_write -7), named by the app
+    # from the exact pinned libmtp error-stack texts; never device text.
+    'writeFailureStep': ('unknown', 'source_open', 'object_info', 'object_data', 'cancelled', 'object_metadata'),
+}
+PTP_RESPONSE_STEPS = ('object_info', 'object_data')
+# Names of the PTP responses and PTP-layer errors defined by the pinned
+# libmtp 1.1.23 ptp.h, for display only. Any 0x0001-0xFFFF value is accepted.
+PTP_RESPONSE_NAMES = {
+    0x2001: 'OK', 0x2002: 'GeneralError', 0x2003: 'SessionNotOpen', 0x2004: 'InvalidTransactionID',
+    0x2005: 'OperationNotSupported', 0x2006: 'ParameterNotSupported', 0x2007: 'IncompleteTransfer',
+    0x2008: 'InvalidStorageId', 0x2009: 'InvalidObjectHandle', 0x200A: 'DevicePropNotSupported',
+    0x200B: 'InvalidObjectFormatCode', 0x200C: 'StoreFull', 0x200D: 'ObjectWriteProtected',
+    0x200E: 'StoreReadOnly', 0x200F: 'AccessDenied', 0x2010: 'NoThumbnailPresent', 0x2011: 'SelfTestFailed',
+    0x2012: 'PartialDeletion', 0x2013: 'StoreNotAvailable', 0x2014: 'SpecificationByFormatUnsupported',
+    0x2015: 'NoValidObjectInfo', 0x2016: 'InvalidCodeFormat', 0x2017: 'UnknownVendorCode',
+    0x2018: 'CaptureAlreadyTerminated', 0x2019: 'DeviceBusy', 0x201A: 'InvalidParentObject',
+    0x201B: 'InvalidDevicePropFormat', 0x201C: 'InvalidDevicePropValue', 0x201D: 'InvalidParameter',
+    0x201E: 'SessionAlreadyOpened', 0x201F: 'TransactionCanceled',
+    0x2020: 'SpecificationOfDestinationUnsupported', 0x2021: 'InvalidEnumHandle', 0x2022: 'NoStreamEnabled',
+    0x2023: 'InvalidDataSet',
+    0xA801: 'MTP_Invalid_ObjectPropCode', 0xA802: 'MTP_Invalid_ObjectProp_Format',
+    0xA803: 'MTP_Invalid_ObjectProp_Value', 0xA804: 'MTP_Invalid_ObjectReference', 0xA806: 'MTP_Invalid_Dataset',
+    0xA807: 'MTP_Specification_By_Group_Unsupported', 0xA808: 'MTP_Specification_By_Depth_Unsupported',
+    0xA809: 'MTP_Object_Too_Large', 0xA80A: 'MTP_ObjectProp_Not_Supported',
+    0x02F9: 'PTP_ERROR_NODEVICE', 0x02FA: 'PTP_ERROR_TIMEOUT', 0x02FB: 'PTP_ERROR_CANCEL',
+    0x02FC: 'PTP_ERROR_BADPARAM', 0x02FD: 'PTP_ERROR_RESP_EXPECTED', 0x02FE: 'PTP_ERROR_DATA_EXPECTED',
+    0x02FF: 'PTP_ERROR_IO',
 }
 PROTECTION_ENUMS = {
     'protectionBoundary': ('pre-write', 'post-write'),
@@ -47,7 +74,7 @@ def _integer(value: Any, minimum: int, maximum: int) -> bool:
 
 
 def validate_context(context: Any) -> None:
-    allowed = set(CONTEXT_ENUMS) | {'nativeResultCode', 'retryCount', 'protection'}
+    allowed = set(CONTEXT_ENUMS) | {'nativeResultCode', 'retryCount', 'protection', 'ptpResponseCode'}
     if not isinstance(context, dict) or set(context) - allowed:
         raise ValueError('invalid_failure_context_fields')
     if not {'boundary', 'classificationSource', 'devicePresence'} <= set(context):
@@ -61,6 +88,15 @@ def validate_context(context: Any) -> None:
         raise ValueError('invalid_native_result_code')
     if 'retryCount' in context and not _integer(context['retryCount'], 0, 255):
         raise ValueError('invalid_retry_count')
+    if ('writeFailureStep' in context or 'ptpResponseCode' in context) and (
+        context.get('nativeCodeNamespace') != 'terento_map_write' or context.get('nativeResultCode') != -7
+    ):
+        raise ValueError('write_failure_requires_map_write_send')
+    if 'ptpResponseCode' in context and (
+        not _integer(context['ptpResponseCode'], 1, 0xFFFF)
+        or context.get('writeFailureStep') not in PTP_RESPONSE_STEPS
+    ):
+        raise ValueError('invalid_ptp_response_code')
     if 'protection' not in context:
         return
     protection = context['protection']

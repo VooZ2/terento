@@ -141,6 +141,25 @@ typedef struct {
     uint32_t mutation_kind;
 } TerentoMTPMutationRecord;
 
+/* Diagnostic-only step of a failed map send, read from the exact error-stack
+ * entries of the pinned libmtp 1.1.23. Never device text, paths or libmtp
+ * result codes; unknown wording stays TERENTO_WRITE_STEP_UNKNOWN. */
+enum {
+    TERENTO_WRITE_STEP_UNKNOWN = 0,
+    TERENTO_WRITE_STEP_SOURCE_OPEN = 1,
+    TERENTO_WRITE_STEP_OBJECT_INFO = 2,
+    TERENTO_WRITE_STEP_OBJECT_DATA = 3,
+    TERENTO_WRITE_STEP_CANCELLED = 4,
+    TERENTO_WRITE_STEP_OBJECT_METADATA = 5
+};
+
+typedef struct {
+    int32_t step;
+    /* The PTP response or PTP-layer error (0x0001-0xFFFF) of an object-info
+     * or object-data step; 0 when none was observed. */
+    uint32_t ptp_response;
+} TerentoMTPWriteFailure;
+
 /* A real transfer callback. Returning non-zero cancels the transfer. */
 typedef int (*TerentoMTPProgressCallback)(
     uint64_t sent,
@@ -298,10 +317,14 @@ int terento_mtp_install_map_file(
 );
 
 /* Legacy entry point above refuses mutations; use explicit authorization. */
+/* A send that libmtp attempted and failed returns -7 and fills the optional
+ * write_failure; a send the authorization gate refused returns
+ * TERENTO_MTP_MUTATION_REFUSED and libmtp is never called. */
 int terento_mtp_install_map_file_authorized(
     const TerentoMTPMapOperationProfile *profile,
     const TerentoMTPMutationAuthorization *authorization,
     TerentoMTPMutationRecord *record,
+    TerentoMTPWriteFailure *write_failure,
     const char *local_path,
     const char *target_filename,
     uint32_t *item_id,

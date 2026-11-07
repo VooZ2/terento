@@ -460,6 +460,23 @@
           "minimum": 0,
           "maximum": 255
         },
+        "writeFailureStep": {
+          "enum": [
+            "unknown",
+            "source_open",
+            "object_info",
+            "object_data",
+            "cancelled",
+            "object_metadata"
+          ],
+          "description": "Step of a failed native map send (terento_map_write -7), named from the exact pinned libmtp error-stack texts. Never device text."
+        },
+        "ptpResponseCode": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "description": "PTP response returned by the watch, or the Mac's PTP-layer error (0x02F9-0x02FF), for an object_info or object_data step."
+        },
         "protection": {
           "type": "object",
           "additionalProperties": false,
@@ -888,6 +905,56 @@
                 "enum": [
                   "prewrite_protection",
                   "postwrite_protection"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "anyOf": [
+              {
+                "required": [
+                  "writeFailureStep"
+                ]
+              },
+              {
+                "required": [
+                  "ptpResponseCode"
+                ]
+              }
+            ]
+          },
+          "then": {
+            "required": [
+              "nativeCodeNamespace",
+              "nativeResultCode"
+            ],
+            "properties": {
+              "nativeCodeNamespace": {
+                "const": "terento_map_write"
+              },
+              "nativeResultCode": {
+                "const": -7
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "ptpResponseCode"
+            ]
+          },
+          "then": {
+            "required": [
+              "writeFailureStep"
+            ],
+            "properties": {
+              "writeFailureStep": {
+                "enum": [
+                  "object_info",
+                  "object_data"
                 ]
               }
             }

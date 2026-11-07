@@ -76,6 +76,16 @@ struct InstallationFailureContext: Codable, Equatable, Sendable {
         case main = "main"
         case contours = "contours"
     }
+    /// The step of a failed native map send (`terento_map_write` -7), from
+    /// the exact libmtp error-stack texts. Never device text.
+    enum WriteFailureStep: String, Codable, Sendable, CaseIterable {
+        case unknown = "unknown"
+        case sourceOpen = "source_open"
+        case objectInfo = "object_info"
+        case objectData = "object_data"
+        case cancelled = "cancelled"
+        case objectMetadata = "object_metadata"
+    }
 
     let boundary: Boundary
     let classificationSource: ClassificationSource
@@ -90,6 +100,10 @@ struct InstallationFailureContext: Codable, Equatable, Sendable {
     let retryCount: UInt8?
     let componentKind: ComponentKind?
     let protection: InstallationProtectionContext?
+    let writeFailureStep: WriteFailureStep?
+    /// The PTP response the watch returned, or the Mac's PTP-layer error, for
+    /// an `object_info` or `object_data` step (1...0xFFFF).
+    let ptpResponseCode: UInt16?
 
     init(
         boundary: Boundary,
@@ -104,7 +118,9 @@ struct InstallationFailureContext: Codable, Equatable, Sendable {
         nativeResultCode: Int32? = nil,
         retryCount: UInt8? = nil,
         componentKind: ComponentKind? = nil,
-        protection: InstallationProtectionContext? = nil
+        protection: InstallationProtectionContext? = nil,
+        writeFailureStep: WriteFailureStep? = nil,
+        ptpResponseCode: UInt16? = nil
     ) {
         self.boundary = boundary
         self.classificationSource = classificationSource
@@ -119,6 +135,8 @@ struct InstallationFailureContext: Codable, Equatable, Sendable {
         self.retryCount = retryCount
         self.componentKind = componentKind
         self.protection = protection
+        self.writeFailureStep = writeFailureStep
+        self.ptpResponseCode = ptpResponseCode
     }
 }
 
@@ -148,7 +166,8 @@ extension InstallationFailureContext {
              operation: operation, executionMode: executionMode, resultKind: resultKind,
              nativeCategory: nativeCategory, nativeCodeNamespace: nativeCodeNamespace,
              nativeResultCode: nativeResultCode, retryCount: retryCount,
-             componentKind: componentKind ?? self.componentKind, protection: protection)
+             componentKind: componentKind ?? self.componentKind, protection: protection,
+             writeFailureStep: writeFailureStep, ptpResponseCode: ptpResponseCode)
     }
 
     /// The same facts with the number of retries made before this failure.
@@ -157,7 +176,7 @@ extension InstallationFailureContext {
              lastSuccessfulBoundary: lastSuccessfulBoundary, operation: operation, executionMode: executionMode,
              resultKind: resultKind, nativeCategory: nativeCategory, nativeCodeNamespace: nativeCodeNamespace,
              nativeResultCode: nativeResultCode, retryCount: count, componentKind: componentKind,
-             protection: protection)
+             protection: protection, writeFailureStep: writeFailureStep, ptpResponseCode: ptpResponseCode)
     }
 
     /// `terento_mtp_read_snapshot_diagnostic` -5: exactly one Garmin is on
