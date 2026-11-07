@@ -13,9 +13,10 @@ in Admin technical details and the GitHub issue body. Released clients through
 (busy, full, access denied) or the USB transfer failed. The same client reports
 a final authorization refusal as `terento_map_write` -25 instead of -7; the
 API already accepts any signed code, so that needs no API change. The 1.1.0
-API rejects the two fields with `400`; a report sent to it would stay parked
-on the Mac until this API is deployed. No route, migration or other payload
-changes.
+API rejects the two fields with `400`; such a report is parked on the Mac and
+offered again only within the limits of "Rejected telemetry parking" (three
+times per build, ten times overall), so it can be lost if this API is not
+deployed first. No route, migration or other payload changes.
 
 ## 1.1.0 server-first acceptance
 
