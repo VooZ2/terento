@@ -9,7 +9,7 @@ Terento funktioniert mit Garmin-Uhren und neueren Garmin Edge Fahrradcomputern m
 
 Wenn dein Modell fehlt, heißt das nicht, dass es nicht funktioniert. Vielleicht hat noch niemand eine erfolgreiche Installation damit geteilt.
 
-**42** Modelle mit erfolgreichen Installationen**373** erfolgreiche InstallationenLetzte erfolgreiche Installation 7. November 2026
+**42** Modelle mit erfolgreichen Installationen**377** erfolgreiche InstallationenLetzte erfolgreiche Installation 8. November 2026
 
 So funktioniert diese Liste
 
@@ -25,11 +25,11 @@ fēnix
 
 ### fēnix 8 47 mm, AMOLED
 
-58 erfolgreiche Installationen
+60 erfolgreiche Installationen
 
-App 57 Web 1
+App 59 Web 1
 
-Letzte erfolgreiche Installation 4. November 2026
+Letzte erfolgreiche Installation 7. November 2026
 
 Forerunner
 
@@ -75,21 +75,21 @@ fēnix
 
 ### fēnix 7X Pro Solar, Historical
 
-18 erfolgreiche Installationen
+19 erfolgreiche Installationen
 
-App 13 Web 5
+App 14 Web 5
 
-Letzte erfolgreiche Installation 26. Oktober 2026
+Letzte erfolgreiche Installation 8. November 2026
 
 fēnix
 
 ### fēnix 8 47 mm, MIP, Solar
 
-15 erfolgreiche Installationen
+16 erfolgreiche Installationen
 
-App 15
+App 16
 
-Letzte erfolgreiche Installation 6. November 2026
+Letzte erfolgreiche Installation 8. November 2026
 
 fēnix
 
