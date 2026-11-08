@@ -12,10 +12,10 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://api.terento.app/assets/devices/garmin/fenix-8-47-amoled.webp",
-      "successfulInstallations": 58,
-      "appSuccessfulInstallations": 57,
+      "successfulInstallations": 60,
+      "appSuccessfulInstallations": 59,
       "webSuccessfulInstallations": 1,
-      "lastSuccessfulInstallation": "2026-11-04T20:24:00+00:00"
+      "lastSuccessfulInstallation": "2026-11-07T23:20:42+00:00"
     },
     {
       "model": "Forerunner 965 · Historical",
@@ -92,10 +92,10 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-02778-01/g/cf-lg.jpg",
-      "successfulInstallations": 18,
-      "appSuccessfulInstallations": 13,
+      "successfulInstallations": 19,
+      "appSuccessfulInstallations": 14,
       "webSuccessfulInstallations": 5,
-      "lastSuccessfulInstallation": "2026-10-26T14:33:23+00:00"
+      "lastSuccessfulInstallation": "2026-11-08T03:30:00+00:00"
     },
     {
       "model": "fēnix 8 · 47 mm, Solar",
@@ -108,10 +108,10 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-02906-10/g/cf-lg.jpg",
-      "successfulInstallations": 15,
-      "appSuccessfulInstallations": 15,
+      "successfulInstallations": 16,
+      "appSuccessfulInstallations": 16,
       "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-11-06T03:00:42+00:00"
+      "lastSuccessfulInstallation": "2026-11-08T05:01:21+00:00"
     },
     {
       "model": "fēnix 9 Pro · inReach, 51 mm",
@@ -674,5 +674,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-11-07T21:40:24.191412+00:00"
+  "generatedAt": "2026-11-08T05:34:42.793447+00:00"
 }
