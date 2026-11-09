@@ -1,3 +1,35 @@
+# Terento v1.2.0 (build 47)
+
+<!-- DRAFT: unpublished; needs owner approval, the real-watch checks and the DMG SHA-256 before publication -->
+
+Terento 1.2.0 is an update to Terento 1.1.0, the free, open-source app for installing community maps on map-capable Garmin smartwatches and Edge bike computers from Apple Silicon Macs running macOS 13 or later. Compatibility is still evaluated model by model.
+
+This release fixes several ways an installation, a map read or a removal could stop or wait without a clear message, and adds a small invitation to support Terento. Installed 1.0.x and 1.1.0 builds are offered it by the in-app update check. The Mac App Store version is updated separately.
+
+## WHAT'S NEW?
+
+- After a complete installation, from the third one and at most once per version, Maps installed shows one line inviting you to support Terento with a donation. It unlocks nothing and sends nothing. The Mac App Store version does not show it.
+
+## WHAT'S FIXED?
+
+- An installation no longer stops when the watch rewrites its own log file in the Garmin Debug folder while the map is being written.
+- If the watch stops answering while Remove checks it, Remove ends after a minute or two with a message to reconnect the watch, instead of waiting for minutes without a message.
+- Closing the custom map warning while the maps on the watch are being read no longer leaves the app stuck on "Reading your maps". A map read that is stopped now shows Refresh.
+- When an installation stops and the map file may still be on the watch, Terento first asks you to unplug and reconnect the watch, then to remove the file in Manage maps.
+- Problem reports for a map that could not be sent to the watch now say at which step it stopped and how the watch answered.
+- The built-in map list, used when the online catalog can't be reached, no longer offers the Canada contour lines that the provider shares between both Canada regions.
+
+## KNOWN ISSUES
+
+- The fixes in this release have not yet been checked on a real watch.
+- Updating an OSMapaPL map has not yet been confirmed on a real watch, because no newer OSMapaPL release has been published since it was added.
+- Map Update has not yet been confirmed on a real watch for Freizeitkarte and OpenTopoMap maps.
+- Updating or removing a map installed with an earlier version still uses the full check and can stay at a high displayed percentage for a while before it finishes.
+- The check after writing a map reads parts of the map back from the watch and can take from about 10 seconds to more than 2 minutes for very large maps.
+- Intermittent USB/MTP stalls are not claimed fixed. Reconnect and try again if the connection does not become ready.
+- A watch connected to a phone over Bluetooth may not connect over USB. Turn off Bluetooth on the phone, wait until the watch shows that the phone is disconnected, then connect the watch again ([issue #257](https://github.com/VooZ2/terento/issues/257)).
+- Garmin Edge bike computers are evaluated model by model like watches. Older Edge models that connect as a USB drive instead of a file-transfer (MTP) device can't be reached by Terento.
+
 # Terento v1.1.0 (build 46)
 
 Terento 1.1.0 is an update to Terento 1.0.1, the free, open-source app for installing community maps on map-capable Garmin smartwatches from Apple Silicon Macs running macOS 13 or later. Compatibility is still evaluated model by model.

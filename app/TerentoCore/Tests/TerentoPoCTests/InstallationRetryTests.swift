@@ -17,6 +17,8 @@ struct InstallationRetryTests {
     @MainActor static func main() async throws {
         try testRetainedArtifactCache()
         await testCancelBeforeWrite()
+        await testMapReadSurvivesCustomMapClose()
+        try testBoundedCheckBeforeRemoval()
         testRetryClassification()
         testActivityPolicy()
         print("PASS: installation retry and keep-awake behavior")
@@ -87,6 +89,83 @@ struct InstallationRetryTests {
         check(engine.state == .scanned && engine.installationPhase == .idle && engine.acquisitionState == .idle
               && !engine.hasActiveTaskForTesting && !engine.canCancelInstallationPreparation,
               "Cancel stops the download task and returns to the review state")
+    }
+
+    /// Closing the custom map warning while the maps are being read stops
+    /// nothing; a read stopped by other work returns Refresh instead of an
+    /// endless "Reading your maps".
+    @MainActor static func testMapReadSurvivesCustomMapClose() async {
+        let slowCatalog = MapCatalogLoader(endpoint: URL(string: "https://catalog.example/catalog-v5.json"),
+            dataLoader: { _ in
+                try await Task.sleep(for: .seconds(60))
+                throw URLError(.timedOut)
+            })
+        let engine = MapEngine(catalogLoader: slowCatalog, operationGate: MTPOperationGate(),
+            installationAuthorizationClient: InstallationAuthorizationClient(dataLoader: { _ in throw URLError(.cancelled) }))
+        engine.scanDeviceMaps()
+        check(engine.state == .loadingCatalog && engine.hasActiveTaskForTesting, "a map read is running")
+        engine.clearCustomMapImport()
+        check(engine.state == .loadingCatalog && engine.hasActiveTaskForTesting,
+              "closing the custom map warning does not stop the map read")
+        engine.cancelActiveTaskForTesting()
+        for _ in 0..<100 where engine.state == .loadingCatalog {
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+        check(engine.state == .failed && engine.userErrorMessage == UserFacingErrorMessage.mapReadStopped && !engine.isBusy,
+              "a stopped map read ends with the read failure and Refresh, not a locked page")
+    }
+
+    private final class RequestLog: @unchecked Sendable {
+        private let lock = NSLock()
+        private var requests: [MTPFinishingWorker.Request] = []
+        func record(_ request: MTPFinishingWorker.Request) { lock.withLock { requests.append(request) } }
+        var all: [MTPFinishingWorker.Request] { lock.withLock { requests } }
+    }
+
+    /// The check before removal reads the watch in the bounded worker with
+    /// the bound of the last map read; a watch that stops answering ends
+    /// Remove with the reconnect message, and nothing is removed.
+    static func testBoundedCheckBeforeRemoval() throws {
+        let profile = try JSONDecoder().decode(DeviceMapOperationProfile.self, from: Data("""
+            {"version":2,"vendorID":2334,"productID":20480,"manufacturer":"Garmin","rawModel":"fenix 8",
+             "targetDirectory":"/GARMIN","physicalIdentifier":"TEST-UNIT-0001","physicalIdentifierSource":2,
+             "expectedStorageID":65537}
+            """.utf8))
+        let target = SafeDeleteTarget(deviceKey: "test-device",
+            mapIdentity: MapIdentity(provider: "freizeitkarte", region: "FRA")!, ownership: .managedByTerento,
+            objectID: 7, expectedPath: "/GARMIN/terento_freizeitkarte_fra.img",
+            expectedFilename: "terento_freizeitkarte_fra.img", expectedSizeBytes: 4096,
+            expectedSHA256: String(repeating: "a", count: 64))
+        let log = RequestLog()
+        let stalled = MTPSafeDeleteTransport(operationProfile: profile, operationGate: MTPOperationGate(),
+            boundedInventoryObjectCount: 470, inventoryWorker: { request in
+                log.record(request)
+                throw MTPFinishingWorker.failure(for: .inventory, kind: .timeout)
+            })
+        do {
+            _ = try stalled.inspectExactObject(target)
+            check(false, "a stalled check before removal must fail")
+        } catch let error as SafeDeleteTransportError {
+            guard case .deviceBusy = error else {
+                check(false, "a stalled check before removal asks to reconnect the watch, got \(error)")
+                return
+            }
+        }
+        let request = log.all.first
+        check(log.all.count == 1 && request?.operation == .inventory && request?.profile == profile
+              && request?.mapScope == nil && request?.expectedObjectCount == 470,
+              "the check before removal is the same inventory read, run once in the bounded worker")
+        check(request.map { abs(MTPFinishingWorker.timeout(for: $0, sampleTimeout: 600) - 74.1) < 0.001 } == true,
+              "the check before removal ends after about 75 s for a watch with 470 objects")
+
+        let answered = MTPSafeDeleteTransport(operationProfile: profile, operationGate: MTPOperationGate(),
+            boundedInventoryObjectCount: 470, inventoryWorker: { _ in
+                MTPFinishingWorker.Response(files: [DeviceFile(itemID: 7, parentID: 1, storageID: 65537,
+                    path: target.expectedPath, filename: target.expectedFilename, sizeBytes: 4096, isFolder: false)])
+            })
+        let object = try answered.inspectExactObject(target)
+        check(object.file.path == target.expectedPath && !object.contentHashVerified,
+              "a watch that answers passes the same identity checks as before")
     }
 
     @MainActor static func testRetryClassification() {

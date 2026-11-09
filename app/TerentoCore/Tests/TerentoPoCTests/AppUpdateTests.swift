@@ -56,7 +56,8 @@ struct AppUpdateTests {
         try await testDeferredUpdateCanOfferNewerBuild()
         try await testPromptWaitsForSafeIdle()
         try testTrustedURLsAreRestricted()
-        print("PASS: 20 app update tests")
+        testDonationLineFromThirdInstallOncePerVersion()
+        print("PASS: 21 app update tests")
     }
 
     private static func testSameVersionIsUpToDate() throws {
@@ -519,6 +520,20 @@ struct AppUpdateTests {
     ) -> Bool {
         guard case let .available(manifest) = result else { return false }
         return manifest.version == version
+    }
+
+    private static func testDonationLineFromThirdInstallOncePerVersion() {
+        let suite = "terento-donation-\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suite) else { fail("test defaults unavailable") }
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let shown = (1...5).map { _ in
+            DonationPromptPolicy.recordSuccessfulInstallation(version: "1.2.0", defaults: defaults)
+        }
+        expect(shown == [false, false, true, false, false],
+               "the Donate line shows from the third installation, once per version")
+        expect(DonationPromptPolicy.recordSuccessfulInstallation(version: "1.2.1", defaults: defaults),
+               "a new app version may show the Donate line once more")
+        print("PASS: Donate line from the third installation, once per version")
     }
 
     private static func expect(_ condition: Bool, _ message: String) {

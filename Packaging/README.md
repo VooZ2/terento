@@ -40,6 +40,20 @@ same override is used by the web, native, backend, and release checks.
 
 ## Full release validation
 
+The next candidate is **1.2.0 / build 47** on the `stable` channel (see
+[versioning](../VERSIONING.md); the owner named it 1.2.0 because it adds the
+Donate line). It ends Remove's check of a watch that stopped answering after
+the bound of the last map read, returns a stopped map read to Refresh, asks
+for a reconnect before Manage maps after a failed install that may have left a
+file, tolerates a rewritten `/GARMIN/Debug` log (#574), sends `writeFailureStep`
+and `ptpResponseCode` (#662, API already deployed), drops the shared Canada
+contours from the bundled catalog and, in the GitHub build only, shows the
+Donate line on Maps installed. Public metadata continues to identify 1.1.0
+until signed, notarized artifacts exist, and the draft release-note section
+stays marked as a draft until the owner approves it. No App Store build is
+submitted while 1.1.0 (46.3) is in App Review; the AppStore configuration
+carries the same 1.2.0 / 47 identity for later.
+
 The published release is **1.1.0 / build 46** on the `stable` channel (see
 [versioning](../VERSIONING.md)), from GitHub-verified source
 `380d08920d5055711fad7ca0335108c51ebe2bb1` (tag `v1.1.0-build46`). Installed

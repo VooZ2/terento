@@ -40,15 +40,24 @@ struct MTPSafeDeleteTransport: SafeDeleteTransport, Sendable {
     private let operationProfile: DeviceMapOperationProfile?
     private let externalEvidence = ExternalRemovalEvidence()
     private let mapTransport: MTPMapInstallationTransport
+    /// Objects seen by the last map read of this watch. When set, the
+    /// inventory before removal runs in the bounded worker (the same read,
+    /// ended at the scaled deadline); without it the read stays in-process.
+    private let boundedInventoryObjectCount: Int?
+    private let inventoryWorker: BoundedDeviceTransport.WorkerCall
 
     init(
         operationProfile: DeviceMapOperationProfile? = nil,
         operationGate: MTPOperationGate = .shared,
-        lifecycleLease: MTPOperationLease? = nil
+        lifecycleLease: MTPOperationLease? = nil,
+        boundedInventoryObjectCount: Int? = nil,
+        inventoryWorker: @escaping BoundedDeviceTransport.WorkerCall = { try MTPFinishingWorker.perform($0) }
     ) {
         self.operationProfile = operationProfile
         self.operationGate = operationGate
         self.lifecycleLease = lifecycleLease
+        self.boundedInventoryObjectCount = boundedInventoryObjectCount
+        self.inventoryWorker = inventoryWorker
         self.mapTransport = MTPMapInstallationTransport(
             operationProfile: operationProfile, operationGate: operationGate,
             lifecycleLease: lifecycleLease, mutationPurpose: .removeManaged
@@ -95,11 +104,19 @@ struct MTPSafeDeleteTransport: SafeDeleteTransport, Sendable {
         }
         let files: [DeviceFile]
         do {
-            files = try MTPTransport(
-                operationGate: operationGate,
-                lifecycleLease: lifecycleLease,
-                operationProfile: operationProfile
-            ).readFileInventory()
+            files = try readInventory(operationProfile)
+        } catch let error as InstallationTransportError {
+            // Only the bounded worker read throws these. A watch that stopped
+            // answering or is held by another session needs a reconnect.
+            if error.isConfirmedDeviceDisconnected {
+                throw SafeDeleteTransportError.deviceDisconnected(error.localizedDescription)
+            }
+            switch DeviceDetectionErrorClassifier.classify(error) {
+            case .stoppedResponding, .busy:
+                throw SafeDeleteTransportError.deviceBusy(error.localizedDescription)
+            default:
+                throw SafeDeleteTransportError.operationFailed(error.localizedDescription)
+            }
         } catch let error as MTPTransportError {
             switch error {
             case .deviceAbsent:
@@ -223,6 +240,24 @@ struct MTPSafeDeleteTransport: SafeDeleteTransport, Sendable {
             sha256: hash,
             contentHashVerified: true
         )
+    }
+
+    /// The same read-only inventory either way; only where it runs differs.
+    private func readInventory(_ profile: DeviceMapOperationProfile) throws -> [DeviceFile] {
+        guard let expectedObjectCount = boundedInventoryObjectCount else {
+            return try MTPTransport(
+                operationGate: operationGate,
+                lifecycleLease: lifecycleLease,
+                operationProfile: profile
+            ).readFileInventory()
+        }
+        return try operationGate.withOperation(kind: .inventory, lifecycleLease: lifecycleLease) {
+            guard let files = try inventoryWorker(.init(operation: .inventory, profile: profile,
+                expectedObjectCount: expectedObjectCount)).files else {
+                throw MTPFinishingWorker.failure(for: .inventory, kind: .invalidResponse)
+            }
+            return files
+        }
     }
 
     func deleteExactObject(_ target: SafeDeleteTarget) throws {

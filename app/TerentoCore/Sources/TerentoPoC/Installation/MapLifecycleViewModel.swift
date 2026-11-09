@@ -662,6 +662,10 @@ final class MapLifecycleViewModel: ObservableObject {
         let recoveryStore = self.recoveryStore
         let operationGate = self.operationGate
         let operationController = self.operationController
+        // The check before removal reads the watch with the same bound as
+        // the last map read, so a watch that stopped answering ends Remove
+        // with a clear message instead of a silent wait.
+        let expectedObjectCount = mapEngine.lastObservedInventoryCount
 
         let task = Task { [weak self] in
             var result: SafeDeleteResult?
@@ -695,7 +699,8 @@ final class MapLifecycleViewModel: ObservableObject {
                     // gets one operation-owned transport, never recreated on retry.
                     let plannedComponents = installedMaps.map { map in
                         (map, MTPSafeDeleteTransport(operationProfile: operationProfile,
-                            operationGate: operationGate, lifecycleLease: lease))
+                            operationGate: operationGate, lifecycleLease: lease,
+                            boundedInventoryObjectCount: expectedObjectCount))
                     }
                     let deviceTransport = MTPTransport(
                         operationGate: operationGate,

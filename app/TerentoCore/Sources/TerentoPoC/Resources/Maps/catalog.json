@@ -3297,29 +3297,6 @@
               "sourceURL": "https://garmin.opentopomap.org/north-america/canada-east/otm-canada-east.zip",
               "sizeBytes": 2174484480,
               "validationState": "notValidated"
-            },
-            {
-              "id": "opentopomap-canada-east-contours",
-              "source": "provider",
-              "kind": "contours",
-              "required": false,
-              "providerId": "opentopomap",
-              "providerRegionId": "canada-east",
-              "canonicalRegionId": "CANADAEAST",
-              "version": {
-                "year": 2026,
-                "month": 6
-              },
-              "releaseMetadata": {
-                "releaseId": "otm-2026-06",
-                "versionLabel": "2026-06",
-                "generatedAt": "2026-06-22T00:00:00Z",
-                "sourceUpdatedAt": "2026-06-22"
-              },
-              "sourceURL": "https://garmin.opentopomap.org/north-america/canada/otm-canada-contours.zip",
-              "sizeBytes": 2770993152,
-              "validationState": "validated",
-              "downloadSizeBytes": 2446779796
             }
           ]
         },
@@ -3380,29 +3357,6 @@
               "sourceURL": "https://garmin.opentopomap.org/north-america/canada-west/otm-canada-west.zip",
               "sizeBytes": 3498639360,
               "validationState": "notValidated"
-            },
-            {
-              "id": "opentopomap-canada-west-contours",
-              "source": "provider",
-              "kind": "contours",
-              "required": false,
-              "providerId": "opentopomap",
-              "providerRegionId": "canada-west",
-              "canonicalRegionId": "CANADAWEST",
-              "version": {
-                "year": 2026,
-                "month": 6
-              },
-              "releaseMetadata": {
-                "releaseId": "otm-2026-06",
-                "versionLabel": "2026-06",
-                "generatedAt": "2026-06-22T00:00:00Z",
-                "sourceUpdatedAt": "2026-06-22"
-              },
-              "sourceURL": "https://garmin.opentopomap.org/north-america/canada/otm-canada-contours.zip",
-              "sizeBytes": 2770993152,
-              "validationState": "validated",
-              "downloadSizeBytes": 2446779796
             }
           ]
         },

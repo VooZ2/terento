@@ -866,13 +866,15 @@ struct Stage1ProviderNeutralTests {
                 return rowPasses
             }
 
+            // 170: the shared Canada contours add-on (otm-canada-contours.zip) is not
+            // offered for Canada East or West, the same as the live collector (#650).
             let contourRows = packages.flatMap(\.optionalArtifacts).filter { $0.kind == .contours }
             let requiresBundledContourFixture = ProcessInfo.processInfo.environment[
                 "TERENTO_CATALOG_CONTRACT_PATH"
             ] == nil
             expect(
                 allRowsPass
-                    && (!requiresBundledContourFixture || contourRows.count == 172),
+                    && (!requiresBundledContourFixture || contourRows.count == 170),
                 "all 173 OpenTopoMap rows accept full, compact, and split generated dates with strict identity/version checks "
                     + "[rows=\(packages.count), rowChecks=\(allRowsPass), "
                     + "contours=\(contourRows.count), externalCatalog=\(!requiresBundledContourFixture)]"

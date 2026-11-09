@@ -384,8 +384,12 @@ enum UserFacingErrorMessage {
             return "Map information is temporarily unavailable. Choose Refresh and try again."
         }
 
-        return "The watch's installed maps could not be read. Reconnect it and try again."
+        return mapReadStopped
     }
+
+    /// A map read that ended without a result. Also shown when the read was
+    /// stopped before it finished.
+    static let mapReadStopped = "The watch's installed maps could not be read. Reconnect it and try again."
 
     static func forInstallation(
         _ error: Error,
