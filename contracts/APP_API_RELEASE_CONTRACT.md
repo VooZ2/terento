@@ -1,9 +1,14 @@
 # App–API compatibility and release contract
 
-## Next release server-first acceptance
+## 1.2.0 server-first acceptance
 
-Not deployed yet. Deploy and verify this API before any client that sends it
-is published. It adds the optional failure-context fields `writeFailureStep`
+Deployed: catalog API from main after PR #662 (merge `dd45a0bd`, deploy
+finished 2026-11-07 22:20 UTC). The 1.2.0 app is the first client that sends
+these fields; its other changes (the bounded check before Remove, the stopped
+map read, the leftover-file follow-up text, the Donate line of the GitHub build
+and the bundled catalog without the shared Canada contours) are app-only and
+add no route, telemetry event or migration. Deploy and verify this API before
+any client that sends it is published. It adds the optional failure-context fields `writeFailureStep`
 and `ptpResponseCode` for an attempted native map send that failed
 (`terento_map_write` -7): the step where it stopped and the numeric PTP
 response of the watch or the Mac's PTP layer
