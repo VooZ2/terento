@@ -9,7 +9,7 @@ Terento funguje s hodinkami Garmin a novějšími cyklopočítači Garmin Edge s
 
 Pokud zde svůj model nevidíte, neznamená to, že nebude fungovat. Možná z něj zatím nikdo nesdílel úspěšnou instalaci.
 
-**42** modely s úspěšnými instalacemi**377** úspěšných instalacíPoslední úspěšná instalace 8. listopadu 2026
+**42** modely s úspěšnými instalacemi**379** úspěšných instalacíPoslední úspěšná instalace 8. listopadu 2026
 
 Jak tento seznam funguje
 
@@ -283,6 +283,16 @@ Poslední úspěšná instalace 5. listopadu 2026
 
 Enduro
 
+### Enduro 3 MIP, Solar
+
+3 úspěšných instalací
+
+App 3
+
+Poslední úspěšná instalace 8. listopadu 2026
+
+Enduro
+
 ### Enduro 4 MIP, Solar
 
 3 úspěšných instalací
@@ -390,16 +400,6 @@ Venu
 App 2
 
 Poslední úspěšná instalace 29. října 2026
-
-Enduro
-
-### Enduro 3 MIP, Solar
-
-1 úspěšná instalace
-
-App 1
-
-Poslední úspěšná instalace 7. listopadu 2026
 
 fēnix
 
