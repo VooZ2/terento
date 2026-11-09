@@ -13,7 +13,7 @@ This release fixes several ways an installation, a map read or a removal could s
 ## WHAT'S FIXED?
 
 - An installation no longer stops when the watch rewrites its own log file in the Garmin Debug folder while the map is being written.
-- If the watch stops answering while Remove checks it, Remove ends after about a minute with a message to reconnect the watch, instead of waiting for minutes without a message.
+- If the watch stops answering while Remove checks it, Remove ends after a minute or two with a message to reconnect the watch, instead of waiting for minutes without a message.
 - Closing the custom map warning while the maps on the watch are being read no longer leaves the app stuck on "Reading your maps". A map read that is stopped now shows Refresh.
 - When an installation stops and the map file may still be on the watch, Terento first asks you to unplug and reconnect the watch, then to remove the file in Manage maps.
 - Problem reports for a map that could not be sent to the watch now say at which step it stopped and how the watch answered.
