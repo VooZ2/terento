@@ -112,10 +112,21 @@ directory by a crash (`terento-map-download-*`, untouched for an hour) are
 removed at launch. Every map scan, including the one after an install, Update
 or Remove, refreshes the watch's free space for the Device page and the storage
 planner. A failed map read on a connected watch shows "Couldn't read your
-maps" with Try again. When an install fails after a map object was created,
-the original cause stays the primary message, followed by "The map file may be
-on your watch. Open Manage maps to remove it, then install it again." and a
-"Go to Manage maps" action; automatic cleanup is still declined. A declined
+maps" with Try again; a map read stopped by other work (not by a newer read or
+a reset) ends the same way instead of staying on "Reading your maps", and
+closing the custom map warning never stops a map read. When an install fails
+after a map object was created, the original cause stays the primary message,
+followed by "First unplug the watch, wait 5 seconds and plug it back in. The
+map file may still be on it: then open Manage maps, remove it and install it
+again." and a "Go to Manage maps" action; automatic cleanup is still declined.
+Remove reads the watch's file list before deleting in the bounded worker with
+the bound of the last map read (60 s plus 30 ms per object), so a watch that
+stopped answering ends Remove with the reconnect message instead of a silent
+wait; the read and the deletion safety checks are unchanged. After a complete
+installation, the GitHub (DMG) build shows one line on Maps installed: "Terento
+is free and open source. If it saved you time, you can support it. Donate ↗",
+the same link as About; the donation unlocks nothing and App Store builds
+compile it out. A declined
 cleanup is not a cleanup failure: the result, the installation report and the
 Admin record keep the original failure code and context with
 `cleanupAttempted=false` (clients through 1.0.0 reported `INSTALL_FAILED_CLEANUP`

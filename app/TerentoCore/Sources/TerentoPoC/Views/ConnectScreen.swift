@@ -2760,6 +2760,24 @@ struct ConnectScreen: View {
                     }
                         .accessibilityElement(children: .combine)
                         .padding(.top, TerentoPageLayout.sectionSpacing)
+
+                    #if !TERENTO_APP_STORE
+                    // One quiet line after a complete installation. The
+                    // donation unlocks nothing; App Store builds carry no
+                    // external payment link (guideline 3.1.1).
+                    if !hasPartialInstallation {
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            Text("Terento is free and open source. If it saved you time, you can support it.")
+                                .font(.terentoUI(size: 13, weight: .medium))
+                                .foregroundStyle(TerentoColors.secondaryText)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Link("Donate ↗", destination: TerentoAppLinks.donate)
+                                .font(.terentoUI(size: 13, weight: .medium))
+                                .foregroundStyle(TerentoColors.interactive)
+                        }
+                        .padding(.top, TerentoPageLayout.sectionSpacing)
+                    }
+                    #endif
                 }
             }
         } footer: {
