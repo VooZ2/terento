@@ -9,7 +9,7 @@ Terento funziona con gli orologi Garmin e i ciclocomputer Garmin Edge più recen
 
 Se il tuo modello non c’è, non significa che non funzioni. Forse nessuno ha ancora condiviso un’installazione riuscita con quel modello.
 
-**42** modelli con installazioni riuscite**377** installazioni riusciteUltima installazione riuscita 8 novembre 2026
+**42** modelli con installazioni riuscite**379** installazioni riusciteUltima installazione riuscita 8 novembre 2026
 
 Come funziona questo elenco
 
@@ -283,6 +283,16 @@ Ultima installazione riuscita 5 novembre 2026
 
 Enduro
 
+### Enduro 3 MIP, Solar
+
+3 installazioni riuscite
+
+App 3
+
+Ultima installazione riuscita 8 novembre 2026
+
+Enduro
+
 ### Enduro 4 MIP, Solar
 
 3 installazioni riuscite
@@ -390,16 +400,6 @@ Venu
 App 2
 
 Ultima installazione riuscita 29 ottobre 2026
-
-Enduro
-
-### Enduro 3 MIP, Solar
-
-1 installazione riuscita
-
-App 1
-
-Ultima installazione riuscita 7 novembre 2026
 
 fēnix
 

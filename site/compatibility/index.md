@@ -9,7 +9,7 @@ Terento works with Garmin watches and newer Garmin Edge bike computers with map 
 
 Not seeing your model? That doesn’t mean it won’t work. It may be that no one has shared a successful install from it yet.
 
-**42** models with successful installs**377** successful installsLatest successful install November 8, 2026
+**42** models with successful installs**379** successful installsLatest successful install November 8, 2026
 
 How this list works
 
@@ -283,6 +283,16 @@ Latest successful install November 5, 2026
 
 Enduro
 
+### Enduro 3 MIP, Solar
+
+3 successful installs
+
+App 3
+
+Latest successful install November 8, 2026
+
+Enduro
+
 ### Enduro 4 MIP, Solar
 
 3 successful installs
@@ -390,16 +400,6 @@ Venu
 App 2
 
 Latest successful install October 29, 2026
-
-Enduro
-
-### Enduro 3 MIP, Solar
-
-1 successful install
-
-App 1
-
-Latest successful install November 7, 2026
 
 fēnix
 
