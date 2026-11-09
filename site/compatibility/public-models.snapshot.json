@@ -108,10 +108,10 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-02906-10/g/cf-lg.jpg",
-      "successfulInstallations": 16,
-      "appSuccessfulInstallations": 16,
+      "successfulInstallations": 17,
+      "appSuccessfulInstallations": 17,
       "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-11-08T05:01:21+00:00"
+      "lastSuccessfulInstallation": "2026-11-09T06:09:24+00:00"
     },
     {
       "model": "fēnix 9 Pro · inReach, 51 mm",
@@ -290,6 +290,22 @@
       "lastSuccessfulInstallation": "2026-10-30T09:01:05+00:00"
     },
     {
+      "model": "epix (Gen 2) · 47 mm",
+      "variant": "47 mm",
+      "caseSizeMm": 47,
+      "displayType": null,
+      "screenTechnology": null,
+      "solar": null,
+      "inReach": null,
+      "family": "epix",
+      "familyName": "epix",
+      "imageUrl": "https://res.garmin.com/en/products/010-02582-01/v/cf-lg-58ede9b6-fbfa-43b9-a81a-9e114b29b58d.jpg",
+      "successfulInstallations": 6,
+      "appSuccessfulInstallations": 2,
+      "webSuccessfulInstallations": 4,
+      "lastSuccessfulInstallation": "2026-11-09T10:08:53+00:00"
+    },
+    {
       "model": "fēnix 6 Pro · Historical",
       "variant": "Historical",
       "caseSizeMm": 47,
@@ -322,22 +338,6 @@
       "lastSuccessfulInstallation": "2026-10-12T12:46:36+00:00"
     },
     {
-      "model": "epix (Gen 2) · 47 mm",
-      "variant": "47 mm",
-      "caseSizeMm": 47,
-      "displayType": null,
-      "screenTechnology": null,
-      "solar": null,
-      "inReach": null,
-      "family": "epix",
-      "familyName": "epix",
-      "imageUrl": "https://res.garmin.com/en/products/010-02582-01/v/cf-lg-58ede9b6-fbfa-43b9-a81a-9e114b29b58d.jpg",
-      "successfulInstallations": 5,
-      "appSuccessfulInstallations": 1,
-      "webSuccessfulInstallations": 4,
-      "lastSuccessfulInstallation": "2026-11-07T13:00:17+00:00"
-    },
-    {
       "model": "fēnix 8 Pro · 47 mm, AMOLED",
       "variant": "47 mm, AMOLED",
       "caseSizeMm": 47,
@@ -352,6 +352,22 @@
       "appSuccessfulInstallations": 5,
       "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-10-21T13:19:19+00:00"
+    },
+    {
+      "model": "Enduro 3",
+      "variant": null,
+      "caseSizeMm": null,
+      "displayType": null,
+      "screenTechnology": "MIP",
+      "solar": true,
+      "inReach": null,
+      "family": "enduro",
+      "familyName": "Enduro",
+      "imageUrl": "https://res.garmin.com/en/products/010-02751-00/g/cf-lg.jpg",
+      "successfulInstallations": 4,
+      "appSuccessfulInstallations": 4,
+      "webSuccessfulInstallations": 0,
+      "lastSuccessfulInstallation": "2026-11-09T06:47:56+00:00"
     },
     {
       "model": "fēnix 7S Pro · Historical",
@@ -416,22 +432,6 @@
       "appSuccessfulInstallations": 3,
       "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-11-05T18:27:09+00:00"
-    },
-    {
-      "model": "Enduro 3",
-      "variant": null,
-      "caseSizeMm": null,
-      "displayType": null,
-      "screenTechnology": "MIP",
-      "solar": true,
-      "inReach": null,
-      "family": "enduro",
-      "familyName": "Enduro",
-      "imageUrl": "https://res.garmin.com/en/products/010-02751-00/g/cf-lg.jpg",
-      "successfulInstallations": 3,
-      "appSuccessfulInstallations": 3,
-      "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-11-08T23:53:58+00:00"
     },
     {
       "model": "Enduro 4",
@@ -674,5 +674,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-11-09T05:44:33.505372+00:00"
+  "generatedAt": "2026-11-09T15:49:52.409487+00:00"
 }

@@ -9,7 +9,7 @@ Terento funguje s hodinkami Garmin a novějšími cyklopočítači Garmin Edge s
 
 Pokud zde svůj model nevidíte, neznamená to, že nebude fungovat. Možná z něj zatím nikdo nesdílel úspěšnou instalaci.
 
-**42** modely s úspěšnými instalacemi**379** úspěšných instalacíPoslední úspěšná instalace 8. listopadu 2026
+**42** modely s úspěšnými instalacemi**382** úspěšných instalacíPoslední úspěšná instalace 9. listopadu 2026
 
 Jak tento seznam funguje
 
@@ -85,11 +85,11 @@ fēnix
 
 ### fēnix 8 47 mm, MIP, Solar
 
-16 úspěšných instalací
+17 úspěšných instalací
 
-App 16
+App 17
 
-Poslední úspěšná instalace 8. listopadu 2026
+Poslední úspěšná instalace 9. listopadu 2026
 
 fēnix
 
@@ -201,6 +201,16 @@ App 7
 
 Poslední úspěšná instalace 30. října 2026
 
+epix
+
+### epix (Gen 2) 47 mm
+
+6 úspěšných instalací
+
+App 2 Web 4
+
+Poslední úspěšná instalace 9. listopadu 2026
+
 fēnix
 
 ### fēnix 6 Pro 47 mm, MIP, Historical
@@ -221,16 +231,6 @@ App 6
 
 Poslední úspěšná instalace 12. října 2026
 
-epix
-
-### epix (Gen 2) 47 mm
-
-5 úspěšných instalací
-
-App 1 Web 4
-
-Poslední úspěšná instalace 7. listopadu 2026
-
 fēnix
 
 ### fēnix 8 Pro 47 mm, AMOLED, inReach
@@ -240,6 +240,16 @@ fēnix
 App 5
 
 Poslední úspěšná instalace 21. října 2026
+
+Enduro
+
+### Enduro 3 MIP, Solar
+
+4 úspěšných instalací
+
+App 4
+
+Poslední úspěšná instalace 9. listopadu 2026
 
 fēnix
 
@@ -280,16 +290,6 @@ Edge
 App 3
 
 Poslední úspěšná instalace 5. listopadu 2026
-
-Enduro
-
-### Enduro 3 MIP, Solar
-
-3 úspěšných instalací
-
-App 3
-
-Poslední úspěšná instalace 8. listopadu 2026
 
 Enduro
 
