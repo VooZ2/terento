@@ -101,7 +101,9 @@ enum InstallationFailure: String, Codable, Error, Equatable, Sendable {
 
 extension InstallationFailure {
     /// One plain follow-up when a map file may remain after a failed install.
-    static let leftoverMapFollowUp = "The map file may be on your watch. Open Manage maps to remove it, then install it again."
+    /// A file left behind means cleanup could not reach the watch, so the
+    /// connection is reset before Manage maps reads it again.
+    static let leftoverMapFollowUp = "First unplug the watch, wait 5 seconds and plug it back in. The map file may still be on it: then open Manage maps, remove it and install it again."
 }
 
 enum InstallMapOwnership: String, Codable, Equatable, Sendable {

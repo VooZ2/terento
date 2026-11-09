@@ -415,6 +415,12 @@ final class MapEngine: ObservableObject {
 
     var hasActiveTaskForTesting: Bool { activeTask != nil }
 
+    /// Stops the current work the way an unrelated action would, without
+    /// changing the page state itself.
+    func cancelActiveTaskForTesting() {
+        cancelActiveTaskAndCleanupWorkspaces()
+    }
+
     func setFailedInstallationForTesting(_ failure: InstallationFailure?) {
         evidenceFailure = failure
         installationPhase = .failed
@@ -564,7 +570,7 @@ final class MapEngine: ObservableObject {
                     }
                 }
 
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled else { self?.endStoppedMapRead(); return }
 
                 self?.loadedCatalog = loaded.catalog
                 // The dropped count precedes the source: observers of the
@@ -621,7 +627,7 @@ final class MapEngine: ObservableObject {
                     )
                 }
 
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled else { self?.endStoppedMapRead(); return }
 
                 self?.lastObservedInventoryCount = scanOutput.inventory.deviceFiles.count
                 if let liveStorage = scanOutput.liveStorage, !liveStorage.storages.isEmpty {
@@ -645,7 +651,7 @@ final class MapEngine: ObservableObject {
                 }
                 self?.state = .scanned
             } catch {
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled else { self?.endStoppedMapRead(); return }
 
                 self?.state = .failed
                 self?.errorMessage = error.localizedDescription
@@ -661,6 +667,15 @@ final class MapEngine: ObservableObject {
                 }
             }
         }
+    }
+
+    /// A map read stopped by anything other than a newer read or a reset
+    /// must not leave "Reading your maps" with every button locked: when no
+    /// other work owns the page, it shows the read as failed, with Refresh.
+    private func endStoppedMapRead() {
+        guard activeTask == nil, state == .loadingCatalog || state == .scanning else { return }
+        state = .failed
+        userErrorMessage = UserFacingErrorMessage.mapReadStopped
     }
 
     /// Only a failed read of the watch becomes the latest saved report. A
@@ -748,7 +763,10 @@ final class MapEngine: ObservableObject {
     }
 
     /// Discards only a local staged import. It never touches the Garmin.
+    /// A map read is not part of the import: it already discarded the import
+    /// when it started, and closing the custom map warning must not stop it.
     func clearCustomMapImport() {
+        guard state != .loadingCatalog, state != .scanning else { return }
         cancelActiveTaskAndCleanupWorkspaces()
         discardCustomMapImport(removeWorkspace: false)
     }
