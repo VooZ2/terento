@@ -123,10 +123,11 @@ Remove reads the watch's file list before deleting in the bounded worker with
 the bound of the last map read (60 s plus 30 ms per object), so a watch that
 stopped answering ends Remove with the reconnect message instead of a silent
 wait; the read and the deletion safety checks are unchanged. After a complete
-installation, the GitHub (DMG) build shows one line on Maps installed: "Terento
-is free and open source. If it saved you time, you can support it. Donate ↗",
-the same link as About; the donation unlocks nothing and App Store builds
-compile it out. A declined
+installation, from the third one and once per app version (counted locally,
+`DonationPromptPolicy`), the GitHub (DMG) build shows one line on Maps
+installed: "Terento is free and open source. If it saved you time, you can
+support it. Donate ↗", the same link as About; nothing is sent, the donation
+unlocks nothing and App Store builds compile it out. A declined
 cleanup is not a cleanup failure: the result, the installation report and the
 Admin record keep the original failure code and context with
 `cleanupAttempted=false` (clients through 1.0.0 reported `INSTALL_FAILED_CLEANUP`

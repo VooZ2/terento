@@ -48,6 +48,29 @@ enum AppStoreReviewPolicy {
     }
 }
 
+#if !TERENTO_APP_STORE
+/// When the GitHub build shows the Donate line on Maps installed: from the
+/// third successful installation, once per app version. Counted locally only;
+/// nothing is sent and the donation unlocks nothing.
+enum DonationPromptPolicy {
+    static let successfulInstallCountKey = "DonationSuccessfulInstallCount"
+    static let shownVersionKey = "DonationPromptShownVersion"
+    static let firstShowAfterInstalls = 3
+
+    /// Counts one complete installation. Returns true from the third one,
+    /// at most once per app version.
+    @discardableResult
+    static func recordSuccessfulInstallation(version: String, defaults: UserDefaults = .standard) -> Bool {
+        let count = defaults.integer(forKey: successfulInstallCountKey) + 1
+        defaults.set(count, forKey: successfulInstallCountKey)
+        guard count >= firstShowAfterInstalls,
+              defaults.string(forKey: shownVersionKey) != version else { return false }
+        defaults.set(version, forKey: shownVersionKey)
+        return true
+    }
+}
+#endif
+
 enum TerentoUpdateChannel: String, Codable, Equatable, Sendable {
     case beta
     case stable

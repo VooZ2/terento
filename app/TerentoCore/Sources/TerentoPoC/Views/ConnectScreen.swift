@@ -35,6 +35,9 @@ struct ConnectScreen: View {
     @ObservedObject var mapStatisticsController: MapStatisticsEventController
     @ObservedObject var appUpdateController: AppUpdateController
     @State private var selectedSection: TerentoSection = .device
+    #if !TERENTO_APP_STORE
+    @State private var showsDonationLine = false
+    #endif
     @State private var localInstallStep: LocalInstallStep = .choose
     @State private var selectedMapIDs: Set<String> = []
     @State private var selectedOptionalArtifactIDs: [String: Set<String>] = [:]
@@ -361,6 +364,9 @@ struct ConnectScreen: View {
                 localInstallStep = .done
                 #if TERENTO_APP_STORE
                 handleSuccessfulInstallation()
+                #else
+                showsDonationLine = !hasPartialInstallation
+                    && DonationPromptPolicy.recordSuccessfulInstallation(version: TerentoTelemetryMetadata.version)
                 #endif
             }
         }
@@ -2762,10 +2768,11 @@ struct ConnectScreen: View {
                         .padding(.top, TerentoPageLayout.sectionSpacing)
 
                     #if !TERENTO_APP_STORE
-                    // One quiet line after a complete installation. The
-                    // donation unlocks nothing; App Store builds carry no
+                    // One quiet line after a complete installation, from the
+                    // third one and once per version (DonationPromptPolicy).
+                    // The donation unlocks nothing; App Store builds carry no
                     // external payment link (guideline 3.1.1).
-                    if !hasPartialInstallation {
+                    if showsDonationLine, !hasPartialInstallation {
                         HStack(alignment: .firstTextBaseline, spacing: 6) {
                             Text("Terento is free and open source. If it saved you time, you can support it.")
                                 .font(.terentoUI(size: 13, weight: .medium))
