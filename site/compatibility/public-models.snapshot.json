@@ -60,10 +60,10 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-04337-05/g/cf-lg.jpg",
-      "successfulInstallations": 23,
-      "appSuccessfulInstallations": 23,
+      "successfulInstallations": 24,
+      "appSuccessfulInstallations": 24,
       "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-11-07T19:38:47+00:00"
+      "lastSuccessfulInstallation": "2026-11-10T06:38:47+00:00"
     },
     {
       "model": "epix Pro (Gen 2) · 51 mm, AMOLED",
@@ -674,5 +674,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-11-10T01:22:59.762250+00:00"
+  "generatedAt": "2026-11-10T14:40:01.332477+00:00"
 }
