@@ -1,7 +1,5 @@
 # Terento v1.2.0 (build 47)
 
-<!-- DRAFT: unpublished; needs owner approval, the real-watch checks and the DMG SHA-256 before publication -->
-
 Terento 1.2.0 is an update to Terento 1.1.0, the free, open-source app for installing community maps on map-capable Garmin smartwatches and Edge bike computers from Apple Silicon Macs running macOS 13 or later. Compatibility is still evaluated model by model.
 
 This release fixes several ways an installation, a map read or a removal could stop or wait without a clear message, and adds a small invitation to support Terento. Installed 1.0.x and 1.1.0 builds are offered it by the in-app update check. The Mac App Store version is updated separately.
@@ -29,6 +27,8 @@ This release fixes several ways an installation, a map read or a removal could s
 - Intermittent USB/MTP stalls are not claimed fixed. Reconnect and try again if the connection does not become ready.
 - A watch connected to a phone over Bluetooth may not connect over USB. Turn off Bluetooth on the phone, wait until the watch shows that the phone is disconnected, then connect the watch again ([issue #257](https://github.com/VooZ2/terento/issues/257)).
 - Garmin Edge bike computers are evaluated model by model like watches. Older Edge models that connect as a USB drive instead of a file-transfer (MTP) device can't be reached by Terento.
+
+<!-- DMG SHA-256: b8db780ef87a1477bb83544f461b8df08a28b9eca2ab8b69da2263edd982e0e2 -->
 
 # Terento v1.1.0 (build 46)
 

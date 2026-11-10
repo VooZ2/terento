@@ -23,6 +23,29 @@ offered again only within the limits of "Rejected telemetry parking" (three
 times per build, ten times overall), so it can be lost if this API is not
 deployed first. No route, migration or other payload changes.
 
+## Stable release 1.2.0 build 47 — published
+
+Published on 2026-11-10 from GitHub-verified source
+`a4f5179e4d71621266009f4f53f5b078cd73e301` (main after PR #673), tag
+`v1.2.0-build47`, on the `stable` update channel. It requests
+`catalog-v5.json` and sends `writeFailureStep` and `ptpResponseCode`; the 1.2.0
+server-first acceptance API above was deployed first (revision `dd45a0bd`, an
+ancestor of the release source). It adds no route, telemetry event or migration
+of its own. The tag is listed in `contracts/released-catalog-clients.json` with
+`catalog-v5.json`.
+
+The full packaging suite and PR CI passed. Apple notarization was Accepted.
+Signing, stapling, Gatekeeper and ZIP/DMG launch checks passed. The owner
+named the 1.2.0 marketing version and approved publication. Real-watch checks
+of the 1.2.0 fixes are not recorded; they and the deferred Freizeitkarte and
+OpenTopoMap Update gate are listed in KNOWN ISSUES.
+
+DMG: 7,602,682 bytes, SHA-256
+`b8db780ef87a1477bb83544f461b8df08a28b9eca2ab8b69da2263edd982e0e2`.
+ZIP: 6,850,545 bytes, SHA-256
+`904fec208a9df718be20ffdf2e30533444ce778a0ca19b419abaae8fa0c316f6`.
+GitHub asset digests match the digests of the locally built files.
+
 ## 1.1.0 server-first acceptance
 
 Deployed: every addition below is in catalog API revision `80f54a77` (main

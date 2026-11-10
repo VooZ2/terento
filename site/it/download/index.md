@@ -7,11 +7,11 @@ canonical: https://terento.app/it/download/
 
 Un’app gratuita e open source che installa mappe gratuite su smartwatch Garmin e ciclocomputer Edge con supporto mappe.
 
-[Scarica per Mac](https://github.com/VooZ2/terento/releases/download/v1.1.0-build46/Terento-1.1.0-macOS-arm64.dmg)
+[Scarica per Mac](https://github.com/VooZ2/terento/releases/download/v1.2.0-build47/Terento-1.2.0-macOS-arm64.dmg)
 
 Mac App Store In arrivo
 
-Ultima versione **v1.1.0**, pubblicata il 27 ottobre 2026. [Novità](https://github.com/VooZ2/terento/releases/tag/v1.1.0-build46)
+Ultima versione **v1.2.0**, pubblicata il 10 novembre 2026. [Novità](https://github.com/VooZ2/terento/releases/tag/v1.2.0-build47)
 
 Niente Mac con Apple Silicon? [Usa l’installer web](https://terento.app/it/install/) in Chrome, Microsoft Edge, Opera o Brave su Mac. Linux è ancora in fase di test: vedi la [guida per Linux](https://terento.app/it/guides/install-garmin-maps-linux/).
 
