@@ -99,7 +99,7 @@ are operator work, never statistics.
 
 ## Responses and client compatibility
 
-The current 1.1.0 client requests `/maps/catalog-v5.json`; 1.0.1, 1.0.0, rc.1, rc.2 and rc.3 request `/maps/catalog-v4.json`. The legacy route
+The current 1.2.0 client, like 1.1.0, requests `/maps/catalog-v5.json`; 1.0.1, 1.0.0, rc.1, rc.2 and rc.3 request `/maps/catalog-v4.json`. The legacy route
 retains Freizeitkarte and OpenTopoMap; v3 additionally exposes MapRando.
 Older clients (beta.18 and earlier) can reject a complete snapshot containing
 an unknown installable provider, so these projections must remain separate.

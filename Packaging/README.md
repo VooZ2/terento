@@ -40,35 +40,27 @@ same override is used by the web, native, backend, and release checks.
 
 ## Full release validation
 
-The next candidate is **1.2.0 / build 47** on the `stable` channel (see
+The published release is **1.2.0 / build 47** on the `stable` channel (see
 [versioning](../VERSIONING.md); the owner named it 1.2.0 because it adds the
-Donate line). It ends Remove's check of a watch that stopped answering after
-the bound of the last map read, returns a stopped map read to Refresh, asks
-for a reconnect before Manage maps after a failed install that may have left a
-file, tolerates a rewritten `/GARMIN/Debug` log (#574), sends `writeFailureStep`
-and `ptpResponseCode` (#662, API already deployed), drops the shared Canada
-contours from the bundled catalog and, in the GitHub build only, shows the
-Donate line on Maps installed. Public metadata continues to identify 1.1.0
-until signed, notarized artifacts exist, and the draft release-note section
-stays marked as a draft until the owner approves it. No App Store build is
-submitted while 1.1.0 (46.3) is in App Review; the AppStore configuration
-carries the same 1.2.0 / 47 identity for later.
-
-The published release is **1.1.0 / build 46** on the `stable` channel (see
-[versioning](../VERSIONING.md)), from GitHub-verified source
-`380d08920d5055711fad7ca0335108c51ebe2bb1` (tag `v1.1.0-build46`). Installed
-1.0.x builds are offered it by the in-app update check. Its ZIP and DMG passed
-the full release suite, Apple notarization, stapling, Gatekeeper and launch
-validation. It reads `catalog-v5.json`, adds OSMapaPL and BBBike (OpenTopoMap)
-maps, lists installed maps in Install maps, waits for a busy watch at install
-start, saves a report when the map scan fails, and reports the native read-back
-result and the folder of a changed watch file. Its server additions
-(`contracts/APP_API_RELEASE_CONTRACT.md`, "1.1.0 server-first acceptance") were
-deployed before it was published. The owner's local build `1.0.2-local` (46)
-passed the real-watch checks of every OSMapaPL package, BBBike (OpenTopoMap)
-and installed maps in Install maps. The real-watch Update gate for
-Freizeitkarte and OpenTopoMap stays DEFERRED by the owner
-(`contracts/release-hardware-gates.json`) and listed in KNOWN ISSUES.
+Donate line), from GitHub-verified source
+`a4f5179e4d71621266009f4f53f5b078cd73e301` (main after PR #673, tag
+`v1.2.0-build47`). Installed 1.0.x and 1.1.0 builds are offered it by the
+in-app update check. Its ZIP and DMG passed the full release suite, Apple
+notarization, stapling, Gatekeeper and launch validation; the build ran in a
+fresh worktree at that commit. It still reads `catalog-v5.json`. It ends
+Remove's check of a watch that stopped answering after a bounded time, returns
+a stopped map read to Refresh, asks for a reconnect before Manage maps after a
+failed install that may have left a file, tolerates a rewritten
+`/GARMIN/Debug` log (#574), sends `writeFailureStep` and `ptpResponseCode`
+(#662), drops the shared Canada contours from the bundled catalog and, in the
+GitHub build only, shows the Donate line on Maps installed. Its server additions
+(`contracts/APP_API_RELEASE_CONTRACT.md`, "1.2.0 server-first acceptance") were
+deployed before it was published. Real-watch checks of its fixes are not
+recorded and stay listed in KNOWN ISSUES, as does the DEFERRED real-watch
+Update gate for Freizeitkarte and OpenTopoMap
+(`contracts/release-hardware-gates.json`). No App Store build is submitted
+while 1.1.0 (46.3) is in App Review; the AppStore configuration carries the
+same 1.2.0 / 47 identity for later.
 
 The current published build is identified by `site/updates/macos-arm64.json`
 and `RELEASE_NOTES.md`. Packaging a new artifact does not publish it. Public
