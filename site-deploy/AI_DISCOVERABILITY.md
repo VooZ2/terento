@@ -116,6 +116,10 @@ general link in the Home FAQ, the installation Guide, which deep-links specific
 anchors, and the app's help links.
 `scripts/validate-structured-data.py` recursively validates nested entities,
 arrays and graphs. Keep existing source/output parity and visible-content tests.
+`Tests/run-site-structured-data-tests.sh` runs
+`normalize-structured-data.py --check` first, so Home/Download JSON-LD that
+no longer matches the release manifest or visible FAQ fails the site suite
+(stale Download descriptions went unnoticed until the 1.2.0 publication).
 
 Existing FAQPage remains a factual description of the visible FAQ. Do not claim
 Google FAQ rich results: Google's [June 2026 documentation update](https://developers.google.com/search/updates#june-2026)
