@@ -9,7 +9,7 @@ Terento funguje s hodinkami Garmin a novějšími cyklopočítači Garmin Edge s
 
 Pokud zde svůj model nevidíte, neznamená to, že nebude fungovat. Možná z něj zatím nikdo nesdílel úspěšnou instalaci.
 
-**42** modely s úspěšnými instalacemi**382** úspěšných instalacíPoslední úspěšná instalace 9. listopadu 2026
+**42** modely s úspěšnými instalacemi**383** úspěšných instalacíPoslední úspěšná instalace 9. listopadu 2026
 
 Jak tento seznam funguje
 
@@ -75,11 +75,11 @@ fēnix
 
 ### fēnix 7X Pro Solar, Historical
 
-19 úspěšných instalací
+20 úspěšných instalací
 
-App 14 Web 5
+App 15 Web 5
 
-Poslední úspěšná instalace 8. listopadu 2026
+Poslední úspěšná instalace 9. listopadu 2026
 
 fēnix
 

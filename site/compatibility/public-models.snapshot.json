@@ -92,10 +92,10 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-02778-01/g/cf-lg.jpg",
-      "successfulInstallations": 19,
-      "appSuccessfulInstallations": 14,
+      "successfulInstallations": 20,
+      "appSuccessfulInstallations": 15,
       "webSuccessfulInstallations": 5,
-      "lastSuccessfulInstallation": "2026-11-08T03:30:00+00:00"
+      "lastSuccessfulInstallation": "2026-11-09T20:50:57+00:00"
     },
     {
       "model": "fēnix 8 · 47 mm, Solar",
@@ -674,5 +674,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-11-09T15:49:52.409487+00:00"
+  "generatedAt": "2026-11-10T01:22:59.762250+00:00"
 }
