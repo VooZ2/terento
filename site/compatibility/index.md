@@ -9,7 +9,7 @@ Terento works with Garmin watches and newer Garmin Edge bike computers with map 
 
 Not seeing your model? That doesn’t mean it won’t work. It may be that no one has shared a successful install from it yet.
 
-**42** models with successful installs**384** successful installsLatest successful install November 10, 2026
+**42** models with successful installs**386** successful installsLatest successful install November 11, 2026
 
 How this list works
 
@@ -155,11 +155,11 @@ fēnix
 
 ### fēnix 8 Pro 51 mm, AMOLED, inReach
 
-9 successful installs
+10 successful installs
 
-App 9
+App 10
 
-Latest successful install October 23, 2026
+Latest successful install November 10, 2026
 
 fēnix
 
@@ -235,11 +235,11 @@ fēnix
 
 ### fēnix 8 Pro 47 mm, AMOLED, inReach
 
-5 successful installs
+6 successful installs
 
-App 5
+App 6
 
-Latest successful install October 21, 2026
+Latest successful install November 11, 2026
 
 Enduro
 

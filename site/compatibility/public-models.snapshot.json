@@ -220,10 +220,10 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-03199-00/g/cf-lg.jpg",
-      "successfulInstallations": 9,
-      "appSuccessfulInstallations": 9,
+      "successfulInstallations": 10,
+      "appSuccessfulInstallations": 10,
       "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-10-23T10:45:39+00:00"
+      "lastSuccessfulInstallation": "2026-11-10T19:32:33+00:00"
     },
     {
       "model": "fēnix 7 Pro · Historical",
@@ -348,10 +348,10 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-03198-00/g/cf-lg.jpg",
-      "successfulInstallations": 5,
-      "appSuccessfulInstallations": 5,
+      "successfulInstallations": 6,
+      "appSuccessfulInstallations": 6,
       "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-10-21T13:19:19+00:00"
+      "lastSuccessfulInstallation": "2026-11-11T10:05:46+00:00"
     },
     {
       "model": "Enduro 3",
@@ -674,5 +674,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-11-10T14:40:01.332477+00:00"
+  "generatedAt": "2026-11-11T13:55:43.639492+00:00"
 }

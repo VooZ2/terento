@@ -9,7 +9,7 @@ Terento fonctionne avec les montres Garmin et les compteurs vélo Garmin Edge r�
 
 L’absence de votre modèle ne veut pas dire qu’il ne fonctionne pas. Personne n’a peut-être encore partagé d’installation réussie avec ce modèle.
 
-**42** modèles avec des installations réussies**384** installations réussiesDernière installation réussie 10 novembre 2026
+**42** modèles avec des installations réussies**386** installations réussiesDernière installation réussie 11 novembre 2026
 
 Comment fonctionne cette liste
 
@@ -155,11 +155,11 @@ fēnix
 
 ### fēnix 8 Pro 51 mm, AMOLED, inReach
 
-9 installations réussies
+10 installations réussies
 
-App 9
+App 10
 
-Dernière installation réussie 23 octobre 2026
+Dernière installation réussie 10 novembre 2026
 
 fēnix
 
@@ -235,11 +235,11 @@ fēnix
 
 ### fēnix 8 Pro 47 mm, AMOLED, inReach
 
-5 installations réussies
+6 installations réussies
 
-App 5
+App 6
 
-Dernière installation réussie 21 octobre 2026
+Dernière installation réussie 11 novembre 2026
 
 Enduro
 
