@@ -12,10 +12,10 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://api.terento.app/assets/devices/garmin/fenix-8-47-amoled.webp",
-      "successfulInstallations": 60,
-      "appSuccessfulInstallations": 59,
+      "successfulInstallations": 62,
+      "appSuccessfulInstallations": 61,
       "webSuccessfulInstallations": 1,
-      "lastSuccessfulInstallation": "2026-11-07T23:20:42+00:00"
+      "lastSuccessfulInstallation": "2026-11-11T18:12:49+00:00"
     },
     {
       "model": "Forerunner 965 · Historical",
@@ -44,10 +44,10 @@
       "family": "forerunner",
       "familyName": "Forerunner",
       "imageUrl": "https://res.garmin.com/en/products/010-02969-12/g/cf-lg.jpg",
-      "successfulInstallations": 28,
-      "appSuccessfulInstallations": 28,
+      "successfulInstallations": 30,
+      "appSuccessfulInstallations": 30,
       "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-10-31T20:47:39+00:00"
+      "lastSuccessfulInstallation": "2026-11-11T18:34:42+00:00"
     },
     {
       "model": "fēnix 9 Pro · 51 mm",
@@ -130,6 +130,22 @@
       "lastSuccessfulInstallation": "2026-10-31T15:37:44+00:00"
     },
     {
+      "model": "fēnix 8 · 51 mm, AMOLED",
+      "variant": "51 mm, AMOLED",
+      "caseSizeMm": 51,
+      "displayType": "AMOLED",
+      "screenTechnology": "AMOLED",
+      "solar": null,
+      "inReach": null,
+      "family": "fenix",
+      "familyName": "fēnix",
+      "imageUrl": "https://res.garmin.com/en/products/010-02905-20/g/cf-lg.jpg",
+      "successfulInstallations": 13,
+      "appSuccessfulInstallations": 12,
+      "webSuccessfulInstallations": 1,
+      "lastSuccessfulInstallation": "2026-11-11T17:49:37+00:00"
+    },
+    {
       "model": "Forerunner 955 · Standard",
       "variant": "Standard",
       "caseSizeMm": null,
@@ -176,22 +192,6 @@
       "appSuccessfulInstallations": 12,
       "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-11-06T02:45:55+00:00"
-    },
-    {
-      "model": "fēnix 8 · 51 mm, AMOLED",
-      "variant": "51 mm, AMOLED",
-      "caseSizeMm": 51,
-      "displayType": "AMOLED",
-      "screenTechnology": "AMOLED",
-      "solar": null,
-      "inReach": null,
-      "family": "fenix",
-      "familyName": "fēnix",
-      "imageUrl": "https://res.garmin.com/en/products/010-02905-20/g/cf-lg.jpg",
-      "successfulInstallations": 11,
-      "appSuccessfulInstallations": 10,
-      "webSuccessfulInstallations": 1,
-      "lastSuccessfulInstallation": "2026-11-02T16:32:00+00:00"
     },
     {
       "model": "epix Pro (Gen 2) · 47 mm, AMOLED",
@@ -674,5 +674,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-11-11T13:55:43.639492+00:00"
+  "generatedAt": "2026-11-12T00:23:23.477809+00:00"
 }
