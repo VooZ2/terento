@@ -9,7 +9,7 @@ Terento funguje s hodinkami Garmin a novějšími cyklopočítači Garmin Edge s
 
 Pokud zde svůj model nevidíte, neznamená to, že nebude fungovat. Možná z něj zatím nikdo nesdílel úspěšnou instalaci.
 
-**42** modely s úspěšnými instalacemi**397** úspěšných instalacíPoslední úspěšná instalace 12. listopadu 2026
+**44** modely s úspěšnými instalacemi**401** úspěšných instalacíPoslední úspěšná instalace 13. listopadu 2026
 
 Jak tento seznam funguje
 
@@ -19,7 +19,7 @@ Výsledky instalací sdílejí s Terento uživatelé; nejde o certifikaci Garmin
 
 Aktuální verze zahrnuje všechny poskytovatele map v katalogu. Tato informace o produktu je oddělená od výsledků zařízení uvedených zde.
 
-42 modelů
+44 modelů
 
 fēnix
 
@@ -123,6 +123,16 @@ Poslední úspěšná instalace 12. listopadu 2026
 
 fēnix
 
+### fēnix 9 Pro 47 mm, AMOLED
+
+13 úspěšných instalací
+
+App 13
+
+Poslední úspěšná instalace 13. listopadu 2026
+
+fēnix
+
 ### fēnix 7 47 mm, Solar
 
 12 úspěšných instalací
@@ -130,16 +140,6 @@ fēnix
 App 11 Web 1
 
 Poslední úspěšná instalace 17. října 2026
-
-fēnix
-
-### fēnix 9 Pro 47 mm, AMOLED
-
-12 úspěšných instalací
-
-App 12
-
-Poslední úspěšná instalace 6. listopadu 2026
 
 epix
 
@@ -195,11 +195,11 @@ fēnix
 
 ### fēnix 9 Pro 47 mm, AMOLED, inReach
 
-7 úspěšných instalací
+8 úspěšných instalací
 
-App 7
+App 8
 
-Poslední úspěšná instalace 30. října 2026
+Poslední úspěšná instalace 13. listopadu 2026
 
 epix
 
@@ -400,6 +400,26 @@ Venu
 App 2
 
 Poslední úspěšná instalace 29. října 2026
+
+Edge
+
+### Edge 1040 Smartwatch
+
+1 úspěšná instalace
+
+App 1
+
+Poslední úspěšná instalace 13. listopadu 2026
+
+Edge
+
+### Edge 840 Smartwatch
+
+1 úspěšná instalace
+
+App 1
+
+Poslední úspěšná instalace 13. listopadu 2026
 
 fēnix
 
