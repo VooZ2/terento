@@ -13,7 +13,7 @@ import sys
 root = Path(sys.argv[1])
 privacy_script = (root / "site/privacy-consent.js").read_text(encoding="utf-8")
 site_shell = (root / "scripts/normalize-public-shell.py").read_text(encoding="utf-8")
-umami_version = "20261105-outbound-links"
+umami_version = "20261113-umami-cleanup"
 
 assert '"download-click"' in privacy_script
 assert '"download-cta-click"' in privacy_script
@@ -50,6 +50,21 @@ assert "privacy-settings" not in privacy_script
 assert "getChoice" not in privacy_script
 assert "localStorage" not in privacy_script
 assert privacy_script.index("instrumentConversionLinks(campaignParams);") < privacy_script.index("loadUmami();")
+# Only the public host is counted and #fragment changes are not page views.
+assert 'script.dataset.domains = "terento.app";' in privacy_script
+assert 'script.dataset.excludeHash = "true";' in privacy_script
+# download-click names where the link is and the release it downloads.
+download_block = privacy_script.split('"download-click"', 1)[1].split("}, campaignParams));", 1)[0]
+assert "location: linkLocation(link)" in download_block
+assert "version" in download_block
+assert 'location: "download-page"' not in download_block
+# The Maps page reports a settled view change as one event, never a page view.
+map_styles_script = (root / "site/map-styles/map-styles.js").read_text(encoding="utf-8")
+assert 'umami.track("map-compare", {' in map_styles_script
+assert 'location: "map-styles",' in map_styles_script
+assert "}, 1000);" in map_styles_script
+for name in ("area: state.area", "style: state.a", "compare:", "mode: state.mode"):
+    assert name in map_styles_script, name
 
 
 class AnchorParser(HTMLParser):

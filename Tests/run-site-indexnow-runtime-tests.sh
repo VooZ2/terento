@@ -86,6 +86,22 @@ done <<'INDEX_CASES'
 /de/index.html /de/
 /guides/troubleshooting/index.html /guides/troubleshooting/
 INDEX_CASES
+# Broken outside links lead to the real page (2026-11-13); the Maps files stay.
+while read -r broken_path target_path; do
+  [ "$(curl --silent --show-error --globoff --dump-header "$temporary/broken-link-headers" --output /dev/null --write-out '%{http_code}' "http://127.0.0.1:$port$broken_path")" = 301 ]
+  tr -d '\r' < "$temporary/broken-link-headers" | grep -Fixq "Location: $target_path"
+done <<'BROKEN_LINK_CASES'
+/map-styles/** /map-styles/
+/map-styles/%2A%2A /map-styles/
+/map-styles/Good /map-styles/
+/map-styles/%F0%9F%86%95 /map-styles/
+/de/map-styles/Good /de/map-styles/
+/llm.txt /llms.txt
+/guides/troubleshooting/%23connect-watch /guides/troubleshooting/#connect-watch
+BROKEN_LINK_CASES
+for kept_path in /map-styles/ /map-styles/map-styles.js /map-styles/map-styles-data.js /de/map-styles/ /llms.txt /guides/troubleshooting/; do
+  [ "$(http_status "http://127.0.0.1:$port$kept_path" /dev/null)" = 200 ]
+done
 grep -q '<urlset' "$sitemap_body"
 # Discovery files and headers use the actual production Caddy configuration.
 for discovery_file in robots.txt llms.txt; do

@@ -295,6 +295,37 @@
     if (window.location.hash !== hash) history.replaceState(null, "", hash);
   }
 
+  // Statistics: the #fragment is not a page view (data-exclude-hash on the
+  // Umami tag). A person's change of place, style, compared style or view is
+  // one map-compare event once the view has been still for a second.
+  let compareTimer = 0;
+  let reportedView = null;
+  function reportCompare() {
+    clearTimeout(compareTimer);
+    compareTimer = setTimeout(() => {
+      const view = D.serializeHash(state);
+      if (view === reportedView) return;
+      reportedView = view;
+      const umami = window.umami;
+      if (!umami || typeof umami.track !== "function") return;
+      try {
+        umami.track("map-compare", {
+          area: state.area,
+          style: state.a,
+          compare: state.mode === "single" ? "none" : state.b,
+          mode: state.mode,
+          location: "map-styles",
+        });
+      } catch (error) {
+        // Statistics never stop the viewer.
+      }
+    }, 1000);
+  }
+  function changed(options) {
+    refresh(options);
+    reportCompare();
+  }
+
   function refresh({frame = false} = {}) {
     renderMode();
     if (frame) frameArea();
@@ -384,7 +415,7 @@
       state.b = styleIds.find((styleId) => styleId !== state.a && status(styleId) !== "NOT_COVERED") || state.b;
     }
     closePlaces(true);
-    refresh({frame: true});
+    changed({frame: true});
     announce(D.format(copy.showing, {style: styleById[state.a].name, place: area().name}));
   }
 
@@ -392,7 +423,7 @@
     if (status(styleId) === "NOT_COVERED") return;
     state.a = styleId;
     if (state.b === state.a) state.b = styleIds.find((id) => id !== state.a && status(id) !== "NOT_COVERED") || state.b;
-    refresh();
+    changed();
     announce(D.format(copy.showing, {style: styleById[state.a].name, place: area().name}));
     if (focus) {
       const button = document.querySelector(`.map-styles-pill[data-style="${styleId}"]`);
@@ -433,11 +464,11 @@
     const step = event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : -1;
     selectStyle(usable[(index + step + usable.length) % usable.length], true);
   });
-  $("map-styles-style-a").addEventListener("change", (event) => { state.a = event.target.value; refresh(); });
-  $("map-styles-style-b").addEventListener("change", (event) => { state.b = event.target.value; refresh(); });
+  $("map-styles-style-a").addEventListener("change", (event) => { state.a = event.target.value; changed(); });
+  $("map-styles-style-b").addEventListener("change", (event) => { state.b = event.target.value; changed(); });
   $("map-styles-swap").addEventListener("click", () => {
     [state.a, state.b] = [state.b, state.a];
-    refresh();
+    changed();
   });
   // The view menu stays folded to one button so it covers little of the map.
   const tools = $("map-styles-tools");
@@ -462,7 +493,7 @@
     button.addEventListener("click", () => {
       state.mode = button.dataset.mode;
       if (state.b === state.a) state.b = styleIds.find((id) => id !== state.a) || state.b;
-      refresh();
+      changed();
       setViewMenu(false, true);
       announce(copy.modes[state.mode]);
     });
@@ -595,5 +626,6 @@
 
   viewer.classList.add("is-ready");
   refresh({frame: true});
+  reportedView = D.serializeHash(state);
   loadManifest();
 })();

@@ -15,7 +15,7 @@ BASE_URL = "https://terento.app"
 ABOUT_SLUG = "about/"
 SHELL_VERSION = "20260905-in-page-language-v1"
 STYLE_VERSION = "20260905-in-page-language-v1"
-UMAMI_SCRIPT_VERSION = "20260905-public-link-events-v3"
+UMAMI_SCRIPT_VERSION = "20261113-umami-cleanup"
 SOCIAL_IMAGE = "/assets/social/terento-og.png"
 EMAIL_ADDRESS = "hello@terento.app"
 EMAIL_ADDRESS_HTML = EMAIL_ADDRESS.replace("@", "&#64;")
@@ -349,8 +349,8 @@ def render(locale: str, copy: dict[str, object]) -> str:
     social = f'''          <div class="about-socials" aria-labelledby="about-social-title">
             <h3 class="about-social-label" id="about-social-title">{esc(copy["social_label"])}</h3>
             <div class="about-social-links">
-              <a class="about-social-link" href="https://www.linkedin.com/in/gediminasc/" target="_blank" rel="noopener noreferrer" data-umami-event="social-link-click" data-umami-event-location="about-story" data-umami-event-channel="linkedin"><img src="/assets/social/linkedin.svg" alt="" width="16" height="16"><span>{esc(copy["linkedin"])}</span></a>
-              <a class="about-social-link" href="https://www.reddit.com/user/MrDonas/" target="_blank" rel="noopener noreferrer" data-umami-event="social-link-click" data-umami-event-location="about-story" data-umami-event-channel="reddit"><img src="/assets/social/reddit.svg" alt="" width="16" height="16"><span>{esc(copy["reddit"])}</span></a>
+              <a class="about-social-link" href="https://www.linkedin.com/in/gediminasc/" target="_blank" rel="noopener noreferrer" data-umami-event="social-link-click" data-umami-event-location="about-story" data-umami-event-channel="linkedin" data-umami-event-destination="linkedin.com"><img src="/assets/social/linkedin.svg" alt="" width="16" height="16"><span>{esc(copy["linkedin"])}</span></a>
+              <a class="about-social-link" href="https://www.reddit.com/user/MrDonas/" target="_blank" rel="noopener noreferrer" data-umami-event="social-link-click" data-umami-event-location="about-story" data-umami-event-channel="reddit" data-umami-event-destination="reddit.com"><img src="/assets/social/reddit.svg" alt="" width="16" height="16"><span>{esc(copy["reddit"])}</span></a>
               <a class="about-social-link about-email-link" href="{EMAIL_HREF}" data-umami-event="support-link-click" data-umami-event-location="about-story" data-umami-event-channel="email"><img src="/assets/social/email.svg" alt="" width="16" height="16"><span>{esc(copy["email"])}</span></a>
             </div>
             <div class="about-donate">

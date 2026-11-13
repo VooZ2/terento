@@ -9,6 +9,11 @@
     script.async = true;
     script.src = umamiSource;
     script.dataset.websiteId = umamiWebsiteId;
+    // Only the public host counts (no localhost or preview copies), and a
+    // changed #fragment (the Maps page view state, in-page links) is not a
+    // new page view.
+    script.dataset.domains = "terento.app";
+    script.dataset.excludeHash = "true";
     script.dataset.terentoUmami = "true";
     document.head.append(script);
   };
@@ -97,6 +102,12 @@
     if (link.closest(".footer-nav")) return "footer-nav";
     if (link.closest(".footer-identity")) return "footer";
     return pageLocation();
+  };
+
+  // Release version from the artifact name (Terento-1.2.0-macOS-arm64.dmg).
+  const downloadVersion = (pathname) => {
+    const match = /\/Terento-(\d+\.\d+\.\d+(?:-(?:beta|rc)\.\d+)?)-[^/]*\.(?:dmg|zip)$/i.exec(pathname);
+    return match ? match[1] : null;
   };
 
   const instrumentCompatibilityLinks = (campaignParams) => {
@@ -191,9 +202,11 @@
       }
       const path = url.pathname.toLowerCase();
       if (path.endsWith(".dmg") || path.endsWith(".zip")) {
+        const version = link.dataset.umamiEventVersion || downloadVersion(url.pathname);
         setConversionEvent(link, "download-click", withCampaignProperties({
           file: path.endsWith(".dmg") ? "dmg" : "zip",
-          location: "download-page"
+          location: linkLocation(link),
+          ...(version ? {version} : {})
         }, campaignParams));
       }
     });

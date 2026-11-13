@@ -35,7 +35,7 @@ GUIDE_MAPS = (
     ("osmapa", "osmapa", "osmapa-podstawowa"),
 )
 LEAFLET_VERSION = "1.9.4"
-SCRIPT_VERSION = "20261105-map-styles-v15"
+SCRIPT_VERSION = "20261113-map-styles-v16"
 MANIFEST_URL = "https://api.terento.app/maps/previews/manifest.json"
 # The view each language opens on: a well-known place close to that audience where
 # both compared styles have previews (OSMapaPL waits for the manifest, so never a default).

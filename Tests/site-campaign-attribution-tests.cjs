@@ -63,4 +63,36 @@ for (const source of ["chatgpt.com", "claude.ai", "gemini.google.com", "bing", "
   assert.equal(incoming[2].href, "https://example.com/");
 }
 
+// The Umami tag counts only the public host and ignores #fragment changes;
+// download-click names where the link was and which release it downloads.
+function runAt(pathname, hrefs, linkProps = {}) {
+  const location = new URL("https://terento.app" + pathname);
+  const links = hrefs.map((href) => ({
+    href, dataset: {...linkProps}, classList: {contains: () => false}, closest: () => null,
+    getAttribute() { return this.href; }, setAttribute(name, value) { this[name] = value; }
+  }));
+  const scripts = [];
+  const document = {
+    querySelector: () => scripts[0] || null,
+    querySelectorAll: (selector) => selector.startsWith("a[") ? links : [],
+    createElement: () => ({dataset: {}}), head: {append: (script) => scripts.push(script)}
+  };
+  vm.runInNewContext(privacy, {window: {location}, document, URL});
+  return {links, script: scripts[0]};
+}
+const release = "https://github.com/VooZ2/terento/releases/download/v1.2.0-build47/Terento-1.2.0-macOS-arm64.dmg";
+const downloadPage = runAt("/de/download/", [release, "https://github.com/VooZ2/terento/releases/download/v1.3.0-rc.1-build50/Terento-1.3.0-rc.1-macOS-arm64.zip"]);
+assert.equal(downloadPage.script.dataset.domains, "terento.app", "localhost and copies of the site are not counted");
+assert.equal(downloadPage.script.dataset.excludeHash, "true", "a #fragment change is not a page view");
+assert.equal(downloadPage.links[0].dataset.umamiEvent, "download-click");
+assert.equal(downloadPage.links[0].dataset.umamiEventLocation, "download-page");
+assert.equal(downloadPage.links[0].dataset.umamiEventFile, "dmg");
+assert.equal(downloadPage.links[0].dataset.umamiEventVersion, "1.2.0");
+assert.equal(downloadPage.links[1].dataset.umamiEventVersion, "1.3.0-rc.1");
+const elsewhere = runAt("/", [release, "https://example.com/files/app.dmg"]);
+assert.equal(elsewhere.links[0].dataset.umamiEventLocation, "home-page", "the location is where the link is, not always the Download page");
+assert.equal(elsewhere.links[1].dataset.umamiEventVersion, undefined, "no version is made up for an unknown file name");
+const marked = runAt("/guides/install-garmin-maps-mac/", [release], {umamiEventLocation: "guide-steps"});
+assert.equal(marked.links[0].dataset.umamiEventLocation, "guide-steps", "a link's own location wins");
+
 console.log("Campaign attribution and Umami privacy contract tests passed.");

@@ -67,10 +67,25 @@
     file_server
   }
 
+  # Broken outside links (2026-11-13): text pasted after /map-styles/ (Markdown
+  # leftovers such as /map-styles/**, /map-styles/Good or an emoji) opens the
+  # Maps page; its own files have a dot and stay. /llm.txt is a common typo.
+  @mapStylesStray {
+    path_regexp mapStylesStray ^/((?:de|fr|pl|cs|it)/)?map-styles/[^.]+$
+    not file
+  }
+  @llmTxt path /llm.txt
+  # A section link whose # was encoded (%23) reaches the server as part of the
+  # path; send it to the page and section instead of "Page not found".
+  @encodedFragment path_regexp encodedFragment "^([^#]*)#(.*)$"
+
   route {
     redir @legacySupportedWatches /compatibility/ permanent
     redir @legacyAdmin https://api.terento.app{uri} permanent
     redir @indexFile {re.indexFile.1} permanent
+    redir @mapStylesStray /{re.mapStylesStray.1}map-styles/ permanent
+    redir @llmTxt /llms.txt permanent
+    redir @encodedFragment "{re.encodedFragment.1}#{re.encodedFragment.2}" permanent
 
     # Serve generated public-page Markdown only when an agent asks for it.
     @markdown {
