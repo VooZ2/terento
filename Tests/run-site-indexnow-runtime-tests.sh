@@ -98,7 +98,19 @@ done <<'BROKEN_LINK_CASES'
 /de/map-styles/Good /de/map-styles/
 /llm.txt /llms.txt
 /guides/troubleshooting/%23connect-watch /guides/troubleshooting/#connect-watch
+/map-styles/%23area=dolomites-tre-cime&style=opentopomap /map-styles/#area=dolomites-tre-cime&style=opentopomap
+/%23faq /#faq
 BROKEN_LINK_CASES
+# An encoded # never turns into an outside redirect (backslash or // targets).
+for outside_path in '/%5Cevil.com%23x' '/%2F%2Fevil.com%23x' '/%5C%2Fevil.com%23x' '/guides/%5Cevil.com%23x' '/x%23%5Cevil.com'; do
+  outside_status=$(curl --silent --show-error --dump-header "$temporary/outside-headers" --output /dev/null --write-out '%{http_code}' "http://127.0.0.1:$port$outside_path")
+  case "$outside_status" in
+    3??) echo "FAIL: $outside_path answered $outside_status (redirect)." >&2; exit 1 ;;
+  esac
+  if tr -d '\r' < "$temporary/outside-headers" | grep -iq '^Location:'; then
+    echo "FAIL: $outside_path sent a Location header." >&2; exit 1
+  fi
+done
 for kept_path in /map-styles/ /map-styles/map-styles.js /map-styles/map-styles-data.js /de/map-styles/ /llms.txt /guides/troubleshooting/; do
   [ "$(http_status "http://127.0.0.1:$port$kept_path" /dev/null)" = 200 ]
 done

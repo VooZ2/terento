@@ -205,7 +205,16 @@ class DiscoverabilityTests(unittest.TestCase):
             self.assertNotRegex(path, stray)
         found = re.match(fragment, '/guides/troubleshooting/#connect-watch')
         self.assertEqual((found[1], found[2]), ('/guides/troubleshooting/', 'connect-watch'))
+        shared = re.match(fragment, '/map-styles/#area=dolomites-tre-cime&style=opentopomap&compare=maprando&mode=split')
+        self.assertEqual(shared[1], '/map-styles/')
+        self.assertEqual(re.match(fragment, '/#faq')[1], '/')
         self.assertIsNone(re.match(fragment, '/guides/troubleshooting/'))
+        # Never an outside redirect: the target must stay a plain local path.
+        for path in ('/\\evil.com#x', '//evil.com#x', '/\\/evil.com#x', '/a/\\evil.com#x',
+                     '/x#\\evil.com', '/x#a/b', '/evil.com#x', '/x#a b', '/x#a"b'):
+            self.assertIsNone(re.match(fragment, path), path)
+        route = caddy.split('  route {', 1)[1]
+        self.assertLess(route.index('redir @encodedFragment'), route.index('redir @mapStylesStray'))
 
     def test_api_catalog_links_and_openapi_routes(self):
         catalog = json.loads((ROOT / 'site/.well-known/api-catalog').read_text())
