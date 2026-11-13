@@ -21,7 +21,7 @@ assert '"outbound-link-click"' in privacy_script
 assert '"dmg"' in privacy_script and '"zip"' in privacy_script
 assert '"download-page"' in privacy_script
 assert '"home-hero"' in privacy_script
-assert '"home-final-cta"' in privacy_script
+assert '"home-final-cta"' not in privacy_script and ".final-cta" not in privacy_script
 assert '"header-nav"' in privacy_script
 assert '"compatibility-link-click"' in privacy_script
 assert 'setConversionEvent(link, "donate"' in privacy_script
@@ -175,7 +175,7 @@ for path in home_files:
     assert html.count('data-provider-card=') == 5, f"{path}: expected one card per provider"
     assert html.count('class="provider-benefits"') == 5, f"{path}: expected one benefits list per map card"
     assert html.count("<details>") == 7, f"{path}: expected seven FAQ answers"
-    assert 'class="final-cta"' in html, f"{path}: expected final CTA"
+    assert 'final-cta' not in html, f"{path}: the closing download block was removed (owner 2026-11-13)"
     assert "/assets/home/hero-opentopomap.webp" in html, f"{path}: expected the drawn watch hero map"
     assert "/assets/app/optimized/install-maps-640.avif" in html, f"{path}: expected responsive install screenshot"
     items = anchors(path)
@@ -190,14 +190,6 @@ for path in home_files:
     assert len(hero_compatibility) == 1, f"{path}: expected one home hero Compatibility CTA"
     assert hero_compatibility[0]["attributes"].get("data-umami-event") == "compatibility-link-click"
     assert hero_compatibility[0]["attributes"].get("data-umami-event-location") == "home-hero"
-    if any("final-cta" in ancestor for item in items for ancestor in item["ancestors"]):
-        final = [
-            item for item in items
-            if "download-action" in item["class"]
-            and any("final-cta" in ancestor for ancestor in item["ancestors"])
-            and urlparse(item["href"]).path.endswith("/download/")
-        ]
-        assert len(final) == 1, f"{path}: expected one home final CTA"
 
     header_downloads = [
         item for item in items

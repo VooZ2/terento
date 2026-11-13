@@ -140,9 +140,3 @@ Nella schermata di installazione non riuscita, scegli “Report issue”. Terent
 Posso installare le mappe senza installare l’app?
 
 Sì. L’ [installer web](https://terento.app/it/install/) installa, aggiorna e rimuove le mappe del catalogo da Chrome, Microsoft Edge, Opera o Brave su Mac e su Linux, dove è ancora in fase di test. Non funziona ancora su Windows, telefoni o tablet e non può aggiungere mappe .img personali.
-
-## Il tuo Garmin, pronto per la prossima uscita
-
-Scarica Terento per il tuo Mac oppure installa le mappe direttamente dal browser.
-
-[Scarica per Mac](https://terento.app/it/download/) [Installa dal browser](https://terento.app/it/install/)

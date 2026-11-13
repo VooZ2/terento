@@ -635,7 +635,6 @@ def normalize_home(source: str, path: Path, locale: str) -> str:
         if APP_STORE_URL else ""
     )
     values["app_store_hero"] = app_store.replace("{location}", "home-hero")
-    values["app_store_final"] = app_store.replace("{location}", "home-final-cta")
     values["edge_guide_href"] = "/guides/install-garmin-maps-edge-mac/" if locale == "en" else f"/{locale}/guides/install-garmin-maps-edge-mac/"
     # Freizeitkarte first on the Edge so the two devices open on different maps.
     values["edge_visual"] = (

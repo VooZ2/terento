@@ -211,7 +211,7 @@
       }
     });
 
-    document.querySelectorAll('.hero-copy a.download-action[href], .home-hero-copy a.download-action[href], .final-cta a.download-action[href], .site-header a.download-action[href]').forEach((link) => {
+    document.querySelectorAll('.hero-copy a.download-action[href], .home-hero-copy a.download-action[href], .site-header a.download-action[href]').forEach((link) => {
       let url;
       try {
         url = new URL(link.href, window.location.href);
@@ -219,11 +219,7 @@
         return;
       }
       if (!url.pathname.endsWith("/download/")) return;
-      const location = link.closest(".site-header")
-        ? "header-nav"
-        : link.closest(".final-cta")
-          ? "home-final-cta"
-          : "home-hero";
+      const location = link.closest(".site-header") ? "header-nav" : "home-hero";
       setConversionEvent(link, "download-cta-click", withCampaignProperties({ location }, campaignParams));
     });
 
