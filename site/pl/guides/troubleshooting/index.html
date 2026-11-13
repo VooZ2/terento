@@ -1,46 +1,22 @@
 <!doctype html>
 <html lang="pl" data-language="pl" data-page="troubleshooting">
   <head>
-    <script defer src="/site-shell.js?v=20261105-copy-command-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20261106-audit-fixes-v1">
+    <script defer src="/site-shell.js?v=20260905-in-page-language-v1"></script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
-    <meta name="description" content="Mac nie widzi zegarka Garmin lub Edge albo brak mapy? Rozwiązania dla trybu USB, Garmin Express, pobierania i instalacji map.">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#222A2B">
+    <meta name="description" content="Rozwiąż problemy z Garminem na Macu: zegarek niewidoczny, Garmin Express lub Android File Transfer blokuje zegarek, tryb USB (MTP), za mało miejsca i nieudane pobieranie map.">
     <meta name="robots" content="index,follow">
     <link rel="canonical" href="https://terento.app/pl/guides/troubleshooting/">
-    <link rel="alternate" hreflang="en" href="https://terento.app/guides/troubleshooting/">
-    <link rel="alternate" hreflang="de" href="https://terento.app/de/guides/troubleshooting/">
-    <link rel="alternate" hreflang="fr" href="https://terento.app/fr/guides/troubleshooting/">
-    <link rel="alternate" hreflang="pl" href="https://terento.app/pl/guides/troubleshooting/">
-    <link rel="alternate" hreflang="cs" href="https://terento.app/cs/guides/troubleshooting/">
-    <link rel="alternate" hreflang="it" href="https://terento.app/it/guides/troubleshooting/">
-    <link rel="alternate" hreflang="x-default" href="https://terento.app/guides/troubleshooting/">
-    <meta property="og:type" content="article">
-    <meta property="og:site_name" content="Terento">
-    <meta property="og:title" content="Mac nie widzi Garmina? Pomoc z mapami — Terento">
-    <meta property="og:description" content="Mac nie widzi zegarka Garmin lub Edge albo brak mapy? Rozwiązania dla trybu USB, Garmin Express, pobierania i instalacji map.">
-    <meta property="og:url" content="https://terento.app/pl/guides/troubleshooting/">
-    <meta property="og:image" content="https://terento.app/assets/social/terento-og.png">
-    <meta property="og:image:type" content="image/png">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-    <meta property="og:image:alt" content="Terento pokazuje podłączony zegarek Garmin w systemie macOS">
-    <meta property="og:locale" content="pl_PL">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Mac nie widzi Garmina? Pomoc z mapami — Terento">
-    <meta name="twitter:description" content="Mac nie widzi zegarka Garmin lub Edge albo brak mapy? Rozwiązania dla trybu USB, Garmin Express, pobierania i instalacji map.">
-    <meta name="twitter:image" content="https://terento.app/assets/social/terento-og.png">
-    <title>Mac nie widzi Garmina? Pomoc z mapami — Terento</title>
-
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#222A2B">
-
+    <title>Mac nie widzi zegarka Garmin? Rozwiązywanie problemów — Terento</title>
     <link rel="icon" href="/favicon.ico?v=20260820-4" sizes="any">
     <link rel="icon" href="/favicon.svg?v=20260820-4" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20260820-4">
     <link rel="mask-icon" href="/safari-pinned-tab.svg?v=20260820-4" color="#7898A8">
     <link rel="manifest" href="/manifest.webmanifest">
-    <script defer src="/language.js?v=20260926-static-shell-v1"></script>
+    <link rel="stylesheet" href="/styles.css?v=20260905-in-page-language-v1">
+    <script defer src="/language.js?v=20260905-language-selector-full-name-v1"></script>
     <script defer src="/privacy-consent.js?v=20261113-umami-cleanup"></script>
     <script type="application/ld+json">
 {
@@ -62,7 +38,7 @@
       "headline": "Rozwiązywanie problemów z zegarkiem Garmin i mapami na Macu",
       "description": "Rozwiąż problemy z Garminem na Macu: zegarek niewidoczny, Garmin Express lub Android File Transfer blokuje zegarek, tryb USB (MTP), za mało miejsca i nieudane pobieranie map.",
       "datePublished": "2026-10-06T00:00:00Z",
-      "dateModified": "2026-11-05T00:00:00Z",
+      "dateModified": "2026-11-13T00:00:00Z",
       "mainEntityOfPage": {
         "@id": "https://terento.app/pl/guides/troubleshooting/"
       },
@@ -99,46 +75,17 @@
   ]
 }
     </script>
-</head>
+  </head>
   <body>
     <a class="skip-link" href="#main-content" data-umami-event="internal-link-click" data-umami-event-location="skip-link">Przejdź do treści</a>
-    <header class="site-header">
-      <div class="shell header-inner">
-        <a class="brand-lockup" href="/pl/" data-shell-aria="home" data-shell-root aria-label="Strona główna Terento" data-umami-event="home-link-click" data-umami-event-location="header-brand">
-          <img src="/assets/logo-sky.svg" alt="" width="40" height="40">
-          <span>Terento</span>
-        </a>
-        <nav class="primary-nav" data-shell-aria="primary" aria-label="Główna nawigacja">
-          <a href="/pl/compatibility/" data-shell-copy="compatibility" data-shell-route="compatibility" data-umami-event="compatibility-link-click" data-umami-event-location="header-nav">Kompatybilność</a><a href="/pl/map-styles/" data-shell-copy="styles" data-shell-route="styles" data-umami-event="maps-link-click" data-umami-event-location="header-nav">Mapy</a><a href="/pl/guides/install-garmin-maps-mac/" data-shell-copy="guide" data-shell-route="guide" data-umami-event="guide-link-click" data-umami-event-location="header-nav">Poradnik</a><a href="/pl/about/" data-shell-copy="about" data-shell-route="about" data-umami-event="navigation-link-click" data-umami-event-location="header-nav">O projekcie</a><a class="download-action" href="/pl/download/" data-shell-copy="download" data-shell-route="download" data-umami-event="download-cta-click" data-umami-event-location="header-nav">Pobierz</a>
-          <span class="language-switcher"><details class="language-menu">
-          <summary class="language-trigger" data-shell-aria="language" aria-label="Wybierz język"><span class="language-code" aria-hidden="true">PL</span></summary>
-          <div class="language-options"><a class="language-option" href="/guides/troubleshooting/" data-language-switch="en" lang="en" aria-label="English" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/guides/troubleshooting/" data-language-switch="de" lang="de" aria-label="Deutsch" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/guides/troubleshooting/" data-language-switch="fr" lang="fr" aria-label="Français" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/guides/troubleshooting/" data-language-switch="pl" lang="pl" aria-label="Polski" aria-current="page" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/guides/troubleshooting/" data-language-switch="cs" lang="cs" aria-label="Čeština" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/guides/troubleshooting/" data-language-switch="it" lang="it" aria-label="Italiano" data-umami-event="language-switch-click" data-umami-event-location="header-language"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
-        </details></span>
-        </nav>
-        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-nav" data-menu-label="Menu" data-close-label="Zamknij menu" aria-label="Menu">
-          <span class="menu-toggle-icon" aria-hidden="true"><span></span><span></span><span></span></span>
-          <span class="menu-toggle-text" data-shell-copy="menu">Menu</span>
-        </button>
-      </div>
-      <div class="mobile-nav" id="mobile-nav" hidden>
-        <div class="shell mobile-nav-inner">
-          <nav class="mobile-nav-links" data-shell-aria="primary" aria-label="Główna nawigacja">
-            <a href="/pl/compatibility/" data-shell-copy="compatibility" data-shell-route="compatibility" data-umami-event="compatibility-link-click" data-umami-event-location="mobile-nav">Kompatybilność</a><a href="/pl/map-styles/" data-shell-copy="styles" data-shell-route="styles" data-umami-event="maps-link-click" data-umami-event-location="mobile-nav">Mapy</a><a href="/pl/guides/install-garmin-maps-mac/" data-shell-copy="guide" data-shell-route="guide" data-umami-event="guide-link-click" data-umami-event-location="mobile-nav">Poradnik</a><a href="/pl/about/" data-shell-copy="about" data-shell-route="about" data-umami-event="navigation-link-click" data-umami-event-location="mobile-nav">O projekcie</a><a href="/pl/download/" data-shell-copy="download" data-shell-route="download" data-umami-event="download-cta-click" data-umami-event-location="mobile-nav">Pobierz</a>
-          </nav>
-          <div class="mobile-nav-language"><details class="language-menu mobile-language-menu">
-            <summary class="language-trigger" data-shell-aria="language" aria-label="Wybierz język"><span class="mobile-language-label">Polski</span></summary>
-            <div class="language-options"><a class="language-option" href="/guides/troubleshooting/" data-language-switch="en" lang="en" aria-label="English" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇬🇧</span><span>English</span></a><a class="language-option" href="/de/guides/troubleshooting/" data-language-switch="de" lang="de" aria-label="Deutsch" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇩🇪</span><span>Deutsch</span></a><a class="language-option" href="/fr/guides/troubleshooting/" data-language-switch="fr" lang="fr" aria-label="Français" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇫🇷</span><span>Français</span></a><a class="language-option" href="/pl/guides/troubleshooting/" data-language-switch="pl" lang="pl" aria-label="Polski" aria-current="page" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇵🇱</span><span>Polski</span></a><a class="language-option" href="/cs/guides/troubleshooting/" data-language-switch="cs" lang="cs" aria-label="Čeština" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇨🇿</span><span>Čeština</span></a><a class="language-option" href="/it/guides/troubleshooting/" data-language-switch="it" lang="it" aria-label="Italiano" data-umami-event="language-switch-click" data-umami-event-location="mobile-language"><span class="language-option-flag" aria-hidden="true">🇮🇹</span><span>Italiano</span></a></div>
-          </details></div>
-        </div>
-      </div>
-    </header>
+    <header class="site-header"></header>
     <main id="main-content" class="guide-main">
       <article class="guide-article">
         <header class="guide-intro">
           <div class="shell">
             <h1>Rozwiązywanie problemów z zegarkiem Garmin i mapami na Macu</h1>
             <p class="guide-lede">Znajdź swój problem – od zegarka Garmin, którego Mac nie widzi, po nieudane pobieranie mapy – i wykonaj krótkie kroki. Jeśli nic nie pomaga, wyślij raport, abyśmy mogli się temu przyjrzeć.</p>
-            <nav class="troubleshooting-toc" aria-label="Na tej stronie"><div class="troubleshooting-toc-group"><p class="troubleshooting-toc-title">Problemy z połączeniem zegarka Garmin</p><ul><li><a href="#connect-watch" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Mac nie widzi zegarka Garmin</a></li><li><a href="#garmin-busy" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin Express lub inna aplikacja używa zegarka</a></li><li><a href="#multiple-garmin" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Podłączono kilka urządzeń Garmin</a></li><li><a href="#usb-mode" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Mac nie rozpoznaje zegarka Garmin: tryb USB (MTP)</a></li><li><a href="#connection-timeout" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Zegarek Garmin wykryty, ale niegotowy</a></li><li><a href="#watch-not-responding" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Zegarek Garmin przestał odpowiadać</a></li></ul></div><div class="troubleshooting-toc-group"><p class="troubleshooting-toc-title">Sprawdzanie zegarka i map</p><ul><li><a href="#model-not-enabled" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Instalacja map niedostępna dla tego modelu Garmin</a></li><li><a href="#couldnt-check" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Terento nie mogło sprawdzić zegarka Garmin</a></li><li><a href="#catalog-unavailable" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Lista map Garmin się nie wczytuje lub Terento wymaga aktualizacji</a></li></ul></div><div class="troubleshooting-toc-group"><p class="troubleshooting-toc-title">Pobieranie map i wolne miejsce</p><ul><li><a href="#download-failed" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Nie udało się pobrać mapy Garmin</a></li><li><a href="#mac-storage" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Za mało miejsca na Macu, aby pobrać mapę</a></li><li><a href="#watch-storage" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Za mało miejsca na mapy Garmin w zegarku</a></li></ul></div><div class="troubleshooting-toc-group"><p class="troubleshooting-toc-title">Instalowanie, aktualizowanie i usuwanie map</p><ul><li><a href="#leftover-map" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Instalacja mapy nie powiodła się: pozostałość mapy na zegarku</a></li><li><a href="#update-remove" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Aktualizacja lub usuwanie mapy trwa długo</a></li></ul></div><div class="troubleshooting-toc-group"><p class="troubleshooting-toc-title">Pomoc</p><ul><li><a href="#send-report" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Jak zgłosić problem z Terento</a></li></ul></div></nav>
+            <nav class="troubleshooting-toc" aria-label="Na tej stronie"><div class="troubleshooting-toc-group"><p class="troubleshooting-toc-title">Problemy z połączeniem zegarka Garmin</p><ul><li><a href="#connect-watch">Mac nie widzi zegarka Garmin</a></li><li><a href="#garmin-busy">Garmin Express lub inna aplikacja używa zegarka</a></li><li><a href="#multiple-garmin">Podłączono kilka urządzeń Garmin</a></li><li><a href="#usb-mode">Mac nie rozpoznaje zegarka Garmin: tryb USB (MTP)</a></li><li><a href="#connection-timeout">Zegarek Garmin wykryty, ale niegotowy</a></li><li><a href="#watch-not-responding">Zegarek Garmin przestał odpowiadać</a></li></ul></div><div class="troubleshooting-toc-group"><p class="troubleshooting-toc-title">Sprawdzanie zegarka i map</p><ul><li><a href="#model-not-enabled">Instalacja map niedostępna dla tego modelu Garmin</a></li><li><a href="#couldnt-check">Terento nie mogło sprawdzić zegarka Garmin</a></li><li><a href="#catalog-unavailable">Lista map Garmin się nie wczytuje lub Terento wymaga aktualizacji</a></li></ul></div><div class="troubleshooting-toc-group"><p class="troubleshooting-toc-title">Pobieranie map i wolne miejsce</p><ul><li><a href="#download-failed">Nie udało się pobrać mapy Garmin</a></li><li><a href="#mac-storage">Za mało miejsca na Macu, aby pobrać mapę</a></li><li><a href="#watch-storage">Za mało miejsca na mapy Garmin w zegarku</a></li></ul></div><div class="troubleshooting-toc-group"><p class="troubleshooting-toc-title">Instalowanie, aktualizowanie i usuwanie map</p><ul><li><a href="#leftover-map">Instalacja mapy nie powiodła się: pozostałość mapy na zegarku</a></li><li><a href="#update-remove">Aktualizacja lub usuwanie mapy trwa długo</a></li></ul></div><div class="troubleshooting-toc-group"><p class="troubleshooting-toc-title">Pomoc</p><ul><li><a href="#send-report">Jak zgłosić problem z Terento</a></li></ul></div></nav>
           </div>
         </header>
 
@@ -156,7 +103,7 @@
             <div class="troubleshooting-list"><section class="troubleshooting-item" id="connect-watch" aria-labelledby="connect-watch-title">
               <h3 id="connect-watch-title">Mac nie widzi zegarka Garmin</h3>
               <p>Podłącz zegarek bezpośrednio do Maca kablem USB do przesyłania danych, odblokuj go i poczekaj do 2 minut: Terento wykryje go automatycznie.</p>
-              <ol class="troubleshooting-steps"><li>Użyj kabla do przesyłania danych. Kable tylko do ładowania i niektóre huby USB nie działają.</li><li>To normalne, że zegarek lub Edge nie pojawia się w Finderze: macOS nie otwiera większości obecnych zegarków Garmin ani nowszych modeli Edge jako dysku. Terento komunikuje się z urządzeniem bezpośrednio.</li><li>Jeśli na MacBooku macOS zapyta, czy zezwolić akcesorium na połączenie, wybierz Zezwól.</li><li>Poczekaj do 2 minut, aż Terento sprawdzi połączenie.</li><li>Jeśli zegarek nadal się nie pojawia, odłącz go, odczekaj kilka sekund i podłącz ponownie.</li><li>Jeśli otwarta jest inna aplikacja, zobacz <a href="#garmin-busy" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin Express lub inna aplikacja używa zegarka</a>.</li></ol>
+              <ol class="troubleshooting-steps"><li>Użyj kabla do przesyłania danych. Kable tylko do ładowania i niektóre huby USB nie działają.</li><li>To normalne, że zegarek lub Edge nie pojawia się w Finderze: macOS nie otwiera większości obecnych zegarków Garmin ani nowszych modeli Edge jako dysku. Terento komunikuje się z urządzeniem bezpośrednio.</li><li>Jeśli na MacBooku macOS zapyta, czy zezwolić akcesorium na połączenie, wybierz Zezwól.</li><li>Poczekaj do 2 minut, aż Terento sprawdzi połączenie.</li><li>Jeśli zegarek nadal się nie pojawia, odłącz go, odczekaj kilka sekund i podłącz ponownie.</li><li>Jeśli otwarta jest inna aplikacja, zobacz <a href="#garmin-busy">Garmin Express lub inna aplikacja używa zegarka</a>.</li></ol>
             </section><section class="troubleshooting-item" id="garmin-busy" aria-labelledby="garmin-busy-title">
               <h3 id="garmin-busy-title">Garmin Express lub inna aplikacja używa zegarka</h3>
               <p>Zamknij Garmin Express i aplikacje do przesyłania plików, takie jak Android File Transfer, OpenMTP czy MacDroid: z połączenia z zegarkiem lub Edge może korzystać tylko jedna aplikacja naraz.</p>
@@ -172,7 +119,7 @@
             </section><section class="troubleshooting-item" id="connection-timeout" aria-labelledby="connection-timeout-title">
               <h3 id="connection-timeout-title">Zegarek Garmin wykryty, ale niegotowy</h3>
               <p>Jeśli Terento znajdzie zegarek, ale połączenie nie będzie gotowe w ciągu 2 minut, odłącz zegarek i podłącz go ponownie. Sporadyczne zawieszanie się połączenia to znane ograniczenie obecnej wersji.</p>
-              <ol class="troubleshooting-steps"><li>Zamknij inne aplikacje, które mogą korzystać z zegarka. Zobacz <a href="#garmin-busy" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Garmin Express lub inna aplikacja używa zegarka</a>.</li><li>Spróbuj innego portu USB lub innego kabla.</li><li>Jeśli problem się powtarza, uruchom zegarek ponownie i podłącz go jeszcze raz.</li></ol>
+              <ol class="troubleshooting-steps"><li>Zamknij inne aplikacje, które mogą korzystać z zegarka. Zobacz <a href="#garmin-busy">Garmin Express lub inna aplikacja używa zegarka</a>.</li><li>Spróbuj innego portu USB lub innego kabla.</li><li>Jeśli problem się powtarza, uruchom zegarek ponownie i podłącz go jeszcze raz.</li></ol>
             </section><section class="troubleshooting-item" id="watch-not-responding" aria-labelledby="watch-not-responding-title">
               <h3 id="watch-not-responding-title">Zegarek Garmin przestał odpowiadać</h3>
               <p>Odłącz zegarek, odczekaj kilka sekund i podłącz go ponownie: połączenie zostało przerwane albo zegarek przestał odpowiadać Terento.</p>
@@ -184,7 +131,7 @@
             <div class="troubleshooting-list"><section class="troubleshooting-item" id="model-not-enabled" aria-labelledby="model-not-enabled-title">
               <h3 id="model-not-enabled-title">Instalacja map niedostępna dla tego modelu Garmin</h3>
               <p>Terento instaluje mapy tylko na zegarkach Garmin z obsługą map, które są włączone w Terento. Nadal możesz podłączyć zegarek i przeglądać mapy.</p>
-              <ol class="troubleshooting-steps"><li>Sprawdź, czy Twój model zegarka obsługuje mapy.</li><li>Terento sprawdza swoją aktualną listę przy każdym podłączeniu. Jeśli Twój model zostanie włączony później, podłącz zegarek ponownie.</li><li>Podaj nam dokładny model, abyśmy mogli go sprawdzić. Zobacz <a href="#send-report" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">Jak zgłosić problem z Terento</a>.</li></ol>
+              <ol class="troubleshooting-steps"><li>Sprawdź, czy Twój model zegarka obsługuje mapy.</li><li>Terento sprawdza swoją aktualną listę przy każdym podłączeniu. Jeśli Twój model zostanie włączony później, podłącz zegarek ponownie.</li><li>Podaj nam dokładny model, abyśmy mogli go sprawdzić. Zobacz <a href="#send-report">Jak zgłosić problem z Terento</a>.</li></ol>
             </section><section class="troubleshooting-item" id="couldnt-check" aria-labelledby="couldnt-check-title">
               <h3 id="couldnt-check-title">Terento nie mogło sprawdzić zegarka Garmin</h3>
               <p>Sprawdź, czy Mac ma połączenie z internetem, i podłącz zegarek ponownie: Terento potrzebuje internetu, aby sprawdzić, czy na tym zegarku można instalować mapy.</p>
@@ -216,7 +163,7 @@
             <div class="troubleshooting-list"><section class="troubleshooting-item" id="leftover-map" aria-labelledby="leftover-map-title">
               <h3 id="leftover-map-title">Instalacja mapy nie powiodła się: pozostałość mapy na zegarku</h3>
               <p>Usuń pozostałą mapę w „Manage maps”, a potem zainstaluj ją ponownie. Jeśli instalacja zatrzyma się po rozpoczęciu kopiowania, część mapy może pozostać na zegarku, a Terento nie usuwa jej automatycznie.</p>
-              <ol class="troubleshooting-steps"><li>Podłącz zegarek ponownie i poczekaj, aż Terento będzie gotowe.</li><li>Otwórz „Manage maps” i sprawdź listę.</li><li>Jeśli mapa z nieudanej instalacji jest na liście, usuń ją, a następnie zainstaluj ponownie.</li><li>Jeśli znowu się nie uda, <a href="#send-report" data-umami-event="internal-link-click" data-umami-event-location="troubleshooting-content">wyślij raport</a>.</li></ol>
+              <ol class="troubleshooting-steps"><li>Podłącz zegarek ponownie i poczekaj, aż Terento będzie gotowe.</li><li>Otwórz „Manage maps” i sprawdź listę.</li><li>Jeśli mapa z nieudanej instalacji jest na liście, usuń ją, a następnie zainstaluj ponownie.</li><li>Jeśli znowu się nie uda, <a href="#send-report">wyślij raport</a>.</li></ol>
             </section><section class="troubleshooting-item" id="update-remove" aria-labelledby="update-remove-title">
               <h3 id="update-remove-title">Aktualizacja lub usuwanie mapy trwa długo</h3>
               <p>W obecnej wersji jest to oczekiwane: podczas aktualizacji lub usuwania mapy wskaźnik może przez chwilę stać na wysokim procencie przed zakończeniem. Pozostaw zegarek podłączony, a Maca wybudzonego.</p>
@@ -228,7 +175,7 @@
             <div class="troubleshooting-list"><section class="troubleshooting-item" id="send-report" aria-labelledby="send-report-title">
               <h3 id="send-report-title">Jak zgłosić problem z Terento</h3>
               <p>Na ekranie błędu wybierz „Report issue”: Terento otworzy GitHuba z już wypełnionym raportem zapisanym na Macu.</p>
-              <ol class="troubleshooting-steps"><li>Później możesz użyć „Report latest failure” w „Diagnostics”.</li><li>Jeśli formularz na GitHubie jest pusty, kliknij pole raportu, naciśnij ⌘A, a potem ⌘V.</li><li>Sprawdź raport przed publikacją: zgłoszenia na GitHubie są publiczne.</li><li>Nie masz konta GitHub? Napisz na <!--email_off--><a href="mailto:hello&#64;terento.app?subject=Terento%20installation%20issue" data-umami-event="support-link-click" data-umami-event-location="troubleshooting-send-report" data-umami-event-channel="email">hello&#64;terento.app</a><!--/email_off-->, podając model zegarka, region mapy i opis tego, co się stało.</li></ol>
+              <ol class="troubleshooting-steps"><li>Później możesz użyć „Report latest failure” w „Diagnostics”.</li><li>Jeśli formularz na GitHubie jest pusty, kliknij pole raportu, naciśnij ⌘A, a potem ⌘V.</li><li>Sprawdź raport przed publikacją: zgłoszenia na GitHubie są publiczne.</li><li>Nie masz konta GitHub? Napisz na <a href="mailto:hello&#64;terento.app?subject=Terento%20installation%20issue" data-umami-event="support-link-click" data-umami-event-location="troubleshooting-send-report" data-umami-event-channel="email">hello&#64;terento.app</a>, podając model zegarka, region mapy i opis tego, co się stało.</li></ol>
             </section></div>
           </section>
 
@@ -236,26 +183,6 @@
         </div>
       </article>
     </main>
-    <footer class="site-footer">
-      <div class="shell footer-grid">
-        <div class="footer-identity">
-          <a class="brand-lockup footer-brand" href="/pl/" data-shell-aria="home" data-shell-root aria-label="Strona główna Terento" data-umami-event="home-link-click" data-umami-event-location="footer-brand">
-            <img src="/assets/logo-white.svg" alt="" width="32" height="32">
-            <span>Terento</span>
-          </a>
-          <p class="footer-tagline" data-shell-copy="tagline">Darmowe mapy na zegarek Garmin lub Edge.</p>
-          <div class="footer-actions">
-          <a class="footer-support-link" data-support-link href="https://buymeacoffee.com/vooz2" target="_blank" rel="noopener noreferrer"><svg class="footer-support-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg><span data-shell-copy="support">Wesprzyj</span><span class="footer-support-via">Buy Me a Coffee</span></a>
-          <a class="footer-project-link" data-project-link href="https://github.com/VooZ2/terento" target="_blank" rel="noopener noreferrer"><svg class="footer-support-icon" viewBox="0 0 16 16" width="18" height="18" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg><span data-shell-copy="status">Kod źródłowy</span><span class="footer-support-via">GitHub</span></a>
-          </div>
-        </div>
-        <nav class="footer-nav" data-shell-aria="footer" aria-label="Nawigacja w stopce">
-          <div class="footer-column"><h2 class="footer-heading" data-shell-copy="col_install">Instalacja</h2><a href="/pl/download/" data-shell-copy="download" data-shell-route="download" data-umami-event="download-cta-click" data-umami-event-location="footer-nav">Pobierz</a><a data-shell-copy="web_installer" href="/pl/install/" data-umami-event="web-installer-link-click" data-umami-event-location="footer-nav">Instalator webowy</a><a href="/pl/map-styles/" data-shell-copy="styles" data-shell-route="styles" data-umami-event="maps-link-click" data-umami-event-location="footer-nav">Mapy</a><a href="/pl/compatibility/" data-shell-copy="compatibility" data-shell-route="compatibility" data-umami-event="compatibility-link-click" data-umami-event-location="footer-nav">Kompatybilność</a></div>
-          <div class="footer-column"><h2 class="footer-heading" data-shell-copy="col_help">Pomoc</h2><a href="/pl/guides/install-garmin-maps-mac/" data-shell-copy="guide_watch" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Poradnik: zegarek</a><a href="/pl/guides/install-garmin-maps-edge-mac/" data-shell-copy="guide_edge" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Poradnik: Edge</a><a href="/pl/guides/install-garmin-maps-linux/" data-shell-copy="guide_linux" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Poradnik: Linux</a><a href="/pl/guides/troubleshooting/" data-shell-copy="troubleshooting" data-shell-route="troubleshooting" aria-current="page" data-umami-event="guide-link-click" data-umami-event-location="footer-nav">Rozwiązywanie problemów</a><a href="/pl/#faq" data-shell-copy="faq" data-shell-route="faq" data-umami-event="faq-link-click" data-umami-event-location="footer-nav">FAQ</a></div>
-          <div class="footer-column"><h2 class="footer-heading" data-shell-copy="col_project">Projekt</h2><a href="/pl/about/" data-shell-copy="about" data-shell-route="about" data-umami-event="navigation-link-click" data-umami-event-location="footer-nav">O projekcie</a><a data-shell-copy="legal" href="/legal/" data-umami-event="legal-link-click" data-umami-event-location="footer-nav">Informacje prawne</a><a data-shell-copy="privacy" href="/privacy/" data-umami-event="privacy-link-click" data-umami-event-location="footer-nav">Prywatność</a></div>
-        </nav>
-      </div>
-      <div class="shell footer-bottom"><p>© 2026 Terento Project</p></div>
-    </footer>
+    <footer class="site-footer"></footer>
   </body>
 </html>

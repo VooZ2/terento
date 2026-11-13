@@ -24,7 +24,7 @@ RELEASE = json.loads((ROOT / "site/updates/macos-arm64.json").read_text())
 # dateModified: the later of the release date and the last content review of
 # the guide. Bump GUIDE_CONTENT_REVIEWED when the guide text changes; the site
 # tests compare it with the sitemap lastmod (2026-11-02 SEO review, A6).
-GUIDE_CONTENT_REVIEWED = "2026-11-05"
+GUIDE_CONTENT_REVIEWED = "2026-11-13"
 REVIEWED = max(RELEASE["publishedAt"], GUIDE_CONTENT_REVIEWED) + "T00:00:00Z"
 IMAGE_VERSION = "20260912-app-screens-v2"
 READING_STATE_VERSION = "20260902-reading-state"
@@ -36,15 +36,15 @@ SOCIAL_IMAGE = "/assets/social/terento-og.png"
 EMAIL_ADDRESS = "hello@terento.app"
 TROUBLESHOOTING_SLUG = "guides/troubleshooting/"
 TROUBLESHOOTING_PUBLISHED = "2026-10-06T00:00:00Z"
-TROUBLESHOOTING_REVIEWED = "2026-11-05T00:00:00Z"
+TROUBLESHOOTING_REVIEWED = "2026-11-13T00:00:00Z"
 TROUBLESHOOTING_COPY = json.loads((ROOT / "scripts/templates/troubleshooting-copy.json").read_text(encoding="utf-8"))
 LINUX_SLUG = "guides/install-garmin-maps-linux/"
 LINUX_PUBLISHED = "2026-11-02T00:00:00Z"
-LINUX_REVIEWED = "2026-11-05T00:00:00Z"
+LINUX_REVIEWED = "2026-11-13T00:00:00Z"
 LINUX_COPY = json.loads((ROOT / "scripts/templates/linux-guide-copy.json").read_text(encoding="utf-8"))
 EDGE_SLUG = "guides/install-garmin-maps-edge-mac/"
 EDGE_PUBLISHED = "2026-11-05T00:00:00Z"
-EDGE_REVIEWED = "2026-11-05T00:00:00Z"
+EDGE_REVIEWED = "2026-11-13T00:00:00Z"
 EDGE_COPY = json.loads((ROOT / "scripts/templates/edge-guide-copy.json").read_text(encoding="utf-8"))
 WATCH_COPY = json.loads((ROOT / "scripts/templates/watch-guide-copy.json").read_text(encoding="utf-8"))
 LOCALES = ("en", "de", "fr", "pl", "cs", "it")
