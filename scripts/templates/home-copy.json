@@ -19,7 +19,6 @@
     "browser_body": "Connect your Garmin with a USB cable, choose maps and install them straight from Chrome, Microsoft Edge, Opera or Brave. Update or remove them later the same way.",
     "browser_limits": "Works on a Mac and, still in testing, on Linux. Not on Windows, phones or tablets yet.",
     "browser_action": "Open the web installer",
-    "final_body": "Download Terento for your Mac, or install maps straight from your browser.",
     "support_issue": "Open an issue",
     "support_email": "Email support",
     "hero_title": "Install free maps on your Garmin device",
@@ -58,7 +57,6 @@
     "app_body": "Install catalog maps or your own .img map, see what is on your Garmin and update maps when newer releases come out.",
     "app_requirements": "macOS 13 or later on Apple Silicon.",
     "browser_title": "Web installer",
-    "final_title": "Your Garmin, ready for where you’re going",
     "app_store_label": "Mac App Store",
     "faq_title": "Questions and answers"
   },
@@ -82,7 +80,6 @@
     "browser_body": "Verbinde deine Garmin-Uhr per USB-Kabel, wähle Karten und installiere sie direkt aus Chrome, Microsoft Edge, Opera oder Brave. Später aktualisierst oder entfernst du sie genauso.",
     "browser_limits": "Funktioniert auf dem Mac und, noch im Test, unter Linux. Noch nicht unter Windows, auf Smartphones oder Tablets.",
     "browser_action": "Web-Installer öffnen",
-    "final_body": "Lade Terento für deinen Mac herunter oder installiere Karten direkt aus dem Browser.",
     "support_issue": "Issue öffnen",
     "support_email": "Support per E-Mail",
     "hero_title": "Kostenlose Karten auf deinem Garmin-Gerät installieren",
@@ -121,7 +118,6 @@
     "app_body": "Installiere Katalogkarten oder deine eigene .img-Karte, sieh, was auf deinem Garmin ist, und aktualisiere Karten, wenn neuere Ausgaben erscheinen.",
     "app_requirements": "macOS 13 oder neuer auf Apple Silicon.",
     "browser_title": "Web-Installer",
-    "final_title": "Dein Garmin, bereit für dein nächstes Ziel",
     "app_store_label": "Mac App Store",
     "faq_title": "Fragen und Antworten"
   },
@@ -145,7 +141,6 @@
     "browser_body": "Branchez votre Garmin avec un câble USB, choisissez des cartes et installez-les directement depuis Chrome, Microsoft Edge, Opera ou Brave. Mettez-les à jour ou supprimez-les plus tard de la même façon.",
     "browser_limits": "Fonctionne sur Mac et, encore en test, sous Linux. Pas encore sous Windows, ni sur téléphone ou tablette.",
     "browser_action": "Ouvrir l’installateur web",
-    "final_body": "Téléchargez Terento pour votre Mac ou installez des cartes directement depuis votre navigateur.",
     "support_issue": "Ouvrir une issue",
     "support_email": "Contacter le support",
     "hero_title": "Installez des cartes gratuites sur votre appareil Garmin",
@@ -184,7 +179,6 @@
     "app_body": "Installez les cartes du catalogue ou votre propre carte .img, voyez ce qui se trouve sur votre Garmin et mettez à jour les cartes quand de nouvelles éditions paraissent.",
     "app_requirements": "macOS 13 ou version ultérieure sur Apple Silicon.",
     "browser_title": "Installateur web",
-    "final_title": "Votre Garmin, prêt pour votre prochaine sortie",
     "app_store_label": "Mac App Store",
     "faq_title": "Questions et réponses"
   },
@@ -208,7 +202,6 @@
     "browser_body": "Podłącz zegarek Garmin kablem USB, wybierz mapy i zainstaluj je prosto z Chrome, Microsoft Edge, Opery lub Brave. Później tak samo je zaktualizujesz lub usuniesz.",
     "browser_limits": "Działa na Macu oraz, jeszcze w fazie testów, na Linuksie. Jeszcze nie na Windowsie, telefonach ani tabletach.",
     "browser_action": "Otwórz instalator webowy",
-    "final_body": "Pobierz Terento na Maca albo instaluj mapy prosto z przeglądarki.",
     "support_issue": "Otwórz zgłoszenie",
     "support_email": "Napisz do pomocy",
     "hero_title": "Instaluj darmowe mapy na urządzeniu Garmin",
@@ -247,7 +240,6 @@
     "app_body": "Instaluj mapy z katalogu lub własną mapę .img, sprawdzaj, co jest na Garminie, i aktualizuj mapy, gdy pojawią się nowsze wydania.",
     "app_requirements": "macOS 13 lub nowszy na Apple Silicon.",
     "browser_title": "Instalator w przeglądarce",
-    "final_title": "Twój Garmin gotowy na kolejną trasę",
     "app_store_label": "Mac App Store",
     "faq_title": "Pytania i odpowiedzi"
   },
@@ -271,7 +263,6 @@
     "browser_body": "Připojte hodinky Garmin kabelem USB, vyberte mapy a nainstalujte je přímo z Chrome, Microsoft Edge, Opery nebo Brave. Později je stejně aktualizujete nebo odeberete.",
     "browser_limits": "Funguje na Macu a, zatím ve zkušebním provozu, na Linuxu. Zatím ne ve Windows, na telefonech ani tabletech.",
     "browser_action": "Otevřít webový instalátor",
-    "final_body": "Stáhněte si Terento pro Mac, nebo instalujte mapy přímo z prohlížeče.",
     "support_issue": "Otevřít issue",
     "support_email": "Napsat podpoře",
     "hero_title": "Nainstalujte do zařízení Garmin mapy zdarma",
@@ -310,7 +301,6 @@
     "app_body": "Instalujte mapy z katalogu nebo vlastní mapu .img, podívejte se, co je ve vašem Garminu, a aktualizujte mapy, když vyjdou novější vydání.",
     "app_requirements": "macOS 13 nebo novější na Apple Silicon.",
     "browser_title": "Webový instalátor",
-    "final_title": "Váš Garmin připravený na další cestu",
     "app_store_label": "Mac App Store",
     "faq_title": "Otázky a odpovědi"
   },
@@ -334,7 +324,6 @@
     "browser_body": "Collega il tuo Garmin con un cavo USB, scegli le mappe e installale direttamente da Chrome, Microsoft Edge, Opera o Brave. In seguito le aggiorni o le rimuovi allo stesso modo.",
     "browser_limits": "Funziona su Mac e, ancora in fase di test, su Linux. Non ancora su Windows, telefoni o tablet.",
     "browser_action": "Apri l’installer web",
-    "final_body": "Scarica Terento per il tuo Mac oppure installa le mappe direttamente dal browser.",
     "support_issue": "Apri una issue",
     "support_email": "Scrivi all’assistenza",
     "hero_title": "Installa mappe gratuite sul tuo dispositivo Garmin",
@@ -373,7 +362,6 @@
     "app_body": "Installa le mappe del catalogo o la tua mappa .img, vedi cosa c’è sul tuo Garmin e aggiorna le mappe quando escono nuove edizioni.",
     "app_requirements": "macOS 13 o successivo su Apple Silicon.",
     "browser_title": "Installer web",
-    "final_title": "Il tuo Garmin, pronto per la prossima uscita",
     "app_store_label": "Mac App Store",
     "faq_title": "Domande e risposte"
   }

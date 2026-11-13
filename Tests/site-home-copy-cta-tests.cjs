@@ -117,7 +117,7 @@ const anchorFor = (page, className) => {
 
 for (const [locale, expected] of locales) {
   const page = pageFor(locale);
-  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20261106-audit-fixes-v1">/, `${locale}: Home stylesheet cache bust`);
+  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20261113-steps-v1">/, `${locale}: Home stylesheet cache bust`);
   assert.match(page, /<script defer src="\/home-features\.js\?v=20261105-home-map-switch-v4"><\/script>/, `${locale}: Home feature script cache bust`);
   assert.match(page, /installing-maps-1600\.png\?v=20260912-app-screens-v2/, `${locale}: installation screenshot cache bust`);
   const heroDevice = page.match(/<figure class="home-device" data-map-switch>[\s\S]*?<\/figure>/)?.[0];
@@ -141,13 +141,7 @@ for (const [locale, expected] of locales) {
 
   const download = anchorFor(page, "hero-download-action");
   const heroCompatibility = anchorFor(page, "hero-compatibility-link");
-  const finalCta = page.match(/<section class="final-cta"[\s\S]*?<\/section>/)?.[0];
-  assert.ok(finalCta, `${locale}: missing final CTA`);
-  const finalDownload = finalCta.match(/<a class="download-action[^"]*"[^>]*>([^<]+)(?:<span aria-hidden="true">([^<]+)<\/span>)?<\/a>/);
-  assert.ok(finalDownload, `${locale}: missing final CTA download button`);
-  assert.equal(finalDownload[1].trim(), expected.download, `${locale}: final CTA download label`);
-  assert.equal(finalDownload[2] || "", "", `${locale}: final CTA has no decorative arrow`);
-  assert.doesNotMatch(finalCta, /beta|bêta|betę|betu/i, `${locale}: final CTA avoids beta-specific button copy`);
+  assert.doesNotMatch(page, /final-cta/, `${locale}: the closing download block was removed (owner 2026-11-13)`);
   const experience = page.match(/<section class="home-steps section" id="how-it-works"[\s\S]*?<\/section>/)?.[0];
   assert.ok(experience);
   assert.equal(experience.match(/<h2 id="steps-title">([^<]+)<\/h2>/)?.[1], expected.experienceLabel);

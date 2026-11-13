@@ -187,6 +187,35 @@ class DiscoverabilityTests(unittest.TestCase):
         self.assertIn('header Vary "Accept"', caddy)
         self.assertIn('header Content-Type "text/markdown; charset=utf-8"', caddy)
 
+    def test_broken_outside_links_redirect_to_real_pages(self):
+        # The runtime test checks the real Caddy answers; this checks the
+        # patterns on decoded paths (Caddy matches the decoded path).
+        caddy = (ROOT / 'site-deploy/Caddyfile').read_text()
+        stray = re.search(r'path_regexp mapStylesStray (\S+)', caddy)[1]
+        fragment = re.search(r'path_regexp encodedFragment "([^"]+)"', caddy)[1]
+        self.assertIn('not file', caddy.split('@mapStylesStray {', 1)[1].split('}', 1)[0])
+        self.assertIn('@llmTxt path /llm.txt', caddy)
+        self.assertIn('redir @llmTxt /llms.txt permanent', caddy)
+        self.assertIn('redir @mapStylesStray /{re.mapStylesStray.1}map-styles/ permanent', caddy)
+        self.assertIn('redir @encodedFragment "{re.encodedFragment.1}#{re.encodedFragment.2}" permanent', caddy)
+        for path in ('/map-styles/**', '/map-styles/Good', '/map-styles/\U0001f195', '/de/map-styles/Good', '/map-styles/Good/'):
+            self.assertRegex(path, stray)
+        self.assertEqual(re.match(stray, '/de/map-styles/Good')[1], 'de/')
+        for path in ('/map-styles/', '/map-styles/map-styles.js', '/map-styles/index.md', '/de/map-styles/', '/xx/map-styles/Good'):
+            self.assertNotRegex(path, stray)
+        found = re.match(fragment, '/guides/troubleshooting/#connect-watch')
+        self.assertEqual((found[1], found[2]), ('/guides/troubleshooting/', 'connect-watch'))
+        shared = re.match(fragment, '/map-styles/#area=dolomites-tre-cime&style=opentopomap&compare=maprando&mode=split')
+        self.assertEqual(shared[1], '/map-styles/')
+        self.assertEqual(re.match(fragment, '/#faq')[1], '/')
+        self.assertIsNone(re.match(fragment, '/guides/troubleshooting/'))
+        # Never an outside redirect: the target must stay a plain local path.
+        for path in ('/\\evil.com#x', '//evil.com#x', '/\\/evil.com#x', '/a/\\evil.com#x',
+                     '/x#\\evil.com', '/x#a/b', '/evil.com#x', '/x#a b', '/x#a"b'):
+            self.assertIsNone(re.match(fragment, path), path)
+        route = caddy.split('  route {', 1)[1]
+        self.assertLess(route.index('redir @encodedFragment'), route.index('redir @mapStylesStray'))
+
     def test_api_catalog_links_and_openapi_routes(self):
         catalog = json.loads((ROOT / 'site/.well-known/api-catalog').read_text())
         self.assertEqual(len(catalog['linkset']), 1)

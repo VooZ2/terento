@@ -7,7 +7,7 @@ const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "u
 const styles = read("site/styles.css");
 const shellSource = read("site/site-shell.js");
 const languageSource = read("site/language.js");
-const styleVersion = "20261106-audit-fixes-v1";
+const styleVersion = "20261113-steps-v1";
 const mobileLanguageNames = { en: "English", de: "Deutsch", fr: "Français", pl: "Polski", cs: "Čeština", it: "Italiano" };
 
 const cssBlock = (selector) => {
@@ -181,8 +181,8 @@ for (const locale of Object.keys(locales)) {
   assert.match(main, /\.img/);
   assert.match(html, /class="[^"]*about-slogan/);
   assert.equal((html.match(/class="about-bullet-list"/g) || []).length, 2, `${locale} must use lists for Does and Doesn't`);
-  assert.match(html, /href="https:\/\/www\.linkedin\.com\/in\/gediminasc\/"[^>]+data-umami-event="social-link-click"[^>]+data-umami-event-location="about-story"[^>]+data-umami-event-channel="linkedin"/);
-  assert.match(html, /href="https:\/\/www\.reddit\.com\/user\/MrDonas\/"[^>]+data-umami-event="social-link-click"[^>]+data-umami-event-location="about-story"[^>]+data-umami-event-channel="reddit"/);
+  assert.match(html, /href="https:\/\/www\.linkedin\.com\/in\/gediminasc\/"[^>]+data-umami-event="social-link-click"[^>]+data-umami-event-location="about-story"[^>]+data-umami-event-channel="linkedin"[^>]+data-umami-event-destination="linkedin\.com"/);
+  assert.match(html, /href="https:\/\/www\.reddit\.com\/user\/MrDonas\/"[^>]+data-umami-event="social-link-click"[^>]+data-umami-event-location="about-story"[^>]+data-umami-event-channel="reddit"[^>]+data-umami-event-destination="reddit\.com"/);
   assert.match(html, /<a class="about-social-link about-email-link" href="mailto:hello&#64;terento\.app"[^>]+data-umami-event="support-link-click"[^>]+data-umami-event-location="about-story"[^>]+data-umami-event-channel="email"[^>]*>[\s\S]*<span>(?:Email|E-Mail|E-mail)<\/span><\/a>/);
   assert.doesNotMatch(html, /about-social-address|hello&#64;terento\.app<\/a>/, `${locale} must keep the email address out of the visible About social links`);
   assert.match(html, /href="https:\/\/buymeacoffee\.com\/vooz2"[^>]+data-umami-event="donate"[^>]+data-umami-event-location="about-story"[^>]+data-umami-event-channel="donate"/);

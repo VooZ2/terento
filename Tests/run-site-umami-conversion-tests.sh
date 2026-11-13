@@ -13,7 +13,7 @@ import sys
 root = Path(sys.argv[1])
 privacy_script = (root / "site/privacy-consent.js").read_text(encoding="utf-8")
 site_shell = (root / "scripts/normalize-public-shell.py").read_text(encoding="utf-8")
-umami_version = "20261105-outbound-links"
+umami_version = "20261113-umami-cleanup"
 
 assert '"download-click"' in privacy_script
 assert '"download-cta-click"' in privacy_script
@@ -21,7 +21,7 @@ assert '"outbound-link-click"' in privacy_script
 assert '"dmg"' in privacy_script and '"zip"' in privacy_script
 assert '"download-page"' in privacy_script
 assert '"home-hero"' in privacy_script
-assert '"home-final-cta"' in privacy_script
+assert '"home-final-cta"' not in privacy_script and ".final-cta" not in privacy_script
 assert '"header-nav"' in privacy_script
 assert '"compatibility-link-click"' in privacy_script
 assert 'setConversionEvent(link, "donate"' in privacy_script
@@ -50,6 +50,21 @@ assert "privacy-settings" not in privacy_script
 assert "getChoice" not in privacy_script
 assert "localStorage" not in privacy_script
 assert privacy_script.index("instrumentConversionLinks(campaignParams);") < privacy_script.index("loadUmami();")
+# Only the public host is counted and #fragment changes are not page views.
+assert 'script.dataset.domains = "terento.app";' in privacy_script
+assert 'script.dataset.excludeHash = "true";' in privacy_script
+# download-click names where the link is and the release it downloads.
+download_block = privacy_script.split('"download-click"', 1)[1].split("}, campaignParams));", 1)[0]
+assert "location: linkLocation(link)" in download_block
+assert "version" in download_block
+assert 'location: "download-page"' not in download_block
+# The Maps page reports a settled view change as one event, never a page view.
+map_styles_script = (root / "site/map-styles/map-styles.js").read_text(encoding="utf-8")
+assert 'umami.track("map-compare", {' in map_styles_script
+assert 'location: "map-styles",' in map_styles_script
+assert "}, 1000);" in map_styles_script
+for name in ("area: state.area", "style: state.a", "compare:", "mode: state.mode"):
+    assert name in map_styles_script, name
 
 
 class AnchorParser(HTMLParser):
@@ -160,7 +175,7 @@ for path in home_files:
     assert html.count('data-provider-card=') == 5, f"{path}: expected one card per provider"
     assert html.count('class="provider-benefits"') == 5, f"{path}: expected one benefits list per map card"
     assert html.count("<details>") == 7, f"{path}: expected seven FAQ answers"
-    assert 'class="final-cta"' in html, f"{path}: expected final CTA"
+    assert 'final-cta' not in html, f"{path}: the closing download block was removed (owner 2026-11-13)"
     assert "/assets/home/hero-opentopomap.webp" in html, f"{path}: expected the drawn watch hero map"
     assert "/assets/app/optimized/install-maps-640.avif" in html, f"{path}: expected responsive install screenshot"
     items = anchors(path)
@@ -175,14 +190,6 @@ for path in home_files:
     assert len(hero_compatibility) == 1, f"{path}: expected one home hero Compatibility CTA"
     assert hero_compatibility[0]["attributes"].get("data-umami-event") == "compatibility-link-click"
     assert hero_compatibility[0]["attributes"].get("data-umami-event-location") == "home-hero"
-    if any("final-cta" in ancestor for item in items for ancestor in item["ancestors"]):
-        final = [
-            item for item in items
-            if "download-action" in item["class"]
-            and any("final-cta" in ancestor for ancestor in item["ancestors"])
-            and urlparse(item["href"]).path.endswith("/download/")
-        ]
-        assert len(final) == 1, f"{path}: expected one home final CTA"
 
     header_downloads = [
         item for item in items

@@ -9,6 +9,11 @@
     script.async = true;
     script.src = umamiSource;
     script.dataset.websiteId = umamiWebsiteId;
+    // Only the public host counts (no localhost or preview copies), and a
+    // changed #fragment (the Maps page view state, in-page links) is not a
+    // new page view.
+    script.dataset.domains = "terento.app";
+    script.dataset.excludeHash = "true";
     script.dataset.terentoUmami = "true";
     document.head.append(script);
   };
@@ -97,6 +102,12 @@
     if (link.closest(".footer-nav")) return "footer-nav";
     if (link.closest(".footer-identity")) return "footer";
     return pageLocation();
+  };
+
+  // Release version from the artifact name (Terento-1.2.0-macOS-arm64.dmg).
+  const downloadVersion = (pathname) => {
+    const match = /\/Terento-(\d+\.\d+\.\d+(?:-(?:beta|rc)\.\d+)?)-[^/]*\.(?:dmg|zip)$/i.exec(pathname);
+    return match ? match[1] : null;
   };
 
   const instrumentCompatibilityLinks = (campaignParams) => {
@@ -191,14 +202,16 @@
       }
       const path = url.pathname.toLowerCase();
       if (path.endsWith(".dmg") || path.endsWith(".zip")) {
+        const version = link.dataset.umamiEventVersion || downloadVersion(url.pathname);
         setConversionEvent(link, "download-click", withCampaignProperties({
           file: path.endsWith(".dmg") ? "dmg" : "zip",
-          location: "download-page"
+          location: linkLocation(link),
+          ...(version ? {version} : {})
         }, campaignParams));
       }
     });
 
-    document.querySelectorAll('.hero-copy a.download-action[href], .home-hero-copy a.download-action[href], .final-cta a.download-action[href], .site-header a.download-action[href]').forEach((link) => {
+    document.querySelectorAll('.hero-copy a.download-action[href], .home-hero-copy a.download-action[href], .site-header a.download-action[href]').forEach((link) => {
       let url;
       try {
         url = new URL(link.href, window.location.href);
@@ -206,11 +219,7 @@
         return;
       }
       if (!url.pathname.endsWith("/download/")) return;
-      const location = link.closest(".site-header")
-        ? "header-nav"
-        : link.closest(".final-cta")
-          ? "home-final-cta"
-          : "home-hero";
+      const location = link.closest(".site-header") ? "header-nav" : "home-hero";
       setConversionEvent(link, "download-cta-click", withCampaignProperties({ location }, campaignParams));
     });
 

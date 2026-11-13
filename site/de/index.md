@@ -140,9 +140,3 @@ Wähle nach einer fehlgeschlagenen Installation „Report issue“. Terento öff
 Kann ich Karten installieren, ohne die App zu installieren?
 
 Ja. Der [Web-Installer](https://terento.app/de/install/) installiert, aktualisiert und entfernt Karten aus dem Katalog in Chrome, Microsoft Edge, Opera oder Brave auf dem Mac und unter Linux, wo er noch getestet wird. Unter Windows, auf Smartphones und Tablets funktioniert er noch nicht, und eigene .img-Karten kann er nicht hinzufügen.
-
-## Dein Garmin, bereit für dein nächstes Ziel
-
-Lade Terento für deinen Mac herunter oder installiere Karten direkt aus dem Browser.
-
-[Für Mac herunterladen](https://terento.app/de/download/) [Direkt aus dem Browser installieren](https://terento.app/de/install/)

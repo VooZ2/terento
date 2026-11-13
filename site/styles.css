@@ -1614,40 +1614,6 @@ h1 {
   margin-top: 6px;
 }
 
-.final-cta {
-  padding: clamp(72px, 8vw, 112px) 0;
-}
-
-.final-cta-inner {
-  display: flex;
-  align-items: flex-start;
-  flex-direction: column;
-  gap: 24px;
-  padding-top: 28px;
-  border-top: 1px solid var(--border);
-}
-
-.final-cta-copy h2 {
-  max-width: 620px;
-  margin-bottom: 16px;
-  font-size: clamp(38px, 5vw, 58px);
-  line-height: 1.04;
-}
-
-.final-cta-copy p {
-  max-width: 520px;
-  margin-bottom: 0;
-  color: var(--secondary);
-  font-size: 17px;
-}
-
-.final-cta-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px 28px;
-}
-
 .testing-grid,
 .faq-grid {
   display: grid;
@@ -2151,8 +2117,7 @@ details p {
     padding: 24px;
   }
 
-  .product-showcase,
-  .final-cta {
+  .product-showcase {
     padding: 64px 0;
   }
 
@@ -2211,26 +2176,6 @@ details p {
   .product-showcase-panel {
     padding: 28px 20px;
     border-radius: 20px;
-  }
-
-  .final-cta-inner {
-    align-items: stretch;
-    gap: 24px;
-  }
-
-  .final-cta-inner .download-action {
-    justify-content: center;
-    width: 100%;
-  }
-
-  .final-cta-actions {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .final-cta-actions .text-link {
-    justify-content: center;
-    min-height: 44px;
   }
 
   .download-detail .download-info-link {
@@ -4598,7 +4543,7 @@ details p {
 #main-content :is(.hero-lede, .download-intro, .about-intro-copy, .guide-lede, .legal-summary p) { max-width: 62ch; font-size: var(--type-lede); line-height: 1.5; }
 #main-content :is(.step p, .provider-copy, .about-bullet-list li, .download-v2-needs li, .download-v2-steps p, .guide-step-copy p, .guide-v2-help-item p, .guide-v2-section > p, .guide-v2-more, .guide-preflight-copy p, .troubleshooting-guide-link, .map-styles-v2-map-copy p, .about-story-copy p, .map-styles-v2-map-summary) { font-size: 17px; line-height: 1.55; }
 :root { --section-space: clamp(64px, 8vw, 96px); }
-#main-content > :is(.home-steps, .home-edge, .provider-section, .home-ways, .faq, .final-cta, .about-story, .about-main, .about-v2-open) { padding-top: var(--section-space); padding-bottom: var(--section-space); }
+#main-content > :is(.home-steps, .home-edge, .provider-section, .home-ways, .faq, .about-story, .about-main, .about-v2-open) { padding-top: var(--section-space); padding-bottom: var(--section-space); }
 #main-content > .home-manage { padding-bottom: var(--section-space); }
 #main-content .compatibility-missing-note { margin-top: 16px; font-size: 17px; line-height: 1.55; }
 @media (max-width: 480px) { .home-switch { flex-wrap: nowrap; max-width: 100%; } .home-switch-button { padding: 8px 9px; font-size: 13px; white-space: nowrap; } }
@@ -4617,3 +4562,21 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
 
 /* Standalone text links get a 44px tap area; the negative margin keeps the layout unchanged. */
 :is(.home-edge-copy p, .provider-compare, .map-styles-v2-table th) > .text-link:only-child { padding-block: 11px; margin-block: -11px; }
+
+/* Step numbers sit on the centre of the first title line (2026-11-13): the
+   title's top margin is half the marker minus half its own line height, so
+   it holds at every title size, language and line count. */
+.home-steps .step { --step-marker: 36px; }
+.download-v2-steps li { --step-marker: 32px; }
+.guide-v2 .guide-step { --step-marker: 40px; }
+@media (max-width: 760px) { .guide-v2 .guide-step { --step-marker: 32px; } }
+@supports (margin-top: 1lh) {
+  #main-content :is(.home-steps .step, .download-v2-steps li, .guide-v2 .guide-step) h3 { margin-top: calc(var(--step-marker) / 2 - .5lh); }
+}
+
+/* Body copy in the Home "Mac app or browser", Download "What you need" and
+   "Step by step" blocks uses the same muted colour and line height as the
+   rest of the site's body copy; an inline guide link keeps its sentence's
+   size (2026-11-13 type check). */
+#main-content :is(.home-way > p:not([class]), .download-v2-needs li, .download-v2-guides) { color: var(--muted-text); line-height: 1.55; }
+#main-content .download-v2-guides .text-link { font-size: inherit; line-height: inherit; }

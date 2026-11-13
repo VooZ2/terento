@@ -140,9 +140,3 @@ Na ekranie nieudanej instalacji wybierz „Report issue”. Terento otwiera GitH
 Czy mogę zainstalować mapy bez instalowania aplikacji?
 
 Tak. [Instalator webowy](https://terento.app/pl/install/) instaluje, aktualizuje i usuwa mapy z katalogu w Chrome, Microsoft Edge, Operze lub Brave na Macu oraz na Linuksie, gdzie jest jeszcze testowany. Nie działa jeszcze na Windowsie, telefonach ani tabletach i nie dodaje własnych map .img.
-
-## Twój Garmin gotowy na kolejną trasę
-
-Pobierz Terento na Maca albo instaluj mapy prosto z przeglądarki.
-
-[Pobierz na Maca](https://terento.app/pl/download/) [Zainstaluj z przeglądarki](https://terento.app/pl/install/)
