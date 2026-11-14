@@ -166,6 +166,12 @@ runtime dependencies.
   `UMAMI_BASE_URL`, `UMAMI_WEBSITE_ID` and a view-only `UMAMI_API_KEY`; the key
   never reaches the browser or the logs
   ([contract](docs/api.md#get-httpsapiterentoappadminweb-visits-and-get-adminapiumami)).
+- `GET /admin/api/gsc` adds the Web visits `Google Search` block: read-only
+  Google Search Console numbers for terento.app, to a signed-in admin only. The
+  server gets the token with google-auth from the service account in
+  `GSC_SERVICE_ACCOUNT_JSON` (scope `webmasters.readonly`, property
+  `GSC_PROPERTY`); the key and token never reach the browser or the logs
+  ([contract](docs/api.md#get-adminapigsc)).
 - `GET /maps/catalog.json` returns an additive provider-neutral `schemaVersion: 2`
   projection while retaining catalog version 1 fields for existing macOS
   clients. The response includes `ETag`, `Last-Modified`, and cache headers and

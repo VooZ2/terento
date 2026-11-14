@@ -103,6 +103,19 @@ libraries in `Terento.app/Contents/Frameworks`.
 - Distribution: installed in the catalog API Docker image; the dependency's
   own license and notice requirements remain applicable
 
+## google-auth
+
+- Version: 2.50.0 (`google-auth[urllib3]`, as pinned by the backend package),
+  with urllib3 2.8.0
+- Upstream: <https://github.com/googleapis/google-auth-library-python>,
+  <https://github.com/urllib3/urllib3>
+- License: Apache License 2.0 (google-auth); MIT (urllib3)
+- Use: server-side service account token for the read-only Search Console
+  block in Admin Web visits
+- Distribution: installed in the catalog API Docker image; it also resolves
+  cryptography (Apache-2.0 OR BSD-3-Clause), pyasn1 and pyasn1-modules
+  (BSD-2-Clause). Their own license and notice requirements remain applicable.
+
 ## JSON Schema test validation
 
 - Dependency: jsonschema 4.26.0, pinned in the backend `test` optional group

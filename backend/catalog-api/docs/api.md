@@ -422,6 +422,34 @@ Health and `GET /internal/attention` carry an `Umami` check when the settings
 exist: a `/stats` read of the last hour at most every five minutes, Failed with
 the HTTP status or reason when Umami does not answer, Healthy otherwise.
 
+## `GET /admin/api/gsc`
+
+The Web visits page's `Google Search` block renders as a skeleton and then
+reads `GET /admin/api/gsc?period=` (period as `/admin/api/umami`; Search
+Console has no time zone). The route needs the same Admin session and CSRF
+cookie as the pages; without them it is `401 {"error":"unauthorized"}`. It is
+no-store, noindex and always `200`. The answer is `schemaVersion: 1`,
+`configured`, `period`, `startDate`/`endDate` and `previousStartDate`
+(Pacific Time dates, as Search Console counts days), `blocks` (`totals`,
+`previousTotals`, `dates`, `queries`, `pages`, each `{state, fetchedAt,
+data}`, or `null` when Search Console is not configured or the period is
+Today or Last 24 hours) and `html` (the rendered block).
+
+The server signs in with google-auth (`google.oauth2.service_account`, scope
+`webmasters.readonly`) from `GSC_SERVICE_ACCOUNT_JSON` (the JSON itself or a
+path to a secret file) and queries `GSC_PROPERTY` (`sc-domain:terento.app`)
+with `POST searchAnalytics/query` and `{startDate, endDate, type:"web",
+dataState:"all"}`: totals for the period and for the previous period of the
+same length, by `date` (with `firstIncompleteDate` from the metadata), top
+`query` and top `page` (`rowLimit: 100`), in parallel, 10 s limit. Last 7
+days, Last 30 days and All time (486 days, Search Console's 16 months) are
+whole Pacific Time days ending today, so the newest preliminary days show.
+Each block result is cached for one hour per (block, period). States: `ok`; `stale` (Search Console failed, the last good result
+and its `fetchedAt`); `unavailable` (failed with nothing cached). An HTTP 403
+is logged only as `GSC 403`; other failures log the block and a reason, never
+the key, token, URL or response body. Without `GSC_SERVICE_ACCOUNT_JSON` the
+block shows `Search Console unavailable.` and the rest of Admin works.
+
 ## `POST /internal/web-installer/events` and `POST /internal/web-installer/relay-jobs`
 
 Web installer page events and relay jobs, forwarded by the web installer

@@ -583,8 +583,8 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(response.status, 200)
         self.assertIn("<h1>Web visits</h1>", body)
         self.assertIn("<option value='24h' selected>", body)
-        self.assertEqual(body.count("Loading…"), 7)
-        self.assertEqual(body.count("web-visits-skeleton"), 7)
+        self.assertEqual(body.count("Loading…"), 7 + 4)  # Umami blocks, then Google Search
+        self.assertEqual(body.count("web-visits-skeleton"), 7 + 4)
         self.assertIn("/admin/api/umami", body)
         self.assertNotIn(fx.SECRET_KEY, body)
         self.assertEqual(self.fake.calls, [])  # the page itself never waits for Umami

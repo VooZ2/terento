@@ -9,6 +9,9 @@ description = "Metadata-only catalog service for Terento"
 requires-python = ">=3.12,<3.14"
 dependencies = [
   "psycopg[binary]==3.3.8",
+  # Search Console token for Admin Google Search (service account, server side only).
+  "google-auth[urllib3]==2.50.0",
+  "urllib3==2.8.0",
 ]
 
 [project.optional-dependencies]

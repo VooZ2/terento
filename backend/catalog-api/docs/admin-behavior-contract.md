@@ -520,6 +520,23 @@ unavailable headline block keeps its title for its marks (owner request
    against the previous period, issues ignored in Umami left out, and the 3
    most frequent as plain text with their counts.
 6. A last line with the update time and `Open Umami` (new tab).
+7. `Google Search` (Google Search Console, `/admin/api/gsc`; its own
+   population, statistics contract): KPI cards Clicks, Impressions, CTR
+   (change in percentage points) and Avg position (lower is better: a fall is
+   `▼` green; change to one decimal), each against the previous period of the
+   same length; two stacked line charts on one date axis, Clicks over
+   Impressions, days from Search Console's first incomplete day dotted after a
+   `Preliminary` mark, every day focusable with its date and values; under them
+   one grey line `Google Search Console · dates in Pacific Time · data delayed
+   2–3 days`; `Top queries` (10 by clicks, then impressions: query, clicks,
+   impressions, CTR, position; an info `Near top` pill, title `Position 4–10
+   with many impressions: closest to page-one top`, on positions 4–10 with at
+   least 20 % of the top query's impressions; `Rare queries are hidden by
+   Google` when the listed queries' clicks are fewer than all clicks) and `Top
+   pages` (5: path, clicks, impressions, position); a last line with the update
+   time and `Open Search Console` (new tab). It follows the shared period with
+   no picker of its own; Today and Last 24 hours show `Search Console reports
+   whole days. Choose Last 7 days or longer.` All time is weekly in the chart.
 
 The page renders at once with every block as a grey skeleton and fills them
 from `/admin/api/umami`; the Umami key stays on the server. A block Umami could
@@ -527,6 +544,11 @@ not answer shows `Statistics unavailable.`, or its last result with a
 `Statistics unavailable` pill and `Last result <time>`; a block Umami answers
 with 400 or 404 is left out; the other blocks stay. Without Umami settings the
 page shows one unavailable card.
+Google Search loads separately from `/admin/api/gsc` (the Search Console key
+and token stay on the server): when Search Console fails it shows `Search
+Console unavailable.`, or its last result with a `Search Console unavailable`
+pill and `Last result <time>`; the Umami blocks and the rest of Admin keep
+working.
 
 The First run page (`/admin/first-run`, primary navigation after
 Installations) has the Dashboard period picker (default Last 24 hours; an

@@ -3,20 +3,25 @@
 Umami's terento.app numbers: a separate population from app and web installer
 statistics. The page renders at once with every block loading; its script then
 reads ``/admin/api/umami`` for the Admin period, which answers with the blocks
-rendered here, so the Umami key never reaches the browser.
+rendered here, so the Umami key never reaches the browser. The Google Search
+block loads the same way from ``/admin/api/gsc`` (Search Console, gsc_stats).
 """
 
 from __future__ import annotations
 
 import html
-from datetime import datetime, timezone
-from typing import Any
+from datetime import date, datetime, timedelta, timezone
+from typing import Any, Callable
 
 from .admin import (
     _ADMIN_NONCE_PLACEHOLDER,
     _admin_header,
     _admin_icon,
+    _chart_axis_labels,
+    _chart_value_attributes,
+    _chart_value_strip,
     _empty_state,
+    _nice_tick_step,
     _layout,
     _metric_row,
     _metric_tile,
@@ -95,6 +100,9 @@ def _delta(current: float | None, previous: float | None, period: str, kind: str
     elif kind == "duration":
         change = round(change)
         amount = _duration(abs(change))
+    elif kind == "decimal":
+        change = round(change, 1)
+        amount = f"{abs(change):.1f}"
     else:
         change = round(change)
         amount = f"{abs(change):,}"
@@ -411,7 +419,271 @@ def website_stats_page(user: dict[str, Any], csrf_token: str, *, period: str, ti
         <div class='heading-row overview-heading'><div><h1>Web visits</h1></div><form class='filter-bar overview-period-form' id='overview-period-form' method='get' action='/admin/web-visits' data-time-zone='{html.escape(time_zone, quote=True)}'><span class='web-installer-source'>{_admin_icon('source-web')}Umami</span><label><span class='sr-only'>Time period</span><select id='overview-period' data-admin-dropdown name='period'>{options}</select></label></form></div>
         {_loading_blocks()}
         <template id='website-stats-failed'>{failed}</template>
+        {_gsc_loading()}
+        <template id='gsc-failed'>{search_console_blocks(None, console_url=None)}</template>
       </main>
-      <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_overview_period_script()}{_website_stats_script()}</script>
+      <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_overview_period_script()}{_website_stats_script()}{_gsc_script()}</script>
     """
     return _layout("Web visits", content, sections={"webVisits": period})
+
+
+# Google Search (Search Console): its own block under the Umami numbers,
+# loaded from /admin/api/gsc for the same Admin period.
+GSC_UNAVAILABLE = "Search Console unavailable."
+GSC_NOTE = "Google Search Console · dates in Pacific Time · data delayed 2–3 days"
+NEAR_TOP_TITLE = "Position 4–10 with many impressions: closest to page-one top"
+
+
+def _gsc_section(body: str, marks: str = "", *, loading: bool = False) -> str:
+    busy = " aria-busy='true'" if loading else ""
+    return (f"<section class='web-visits-gsc' id='web-visits-gsc' aria-labelledby='web-visits-gsc-title'{busy}>"
+            f"<div class='web-visits-gsc-heading'><h2 id='web-visits-gsc-title'>Google Search</h2>"
+            f"<span class='web-installer-source'>{_source_icon('google.com')}Search Console</span>{marks}</div>"
+            f"{body}</section>")
+
+
+def _gsc_card(name: str, title: str, body: str, css: str = "") -> str:
+    return _section_card(title, body, card_id=f"web-visits-gsc-{name}", css=css)
+
+
+def _compact(value: float) -> str:
+    return f"{value / 1000:g}k" if value >= 1000 else f"{value:g}"
+
+
+def _day_label(day: date) -> str:
+    return day.strftime("%d %b")
+
+
+def _gsc_buckets(data: dict[str, Any], start: str, end: str, weekly: bool) -> list[dict[str, Any]]:
+    """One point per day (per week for All time), gaps filled with 0: Search
+    Console has no row for a day without impressions. All time starts at the
+    first day with data."""
+    by_day = {item["date"]: item for item in data.get("days") or []}
+    first = date.fromisoformat(min(by_day)) if weekly and by_day else date.fromisoformat(start)
+    last = date.fromisoformat(end)
+    incomplete = data.get("firstIncompleteDate")
+    buckets: list[dict[str, Any]] = []
+    day = first
+    while day <= last:
+        item = by_day.get(day.isoformat()) or {}
+        key = day - timedelta(days=day.weekday()) if weekly else day
+        if not buckets or buckets[-1]["key"] != key:
+            buckets.append({"key": key, "clicks": 0, "impressions": 0, "preliminary": False})
+        bucket = buckets[-1]
+        bucket["clicks"] += int(item.get("clicks") or 0)
+        bucket["impressions"] += int(item.get("impressions") or 0)
+        bucket["preliminary"] = bucket["preliminary"] or bool(incomplete and day.isoformat() >= incomplete)
+        day += timedelta(days=1)
+    for bucket in buckets:
+        bucket["label"] = ("Week of " if weekly else "") + _day_label(bucket["key"])
+    return buckets
+
+
+def _gsc_chart_svg(buckets: list[dict[str, Any]], width: int, variant: str) -> str:
+    """Clicks over Impressions: two small line charts, each with its own Y
+    axis, under one date axis (not one chart with two Y axes)."""
+    font = 13 if variant == "mobile" else 11
+    height, left, right, top, gap, bottom = 236, 42, 12, 22, 30, 28
+    panel = (height - top - gap - bottom) / 2
+    plot_width = width - left - right
+    count = len(buckets)
+    xs = [left + (plot_width * index / (count - 1) if count > 1 else plot_width / 2) for index in range(count)]
+    prelim = next((index for index, bucket in enumerate(buckets) if bucket["preliminary"]), None)
+    parts: list[str] = []
+    marks: list[list[tuple[float, float]]] = []
+    for row, (metric, label) in enumerate((("clicks", "Clicks"), ("impressions", "Impressions"))):
+        panel_top = top + row * (panel + gap)
+        base = panel_top + panel
+        step = _nice_tick_step(max(bucket[metric] for bucket in buckets))
+        scale = step * 4
+        for amount in (0, step * 2, scale):
+            y = base - panel * amount / scale
+            parts.append(f"<line class='overview-chart-grid' x1='{left}' x2='{width - right}' y1='{y:.1f}' y2='{y:.1f}'/>"
+                         f"<text class='overview-chart-axis-label' x='{left - 8}' y='{y + 4:.1f}' text-anchor='end'>"
+                         f"{_compact(amount)}</text>")
+        parts.append(f"<text class='gsc-chart-name' x='{left}' y='{panel_top - 8:.1f}'>{label}</text>")
+        points = [(x, base - panel * bucket[metric] / scale) for x, bucket in zip(xs, buckets)]
+        marks.append(points)
+        coords = [f"{x:.1f},{y:.1f}" for x, y in points]
+        solid = coords if prelim is None else coords[:prelim]
+        dotted = [] if prelim is None else coords[max(prelim - 1, 0):]
+        parts.append(f"<polygon class='gsc-chart-area' points='{xs[0]:.1f},{base:.1f} {' '.join(coords)} {xs[-1]:.1f},{base:.1f}'/>")
+        if len(solid) > 1:
+            parts.append(f"<polyline class='gsc-chart-line' points='{' '.join(solid)}'/>")
+        if len(dotted) > 1:
+            parts.append(f"<polyline class='gsc-chart-line is-preliminary' points='{' '.join(dotted)}'/>")
+        if count == 1:
+            parts.append(f"<circle class='gsc-chart-dot' cx='{points[0][0]:.1f}' cy='{points[0][1]:.1f}' r='3'/>")
+    if prelim is not None:
+        x = xs[prelim]
+        anchor = "end" if x > width - right - 80 else "start"
+        parts.append(f"<line class='gsc-chart-prelim' x1='{x:.1f}' x2='{x:.1f}' y1='{top - 4}' y2='{height - bottom}'/>"
+                     f"<text class='gsc-chart-prelim-label' x='{x + (-4 if anchor == 'end' else 4):.1f}' y='{top - 8}' "
+                     f"text-anchor='{anchor}'>Preliminary</text>")
+    slot = plot_width / max(count - 1, 1) if count > 1 else plot_width
+    for index, (x, bucket) in enumerate(zip(xs, buckets)):
+        when = bucket["label"] + (" (preliminary)" if bucket["preliminary"] else "")
+        text = f"{when} · Clicks {bucket['clicks']:,} · Impressions {bucket['impressions']:,}"
+        strip = _chart_value_attributes(when, [("gsc-clicks", "Clicks", bucket["clicks"]),
+                                               ("gsc-impressions", "Impressions", bucket["impressions"])], None)
+        dots = "".join(f"<circle class='gsc-chart-focus' cx='{x:.1f}' cy='{series[index][1]:.1f}' r='3.5'/>" for series in marks)
+        parts.append(
+            f"<g class='overview-chart-group gsc-chart-day' role='img' tabindex='0'{strip} aria-label='{html.escape(text, quote=True)}'>"
+            f"<title>{html.escape(text)}</title><rect class='gsc-chart-hit' x='{max(x - slot / 2, left):.1f}' y='{top - 4}' "
+            f"width='{min(slot, width - right - max(x - slot / 2, left)):.1f}' height='{height - bottom - top + 4}'/>{dots}</g>")
+    texts = [bucket["label"].removeprefix("Week of ") for bucket in buckets]
+    for index, anchor in _chart_axis_labels(xs, texts, font_size=font, chart_width=width):
+        parts.append(f"<text x='{xs[index]:.1f}' y='{height - 8}' text-anchor='{anchor}' aria-hidden='true'>"
+                     f"{html.escape(texts[index])}</text>")
+    return (f"<svg class='overview-trend-chart overview-trend-{variant} gsc-chart' viewBox='0 0 {width} {height}' "
+            f"role='group' aria-label='Google Search clicks and impressions'>{''.join(parts)}</svg>")
+
+
+def _gsc_trend(data: dict[str, Any], snapshot: dict[str, Any]) -> str:
+    buckets = _gsc_buckets(data, snapshot["startDate"], snapshot["endDate"], snapshot["period"] == "all")
+    if not buckets or not any(bucket["impressions"] for bucket in buckets):
+        return _empty_state("empty", "No Google Search impressions in this period.")
+    return ("<div class='overview-chart-wrap'>" + "".join(
+        _gsc_chart_svg(buckets, width, variant) for width, variant in ((720, "desktop"), (1200, "wide"), (360, "mobile")))
+        + _chart_value_strip() + f"</div><p class='overview-chart-note'>{html.escape(GSC_NOTE)}</p>")
+
+
+def _ctr(totals: dict[str, Any] | None) -> float | None:
+    value = (totals or {}).get("ctr")
+    return None if value is None else round(value * 100, 1)
+
+
+def _gsc_kpis(now: dict[str, Any], before: dict[str, Any] | None, period: str) -> str:
+    before = before or {}
+    position = now.get("position")
+    return _metric_row([
+        _metric_tile("Clicks", now.get("clicks"), secondary=_delta(now.get("clicks"), before.get("clicks"), period)),
+        _metric_tile("Impressions", now.get("impressions"),
+                     secondary=_delta(now.get("impressions"), before.get("impressions"), period)),
+        _metric_tile("CTR", _ctr(now), fmt="rate", secondary=_delta(_ctr(now), _ctr(before), period, "rate")),
+        _metric_tile("Avg position", position, value_html=None if position is None else f"{position:.1f}",
+                     secondary=_delta(position, before.get("position"), period, "decimal", better="down")),
+    ], label="Google Search")
+
+
+def _gsc_number(value: Any, kind: str = "count") -> str:
+    if value is None:
+        return "—"
+    if kind == "rate":
+        return "<0.1%" if 0 < value < 0.001 else f"{value * 100:.1f}%"
+    if kind == "position":
+        return f"{value:.1f}"
+    return f"{int(value):,}"
+
+
+def _gsc_table(caption: str, columns: list[tuple[str, str, str]], rows: list[dict[str, Any]], first: Callable[[dict[str, Any]], str]) -> str:
+    """columns: (heading, key, kind); the first column is ``first(row)``."""
+    short = {"Impressions": "Impr.", "Position": "Pos."}  # phone headers; the full name stays for screen readers
+    label = lambda heading: (f"<span class='gsc-full'>{heading}</span><span class='gsc-short' aria-hidden='true'>"
+                             f"{short[heading]}</span>" if heading in short else html.escape(heading))
+    head = "".join(f"<th scope='col'{'' if index == 0 else ' class=column-number'}>{label(heading)}</th>"
+                   for index, (heading, _, _) in enumerate(columns))
+    body = "".join(
+        f"<tr><td data-label='{html.escape(columns[0][0], quote=True)}'>{first(row)}</td>" + "".join(
+            f"<td data-label='{html.escape(heading, quote=True)}' class='column-number numeric'>{_gsc_number(row.get(key), kind)}</td>"
+            for heading, key, kind in columns[1:]) + "</tr>"
+        for row in rows)
+    return (f"<div class='table-wrap'><table class='admin-table gsc-table' data-own-mobile-layout><caption class='sr-only'>{html.escape(caption)}</caption>"
+            f"<thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></div>")
+
+
+def _gsc_queries(data: dict[str, Any], totals: dict[str, Any] | None) -> str:
+    rows = data.get("rows") or []
+    if not rows:
+        return _empty_state("empty", "No queries in this period.")
+    cell = lambda row: (f"<span class='gsc-query'><span>{html.escape(row['query'] or '—')}</span>"
+                        + (_status_pill("info", "Near top", title=NEAR_TOP_TITLE) if row.get("nearTop") else "") + "</span>")
+    table = _gsc_table("Top queries", [("Query", "", ""), ("Clicks", "clicks", "count"), ("Impressions", "impressions", "count"),
+                                       ("CTR", "ctr", "rate"), ("Position", "position", "position")], rows, cell)
+    total_clicks = (totals or {}).get("clicks")
+    if total_clicks is not None and (data.get("clicks") or 0) < total_clicks:
+        table += "<p class='overview-chart-note'>Rare queries are hidden by Google</p>"
+    return table
+
+
+def _gsc_pages(rows: list[dict[str, Any]]) -> str:
+    if not rows:
+        return _empty_state("empty", "No pages in this period.")
+    return _gsc_table("Top pages", [("Page", "", ""), ("Clicks", "clicks", "count"), ("Impressions", "impressions", "count"),
+                                    ("Position", "position", "position")], rows,
+                      lambda row: f"<span class='gsc-page'>{html.escape(row['path'] or '/')}</span>")
+
+
+def search_console_blocks(snapshot: dict[str, Any] | None, *, console_url: str | None) -> str:
+    """The Google Search block for one snapshot (None: not configured)."""
+    link = (f"<p class='web-installer-tests muted-value'><a class='section-link' href='{html.escape(console_url, quote=True)}' "
+            f"target='_blank' rel='noopener noreferrer'>Open Search Console&nbsp;{_admin_icon('external')}</a></p>"
+            if console_url else "")
+    if not snapshot:
+        return _gsc_section(_gsc_card("unavailable", "Search Console", _empty_state("unavailable", GSC_UNAVAILABLE)))
+    if not snapshot.get("daily"):
+        return _gsc_section(_gsc_card("daily", "Search Console", _empty_state(
+            "empty", "Search Console reports whole days. Choose Last 7 days or longer.")) + link)
+    blocks, period = snapshot["blocks"], snapshot["period"]
+    if not any(block.get("state") in ("ok", "stale") for block in blocks.values()):
+        return _gsc_section(_gsc_card("unavailable", "Search Console", _empty_state("unavailable", GSC_UNAVAILABLE)) + link)
+    stale = [block["fetchedAt"] for block in blocks.values() if block.get("state") == "stale"]
+    marks = "" if not stale else (_status_pill("unknown", "Search Console unavailable") + "<span class='admin-metric-secondary'>"
+                                  f"Last result {_timestamp_markup(datetime.fromtimestamp(min(stale), timezone.utc))}</span>")
+    totals = _usable(blocks.get("totals"))
+    missing = _empty_state("unavailable", GSC_UNAVAILABLE)
+    kpis = (_kpi_panel(_gsc_kpis(totals, _usable(blocks.get("previousTotals")), period)) if totals
+            else _gsc_card("kpis", "Totals", missing))
+    dates = _usable(blocks.get("dates"))
+    trend = _gsc_card("trend", "Trend", _gsc_trend(dates, snapshot) if dates else missing, css="overview-chart-panel")
+    queries, pages = _usable(blocks.get("queries")), _usable(blocks.get("pages"))
+    lists = ("<div class='web-installer-grid web-visits-gsc-lists'>"
+             + _gsc_card("queries", "Top queries", _gsc_queries(queries, totals) if queries else missing)
+             + _gsc_card("pages", "Top pages", _gsc_pages(pages) if pages is not None else missing) + "</div>")
+    fetched = [block["fetchedAt"] for block in blocks.values() if block.get("fetchedAt")]
+    footer = (f"Updated {_timestamp_markup(datetime.fromtimestamp(min(fetched), timezone.utc))}" if fetched else "")
+    if link:
+        footer += (" · " if footer else "") + link.removeprefix("<p class='web-installer-tests muted-value'>").removesuffix("</p>")
+    return _gsc_section(kpis + trend + lists + (f"<p class='web-installer-tests muted-value'>{footer}</p>" if footer else ""), marks)
+
+
+def _kpi_panel(body: str) -> str:
+    return f"<section class='admin-card {_HEAD}' id='web-visits-gsc-kpis' aria-label='Google Search totals'>{body}</section>"
+
+
+def _gsc_loading() -> str:
+    skeleton = ("<div class='web-visits-skeleton' aria-hidden='true'><span></span><span></span><span></span></div>"
+                "<span class='sr-only'>Loading…</span>")
+    return _gsc_section(_kpi_panel(skeleton) + _gsc_card("trend", "Trend", skeleton, css="overview-chart-panel")
+                        + "<div class='web-installer-grid web-visits-gsc-lists'>" + _gsc_card("queries", "Top queries", skeleton)
+                        + _gsc_card("pages", "Top pages", skeleton) + "</div>", loading=True)
+
+
+def _gsc_script() -> str:
+    """Reads the Google Search block for the shown period and puts it in place
+    of the loading one; a failed read shows Unavailable."""
+    return r"""(() => {
+      let request = 0;
+      const load = async () => {
+        const main = document.querySelector('#main-content');
+        const slot = document.querySelector('#web-visits-gsc');
+        const failed = document.querySelector('#gsc-failed');
+        if (!main || !slot || !failed || main.dataset.gscLoaded === 'true') return;
+        main.dataset.gscLoaded = 'true';
+        const number = ++request;
+        const url = new URL('/admin/api/gsc', window.location.origin);
+        url.searchParams.set('period', document.querySelector('#overview-period')?.value || '7d');
+        let markup = null;
+        try {
+          const response = await fetch(url, {credentials: 'same-origin', headers: {'Accept': 'application/json'}});
+          if (response.ok) markup = (await response.json()).html;
+        } catch (error) { markup = null; }
+        if (number !== request || !slot.isConnected) return;
+        const next = document.createElement('template');
+        next.innerHTML = typeof markup === 'string' ? markup : failed.innerHTML;
+        slot.replaceWith(next.content);
+        window.TerentoAdminTime?.render();
+      };
+      window.addEventListener('terento-admin-content-changed', load);
+      load();
+    })();"""

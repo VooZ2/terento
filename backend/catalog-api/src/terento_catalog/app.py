@@ -9,6 +9,7 @@ from .http_api import CatalogService, serve
 from .asset_storage import AssetStorage
 from .github_issue_sync import run_sync
 from .umami_stats import UmamiStats
+from .gsc_stats import GscStats
 
 
 def main() -> None:
@@ -37,6 +38,7 @@ def run_server(settings: Settings, database: Database) -> None:
             web_installer_ingest_secret=settings.web_installer_ingest_secret,
             admin_read_token_sha256=settings.admin_read_token_sha256,
             umami_stats=UmamiStats(settings.umami) if settings.umami else None,
+            gsc_stats=GscStats(settings.gsc) if settings.gsc else None,
             opentopomap_contour_mode=settings.opentopomap_contour_mode,
             opentopomap_contour_allowlist=settings.opentopomap_contour_allowlist,
             public_base_url=settings.public_base_url,

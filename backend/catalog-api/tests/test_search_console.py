@@ -1,0 +1,370 @@
+"""Admin Web visits, Google Search (Search Console): settings, requests, cache, failures, markup and routes."""
+
+from __future__ import annotations
+
+import json
+import os
+import tempfile
+import threading
+import unittest
+from datetime import datetime, timezone
+from http.client import HTTPConnection
+from http.server import ThreadingHTTPServer
+
+from admin_test_utils import visible_text
+from api_test_fixtures import FakeProviderDatabase
+from terento_catalog import gsc_stats
+from terento_catalog.admin_website_stats import search_console_blocks, website_stats_page
+from terento_catalog.gsc_stats import (
+    CACHE_SECONDS,
+    GscRequestError,
+    GscSettings,
+    GscStats,
+    page_path,
+    parse_dates,
+    parse_queries,
+    period_dates,
+)
+from terento_catalog.http_api import CatalogService, make_handler
+
+COOKIE = "terento_admin_session=session; terento_admin_csrf=csrf"
+# 2026-11-14 20:30 UTC is 12:30 on 2026-11-14 in Pacific Time.
+NOW = datetime(2026, 11, 14, 20, 30, tzinfo=timezone.utc)
+SECRET_KEY = "-----BEGIN PRIVATE KEY-----\nsecret-key-material\n-----END PRIVATE KEY-----\n"
+TOKEN = "ya29.secret-access-token"
+ACCOUNT = {"type": "service_account", "client_email": "reader@example.iam.gserviceaccount.com",
+           "private_key": SECRET_KEY, "token_uri": "https://oauth2.googleapis.com/token"}
+SETTINGS = GscSettings(property_name="sc-domain:terento.app", service_account=ACCOUNT)
+
+DAYS = [("2026-11-08", 1, 96), ("2026-11-09", 2, 78), ("2026-11-10", 8, 102), ("2026-11-11", 1, 93),
+        ("2026-11-12", 0, 79), ("2026-11-13", 9, 121), ("2026-11-14", 6, 60)]
+QUERIES = [
+    ("garmin maps free", 6, 300, 0.02, 7.2),       # position 4–10, impressions ≥ 20 % of the top: Near top
+    ("terento", 12, 40, 0.3, 1.1),
+    ("<script>alert(1)</script>", 3, 1500, 0.002, 12.4),
+    ("openstreetmap garmin", 3, 200, 0.015, 9.0),  # 200 < 300 (20 % of 1500): not Near top
+]
+
+
+def answer(body: dict) -> dict:
+    """Answers like Search Console for the request body."""
+    dimensions = body.get("dimensions") or []
+    if not dimensions:
+        if body["startDate"] < "2026-11-08":  # the previous period
+            return {"rows": [{"clicks": 20, "impressions": 700, "ctr": 0.0286, "position": 7.0}]}
+        return {"rows": [{"clicks": 27, "impressions": 629, "ctr": 0.0429, "position": 6.6}],
+                "responseAggregationType": "byProperty"}
+    if dimensions == ["date"]:
+        return {"rows": [{"keys": [day], "clicks": c, "impressions": i, "ctr": 0, "position": 5} for day, c, i in DAYS],
+                "metadata": {"firstIncompleteDate": "2026-11-13"}}
+    if dimensions == ["query"]:
+        return {"rows": [{"keys": [q], "clicks": c, "impressions": i, "ctr": r, "position": p} for q, c, i, r, p in QUERIES]}
+    if dimensions == ["page"]:
+        return {"rows": [{"keys": ["https://terento.app/en/compatibility/"], "clicks": 5, "impressions": 90, "ctr": 0.05, "position": 4.2},
+                         {"keys": ["https://terento.app/"], "clicks": 9, "impressions": 140, "ctr": 0.06, "position": 3.1}]}
+    raise AssertionError(dimensions)
+
+
+class Clock:
+    def __init__(self) -> None:
+        self.now = NOW.timestamp()
+
+    def __call__(self) -> float:
+        return self.now
+
+
+class FakeGsc:
+    def __init__(self) -> None:
+        self.calls: list[dict] = []
+        self.tokens: list[str] = []
+        self.fail: Exception | None = None
+        self.lock = threading.Lock()
+
+    def __call__(self, settings, token, body):
+        with self.lock:
+            self.calls.append(body)
+            self.tokens.append(token)
+        if self.fail:
+            raise self.fail
+        return answer(body)
+
+
+def stats(fake=None, clock=None, token=lambda: TOKEN) -> tuple[GscStats, FakeGsc, Clock]:
+    fake = fake or FakeGsc()
+    clock = clock or Clock()
+    return GscStats(SETTINGS, query=fake, token=token, clock=clock), fake, clock
+
+
+class SettingsTests(unittest.TestCase):
+    def test_unset_is_disabled_without_a_warning(self):
+        with self.assertNoLogs(gsc_stats.LOGGER, level="WARNING"):
+            self.assertIsNone(GscSettings.from_env({}))
+
+    def test_json_or_a_file_and_the_key_stays_out_of_repr(self):
+        settings = GscSettings.from_env({"GSC_SERVICE_ACCOUNT_JSON": json.dumps(ACCOUNT)})
+        self.assertEqual(settings.property_name, "sc-domain:terento.app")
+        self.assertNotIn("secret-key-material", repr(settings))
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as file:
+            json.dump(ACCOUNT, file)
+        try:
+            settings = GscSettings.from_env({"GSC_SERVICE_ACCOUNT_JSON": file.name, "GSC_PROPERTY": "sc-domain:example.test"})
+        finally:
+            os.unlink(file.name)
+        self.assertEqual((settings.property_name, settings.service_account["client_email"]),
+                         ("sc-domain:example.test", ACCOUNT["client_email"]))
+
+    def test_invalid_settings_disable_and_never_log_a_value(self):
+        for raw in ("{not json", json.dumps({**ACCOUNT, "type": "authorized_user"}), json.dumps({**ACCOUNT, "private_key": ""}),
+                    "/nonexistent/secret.json"):
+            with self.subTest(raw=raw[:12]), self.assertLogs(gsc_stats.LOGGER, level="WARNING") as logs:
+                self.assertIsNone(GscSettings.from_env({"GSC_SERVICE_ACCOUNT_JSON": raw}))
+            self.assertNotIn("secret-key-material", "\n".join(logs.output))
+
+
+class PeriodTests(unittest.TestCase):
+    def test_whole_pacific_days_ending_today_and_the_previous_period(self):
+        self.assertEqual(period_dates("7d", NOW), (datetime(2026, 11, 8).date(), datetime(2026, 11, 14).date(),
+                                                   datetime(2026, 11, 1).date()))
+        start, end, previous = period_dates("30d", NOW)
+        self.assertEqual((start.isoformat(), end.isoformat(), previous.isoformat()), ("2026-10-16", "2026-11-14", "2026-09-16"))
+        self.assertIsNone(period_dates("all", NOW)[2])
+        # 07:30 UTC is still the day before in Pacific Time.
+        self.assertEqual(period_dates("7d", datetime(2026, 11, 15, 7, 30, tzinfo=timezone.utc))[1].isoformat(), "2026-11-14")
+
+
+class ParseTests(unittest.TestCase):
+    def test_dates_keep_the_first_incomplete_day(self):
+        data = parse_dates(answer({"dimensions": ["date"], "startDate": "2026-11-08"}))
+        self.assertEqual(data["firstIncompleteDate"], "2026-11-13")
+        self.assertEqual(data["days"][0], {"date": "2026-11-08", "clicks": 1, "impressions": 96})
+
+    def test_queries_top_ten_by_clicks_then_impressions_and_near_top(self):
+        data = parse_queries(answer({"dimensions": ["query"], "startDate": "2026-11-08"}))
+        self.assertEqual([row["query"] for row in data["rows"]],
+                         ["terento", "garmin maps free", "<script>alert(1)</script>", "openstreetmap garmin"])
+        self.assertEqual([row["nearTop"] for row in data["rows"]], [False, True, False, False])
+        self.assertEqual(data["clicks"], 24)
+
+    def test_page_path_drops_the_site_origin(self):
+        self.assertEqual(page_path("https://terento.app/en/compatibility/"), "/en/compatibility/")
+        self.assertEqual(page_path("https://terento.app"), "/")
+
+
+class SnapshotTests(unittest.TestCase):
+    def test_one_request_per_block_with_web_and_all_data(self):
+        snapshot = stats()[0].snapshot("7d", NOW)
+        self.assertEqual(list(snapshot["blocks"]), ["totals", "previousTotals", "dates", "queries", "pages"])
+        self.assertTrue(all(block["state"] == "ok" for block in snapshot["blocks"].values()))
+        self.assertEqual((snapshot["startDate"], snapshot["endDate"], snapshot["previousStartDate"]),
+                         ("2026-11-08", "2026-11-14", "2026-11-01"))
+        self.assertEqual(snapshot["blocks"]["totals"]["data"]["clicks"], 27)
+        self.assertEqual(snapshot["blocks"]["pages"]["data"][1]["path"], "/")
+
+    def test_request_bodies(self):
+        _, fake, _ = stats()
+        GscStats(SETTINGS, query=fake, token=lambda: TOKEN, clock=Clock()).snapshot("30d", NOW)
+        by_dimensions = {tuple(body.get("dimensions") or ()) + (body["startDate"],): body for body in fake.calls}
+        self.assertEqual(len(fake.calls), 5)
+        for body in fake.calls:
+            self.assertEqual((body["type"], body["dataState"]), ("web", "all"))
+        self.assertEqual(by_dimensions[("query", "2026-10-16")]["rowLimit"], 100)
+        self.assertEqual(by_dimensions[("page", "2026-10-16")]["rowLimit"], 5)
+        self.assertEqual(by_dimensions[("2026-09-16",)]["endDate"], "2026-10-15")
+        self.assertEqual(set(fake.tokens), {TOKEN})
+
+    def test_today_and_24h_ask_nothing(self):
+        service, fake, _ = stats()
+        for period in ("today", "24h"):
+            self.assertEqual(service.snapshot(period, NOW), {"period": period, "daily": False, "blocks": {}})
+        self.assertEqual(fake.calls, [])
+
+    def test_all_time_has_no_previous_period(self):
+        snapshot = stats()[0].snapshot("all", NOW)
+        self.assertNotIn("previousTotals", snapshot["blocks"])
+        self.assertIsNone(snapshot["previousStartDate"])
+
+    def test_cached_for_an_hour_per_period(self):
+        service, fake, clock = stats()
+        service.snapshot("7d", NOW)
+        service.snapshot("7d", NOW)
+        self.assertEqual(len(fake.calls), 5)
+        service.snapshot("30d", NOW)
+        self.assertEqual(len(fake.calls), 10)
+        clock.now += CACHE_SECONDS + 1
+        service.snapshot("7d", NOW)
+        self.assertEqual(len(fake.calls), 15)
+
+    def test_403_logs_only_gsc_403_and_keeps_the_last_result(self):
+        service, fake, clock = stats()
+        service.snapshot("7d", NOW)
+        clock.now += CACHE_SECONDS + 1
+        fake.fail = GscRequestError("HTTP 403", 403)
+        with self.assertLogs(gsc_stats.LOGGER, level="WARNING") as logs:
+            snapshot = service.snapshot("7d", NOW)
+        self.assertEqual({line.split(":", 2)[2] for line in logs.output}, {"GSC 403"})
+        self.assertTrue(all(block["state"] == "stale" for block in snapshot["blocks"].values()))
+        self.assertEqual(snapshot["blocks"]["totals"]["fetchedAt"], NOW.timestamp())
+
+    def test_a_failed_token_is_unavailable_and_logs_no_secret(self):
+        def token():
+            raise GscRequestError("token failed (RefreshError)")
+        service, fake, _ = stats(token=token)
+        with self.assertLogs(gsc_stats.LOGGER, level="WARNING") as logs:
+            snapshot = service.snapshot("7d", NOW)
+        self.assertEqual(fake.calls, [])
+        self.assertTrue(all(block["state"] == "unavailable" for block in snapshot["blocks"].values()))
+        self.assertNotIn("secret", "\n".join(logs.output))
+
+    def test_a_bad_shape_stays_inside_its_block(self):
+        class Broken(FakeGsc):
+            def __call__(self, settings, token, body):
+                return {"rows": "nope"} if body.get("dimensions") == ["page"] else answer(body)
+        with self.assertLogs(gsc_stats.LOGGER, level="WARNING"):
+            snapshot = stats(fake=Broken())[0].snapshot("7d", NOW)
+        self.assertEqual(snapshot["blocks"]["pages"]["state"], "unavailable")
+        self.assertEqual(snapshot["blocks"]["totals"]["state"], "ok")
+
+
+class MarkupTests(unittest.TestCase):
+    URL = "https://search.google.com/search-console/performance/search-analytics?resource_id=sc-domain%3Aterento.app"
+
+    def render(self, period="7d", fake=None):
+        service = stats(fake=fake)[0]
+        return search_console_blocks(service.snapshot(period, NOW), console_url=service.console_url)
+
+    def test_kpis_with_changes_coloured_by_meaning(self):
+        text = visible_text(self.render())
+        for expected in ("Google Search", "Search Console", "Clicks", "27", "+7 vs previous 7 days", "Impressions", "629",
+                         "−71 vs previous 7 days", "CTR", "4.3%", "+1.4 pp vs previous 7 days", "Avg position", "6.6",
+                         "−0.4 vs previous 7 days"):
+            self.assertIn(expected, text)
+        markup = self.render()
+        position = markup.split("Avg position", 1)[1]
+        self.assertIn("data-trend='better'", position.split("</div>", 1)[0])  # lower is better
+        impressions = markup.split(">Impressions<", 1)[1]
+        self.assertIn("data-trend='worse'", impressions.split("</div>", 1)[0])
+
+    def test_two_stacked_charts_one_date_axis_and_preliminary_days(self):
+        markup = self.render()
+        svg = markup.split("<svg class='overview-trend-chart overview-trend-desktop gsc-chart'", 1)[1].split("</svg>", 1)[0]
+        self.assertIn(">Clicks</text>", svg)
+        self.assertIn(">Impressions</text>", svg)
+        self.assertEqual(svg.count("gsc-chart-line is-preliminary"), 2)
+        self.assertIn(">Preliminary</text>", svg)
+        self.assertEqual(svg.count("class='overview-chart-group gsc-chart-day'"), 7)
+        self.assertIn("13 Nov (preliminary) · Clicks 9 · Impressions 121", svg)
+        self.assertIn("Google Search Console · dates in Pacific Time · data delayed 2–3 days", markup)
+
+    def test_queries_escaped_with_near_top_and_hidden_rare_queries(self):
+        markup = self.render()
+        self.assertNotIn("<script>alert", markup)
+        self.assertIn("&lt;script&gt;alert(1)&lt;/script&gt;", markup)
+        self.assertEqual(markup.count(">Near top</span>"), 1)
+        self.assertIn("title='Position 4–10 with many impressions: closest to page-one top'", markup)
+        self.assertIn("Rare queries are hidden by Google", markup)  # 24 query clicks < 27 total
+        self.assertIn(">/en/compatibility/</span>", markup)
+        self.assertIn(f"href='{self.URL.replace('&', '&amp;')}'", markup)
+        self.assertIn("Open Search Console", markup)
+
+    def test_all_time_has_no_change_lines(self):
+        self.assertNotIn("vs previous", self.render("all"))
+
+    def test_today_asks_for_whole_days(self):
+        self.assertIn("Search Console reports whole days. Choose Last 7 days or longer.", visible_text(self.render("today")))
+
+    def test_unavailable_stale_and_empty(self):
+        self.assertIn("Search Console unavailable.", visible_text(search_console_blocks(None, console_url=None)))
+        fake = FakeGsc()
+        fake.fail = GscRequestError("connection failed")
+        with self.assertLogs(gsc_stats.LOGGER, level="WARNING"):
+            self.assertIn("Search Console unavailable.", visible_text(self.render(fake=fake)))
+        service, fake, clock = stats()
+        service.snapshot("7d", NOW)
+        clock.now += CACHE_SECONDS + 1
+        fake.fail = GscRequestError("timeout")
+        with self.assertLogs(gsc_stats.LOGGER, level="WARNING"):
+            markup = search_console_blocks(service.snapshot("7d", NOW), console_url=None)
+        self.assertIn("Search Console unavailable</span>", markup)
+        self.assertIn("Last result", markup)
+        empty = {"period": "7d", "daily": True, "startDate": "2026-11-08", "endDate": "2026-11-14", "previousStartDate": None,
+                 "blocks": {name: {"state": "ok", "fetchedAt": 1.0, "data": data} for name, data in {
+                     "totals": {"clicks": 0, "impressions": 0, "ctr": None, "position": None},
+                     "dates": {"days": [], "firstIncompleteDate": None}, "queries": {"rows": [], "clicks": 0}, "pages": []}.items()}}
+        text = visible_text(search_console_blocks(empty, console_url=None))
+        self.assertIn("No Google Search impressions in this period.", text)
+        self.assertIn("No queries in this period.", text)
+
+
+class _Database(FakeProviderDatabase):
+    def delete_admin_session(self, token_hash):
+        pass
+
+
+class RouteTests(unittest.TestCase):
+    def setUp(self):
+        self.fake = FakeGsc()
+        self.service = CatalogService(_Database(), gsc_stats=GscStats(SETTINGS, query=self.fake, token=lambda: TOKEN))
+        self.server = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(self.service))
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+
+    def tearDown(self):
+        self.server.shutdown()
+        self.server.server_close()
+
+    def get(self, path, cookie=COOKIE):
+        connection = HTTPConnection(*self.server.server_address)
+        connection.request("GET", path, headers={"Cookie": cookie} if cookie else {})
+        response = connection.getresponse()
+        body = response.read().decode()
+        connection.close()
+        return response, body
+
+    def test_the_api_needs_an_admin_session(self):
+        for cookie in (None, "terento_admin_session=wrong; terento_admin_csrf=csrf", "terento_admin_session=session"):
+            with self.subTest(cookie=cookie):
+                response, body = self.get("/admin/api/gsc?period=7d", cookie=cookie)
+                self.assertEqual((response.status, json.loads(body)), (401, {"error": "unauthorized"}))
+        self.assertEqual(self.fake.calls, [])
+
+    def test_the_api_answers_blocks_without_the_key_or_token(self):
+        response, body = self.get("/admin/api/gsc?period=30d")
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.headers["Cache-Control"], "no-store")
+        self.assertEqual(response.headers["X-Robots-Tag"], "noindex, nofollow")
+        payload = json.loads(body)
+        self.assertEqual((payload["configured"], payload["period"]), (True, "30d"))
+        self.assertEqual(payload["blocks"]["totals"]["state"], "ok")
+        self.assertIn("id='web-visits-gsc'", payload["html"])
+        for secret in ("secret-key-material", TOKEN, ACCOUNT["client_email"], "Bearer"):
+            self.assertNotIn(secret, body)
+
+    def test_the_period_follows_the_admin_period(self):
+        _, body = self.get("/admin/api/gsc", cookie=COOKIE + "; terento_admin_period=30d")
+        self.assertEqual(json.loads(body)["period"], "30d")
+        _, body = self.get("/admin/api/gsc?period=1y")
+        self.assertEqual(json.loads(body)["period"], "7d")
+
+    def test_without_settings_the_api_says_unavailable(self):
+        self.service.gsc_stats = None
+        _, body = self.get("/admin/api/gsc?period=7d")
+        payload = json.loads(body)
+        self.assertEqual((payload["configured"], payload["blocks"]), (False, None))
+        self.assertIn("Search Console unavailable.", payload["html"])
+
+    def test_the_page_loads_google_search_after_umami(self):
+        _, body = self.get("/admin/web-visits")
+        self.assertIn("/admin/api/gsc", body)
+        self.assertLess(body.index("id='website-stats-failed'"), body.index("id='web-visits-gsc'"))
+        self.assertNotIn("secret-key-material", body)
+        self.assertEqual(self.fake.calls, [])  # the page never waits for Search Console
+
+
+class PageTests(unittest.TestCase):
+    def test_page_has_the_loading_block_and_its_failed_template(self):
+        body = website_stats_page({"username": "owner"}, "csrf", period="7d").decode()
+        self.assertIn("<section class='web-visits-gsc' id='web-visits-gsc'", body)
+        self.assertIn("<template id='gsc-failed'>", body)
+
+
+if __name__ == "__main__":
+    unittest.main()
