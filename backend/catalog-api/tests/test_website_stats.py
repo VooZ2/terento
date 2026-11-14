@@ -458,10 +458,10 @@ class MarkupTests(unittest.TestCase):
         self.assertIn("<span class='web-visits-flag' aria-hidden='true'>🇱🇹</span><span data-region-name='LT'>LT</span>", countries)
         self.assertIn("<td>Unknown</td>", countries)
 
-    def test_views_before_the_map_view_cleanup_get_a_grey_note(self):
+    def test_views_before_the_map_view_cleanup_are_grey_without_a_note(self):
         body, _ = self.render()  # 7 days before 2026-11-14 reaches before 2026-11-13
         self.assertIn("data-trend='neutral'><span aria-hidden='true'>▲</span> +30 vs previous 7 days", body)
-        self.assertIn("Before 2026-11-13 includes old map views", body)
+        self.assertNotIn("old map views", body)
         later = datetime(2026, 11, 20, 12, tzinfo=timezone.utc)
         client, _, _ = stats()
         body = website_stats_blocks(client.snapshot("24h", "UTC", now=later), dashboard_url=None)
@@ -478,7 +478,7 @@ class MarkupTests(unittest.TestCase):
     def test_all_time_has_no_change_lines(self):
         body, _ = self.render(period="all")
         self.assertNotIn("funnel-delta", body)
-        self.assertIn("Before 2026-11-13 includes old map views", body)
+        self.assertNotIn("old map views", body)
 
     def test_hidden_unavailable_and_stale_blocks(self):
         fake = FakeUmami()

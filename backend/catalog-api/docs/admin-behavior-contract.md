@@ -497,8 +497,8 @@ unavailable headline block keeps its title for its marks (owner request
 1. `Visitors`: Visitors, Visits, Views, Bounce rate, Visit duration (average
    per visit, the same type size as the other values), each with its change.
    While the compared span starts before 2026-11-13 07:45 UTC (old Maps hash
-   page views inflate Views until then), the Views change is grey and the tile
-   adds `Before 2026-11-13 includes old map views`; All time shows that line.
+   page views inflate Views until then), the Views change is grey, without a
+   note (owner request 2026-11-14).
 2. `Downloads`: Downloads (`download-click` events), Visitors who downloaded
    and Conversion (those visitors of all visitors), each with its change.
 3. `Referrers` (top 10), `Entry pages` (top 5) and `Countries` (top 10), three
