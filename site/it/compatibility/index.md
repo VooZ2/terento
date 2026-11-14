@@ -9,7 +9,7 @@ Terento funziona con gli orologi Garmin e i ciclocomputer Garmin Edge più recen
 
 Se il tuo modello non c’è, non significa che non funzioni. Forse nessuno ha ancora condiviso un’installazione riuscita con quel modello.
 
-**44** modelli con installazioni riuscite**401** installazioni riusciteUltima installazione riuscita 13 novembre 2026
+**44** modelli con installazioni riuscite**406** installazioni riusciteUltima installazione riuscita 13 novembre 2026
 
 Come funziona questo elenco
 
@@ -25,11 +25,21 @@ fēnix
 
 ### fēnix 8 47 mm, AMOLED
 
-62 installazioni riuscite
+63 installazioni riuscite
 
-App 61 Web 1
+App 62 Web 1
 
-Ultima installazione riuscita 11 novembre 2026
+Ultima installazione riuscita 13 novembre 2026
+
+Forerunner
+
+### Forerunner 970 AMOLED
+
+34 installazioni riuscite
+
+App 34
+
+Ultima installazione riuscita 13 novembre 2026
 
 Forerunner
 
@@ -40,16 +50,6 @@ Forerunner
 App 29 Web 3
 
 Ultima installazione riuscita 1 novembre 2026
-
-Forerunner
-
-### Forerunner 970 AMOLED
-
-30 installazioni riuscite
-
-App 30
-
-Ultima installazione riuscita 11 novembre 2026
 
 fēnix
 
