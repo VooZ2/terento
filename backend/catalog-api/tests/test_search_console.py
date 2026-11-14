@@ -16,6 +16,7 @@ from api_test_fixtures import FakeProviderDatabase
 from terento_catalog import gsc_stats
 from terento_catalog.admin_website_stats import search_console_blocks, website_stats_page
 from terento_catalog.gsc_stats import (
+    final_totals,
     CACHE_SECONDS,
     GscRequestError,
     GscSettings,
@@ -38,23 +39,24 @@ SETTINGS = GscSettings(property_name="sc-domain:terento.app", service_account=AC
 
 DAYS = [("2026-11-08", 1, 96), ("2026-11-09", 2, 78), ("2026-11-10", 8, 102), ("2026-11-11", 1, 93),
         ("2026-11-12", 0, 79), ("2026-11-13", 9, 121), ("2026-11-14", 6, 60)]
+# The previous 7 days; only the last 5 count against the 5 final days above
+# (11-13 and 11-14 are preliminary).
+PREVIOUS_DAYS = [("2026-11-01", 50, 500), ("2026-11-02", 50, 500), ("2026-11-03", 2, 100), ("2026-11-04", 1, 90),
+                 ("2026-11-05", 3, 110), ("2026-11-06", 2, 95), ("2026-11-07", 2, 105)]
 QUERIES = [
-    ("garmin maps free", 6, 300, 0.02, 7.2),       # position 4–10, impressions ≥ 20 % of the top: Near top
-    ("terento", 12, 40, 0.3, 1.1),
-    ("<script>alert(1)</script>", 3, 1500, 0.002, 12.4),
-    ("openstreetmap garmin", 3, 200, 0.015, 9.0),  # 200 < 300 (20 % of 1500): not Near top
+    ("garmin maps free", 2, 300, 0.007, 7.2),       # position 4–10, impressions ≥ 20 % of the top: Near top
+    ("terento", 4, 40, 0.1, 1.1),
+    ("<script>alert(1)</script>", 1, 1500, 0.001, 12.4),
+    ("openstreetmap garmin", 1, 200, 0.005, 9.0),  # 200 < 300 (20 % of 1500): not Near top
 ]
 
 
 def answer(body: dict) -> dict:
     """Answers like Search Console for the request body."""
     dimensions = body.get("dimensions") or []
-    if not dimensions:
-        if body["startDate"] < "2026-11-08":  # the previous period
-            return {"rows": [{"clicks": 20, "impressions": 700, "ctr": 0.0286, "position": 7.0}]}
-        return {"rows": [{"clicks": 27, "impressions": 629, "ctr": 0.0429, "position": 6.6}],
-                "responseAggregationType": "byProperty"}
     if dimensions == ["date"]:
+        if body["startDate"] < "2026-11-08":  # the previous period
+            return {"rows": [{"keys": [day], "clicks": c, "impressions": i, "ctr": 0, "position": 6} for day, c, i in PREVIOUS_DAYS]}
         return {"rows": [{"keys": [day], "clicks": c, "impressions": i, "ctr": 0, "position": 5} for day, c, i in DAYS],
                 "metadata": {"firstIncompleteDate": "2026-11-13"}}
     if dimensions == ["query"]:
@@ -136,14 +138,23 @@ class ParseTests(unittest.TestCase):
     def test_dates_keep_the_first_incomplete_day(self):
         data = parse_dates(answer({"dimensions": ["date"], "startDate": "2026-11-08"}))
         self.assertEqual(data["firstIncompleteDate"], "2026-11-13")
-        self.assertEqual(data["days"][0], {"date": "2026-11-08", "clicks": 1, "impressions": 96})
+        self.assertEqual(data["days"][0], {"date": "2026-11-08", "clicks": 1, "impressions": 96, "position": 5})
+
+    def test_final_totals_weight_the_position_by_impressions(self):
+        days = [{"date": "2026-11-01", "clicks": 1, "impressions": 100, "position": 2.0},
+                {"date": "2026-11-02", "clicks": 3, "impressions": 300, "position": 6.0},
+                {"date": "2026-11-03", "clicks": 9, "impressions": 900, "position": 1.0}]
+        first, last = datetime(2026, 11, 1).date(), datetime(2026, 11, 2).date()
+        self.assertEqual(final_totals(days, first, last),
+                         {"clicks": 4, "impressions": 400, "ctr": 0.01, "position": 5.0, "days": 2})
+        self.assertEqual(final_totals([], first, last), {"clicks": 0, "impressions": 0, "ctr": None, "position": None, "days": 2})
 
     def test_queries_top_ten_by_clicks_then_impressions_and_near_top(self):
         data = parse_queries(answer({"dimensions": ["query"], "startDate": "2026-11-08"}))
         self.assertEqual([row["query"] for row in data["rows"]],
                          ["terento", "garmin maps free", "<script>alert(1)</script>", "openstreetmap garmin"])
         self.assertEqual([row["nearTop"] for row in data["rows"]], [False, True, False, False])
-        self.assertEqual(data["clicks"], 24)
+        self.assertEqual(data["clicks"], 8)
 
     def test_page_path_drops_the_site_origin(self):
         self.assertEqual(page_path("https://terento.app/en/compatibility/"), "/en/compatibility/")
@@ -151,32 +162,42 @@ class ParseTests(unittest.TestCase):
 
 
 class SnapshotTests(unittest.TestCase):
+    def test_totals_count_only_final_days_against_as_many_days_before(self):
+        blocks = stats()[0].snapshot("7d", NOW)["blocks"]
+        self.assertEqual(blocks["totals"]["data"], {"clicks": 12, "impressions": 448, "ctr": 12 / 448, "position": 5.0, "days": 5})
+        self.assertEqual(blocks["previousTotals"]["data"], {"clicks": 10, "impressions": 500, "ctr": 0.02, "position": 6.0, "days": 5})
+        self.assertEqual(blocks["dates"]["data"]["days"][-1]["date"], "2026-11-14")  # the chart keeps preliminary days
+
     def test_one_request_per_block_with_web_and_all_data(self):
         snapshot = stats()[0].snapshot("7d", NOW)
         self.assertEqual(list(snapshot["blocks"]), ["totals", "previousTotals", "dates", "queries", "pages"])
         self.assertTrue(all(block["state"] == "ok" for block in snapshot["blocks"].values()))
         self.assertEqual((snapshot["startDate"], snapshot["endDate"], snapshot["previousStartDate"]),
                          ("2026-11-08", "2026-11-14", "2026-11-01"))
-        self.assertEqual(snapshot["blocks"]["totals"]["data"]["clicks"], 27)
+        self.assertEqual(snapshot["blocks"]["totals"]["data"]["clicks"], 12)
         self.assertEqual(snapshot["blocks"]["pages"]["data"][1]["path"], "/")
 
     def test_request_bodies(self):
         _, fake, _ = stats()
         GscStats(SETTINGS, query=fake, token=lambda: TOKEN, clock=Clock()).snapshot("30d", NOW)
         by_dimensions = {tuple(body.get("dimensions") or ()) + (body["startDate"],): body for body in fake.calls}
-        self.assertEqual(len(fake.calls), 5)
-        for body in fake.calls:
-            self.assertEqual((body["type"], body["dataState"]), ("web", "all"))
+        self.assertEqual(len(fake.calls), 4)  # no totals request: totals come from the days
+        self.assertTrue(all(body["type"] == "web" for body in fake.calls))
+        # Only the trend reads preliminary days.
+        self.assertEqual({key: body["dataState"] for key, body in by_dimensions.items()},
+                         {("date", "2026-10-16"): "all", ("date", "2026-09-16"): "final",
+                          ("query", "2026-10-16"): "final", ("page", "2026-10-16"): "final"})
         self.assertEqual(by_dimensions[("query", "2026-10-16")]["rowLimit"], 100)
         self.assertEqual(by_dimensions[("page", "2026-10-16")]["rowLimit"], 5)
-        self.assertEqual(by_dimensions[("2026-09-16",)]["endDate"], "2026-10-15")
+        self.assertEqual(by_dimensions[("date", "2026-09-16")]["endDate"], "2026-10-15")
         self.assertEqual(set(fake.tokens), {TOKEN})
 
-    def test_today_and_24h_ask_nothing(self):
+    def test_an_unknown_period_is_last_30_days(self):
         service, fake, _ = stats()
-        for period in ("today", "24h"):
-            self.assertEqual(service.snapshot(period, NOW), {"period": period, "daily": False, "blocks": {}})
-        self.assertEqual(fake.calls, [])
+        for period in ("today", "24h", "1y"):
+            with self.subTest(period=period):
+                self.assertEqual(service.snapshot(period, NOW)["period"], "30d")
+        self.assertEqual(len(fake.calls), 4)  # one 30-day read, then the cache
 
     def test_all_time_has_no_previous_period(self):
         snapshot = stats()[0].snapshot("all", NOW)
@@ -187,12 +208,12 @@ class SnapshotTests(unittest.TestCase):
         service, fake, clock = stats()
         service.snapshot("7d", NOW)
         service.snapshot("7d", NOW)
-        self.assertEqual(len(fake.calls), 5)
+        self.assertEqual(len(fake.calls), 4)
         service.snapshot("30d", NOW)
-        self.assertEqual(len(fake.calls), 10)
+        self.assertEqual(len(fake.calls), 8)
         clock.now += CACHE_SECONDS + 1
         service.snapshot("7d", NOW)
-        self.assertEqual(len(fake.calls), 15)
+        self.assertEqual(len(fake.calls), 12)
 
     def test_403_logs_only_gsc_403_and_keeps_the_last_result(self):
         service, fake, clock = stats()
@@ -234,9 +255,10 @@ class MarkupTests(unittest.TestCase):
 
     def test_kpis_with_changes_coloured_by_meaning(self):
         text = visible_text(self.render())
-        for expected in ("Google Search", "Search Console", "Clicks", "27", "+7 vs previous 7 days", "Impressions", "629",
-                         "−71 vs previous 7 days", "CTR", "4.3%", "+1.4 pp vs previous 7 days", "Avg position", "6.6",
-                         "−0.4 vs previous 7 days"):
+        # The 5 final days against the 5 days before them; 13–14 Nov are preliminary.
+        for expected in ("Google Search", "Search Console", "Clicks", "12", "+2 vs previous 5 days", "Impressions", "448",
+                         "−52 vs previous 5 days", "CTR", "2.7%", "+0.7 pp vs previous 5 days", "Avg position", "5.0",
+                         "−1.0 vs previous 5 days"):
             self.assertIn(expected, text)
         markup = self.render()
         position = markup.split("Avg position", 1)[1]
@@ -254,6 +276,12 @@ class MarkupTests(unittest.TestCase):
         self.assertEqual(svg.count("class='overview-chart-group gsc-chart-day'"), 7)
         self.assertIn("13 Nov (preliminary) · Clicks 9 · Impressions 121", svg)
         self.assertIn("Google Search Console · dates in Pacific Time · data delayed 2–3 days", markup)
+        # Each series in its own group (its own colour) with a named swatch.
+        for metric, label in (("clicks", "Clicks"), ("impressions", "Impressions")):
+            group = svg.split(f"<g class='gsc-series-{metric}'>", 1)[1].split("</g>", 1)[0]
+            self.assertIn("class='gsc-chart-swatch'", group)
+            self.assertIn(f">{label}</text>", group)
+            self.assertIn("class='gsc-chart-line'", group)
 
     def test_queries_escaped_with_near_top_and_hidden_rare_queries(self):
         markup = self.render()
@@ -261,7 +289,7 @@ class MarkupTests(unittest.TestCase):
         self.assertIn("&lt;script&gt;alert(1)&lt;/script&gt;", markup)
         self.assertEqual(markup.count(">Near top</span>"), 1)
         self.assertIn("title='Position 4–10 with many impressions: closest to page-one top'", markup)
-        self.assertIn("Rare queries are hidden by Google", markup)  # 24 query clicks < 27 total
+        self.assertIn("Rare queries are hidden by Google", markup)  # 8 query clicks < 12 total
         self.assertIn(">/en/compatibility/</span>", markup)
         self.assertIn(f"href='{self.URL.replace('&', '&amp;')}'", markup)
         self.assertIn("Open Search Console", markup)
@@ -269,8 +297,14 @@ class MarkupTests(unittest.TestCase):
     def test_all_time_has_no_change_lines(self):
         self.assertNotIn("vs previous", self.render("all"))
 
-    def test_today_asks_for_whole_days(self):
-        self.assertIn("Search Console reports whole days. Choose Last 7 days or longer.", visible_text(self.render("today")))
+    def test_its_own_period_picker(self):
+        markup = self.render("7d")
+        picker = markup.split("<select id='gsc-period' data-admin-dropdown>", 1)[1].split("</select>", 1)[0]
+        self.assertEqual(picker, "<option value='7d' selected>Last 7 days</option><option value='30d'>Last 30 days</option>"
+                                 "<option value='all'>All time</option>")
+        self.assertIn("data-gsc-period='7d'", markup)
+        self.assertIn("<option value='30d' selected>", search_console_blocks(None, console_url=None))
+        self.assertNotIn("whole days", visible_text(self.render("today")))
 
     def test_unavailable_stale_and_empty(self):
         self.assertIn("Search Console unavailable.", visible_text(search_console_blocks(None, console_url=None)))
@@ -286,7 +320,7 @@ class MarkupTests(unittest.TestCase):
             markup = search_console_blocks(service.snapshot("7d", NOW), console_url=None)
         self.assertIn("Search Console unavailable</span>", markup)
         self.assertIn("Last result", markup)
-        empty = {"period": "7d", "daily": True, "startDate": "2026-11-08", "endDate": "2026-11-14", "previousStartDate": None,
+        empty = {"period": "7d", "startDate": "2026-11-08", "endDate": "2026-11-14", "previousStartDate": None,
                  "blocks": {name: {"state": "ok", "fetchedAt": 1.0, "data": data} for name, data in {
                      "totals": {"clicks": 0, "impressions": 0, "ctr": None, "position": None},
                      "dates": {"days": [], "firstIncompleteDate": None}, "queries": {"rows": [], "clicks": 0}, "pages": []}.items()}}
@@ -338,11 +372,13 @@ class RouteTests(unittest.TestCase):
         for secret in ("secret-key-material", TOKEN, ACCOUNT["client_email"], "Bearer"):
             self.assertNotIn(secret, body)
 
-    def test_the_period_follows_the_admin_period(self):
-        _, body = self.get("/admin/api/gsc", cookie=COOKIE + "; terento_admin_period=30d")
+    def test_its_own_period_never_the_admin_period(self):
+        _, body = self.get("/admin/api/gsc", cookie=COOKIE + "; terento_admin_period=7d")
         self.assertEqual(json.loads(body)["period"], "30d")
-        _, body = self.get("/admin/api/gsc?period=1y")
-        self.assertEqual(json.loads(body)["period"], "7d")
+        for asked, answered in (("7d", "7d"), ("all", "all"), ("30d", "30d"), ("24h", "30d"), ("today", "30d"), ("1y", "30d")):
+            with self.subTest(period=asked):
+                _, body = self.get(f"/admin/api/gsc?period={asked}", cookie=COOKIE + "; terento_admin_period=7d")
+                self.assertEqual(json.loads(body)["period"], answered)
 
     def test_without_settings_the_api_says_unavailable(self):
         self.service.gsc_stats = None
@@ -364,6 +400,15 @@ class PageTests(unittest.TestCase):
         body = website_stats_page({"username": "owner"}, "csrf", period="7d").decode()
         self.assertIn("<section class='web-visits-gsc' id='web-visits-gsc'", body)
         self.assertIn("<template id='gsc-failed'>", body)
+
+    def test_the_admin_period_does_not_set_the_google_search_period(self):
+        for period in ("today", "24h", "7d", "all"):
+            with self.subTest(period=period):
+                body = website_stats_page({"username": "owner"}, "csrf", period=period).decode()
+                gsc = body.split("<section class='web-visits-gsc'", 1)[1]
+                self.assertIn("data-gsc-period='30d'", gsc.split(">", 1)[0])
+                self.assertIn("let period = '30d';", body)
+                self.assertNotIn("#overview-period')?.value", body.split("let period = '30d';", 1)[1])
 
 
 if __name__ == "__main__":

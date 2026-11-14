@@ -167,7 +167,8 @@ runtime dependencies.
   never reaches the browser or the logs
   ([contract](docs/api.md#get-httpsapiterentoappadminweb-visits-and-get-adminapiumami)).
 - `GET /admin/api/gsc` adds the Web visits `Google Search` block: read-only
-  Google Search Console numbers for terento.app, to a signed-in admin only. The
+  Google Search Console numbers for terento.app, to a signed-in admin only,
+  with its own period (Last 30 days by default) and totals of final days. The
   server gets the token with google-auth from the service account in
   `GSC_SERVICE_ACCOUNT_JSON` (scope `webmasters.readonly`, property
   `GSC_PROPERTY`); the key and token never reach the browser or the logs

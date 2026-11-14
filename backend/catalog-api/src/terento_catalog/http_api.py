@@ -95,7 +95,7 @@ from .collect import collect_provider_once
 from .admin_web_installer import web_installer_csv, web_installer_page
 from .admin_website_stats import search_console_blocks, website_stats_blocks, website_stats_page
 from .umami_stats import UmamiStats
-from .gsc_stats import GscStats
+from .gsc_stats import DEFAULT_PERIOD as GSC_DEFAULT_PERIOD, PERIODS as GSC_PERIODS, GscStats
 from .web_installer import (
     MAX_WEB_INSTALLER_BYTES,
     WebInstallerValidationError,
@@ -673,11 +673,12 @@ class CatalogService:
             "html": website_stats_blocks(snapshot, dashboard_url=stats.settings.dashboard_url if stats else None),
         }
 
-    def search_console(self, period: str) -> dict[str, Any]:
+    def search_console(self, period: str = GSC_DEFAULT_PERIOD) -> dict[str, Any]:
         """Google Search (Search Console) for the Admin page: the blocks as data
-        and as rendered markup. Never raises; the key and token are not in the
-        result or the log."""
-        period = period if period in ADMIN_PERIODS else "7d"
+        and as rendered markup, for its own period (Last 7 days, Last 30 days
+        or All time; not the Admin period). Never raises; the key and token
+        are not in the result or the log."""
+        period = period if period in GSC_PERIODS else GSC_DEFAULT_PERIOD
         stats = self.gsc_stats
         snapshot = None
         if stats is not None:
@@ -698,7 +699,7 @@ class CatalogService:
             "endDate": None if snapshot is None else snapshot.get("endDate"),
             "previousStartDate": None if snapshot is None else snapshot.get("previousStartDate"),
             "blocks": blocks,
-            "html": search_console_blocks(snapshot, console_url=stats.console_url if stats else None),
+            "html": search_console_blocks(snapshot, console_url=stats.console_url if stats else None, period=period),
         }
 
     def web_installer_export(self, query: dict[str, str]) -> tuple[bytes, str]:
@@ -1858,7 +1859,8 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 return
             if request_path in {"/admin/api/gsc", "/admin/api/gsc/"}:
                 query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
-                self._send_json(HTTPStatus.OK, service.search_console(self._admin_period(query, "7d")),
+                # Its own period, never the shared Admin period cookie.
+                self._send_json(HTTPStatus.OK, service.search_console(query.get("period", [""])[-1]),
                                 send_body=send_body, cache_control="no-store", noindex=True)
                 return
             if request_path in {"/admin/website-stats", "/admin/website-stats/"}:

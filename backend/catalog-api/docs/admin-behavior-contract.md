@@ -521,11 +521,18 @@ unavailable headline block keeps its title for its marks (owner request
    most frequent as plain text with their counts.
 6. A last line with the update time and `Open Umami` (new tab).
 7. `Google Search` (Google Search Console, `/admin/api/gsc`; its own
-   population, statistics contract): KPI cards Clicks, Impressions, CTR
-   (change in percentage points) and Avg position (lower is better: a fall is
-   `▼` green; change to one decimal), each against the previous period of the
-   same length; two stacked line charts on one date axis, Clicks over
-   Impressions, days from Search Console's first incomplete day dotted after a
+   population, statistics contract), with its own period picker in its
+   heading (Last 7 days, Last 30 days, All time; Last 30 days on every page
+   load): the shared Admin period never changes it, and a new Admin period
+   puts the block back as it was without reading Search Console again (owner
+   2026-11-14). KPI cards Clicks, Impressions, CTR (change in percentage
+   points) and Avg position (lower is better: a fall is `▼` green; change to
+   one decimal) count only final days, the days before Search Console's first
+   incomplete day, each against as many days just before the period (`vs
+   previous N days`, N the final days counted; owner 2026-11-14); two stacked
+   line charts on one date axis with a wide gap between them, Clicks
+   (Interactive Primary) over Impressions (Stone dark), each named in its own
+   colour beside a line swatch (owner 2026-11-14), days from Search Console's first incomplete day dotted after a
    `Preliminary` mark, every day focusable with its date and values; under them
    one grey line `Google Search Console · dates in Pacific Time · data delayed
    2–3 days`; `Top queries` (10 by clicks, then impressions: query, clicks,
@@ -533,10 +540,10 @@ unavailable headline block keeps its title for its marks (owner request
    with many impressions: closest to page-one top`, on positions 4–10 with at
    least 20 % of the top query's impressions; `Rare queries are hidden by
    Google` when the listed queries' clicks are fewer than all clicks) and `Top
-   pages` (5: path, clicks, impressions, position); a last line with the update
-   time and `Open Search Console` (new tab). It follows the shared period with
-   no picker of its own; Today and Last 24 hours show `Search Console reports
-   whole days. Choose Last 7 days or longer.` All time is weekly in the chart.
+   pages` (5: path, clicks, impressions, position), both from final days only;
+   a last line with the update time and `Open Search Console` (new tab).
+   Preliminary days appear only in the chart, dotted. All time is weekly in
+   the chart.
 
 The page renders at once with every block as a grey skeleton and fills them
 from `/admin/api/umami`; the Umami key stays on the server. A block Umami could

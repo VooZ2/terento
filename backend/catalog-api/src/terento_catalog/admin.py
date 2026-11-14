@@ -10978,20 +10978,21 @@ main.web-visits-page>.web-visits-headline{grid-template-columns:minmax(0,5fr) mi
 .web-visits-skeleton{display:grid;gap:10px;padding:4px 0 8px}.web-visits-skeleton span{display:block;height:14px;border-radius:var(--radius-control);background:var(--surface-muted)}.web-visits-skeleton span:nth-child(1){width:60%}.web-visits-skeleton span:nth-child(2){width:85%}.web-visits-skeleton span:nth-child(3){width:40%}
 /* Web visits, Google Search (Search Console): its own heading under Umami, the same cards; two stacked line charts share one date axis. */
 .web-visits-gsc{display:grid;gap:var(--admin-card-gap);margin-top:calc(var(--admin-card-gap) * 1.5)}.web-visits-gsc>*,.web-visits-gsc>.web-installer-grid>*{margin:0}
-.web-visits-gsc-heading{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}.web-visits-gsc-heading h2{margin:0 auto 0 0;font-size:clamp(22px,2.2vw,28px);line-height:1.15}
+.web-visits-gsc-heading{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}.web-visits-gsc-period{margin:0;padding:6px}.web-visits-gsc-heading h2{margin:0 auto 0 0;font-size:clamp(22px,2.2vw,28px);line-height:1.15}
 .web-visits-gsc>.web-installer-grid{gap:var(--admin-card-gap)}.web-visits-gsc-lists{grid-template-columns:minmax(0,3fr) minmax(0,2fr)}
 @media(max-width:1200px){.web-visits-gsc-lists{grid-template-columns:minmax(0,1fr)}}
 #web-visits-gsc-kpis>.admin-metric-row{grid-template-columns:repeat(4,minmax(0,1fr))}
 @media(max-width:700px){#web-visits-gsc-kpis>.admin-metric-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
-.gsc-chart.overview-trend-desktop{height:auto;aspect-ratio:720/236}.overview-chart-wrap>.gsc-chart.overview-trend-wide{aspect-ratio:1200/236}
-@media(min-width:901px) and (max-width:1100px),(max-width:700px){.gsc-chart.overview-trend-mobile{aspect-ratio:360/236}}
-.gsc-chart .gsc-chart-name{fill:var(--graphite);font-weight:600}
-.gsc-chart-line{fill:none;stroke:var(--sky);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}.gsc-chart-line.is-preliminary{stroke-dasharray:1 4}
-.gsc-chart-area{fill:color-mix(in srgb,var(--sky) 12%,transparent)}.gsc-chart-dot{fill:var(--sky)}
+.gsc-chart.overview-trend-desktop{height:auto;aspect-ratio:720/252}.overview-chart-wrap>.gsc-chart.overview-trend-wide{aspect-ratio:1200/252}
+@media(min-width:901px) and (max-width:1100px),(max-width:700px){.gsc-chart.overview-trend-mobile{aspect-ratio:360/252}}
+.gsc-series-clicks{--gsc-series:var(--interactive)}.gsc-series-impressions{--gsc-series:var(--stone-dark)}
+.gsc-chart .gsc-chart-name{fill:var(--gsc-series,var(--graphite));font-weight:600}.gsc-chart-swatch{stroke:var(--gsc-series);stroke-width:3;stroke-linecap:round}
+.gsc-chart-line{fill:none;stroke:var(--gsc-series,var(--sky));stroke-width:2;stroke-linejoin:round;stroke-linecap:round}.gsc-chart-line.is-preliminary{stroke-dasharray:1 4}
+.gsc-chart-area{fill:color-mix(in srgb,var(--gsc-series,var(--sky)) 10%,transparent)}.gsc-chart-dot{fill:var(--gsc-series,var(--sky))}
 .gsc-chart-prelim{stroke:var(--secondary);stroke-dasharray:3 3;opacity:.6}
-.gsc-chart-hit{fill:transparent}.gsc-chart-focus{fill:var(--surface);stroke:var(--sky);stroke-width:2;opacity:0}
+.gsc-chart-hit{fill:transparent}.gsc-chart-focus{fill:var(--surface);stroke:var(--gsc-series,var(--sky));stroke-width:2;opacity:0}
 .gsc-chart-day:hover .gsc-chart-focus,.gsc-chart-day:focus .gsc-chart-focus{opacity:1}.gsc-chart-day:focus-visible .gsc-chart-hit{fill:color-mix(in srgb,var(--graphite) 6%,transparent);stroke:var(--graphite);stroke-width:2}
-.overview-chart-gsc-clicks,.overview-chart-gsc-impressions{background:var(--sky)}
+.overview-chart-gsc-clicks{background:var(--interactive)}.overview-chart-gsc-impressions{background:var(--stone-dark)}
 table.gsc-table{table-layout:auto;min-width:0}.gsc-table td,.gsc-table th{white-space:nowrap}.gsc-table td:first-child{width:100%;white-space:normal}
 @media(max-width:760px){.gsc-table th,.gsc-table td{padding-left:5px;padding-right:5px;font-size:13px}.gsc-table th:first-child,.gsc-table td:first-child{padding-left:10px}}
 .gsc-query{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px 8px}.gsc-query>span:first-child,.gsc-page{overflow-wrap:break-word;min-width:0}.gsc-short{display:none}
