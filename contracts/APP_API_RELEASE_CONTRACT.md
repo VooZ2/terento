@@ -1,5 +1,12 @@
 # App–API compatibility and release contract
 
+## 1.2.1 — no server-first change
+
+The 1.2.1 build 48 candidate (#699: wait for the same watch after a stop
+before any write) is app-only. It sends the same telemetry and failure context
+as 1.2.0, requests `catalog-v5.json` and adds no route, payload field or
+migration, so no API deploy precedes it.
+
 ## 1.2.0 server-first acceptance
 
 Deployed: catalog API from main after PR #662 (merge `dd45a0bd`, deploy
