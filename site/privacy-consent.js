@@ -1,12 +1,29 @@
 (() => {
   const umamiSource = "https://stats.enduristas.lt/script.js";
   const umamiWebsiteId = "d8097a98-ffe4-478e-b212-9f06b5bcccbe";
+  // The site release Umami reports with performance metrics and errors: this
+  // script's normalized cache version (?v=, scripts/normalize-public-shell.py
+  // UMAMI_SCRIPT_VERSION), which changes with every change to the analytics
+  // scripts. The before-send filter loads with the same version.
+  const assetVersion = (() => {
+    try {
+      const version = new URL(document.currentScript.src).searchParams.get("v");
+      return version && /^[A-Za-z0-9._-]{1,60}$/.test(version) ? version : null;
+    } catch {
+      return null;
+    }
+  })();
   const campaignParameterKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"];
   const campaignValuePattern = /^[A-Za-z0-9._~-]{1,80}$/;
   const loadUmami = () => {
     if (document.querySelector("script[data-terento-umami]")) return;
+    // window.terentoUmamiBeforeSend (umami-before-send.js) cleans error
+    // reports; it runs before the tracker (both async = false keep the order).
+    const filter = document.createElement("script");
+    filter.async = false;
+    filter.src = `/umami-before-send.js${assetVersion ? `?v=${assetVersion}` : ""}`;
     const script = document.createElement("script");
-    script.async = true;
+    script.async = false;
     script.src = umamiSource;
     script.dataset.websiteId = umamiWebsiteId;
     // Only the public host counts (no localhost or preview copies), and a
@@ -14,8 +31,15 @@
     // new page view.
     script.dataset.domains = "terento.app";
     script.dataset.excludeHash = "true";
+    // Monitoring (Umami 3.5): Web Vitals after each page view and uncaught
+    // errors, cleaned by the filter. No heatmaps or session replays.
+    script.dataset.performance = "true";
+    script.dataset.errors = "true";
+    script.dataset.environment = "production";
+    script.dataset.release = assetVersion || "unversioned";
+    script.dataset.beforeSend = "terentoUmamiBeforeSend";
     script.dataset.terentoUmami = "true";
-    document.head.append(script);
+    document.head.append(filter, script);
   };
 
   const readCampaignParams = (url) => {

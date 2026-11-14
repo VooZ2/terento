@@ -13,7 +13,7 @@ import sys
 root = Path(sys.argv[1])
 privacy_script = (root / "site/privacy-consent.js").read_text(encoding="utf-8")
 site_shell = (root / "scripts/normalize-public-shell.py").read_text(encoding="utf-8")
-umami_version = "20261113-umami-cleanup"
+umami_version = "20261114-umami-monitoring"
 
 assert '"download-click"' in privacy_script
 assert '"download-cta-click"' in privacy_script
@@ -53,6 +53,21 @@ assert privacy_script.index("instrumentConversionLinks(campaignParams);") < priv
 # Only the public host is counted and #fragment changes are not page views.
 assert 'script.dataset.domains = "terento.app";' in privacy_script
 assert 'script.dataset.excludeHash = "true";' in privacy_script
+# Monitoring (owner 2026-11-14): performance and errors, no heatmaps or replays.
+for line in ('script.dataset.performance = "true";', 'script.dataset.errors = "true";',
+             'script.dataset.environment = "production";', 'script.dataset.beforeSend = "terentoUmamiBeforeSend";',
+             'script.dataset.release = assetVersion || "unversioned";'):
+    assert line in privacy_script, line
+for name in ("heatmap", "replay", "Heatmap", "Replay"):
+    assert name not in privacy_script.replace("No heatmaps or session replays", ""), name
+# The release is this script's ?v= cache version; the filter loads first, in order.
+assert 'new URL(document.currentScript.src).searchParams.get("v")' in privacy_script
+assert 'filter.src = `/umami-before-send.js' in privacy_script
+assert privacy_script.count("async = false;") == 2 and "async = true" not in privacy_script
+assert "document.head.append(filter, script);" in privacy_script
+before_send = (root / "site/umami-before-send.js").read_text(encoding="utf-8")
+assert "root.terentoUmamiBeforeSend = terentoUmamiBeforeSend;" in before_send
+assert "lab/web-installer/public/umami-before-send.js" in before_send
 # download-click names where the link is and the release it downloads.
 download_block = privacy_script.split('"download-click"', 1)[1].split("}, campaignParams));", 1)[0]
 assert "location: linkLocation(link)" in download_block
@@ -300,3 +315,4 @@ PY
 
 . "$repo_root/Tests/node-runtime.sh"
 "$NODE_BIN" "$repo_root/Tests/site-campaign-attribution-tests.cjs"
+"$NODE_BIN" "$repo_root/Tests/site-umami-before-send-tests.cjs"

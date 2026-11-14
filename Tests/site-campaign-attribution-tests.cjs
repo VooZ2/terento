@@ -37,16 +37,16 @@ function run(search = "") {
   const links = ["/download/", "https://github.com/VooZ2/terento/releases/download/v1/app.dmg", "https://example.com/", "#section"].map(makeLink);
   const scripts = [];
   const document = {
-    querySelector: () => scripts[0] || null,
+    querySelector: () => scripts.find((script) => script.dataset.terentoUmami) || null,
     querySelectorAll: (selector) => selector.startsWith("a[") ? links : [],
-    createElement: () => ({dataset: {}}), head: {append: (script) => scripts.push(script)}
+    createElement: () => ({dataset: {}}), head: {append: (...items) => scripts.push(...items)}
   };
   const window = {location};
   for (const key of ["sessionStorage", "localStorage"]) Object.defineProperty(window, key, {get() {throw Error("No campaign storage allowed");}});
   const context = {window, document, URL};
   vm.runInNewContext(privacy, context);
   vm.runInNewContext(privacy, context);
-  assert.equal(scripts.length, 1, "Umami loads exactly once without a consent prerequisite");
+  assert.equal(scripts.length, 2, "Umami (and its before-send filter) loads exactly once without a consent prerequisite");
   return links;
 }
 const links = run("?utm_source=github&utm_campaign=readme&utm_term=private%40email.com");
@@ -65,7 +65,7 @@ for (const source of ["chatgpt.com", "claude.ai", "gemini.google.com", "bing", "
 
 // The Umami tag counts only the public host and ignores #fragment changes;
 // download-click names where the link was and which release it downloads.
-function runAt(pathname, hrefs, linkProps = {}) {
+function runAt(pathname, hrefs, linkProps = {}, version) {
   const location = new URL("https://terento.app" + pathname);
   const links = hrefs.map((href) => ({
     href, dataset: {...linkProps}, classList: {contains: () => false}, closest: () => null,
@@ -73,17 +73,34 @@ function runAt(pathname, hrefs, linkProps = {}) {
   }));
   const scripts = [];
   const document = {
-    querySelector: () => scripts[0] || null,
+    querySelector: () => scripts.find((script) => script.dataset.terentoUmami) || null,
     querySelectorAll: (selector) => selector.startsWith("a[") ? links : [],
-    createElement: () => ({dataset: {}}), head: {append: (script) => scripts.push(script)}
+    createElement: () => ({dataset: {}}), head: {append: (...items) => scripts.push(...items)}
   };
+  document.currentScript = {src: `https://terento.app/privacy-consent.js${version === undefined ? "?v=20261114-umami-monitoring" : version}`};
   vm.runInNewContext(privacy, {window: {location}, document, URL});
-  return {links, script: scripts[0]};
+  return {links, scripts, script: scripts.find((script) => script.dataset.terentoUmami)};
 }
 const release = "https://github.com/VooZ2/terento/releases/download/v1.2.0-build47/Terento-1.2.0-macOS-arm64.dmg";
 const downloadPage = runAt("/de/download/", [release, "https://github.com/VooZ2/terento/releases/download/v1.3.0-rc.1-build50/Terento-1.3.0-rc.1-macOS-arm64.zip"]);
 assert.equal(downloadPage.script.dataset.domains, "terento.app", "localhost and copies of the site are not counted");
 assert.equal(downloadPage.script.dataset.excludeHash, "true", "a #fragment change is not a page view");
+// Monitoring: Web Vitals and errors, the release is this script's cache
+// version, and the before-send filter is loaded first and in order.
+const tag = downloadPage.script.dataset;
+assert.equal(tag.performance, "true");
+assert.equal(tag.errors, "true");
+assert.equal(tag.environment, "production");
+assert.equal(tag.release, "20261114-umami-monitoring");
+assert.equal(tag.beforeSend, "terentoUmamiBeforeSend");
+assert.equal(tag.websiteId, "d8097a98-ffe4-478e-b212-9f06b5bcccbe");
+assert.equal(downloadPage.scripts.length, 2);
+assert.equal(downloadPage.scripts[0].src, "/umami-before-send.js?v=20261114-umami-monitoring");
+assert.equal(downloadPage.scripts[1].src, "https://stats.enduristas.lt/script.js");
+assert.ok(downloadPage.scripts.every((script) => script.async === false), "filter and tracker run in order");
+assert.equal(runAt("/", [], {}, "").script.dataset.release, "unversioned");
+assert.equal(runAt("/", [], {}, "").scripts[0].src, "/umami-before-send.js");
+assert.equal(runAt("/", [], {}, "?v=bad%20value").script.dataset.release, "unversioned");
 assert.equal(downloadPage.links[0].dataset.umamiEvent, "download-click");
 assert.equal(downloadPage.links[0].dataset.umamiEventLocation, "download-page");
 assert.equal(downloadPage.links[0].dataset.umamiEventFile, "dmg");
