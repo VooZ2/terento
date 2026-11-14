@@ -14,7 +14,7 @@ class SourceVerificationTests(unittest.TestCase):
         return ['', SHA, json.dumps({'sha': sha, 'commit': {'verification': {'verified': verified, 'reason': reason}}}), json.dumps({'status': status})]
 
     def test_verified_merged_source(self):
-        for label, branch in (('1.0.0', 'main'), ('1.1.0-beta.1', 'beta'), ('1.0.0-rc.3', 'beta')):
+        for label, branch in (('1.0.0', 'main'), ('1.1.0-beta.1', 'main'), ('1.0.0-rc.3', 'main')):
             for status in ('ahead', 'identical'):
                 with patch.object(gate, 'run', side_effect=self.responses(status=status)) as run:
                     self.assertEqual(gate.verify(label), SHA)

@@ -10,7 +10,7 @@ tests.
 ## Preconditions
 
 - a clean checkout of a GitHub-verified signed release commit already merged
-  into `main` (stable) or `beta` (beta and RC prereleases), plus authenticated
+  into `main` (stable, beta and RC prereleases alike), plus authenticated
   `gh` for the read-only source preflight;
 - macOS and Xcode with the `Terento.xcodeproj` toolchain available;
 - Node.js for the JavaScript-backed native/web regression contracts;
@@ -382,7 +382,7 @@ instructions; see [historical evidence](../history/README.md). The public beta
 includes all four reviewed providers. Never replace a packaged catalog or
 change activation flags manually as a normal release step.
 
-Merge the tested release source into `main` (stable) or `beta` (prerelease),
+Merge the tested release source into `main` (stable and prerelease alike),
 then package from the exact
 GitHub-verified merge commit. Create a lightweight tag at that packaged SHA;
 verify its remote target and signature before publishing the draft release.

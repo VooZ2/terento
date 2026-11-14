@@ -3,13 +3,11 @@ name: Swift CI
 on:
   push:
     branches:
-      - beta
       - main
     tags:
       - "v*"
   pull_request:
     branches:
-      - beta
       - main
   schedule:
     - cron: "30 6 * * 1"
@@ -26,7 +24,7 @@ on:
         type: boolean
         default: false
       selection_base:
-        description: Optional base branch (beta or main); select suites from changes since it instead of running everything
+        description: Optional base branch (main); select suites from changes since it instead of running everything
         required: false
         type: string
         default: ""
@@ -64,8 +62,8 @@ jobs:
             # A dispatched branch check (for example the IndexNow state PR)
             # tests only what differs from its base branch.
             case "$SELECTION_BASE" in
-              beta|main) ;;
-              *) echo "selection_base must be beta or main" >&2; exit 1 ;;
+              main) ;;
+              *) echo "selection_base must be main" >&2; exit 1 ;;
             esac
             case "$GITHUB_REF" in
               refs/heads/beta|refs/heads/main|refs/tags/*) echo "selection_base is only for task branches" >&2; exit 1 ;;

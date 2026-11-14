@@ -117,7 +117,7 @@ Hardware tests require an explicitly authorised personal Garmin device. They are
 
 ## Branches and pull requests
 
-The default branch is `main`; target pull requests at it. `beta` takes only app features for the next version, and only when a maintainer asks.
+The default branch is `main`; target pull requests at it. There is no separate `beta` branch.
 
 Use a focused branch name such as:
 
