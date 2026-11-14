@@ -287,8 +287,10 @@ while a measured zero is 0.
 
 ## Page and navigation behavior
 
-The primary sequence is `Dashboard`, `Installations`, `First run`, `Web installer`,
-`Website stats`, `Devices`, `Maps`, `Providers`, and `Health`, followed by Tools and account controls. Dashboard
+The primary sequence is `Dashboard`, `Web visits`, `Installations`, `Web installer`,
+`Devices`, `Maps`, `Providers` and `First run`, followed by Tools (`Health` first,
+then Model sources, Update reports, Test data and Campaign links) and account
+controls (owner request 2026-11-14). Dashboard
 Needs attention is the entry point for actionable review work; there is no
 duplicate Review navigation item.
 
@@ -380,9 +382,14 @@ All time (owner request 2026-10-07); Today covers the current day from midnight
 in the selected Admin time zone up to now. The Dashboard and First run use the
 zone saved by the time-zone control (cookie `terento_admin_tz`) when a link
 carries no `timeZone`, so they are built once; the page reloads its content only
-when the browser zone differs from the zone it was rendered in. The Dashboard default stays Last 24
-hours and the Maps default stays All time; an unknown Dashboard period falls
-back to Last 24 hours. Card titles
+when the browser zone differs from the zone it was rendered in. Dashboard, Web
+visits, Web installer and First run share one period (owner request
+2026-11-14): the picker remembers the shown period in cookie
+`terento_admin_period`, and each of these pages opens with it when its link has
+no `period`; a link's own `period` wins. Without a remembered period the
+Dashboard and First run default to Last 24 hours, Web visits and Web installer
+to Last 7 days, and the Maps time range stays its own (default All time); an
+unknown period falls back to the page default. Card titles
 are one or two words. App downloads means Terento application downloads (GitHub
 `.dmg` and `.zip`, never map downloads), names both in the legend and
 shows its all-time totals and last update in one
@@ -468,30 +475,51 @@ Tables that would scroll sideways on a phone (Watch models, Providers, Recent
 requests, Recent results on watches) become records at ≤760 px whose result
 shows at once and whose other fields open below; no field is dropped.
 
-The Website stats page (`/admin/website-stats`, primary navigation after Web
-installer; owner request 2026-11-14) shows Umami's read-only numbers for
-terento.app: its own population (statistics contract, Populations), never
-mixed with app or web installer results. It has the Dashboard period picker
-(default Last 7 days) with an `Umami` mark, `data-admin-no-titles`, no
-explanatory text, and every block follows the picker. Changes compare with
-the previous period of the same length as `▲ +20 vs previous 7 days` (rates in
-percentage points); All time has none. Blocks, in order:
+The Web visits page (`/admin/web-visits`, primary navigation after Dashboard;
+named Website stats until 2026-11-14, whose address redirects here) shows
+Umami's read-only numbers for terento.app: its own population (statistics
+contract, Populations), never mixed with app or web installer results. It has
+the shared Admin period picker (above) with an `Umami` mark,
+`data-admin-no-titles`, no explanatory text, and every block follows the
+period; All time starts on 2026-08-20, when Umami began measuring
+terento.app. Changes compare with the previous period of the same length as
+`▲ +20 vs previous 7 days` (rates in percentage points); All time has none. A
+change is coloured by meaning, never by direction alone: green
+(`--success-text`) better, red (`--error-text`) worse, grey (`--secondary`) the
+same, without a previous value or uncomparable; the arrow and sign always stay.
+Fewer is better for Bounce rate, Errors and Issues; more is better for every
+other change. Blocks, in order:
 
 1. `Visitors`: Visitors, Visits, Views, Bounce rate, Visit duration (average
-   per visit), each with its change.
+   per visit, the same type size as the other values), each with its change.
+   While the compared span starts before 2026-11-13 07:45 UTC (old Maps hash
+   page views inflate Views until then), the Views change is grey and the tile
+   adds `Before 2026-11-13 includes old map views`; All time shows that line.
 2. `Downloads`: Downloads (`download-click` events), Visitors who downloaded
    and Conversion (those visitors of all visitors), each with its change.
-3. `Referrers` (top 10) and `Entry pages` (top 5) side by side, visitors each.
-4. `Web Vitals`: LCP, INP and CLS p75 with a Good / Needs improvement / Poor
-   pill (LCP ≤2.5 s / ≤4 s, INP ≤200 ms / ≤500 ms, CLS ≤0.1 / ≤0.25) and
-   Samples; under 20 samples every value is `—` with `Too little data`.
-5. `Errors`: Errors (occurrences) and Issues in the period, issues ignored in
-   Umami left out, and the 3 most frequent as plain text with their counts.
+3. `Referrers` (top 10), `Entry pages` (top 5) and `Countries` (top 10), three
+   columns on wide screens, two then one as the page narrows, visitors each.
+   Referrers merge one platform's hosts (google.<country> → google.com, the
+   Reddit app and subdomains → reddit.com, m.youtube.com and youtu.be →
+   youtube.com, t.co and twitter.com → x.com, a leading `www.`/`m.`), show the
+   platform's logo (Font Awesome Free brands, Simple Icons where Font Awesome
+   has none) or a neutral globe, as plain text, never a favicon or another
+   site's image, and end with a grey `Direct / none` row: visitors minus the
+   visitors of every referrer. Countries show the flag and the English name
+   the browser gives the ISO code; no code is `Unknown` without a flag.
+4. `Web Vitals`: LCP, INP, CLS, FCP and TTFB p75, each with a Good / Needs
+   improvement / Poor pill (Google's limits: LCP ≤2.5 s / ≤4 s, INP ≤200 ms /
+   ≤500 ms, CLS ≤0.1 / ≤0.25, FCP ≤1.8 s / ≤3 s, TTFB ≤800 ms / ≤1.8 s) and a
+   `Good ≤ …` line under it, then Samples. Under 20 samples the values stay and
+   a grey `Few samples (N)` pill replaces the rating.
+5. `Errors`: Errors (occurrences) and Issues in the period with their change
+   against the previous period, issues ignored in Umami left out, and the 3
+   most frequent as plain text with their counts.
 6. A last line with the update time and `Open Umami` (new tab).
 
-The page renders at once with every block `Loading…` and fills them from
-`/admin/api/umami`; the Umami key stays on the server. A block Umami could not
-answer shows `Statistics unavailable.`, or its last result with a
+The page renders at once with every block as a grey skeleton and fills them
+from `/admin/api/umami`; the Umami key stays on the server. A block Umami could
+not answer shows `Statistics unavailable.`, or its last result with a
 `Statistics unavailable` pill and `Last result <time>`; a block Umami answers
 with 400 or 404 is left out; the other blocks stay. Without Umami settings the
 page shows one unavailable card.
@@ -1238,9 +1266,18 @@ help text otherwise. Details opens the check's technical evidence inline under
 its row; there is no separate disclosure per check. With no Failed or Degraded
 check the card shows `No issues.`
 
+The Umami check (Service; owner request 2026-11-14, only when Umami settings
+exist) says whether the API server reads Web visits' Umami: Healthy when the
+latest read answered, Failed when it did not, with the reason (`Umami rejected
+the API key (HTTP 401).`, `Umami refused the API server (HTTP 403).` or `Umami
+did not answer: <reason>.`), the next action, `Last answer` in Details and an
+action link to Web visits. Health and the attention read make one small stats
+read when the latest is older than five minutes; the Dashboard System checks
+row uses the latest read only and never waits for Umami.
+
 Technical details is one full-width card, collapsed by default, with ARIA tabs
 (arrow keys, Home and End) in the provider-detail pattern: Service (API,
-Database, Scheduler, Issue sync), Releases (Website deploy, API deploy, Release
+Database, Scheduler, Issue sync, Umami), Releases (Website deploy, API deploy, Release
 match, Weekly tests, Email report), Catalogs, Search and Weekly results (the
 weekly suite table and run link). Each group tab shows its `N/M healthy` summary
 and every check of the group not already listed under Issues (Healthy and No

@@ -1,8 +1,9 @@
-"""Admin Website stats (Umami): settings, requests, cache, failures, markup and routes."""
+"""Admin Web visits (Umami): settings, requests, cache, failures, health, markup and routes."""
 
 from __future__ import annotations
 
 import json
+import re
 import threading
 import time
 import unittest
@@ -23,6 +24,7 @@ from terento_catalog.umami_stats import (
     UmamiStats,
     http_fetch,
     period_window,
+    referrer_source,
 )
 
 COOKIE = "terento_admin_session=session; terento_admin_csrf=csrf"
@@ -95,7 +97,9 @@ class WindowTests(unittest.TestCase):
         end = int(NOW.timestamp() * 1000)
         self.assertEqual(period_window("7d", NOW, "UTC"), (end - 7 * 86_400_000, end))
         self.assertEqual(period_window("24h", NOW, "UTC"), (end - 86_400_000, end))
-        self.assertEqual(period_window("all", NOW, "UTC"), (0, end))
+        # All time starts when Umami began measuring terento.app.
+        self.assertEqual(period_window("all", NOW, "UTC"),
+                         (int(datetime(2026, 8, 20, tzinfo=timezone.utc).timestamp() * 1000), end))
         # Today starts at local midnight (Vilnius is UTC+2 in November).
         self.assertEqual(period_window("today", NOW, "Europe/Vilnius"),
                          (int(datetime(2026, 11, 13, 22, tzinfo=timezone.utc).timestamp() * 1000), end))
@@ -110,27 +114,38 @@ class SnapshotTests(unittest.TestCase):
         self.assertCountEqual(fake.calls, [
             (f"{base}/stats", {"startAt": start, "endAt": end}),
             (f"{base}/events/stats", {"startAt": start, "endAt": end, "event": "download-click"}),
-            (f"{base}/metrics", {"startAt": start, "endAt": end, "type": "referrer", "limit": 10}),
+            (f"{base}/metrics", {"startAt": start, "endAt": end, "type": "referrer", "limit": 500}),
             (f"{base}/metrics", {"startAt": start, "endAt": end, "type": "entry", "limit": 5}),
+            (f"{base}/metrics", {"startAt": start, "endAt": end, "type": "country", "limit": 10}),
             (f"{base}/performance/stats", {"startAt": start, "endAt": end}),
             (f"{base}/errors", {"startAt": start, "endAt": end, "pageSize": 100}),
+            (f"{base}/errors", {"startAt": 2 * start - end, "endAt": start, "pageSize": 100}),
         ])
+        self.assertEqual(snapshot["previousStartAt"], 2 * start - end)
         blocks = snapshot["blocks"]
         self.assertEqual({block["state"] for block in blocks.values()}, {"ok"})
         self.assertEqual(blocks["visitors"]["data"]["current"]["visitors"], 120)
         self.assertEqual(blocks["visitors"]["data"]["previous"]["visitors"], 100)
         self.assertEqual(blocks["downloads"]["data"]["current"], {"events": 30, "visitors": 18})
-        self.assertEqual(blocks["referrers"]["data"][0], {"name": "google.com", "visitors": 40})
-        self.assertEqual(blocks["vitals"]["data"], {"lcp": 2300, "inp": 260, "cls": 0.31, "count": 64})
+        # One platform per row: google.lt, the Reddit app and YouTube hosts merge.
+        self.assertEqual(blocks["referrers"]["data"]["rows"][:4], [
+            {"name": "google.com", "visitors": 40}, {"name": "reddit.com", "visitors": 12},
+            {"name": "github.com", "visitors": 9}, {"name": "forums.garmin.com", "visitors": 5}])
+        self.assertIn({"name": "youtube.com", "visitors": 4}, blocks["referrers"]["data"]["rows"])
+        self.assertEqual(blocks["referrers"]["data"]["total"], 72)
+        self.assertEqual(blocks["countries"]["data"][:2], [{"name": "LT", "visitors": 50}, {"name": "DE", "visitors": 30}])
+        self.assertEqual(blocks["countries"]["data"][-1], {"name": "", "visitors": 3})
+        self.assertEqual(blocks["vitals"]["data"],
+                         {"lcp": 2300, "inp": 260, "cls": 0.31, "fcp": 1200, "ttfb": 210, "count": 64})
         # Ignored issues (a DevTools test) are left out; the most frequent first.
         self.assertEqual(blocks["errors"]["data"]["total"], 14)
         self.assertEqual([issue["count"] for issue in blocks["errors"]["data"]["top"]], [7, 4, 2])
 
     def test_requests_run_in_parallel(self):
-        barrier = threading.Barrier(6, timeout=2)
+        barrier = threading.Barrier(len(umami_stats.BLOCKS), timeout=2)
 
         def fetch(settings, path, params):
-            barrier.wait()  # all six requests are open at once, or this times out
+            barrier.wait()  # every request is open at once, or this times out
             return fx.answer(path, params)
 
         client = UmamiStats(SETTINGS, fetch=fetch, clock=Clock())
@@ -142,13 +157,14 @@ class SnapshotTests(unittest.TestCase):
         client.snapshot("7d", "UTC", now=NOW)
         clock.now += CACHE_SECONDS - 1
         client.snapshot("7d", "UTC", now=NOW)
-        self.assertEqual(len(fake.calls), 6)
+        blocks = len(umami_stats.BLOCKS)
+        self.assertEqual(len(fake.calls), blocks)
         client.snapshot("30d", "UTC", now=NOW)
         client.snapshot("7d", "Europe/Vilnius", now=NOW)
-        self.assertEqual(len(fake.calls), 18)
+        self.assertEqual(len(fake.calls), 3 * blocks)
         clock.now += 2
         client.snapshot("7d", "UTC", now=NOW)
-        self.assertEqual(len(fake.calls), 24)
+        self.assertEqual(len(fake.calls), 4 * blocks)
 
     def test_a_failure_keeps_the_last_result_and_logs_no_key_url_or_query(self):
         client, fake, clock = stats()
@@ -208,6 +224,82 @@ class SnapshotTests(unittest.TestCase):
         self.assertEqual(snapshot["blocks"]["referrers"]["state"], "unavailable")
         with self.assertRaises(UmamiRequestError):
             umami_stats.parse_errors(["not", "a", "page"])
+
+
+class ReferrerSourceTests(unittest.TestCase):
+    def test_one_platform_one_name(self):
+        cases = {
+            "google.com": "google.com", "www.google.lt": "google.com", "google.co.uk": "google.com",
+            "com.google.android.googlequicksearchbox": "google.com", "news.google.com": "news.google.com",
+            "com.reddit.frontpage": "reddit.com", "old.reddit.com": "reddit.com", "out.reddit.com": "reddit.com",
+            "m.youtube.com": "youtube.com", "youtu.be": "youtube.com", "t.co": "x.com", "twitter.com": "x.com",
+            "l.facebook.com": "facebook.com", "chat.openai.com": "chatgpt.com", "www.bing.com": "bing.com",
+            "www.example.org": "example.org", "forums.garmin.com": "forums.garmin.com",
+        }
+        for raw, source in cases.items():
+            with self.subTest(raw=raw):
+                self.assertEqual(referrer_source(raw), source)
+
+
+class HealthTests(unittest.TestCase):
+    def test_a_probe_reads_umami_at_most_every_five_minutes(self):
+        client, fake, clock = stats()
+        state = client.health()
+        self.assertEqual((state["status"], state["lastSuccessAt"]), ("HEALTHY", NOW.timestamp()))
+        self.assertEqual(fake.calls[0][0], f"/api/websites/{fx.WEBSITE_ID}/stats")
+        client.health()
+        self.assertEqual(len(fake.calls), 1)
+        clock.now += umami_stats.HEALTH_SECONDS
+        client.health()
+        self.assertEqual(len(fake.calls), 2)
+
+    def test_a_rejected_key_fails_and_keeps_the_last_answer(self):
+        client, fake, clock = stats()
+        client.health()
+        clock.now += umami_stats.HEALTH_SECONDS
+        fake.fail["/stats"] = UmamiRequestError("HTTP 401", 401)
+        with self.assertLogs(umami_stats.LOGGER, level="WARNING") as logs:
+            state = client.health()
+        self.assertEqual((state["status"], state["httpStatus"], state["lastSuccessAt"]),
+                         ("FAILED", 401, NOW.timestamp()))
+        self.assertNotIn(fx.SECRET_KEY, "\n".join(logs.output))
+
+    def test_without_a_probe_only_earlier_reads_count(self):
+        client, fake, _ = stats()
+        self.assertEqual(client.health(probe=False)["status"], "UNKNOWN")
+        client.snapshot("7d", "UTC", now=NOW)
+        self.assertEqual(client.health(probe=False)["status"], "HEALTHY")
+        self.assertEqual(len(fake.calls), len(umami_stats.BLOCKS))
+
+
+class HealthCardTests(unittest.TestCase):
+    def card(self, state):
+        from terento_catalog.admin import _system_health_cards
+        cards = _system_health_cards({"umami": state} if state is not None else {})[0]
+        return next((card for card in cards if card["title"] == "Umami"), None)
+
+    def test_one_umami_row_in_health(self):
+        self.assertIsNone(self.card(None))  # not configured: no row
+        healthy = self.card({"status": "HEALTHY", "reason": "", "httpStatus": None,
+                             "checkedAt": NOW.timestamp(), "lastSuccessAt": NOW.timestamp()})
+        self.assertEqual((healthy["status"], healthy["group"], healthy["actionHref"]),
+                         ("HEALTHY", "service", "/admin/web-visits"))
+        for code, reason in ((401, "Umami rejected the API key (HTTP 401)."),
+                             (403, "Umami refused the API server (HTTP 403)."),
+                             (None, "Umami did not answer: timeout.")):
+            with self.subTest(code=code):
+                failed = self.card({"status": "FAILED", "reason": "timeout" if code is None else f"HTTP {code}",
+                                    "httpStatus": code, "checkedAt": NOW.timestamp(), "lastSuccessAt": None})
+                self.assertEqual((failed["status"], failed["reason"]), ("FAILED", reason))
+
+    def test_health_reads_umami_and_the_dashboard_does_not_wait(self):
+        fake = FakeUmami()
+        service = CatalogService(_Database(), umami_stats=UmamiStats(SETTINGS, fetch=fake))
+        self.assertEqual(service.umami_health(probe=False)["status"], "UNKNOWN")
+        self.assertEqual(fake.calls, [])
+        self.assertEqual(service.umami_health()["status"], "HEALTHY")
+        self.assertEqual(len(fake.calls), 1)
+        self.assertIsNone(CatalogService(_Database()).umami_health())
 
 
 class _UmamiServer(BaseHTTPRequestHandler):
@@ -295,7 +387,7 @@ class MarkupTests(unittest.TestCase):
 
     def test_blocks_in_order_with_values_and_changes(self):
         body, _ = self.render()
-        order = [body.index(f"id='website-stats-{name}'") for name in ("visitors", "downloads", "referrers", "entries", "vitals", "errors")]
+        order = [body.index(f"id='web-visits-{name}'") for name in ("visitors", "downloads", "referrers", "entries", "countries", "vitals", "errors")]
         self.assertEqual(order, sorted(order))
         self.assertEqual(metric_value(body, "Visitors"), "120")
         self.assertEqual(metric_value(body, "Views"), "410")
@@ -308,27 +400,65 @@ class MarkupTests(unittest.TestCase):
         self.assertIn("−5 pp vs previous 7 days", visible_text(body))  # 20 of 100 before
         self.assertIn("google.com", body)
         self.assertIn("/download/", body)
+        # More is better for visits and downloads; a lower bounce rate is better.
+        self.assertIn("data-trend='better'><span aria-hidden='true'>▲</span> +20 vs previous 7 days", body)
+        self.assertIn("data-trend='better'><span aria-hidden='true'>▼</span> −10 pp vs previous 7 days", body)
+        self.assertIn("data-trend='worse'><span aria-hidden='true'>▼</span> −2 vs previous 7 days", body)
+        self.assertIn("data-trend='worse'><span aria-hidden='true'>▼</span> −5 pp vs previous 7 days", body)
         self.assertIn(f"href='https://stats.example.test/websites/{fx.WEBSITE_ID}'", body)
         self.assertNotIn(fx.SECRET_KEY, body)
 
-    def test_web_vitals_ratings_and_the_sample_size(self):
+    def test_web_vitals_ratings_limits_and_the_sample_size(self):
         body, _ = self.render()
-        text = visible_text(body.split("id='website-stats-vitals'", 1)[1].split("id='website-stats-errors'", 1)[0])
-        self.assertIn("LCP · p752.30 sGood", text)
-        self.assertIn("INP · p75260 msNeeds improvement", text)
-        self.assertIn("CLS · p750.31Poor", text)
+        text = visible_text(body.split("id='web-visits-vitals'", 1)[1].split("id='web-visits-errors'", 1)[0])
+        self.assertIn("LCP · p752.30 sGoodGood ≤ 2.5 s", text)
+        self.assertIn("INP · p75260 msNeeds improvementGood ≤ 200 ms", text)
+        self.assertIn("CLS · p750.31PoorGood ≤ 0.1", text)
+        self.assertIn("FCP · p751.20 sGoodGood ≤ 1.8 s", text)
+        self.assertIn("TTFB · p75210 msGoodGood ≤ 800 ms", text)
         self.assertIn("Samples64", text)
 
-    def test_too_few_web_vitals_samples(self):
-        original = fx.PERFORMANCE["count"]
-        fx.PERFORMANCE["count"] = 19
+    def test_few_web_vitals_samples_keep_the_value_without_a_rating(self):
+        original = dict(fx.PERFORMANCE)
+        fx.PERFORMANCE.update(count=16, lcp={"p50": 200, "p75": 236, "p95": 400})
         try:
             body, _ = self.render()
         finally:
-            fx.PERFORMANCE["count"] = original
-        vitals = body.split("id='website-stats-vitals'", 1)[1].split("id='website-stats-errors'", 1)[0]
-        self.assertEqual(vitals.count("Too little data"), 3)
-        self.assertNotIn("Good", vitals)
+            fx.PERFORMANCE.clear()
+            fx.PERFORMANCE.update(original)
+        vitals = body.split("id='web-visits-vitals'", 1)[1].split("id='web-visits-errors'", 1)[0]
+        self.assertEqual(vitals.count("Few samples (16)"), 5)
+        self.assertIn("LCP · p75236 msFew samples (16)", visible_text(vitals))
+        self.assertNotIn(">Good<", vitals)
+        self.assertNotIn("Poor", vitals)
+
+    def test_referrers_have_logos_direct_visitors_and_no_outside_requests(self):
+        body, _ = self.render()
+        referrers = body.split("id='web-visits-referrers'", 1)[1].split("id='web-visits-entries'", 1)[0]
+        self.assertEqual(referrers.count("<svg"), 6 + 1)  # one per platform row and Direct / none
+        self.assertIn("admin-icon-source-web", referrers)  # example.org: the neutral globe
+        self.assertIn("Direct / none", visible_text(referrers))
+        self.assertIn("<tr class='web-visits-direct'>", referrers)
+        self.assertIn("<td class='column-number'>48</td>", referrers)  # 120 visitors − 72 referred
+        self.assertNotIn("<a ", referrers)
+        self.assertNotIn("favicon", body)
+        self.assertNotIn("http", referrers)
+
+    def test_countries_have_a_flag_a_code_for_the_browser_and_unknown(self):
+        body, _ = self.render()
+        countries = body.split("id='web-visits-countries'", 1)[1].split("id='web-visits-vitals'", 1)[0]
+        self.assertIn("<span class='web-visits-flag' aria-hidden='true'>🇱🇹</span><span data-region-name='LT'>LT</span>", countries)
+        self.assertIn("<td>Unknown</td>", countries)
+
+    def test_views_before_the_map_view_cleanup_get_a_grey_note(self):
+        body, _ = self.render()  # 7 days before 2026-11-14 reaches before 2026-11-13
+        self.assertIn("data-trend='neutral'><span aria-hidden='true'>▲</span> +30 vs previous 7 days", body)
+        self.assertIn("Before 2026-11-13 includes old map views", body)
+        later = datetime(2026, 11, 20, 12, tzinfo=timezone.utc)
+        client, _, _ = stats()
+        body = website_stats_blocks(client.snapshot("24h", "UTC", now=later), dashboard_url=None)
+        self.assertNotIn("old map views", body)
+        self.assertIn("data-trend='better'><span aria-hidden='true'>▲</span> +30 vs previous 24 h", body)
 
     def test_error_messages_are_text_not_markup(self):
         body, _ = self.render()
@@ -340,6 +470,7 @@ class MarkupTests(unittest.TestCase):
     def test_all_time_has_no_change_lines(self):
         body, _ = self.render(period="all")
         self.assertNotIn("funnel-delta", body)
+        self.assertIn("Before 2026-11-13 includes old map views", body)
 
     def test_hidden_unavailable_and_stale_blocks(self):
         fake = FakeUmami()
@@ -347,8 +478,8 @@ class MarkupTests(unittest.TestCase):
         fake.fail["/errors"] = UmamiRequestError("HTTP 503", 503)
         with self.assertLogs(umami_stats.LOGGER, level="WARNING"):
             body, _ = self.render(fake)
-        self.assertNotIn("website-stats-vitals", body)
-        errors = body.split("id='website-stats-errors'", 1)[1]
+        self.assertNotIn("web-visits-vitals", body)
+        errors = body.split("id='web-visits-errors'", 1)[1]
         self.assertIn("Statistics unavailable.", errors)
         client, fake, clock = stats()
         client.snapshot("7d", "UTC", now=NOW)
@@ -356,7 +487,7 @@ class MarkupTests(unittest.TestCase):
         fake.fail["/stats"] = UmamiRequestError("timeout")
         with self.assertLogs(umami_stats.LOGGER, level="WARNING"):
             body = website_stats_blocks(client.snapshot("7d", "UTC", now=NOW), dashboard_url=None)
-        visitors = body.split("id='website-stats-visitors'", 1)[1].split("id='website-stats-downloads'", 1)[0]
+        visitors = body.split("id='web-visits-visitors'", 1)[1].split("id='web-visits-downloads'", 1)[0]
         self.assertIn("Statistics unavailable", visitors)
         self.assertIn("Last result", visitors)
         self.assertEqual(metric_value(body, "Visitors"), "120")
@@ -383,6 +514,7 @@ class MarkupTests(unittest.TestCase):
         self.assertIn("No referrers in this period.", body)
         self.assertIn("No errors in this period.", body)
         self.assertIn("Same as previous period", body)
+        self.assertIn("data-trend='same'", body)
 
     def test_not_configured(self):
         body = website_stats_blocks(None, dashboard_url=None)
@@ -429,7 +561,7 @@ class RouteTests(unittest.TestCase):
         payload = json.loads(body)
         self.assertEqual((payload["configured"], payload["period"], payload["timeZone"]), (True, "30d", "Europe/Vilnius"))
         self.assertEqual(payload["blocks"]["visitors"]["state"], "ok")
-        self.assertIn("id='website-stats-visitors'", payload["html"])
+        self.assertIn("id='web-visits-visitors'", payload["html"])
         self.assertNotIn(fx.SECRET_KEY, body)
         self.assertNotIn("Bearer", body)
 
@@ -439,17 +571,40 @@ class RouteTests(unittest.TestCase):
         self.assertEqual((payload["period"], payload["timeZone"]), ("7d", "UTC"))
 
     def test_the_page_renders_loading_blocks_and_needs_a_login(self):
-        response, body = self.get("/admin/website-stats?period=24h")
+        response, body = self.get("/admin/web-visits?period=24h")
         self.assertEqual(response.status, 200)
-        self.assertIn("<h1>Website stats</h1>", body)
+        self.assertIn("<h1>Web visits</h1>", body)
         self.assertIn("<option value='24h' selected>", body)
-        self.assertEqual(body.count("Loading…"), 6)
-        self.assertIn("href=\"/admin/website-stats\">Website stats</a>", body)
+        self.assertEqual(body.count("Loading…"), 7)
+        self.assertEqual(body.count("web-visits-skeleton"), 7)
         self.assertIn("/admin/api/umami", body)
         self.assertNotIn(fx.SECRET_KEY, body)
         self.assertEqual(self.fake.calls, [])  # the page itself never waits for Umami
-        response, _ = self.get("/admin/website-stats", cookie=None)
+        response, _ = self.get("/admin/web-visits", cookie=None)
         self.assertEqual((response.status, response.headers["Location"]), (303, "/admin/login"))
+
+    def test_the_old_address_leads_to_web_visits(self):
+        response, _ = self.get("/admin/website-stats?period=30d")
+        self.assertEqual((response.status, response.headers["Location"]), (303, "/admin/web-visits?period=30d"))
+
+    def test_one_period_for_all_of_admin(self):
+        chosen = COOKIE + "; terento_admin_period=30d"
+        _, body = self.get("/admin/web-visits", cookie=chosen)
+        self.assertIn("<option value='30d' selected>", body)
+        _, body = self.get("/admin/web-visits?period=today", cookie=chosen)
+        self.assertIn("<option value='today' selected>", body)  # a link's own period wins
+        _, body = self.get("/admin/api/umami", cookie=chosen)
+        self.assertEqual(json.loads(body)["period"], "30d")
+        _, body = self.get("/admin/web-visits", cookie=COOKIE + "; terento_admin_period=1y")
+        self.assertIn("<option value='7d' selected>", body)
+
+    def test_menu_order(self):
+        _, body = self.get("/admin/web-visits")
+        nav = body.split("aria-label=\"Primary\">", 1)[1].split("</div>", 1)[0]
+        self.assertEqual(re.findall(r">([^<]+)</a>", nav), [
+            "Dashboard", "Web visits", "Installations", "Web installer", "Devices", "Maps", "Providers", "First run"])
+        tools = body.split("aria-label=\"Admin tools\">", 1)[1].split("</div>", 1)[0]
+        self.assertEqual(re.findall(r">([^<]+)</a>", tools)[0], "Health")
 
     def test_without_settings_the_api_says_unavailable(self):
         self.service.umami_stats = None
@@ -462,7 +617,8 @@ class RouteTests(unittest.TestCase):
 class PageTests(unittest.TestCase):
     def test_page_shell_uses_the_shared_period_picker(self):
         body = website_stats_page({"username": "owner"}, "csrf", period="nope").decode()
-        self.assertIn("id='overview-period-form' method='get' action='/admin/website-stats'", body)
+        self.assertIn("id='overview-period-form' method='get' action='/admin/web-visits'", body)
+        self.assertIn("terento_admin_period=", body)  # the shared period script remembers the choice
         self.assertIn("<option value='7d' selected>", body)
         self.assertIn("<template id='website-stats-failed'>", body)
 

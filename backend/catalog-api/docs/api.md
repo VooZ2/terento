@@ -383,33 +383,44 @@ results as `recentActivity`, web rows with `source: "web"`) for the All view.
 The Maps statistics read model adds web rows (`source: "web"`) to `rows`, its
 summaries and trend; `detailRows` stay app reports only.
 
-## `GET https://api.terento.app/admin/website-stats` and `GET /admin/api/umami`
+## `GET https://api.terento.app/admin/web-visits` and `GET /admin/api/umami`
 
-The authenticated Website stats page renders at once with every block loading
-and then reads `GET /admin/api/umami?period=&timeZone=` (periods as the
-Dashboard; default and fallback `7d`; an unknown zone is UTC). The JSON route
-needs the same Admin session and CSRF cookie as the pages; without them it is
+The authenticated Web visits page renders at once with every block loading and
+then reads `GET /admin/api/umami?period=&timeZone=` (periods as the Dashboard;
+without `period` the shared Admin period from cookie `terento_admin_period`,
+else `7d`; an unknown zone is UTC). `GET /admin/website-stats` answers `303` to
+`/admin/web-visits` with the same query. The JSON route needs the same Admin
+session and CSRF cookie as the pages; without them it is
 `401 {"error":"unauthorized"}`, never a login redirect. Both are no-store and
 noindex. The answer is `schemaVersion: 1`, `configured`, `period`, `timeZone`,
-`startAt`/`endAt` (Umami milliseconds), `blocks` (`visitors`, `downloads`,
-`referrers`, `entries`, `vitals`, `errors`, each `{state, fetchedAt, data}`,
-or `null` when Umami is not configured) and `html` (the rendered blocks). It is
-always `200`; Umami failures are block states, not route errors.
+`startAt`/`endAt` (Umami milliseconds; All time starts 2026-08-20), `blocks`
+(`visitors`, `downloads`, `referrers` (`{rows, total}`: platforms merged, top
+10, and the visitor sum of all referrers), `entries`, `countries` (ISO 3166-1
+alpha-2 codes, `""` for unknown), `vitals` (`lcp`, `inp`, `cls`, `fcp`, `ttfb`
+p75 and `count`), `errors` and `previousErrors`, each
+`{state, fetchedAt, data}`, or `null` when Umami is not configured) and `html`
+(the rendered blocks). It is always `200`; Umami failures are block states,
+not route errors.
 
 The server reads Umami 3.5 with `UMAMI_BASE_URL` (HTTPS origin),
 `UMAMI_WEBSITE_ID` and `UMAMI_API_KEY` (a view-only user's key, sent only as
 `Authorization: Bearer`). One request per block, in parallel, 10 s limit:
 `/stats` (with its `comparison`, the previous period of the same length),
-`/events/stats?event=download-click`, `/metrics?type=referrer&limit=10`,
-`/metrics?type=entry&limit=5`, `/performance/stats` and `/errors?pageSize=100`.
-Each block result is cached for 15 minutes per (block, period, time zone).
-States: `ok`; `stale` (Umami failed, the last good result and its `fetchedAt`);
-`unavailable` (failed with nothing cached); `hidden` (Umami answered 400 or
-404). Redirects are refused, so the key never goes to another address. Logs
-name the block and a reason (`HTTP 503`, `timeout`, `not JSON`, `connection
-failed (…)`), never the key, URL or query. An incomplete or invalid setting
-disables the page's data (logged by setting name only) without stopping the
-API.
+`/events/stats?event=download-click`, `/metrics?type=referrer&limit=500`,
+`/metrics?type=entry&limit=5`, `/metrics?type=country&limit=10`,
+`/performance/stats`, `/errors?pageSize=100` and `/errors?pageSize=100` for
+the previous period of the same length. Each block result is cached for 15
+minutes per (block, period, time zone). States: `ok`; `stale` (Umami failed,
+the last good result and its `fetchedAt`); `unavailable` (failed with nothing
+cached); `hidden` (Umami answered 400 or 404). Redirects are refused, so the
+key never goes to another address. Logs name the block and a reason (`HTTP
+503`, `timeout`, `not JSON`, `connection failed (…)`), never the key, URL or
+query. An incomplete or invalid setting disables the page's data (logged by
+setting name only) without stopping the API.
+
+Health and `GET /internal/attention` carry an `Umami` check when the settings
+exist: a `/stats` read of the last hour at most every five minutes, Failed with
+the HTTP status or reason when Umami does not answer, Healthy otherwise.
 
 ## `POST /internal/web-installer/events` and `POST /internal/web-installer/relay-jobs`
 

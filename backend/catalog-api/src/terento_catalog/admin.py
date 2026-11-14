@@ -1045,18 +1045,19 @@ def _admin_header(user: dict[str, Any], csrf_token: str, *, active: str = "evide
     devices_class = " class='active'" if active == "devices" else ""
     first_run_class = " class='active'" if active == "first-run" else ""
     web_installer_class = " class='active'" if active == "web-installer" else ""
-    website_stats_class = " class='active'" if active == "website-stats" else ""
+    web_visits_class = " class='active'" if active == "web-visits" else ""
     providers_class = " class='active'" if active == "providers" else ""
     map_statistics_class = " class='active'" if active == "map-statistics" else ""
     system_health_class = " class='active'" if active == "system-health" else ""
     test_data_class = " class='active'" if active == "test-data" else ""
-    tools_class = " class='active'" if active in {"test-data", "campaigns", "device-identification", "update-diagnostics"} else ""
+    tools_class = " class='active'" if active in {"system-health", "test-data", "campaigns", "device-identification", "update-diagnostics"} else ""
     sources_class = " class='active'" if active == "device-identification" else ""
     update_reports_class = " class='active'" if active == "update-diagnostics" else ""
     account_class = " active" if active == "account" else ""
     tools_menu = f"""<details class="admin-tools-menu">
         <summary{tools_class}>Tools</summary>
         <div class="admin-tools-popover" role="group" aria-label="Admin tools">
+          <a{system_health_class} href="/admin/system-health">Health</a>
           <a{sources_class} href="/admin/device-identification">Model sources</a>
           <a{update_reports_class} href="/admin/update-diagnostics">Update reports</a>
           <a{test_data_class} href="/admin/test-data">Test data</a>
@@ -1066,7 +1067,7 @@ def _admin_header(user: dict[str, Any], csrf_token: str, *, active: str = "evide
     return f"""<a class="admin-skip-link" href="#main-content">Skip to content</a><header class="admin-topbar"><div class="admin-topbar-inner">
       <div class="admin-header-zone admin-header-left">{_admin_brand(show_badge=False)}<span class="admin-badge">Admin area</span><a class="admin-website-link" href="https://terento.app/" target="_blank" rel="noopener noreferrer" aria-label="Open Terento website in a new tab">Website {_admin_icon('external')}</a></div>
       <button id="admin-menu-toggle" class="secondary-button" type="button" aria-controls="admin-menu-panel" aria-expanded="false" hidden>Menu</button>
-      <div id="admin-menu-panel"><nav class="admin-section-nav" aria-label="Admin sections"><div class="admin-nav-group" role="group" aria-label="Primary"><a{overview_class} href="/admin">Dashboard</a><a{evidence_class} href="/admin/installations">Installations</a><a{first_run_class} href="/admin/first-run">First run</a><a{web_installer_class} href="/admin/web-installer">Web installer</a><a{website_stats_class} href="/admin/website-stats">Website stats</a><a{devices_class} href="/admin/devices">Devices</a><a{map_statistics_class} href="/admin/map-statistics">Maps</a><a{providers_class} href="/admin/providers">Providers</a><a{system_health_class} href="/admin/system-health">Health</a></div>{tools_menu}</nav>
+      <div id="admin-menu-panel"><nav class="admin-section-nav" aria-label="Admin sections"><div class="admin-nav-group" role="group" aria-label="Primary"><a{overview_class} href="/admin">Dashboard</a><a{web_visits_class} href="/admin/web-visits">Web visits</a><a{evidence_class} href="/admin/installations">Installations</a><a{web_installer_class} href="/admin/web-installer">Web installer</a><a{devices_class} href="/admin/devices">Devices</a><a{map_statistics_class} href="/admin/map-statistics">Maps</a><a{providers_class} href="/admin/providers">Providers</a><a{first_run_class} href="/admin/first-run">First run</a></div>{tools_menu}</nav>
       <nav class="admin-nav" aria-label="Admin navigation"><label class="timezone-control"><span class="sr-only">Time zone</span><select id="admin-timezone" aria-label="Time zone" title="Time zone"><option value="browser">Automatic (browser)</option><option value="UTC">UTC</option><option value="Europe/Vilnius">Europe/Vilnius</option><option value="Europe/London">Europe/London</option><option value="Europe/Berlin">Europe/Berlin</option><option value="America/New_York">America/New_York</option><option value="America/Los_Angeles">America/Los_Angeles</option><option value="Asia/Tokyo">Asia/Tokyo</select></label><a class="admin-user{account_class}" href="/admin/account" aria-label="Account settings for {username}">{username}</a>
       <a class="admin-mobile-website" href="https://terento.app/" target="_blank" rel="noopener noreferrer">Website {_admin_icon('external')}</a><form method="post" action="/admin/logout"><input type="hidden" name="csrf_token" value="{html.escape(csrf_token)}"><button class="link-button" type="submit">Sign out</button></form></nav></div>
     </div></header>"""
@@ -2346,11 +2347,17 @@ def _overview_period_script() -> str:
       let overviewRequest = 0;
       const activeTimeZone = () => window.TerentoAdminTime?.timeZone?.()
         || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+      // One period for all of Admin: the server opens every period page with
+      // the one shown last (owner request 2026-11-14).
+      const rememberPeriod = (period) => {
+        if (period) document.cookie = `terento_admin_period=${encodeURIComponent(period)}; Path=/admin; SameSite=Strict; Secure`;
+      };
       const bind = () => {
         const form = document.querySelector('#overview-period-form');
         const select = document.querySelector('#overview-period');
         if (!form || !select || select.dataset.bound === 'true') return;
         select.dataset.bound = 'true';
+        rememberPeriod(select.value);
         form.addEventListener('submit', (event) => {
           event.preventDefault();
           load(select.value, true, activeTimeZone());
@@ -2377,6 +2384,7 @@ def _overview_period_script() -> str:
           const mainNext = documentNext.querySelector('#main-content');
           if (!mainNext) throw new Error('Overview content is unavailable.');
           current?.replaceWith(mainNext);
+          rememberPeriod(period);
           window.dispatchEvent(new Event('terento-admin-content-changed'));
           if (push) window.history.pushState({period, timeZone}, '', url);
           else window.history.replaceState({period, timeZone}, '', url);
@@ -3781,8 +3789,38 @@ def _system_health_cards(health: dict[str, Any]) -> tuple[list[dict[str, Any]], 
         action="Check the API worker and GitHub availability. Existing diagnostic states are preserved on errors.",
         checked_at=(sync or {}).get("checked_at"),
     ))
+    umami = health.get("umami")
+    if isinstance(umami, dict):
+        cards.append(_umami_health_card(umami))
     cards.sort(key=lambda card: _HEALTH_STATUS_RANK.get(card['status'], 2))
     return cards, weekly, weekly_details
+
+
+def _umami_health_card(umami: dict[str, Any]) -> dict[str, Any]:
+    """Web visits' Umami connection (owner request 2026-11-14): reachable from
+    the API server, key accepted, and the last answer."""
+    moment = lambda value: datetime.fromtimestamp(value, timezone.utc) if isinstance(value, (int, float)) else None
+    status = str(umami.get("status") or "UNKNOWN")
+    code = umami.get("httpStatus")
+    if status == "HEALTHY":
+        reason, action = "Umami answers the API server.", "No action required."
+    elif status == "FAILED" and code == 401:
+        reason = "Umami rejected the API key (HTTP 401)."
+        action = "Create a new terento-readonly API key in Umami and run set-umami-stats.sh."
+    elif status == "FAILED" and code == 403:
+        reason = "Umami refused the API server (HTTP 403)."
+        action = "Allow the API server on the Umami proxy for /api/websites/*."
+    elif status == "FAILED":
+        reason = f"Umami did not answer: {umami.get('reason') or 'unknown error'}."
+        action = "Check stats.enduristas.lt and the API server's connection to it."
+    else:
+        reason, action = "Umami has not been read since the API started.", "Open Health to check Umami now."
+    return _system_health_card(
+        "Umami", status,
+        f"<p>Last answer: {_timestamp_markup(moment(umami.get('lastSuccessAt')))}.</p>",
+        reason=reason, action=action, checked_at=moment(umami.get("checkedAt")),
+        action_href="/admin/web-visits",
+    )
 
 
 _HEALTH_GROUPS = (
@@ -10922,7 +10960,17 @@ ADMIN_STYLES += ADMIN_DROPDOWN_STYLES
 ADMIN_STYLES += """
 .admin-card-note{margin:0 0 12px;font-size:13px}
 /* First run tables: number columns share one width so side-by-side cards line up. */
-main.first-run-page>.web-installer-grid,main.website-stats-page>.web-installer-grid{gap:var(--admin-card-gap)}main.first-run-page>.web-installer-grid>*,main.website-stats-page>.web-installer-grid>*{margin:0}
+main.first-run-page>.web-installer-grid,main.web-visits-page>.web-installer-grid{gap:var(--admin-card-gap)}main.first-run-page>.web-installer-grid>*,main.web-visits-page>.web-installer-grid>*{margin:0}
+/* Web visits: three ranking lists, change colours by meaning, logos, Vitals limits, skeleton. */
+main.web-visits-page>.web-visits-lists{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:1200px){main.web-visits-page>.web-visits-lists{grid-template-columns:repeat(2,minmax(0,1fr))}main.web-visits-page>.web-visits-lists>:last-child:nth-child(odd){grid-column:1/-1}}
+@media(max-width:900px){main.web-visits-page>.web-visits-lists{grid-template-columns:minmax(0,1fr)}}
+.funnel-delta[data-trend='better']{color:var(--success-text)}.funnel-delta[data-trend='worse']{color:var(--error-text)}.funnel-delta:is([data-trend='same'],[data-trend='neutral']){color:var(--secondary)}
+.web-visits-note,.web-visits-limit{display:block;margin-top:2px;color:var(--secondary)}
+.web-visits-source{display:inline-flex;align-items:center;gap:8px;min-width:0}.web-visits-source>span:last-child{min-width:0;overflow-wrap:anywhere}.web-visits-source>.admin-icon{flex:0 0 auto;width:16px;height:16px;color:var(--secondary)}.web-visits-flag{flex:0 0 auto;width:16px;font-size:15px;line-height:1;text-align:center}
+.web-visits-direct td{color:var(--secondary);font-weight:500}
+@media(max-width:700px){main.web-visits-page #web-visits-vitals>.admin-metric-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.web-visits-skeleton{display:grid;gap:10px;padding:4px 0 8px}.web-visits-skeleton span{display:block;height:14px;border-radius:var(--radius-control);background:var(--surface-muted)}.web-visits-skeleton span:nth-child(1){width:60%}.web-visits-skeleton span:nth-child(2){width:85%}.web-visits-skeleton span:nth-child(3){width:40%}
 @media(min-width:701px){main.first-run-page>:not(.heading-row)+*{margin-top:var(--admin-card-gap)}}
 .first-run-table{table-layout:fixed}.first-run-table th.column-number{width:112px}
 @media(min-width:701px){main.web-installer-page>.heading-row{margin-bottom:0}main.web-installer-page.overview-page>*+*{margin-top:var(--admin-card-gap)}}

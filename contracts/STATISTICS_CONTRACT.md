@@ -54,11 +54,14 @@ each part shown). The app read models defined below
 stay app-only, and web records never change evidence status (Tested/Verified),
 reconnect-verified installs, distinct-watch counts, Needs attention (except
 the Identity review count, which adds counted web installs with no model) or
-write authority. Website stats
-(Umami on terento.app, Admin page `Website stats`) are a separate,
+write authority. Web visits
+(Umami on terento.app, Admin page `Web visits`) are a separate,
 read-only population owned by Umami: visitors, visits, views, `download-click`
-events, referrers, entry pages, Web Vitals and browser errors as Umami counts
-them. They are never added to, reconciled with or used to explain app or web
+events, referrers, entry pages, countries, Web Vitals and browser errors as
+Umami counts them. `Direct / none` is Umami visitors minus the visitors of all
+referrers (a visitor reached by two referrers is counted twice there, so it is
+a floor at 0, not an exact count). Views before 2026-11-13 07:45 UTC include
+old Maps hash page views. They are never added to, reconciled with or used to explain app or web
 installer Installs, Updates or Downloads (a `download-click` is a click on a
 download link, not a downloaded or installed app). Download conversion is
 Umami visitors with a `download-click` divided by Umami visitors in the same
