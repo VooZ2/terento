@@ -488,7 +488,11 @@ change is coloured by meaning, never by direction alone: green
 (`--success-text`) better, red (`--error-text`) worse, grey (`--secondary`) the
 same, without a previous value or uncomparable; the arrow and sign always stay.
 Fewer is better for Bounce rate, Errors and Issues; more is better for every
-other change. Blocks, in order:
+other change. Blocks 1 and 2 are the page's headline, like the Dashboard and
+Web installer: untitled KPI cards (named only for screen readers), side by
+side from 1600 px with one even tile width, stacked below; a stale or
+unavailable headline block keeps its title for its marks (owner request
+2026-11-14). Blocks, in order:
 
 1. `Visitors`: Visitors, Visits, Views, Bounce rate, Visit duration (average
    per visit, the same type size as the other values), each with its change.

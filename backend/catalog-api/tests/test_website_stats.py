@@ -408,6 +408,14 @@ class MarkupTests(unittest.TestCase):
         self.assertIn(f"href='https://stats.example.test/websites/{fx.WEBSITE_ID}'", body)
         self.assertNotIn(fx.SECRET_KEY, body)
 
+    def test_visitors_and_downloads_are_one_untitled_headline(self):
+        body, _ = self.render()
+        headline = body.split("<div class='web-installer-grid web-visits-headline'>", 1)[1].split("</div></section></div>", 1)[0]
+        self.assertIn("id='web-visits-visitors' aria-label='Visitors'", headline)
+        self.assertIn("id='web-visits-downloads' aria-label='Downloads'", headline)
+        self.assertNotIn("web-visits-visitors-title", body)
+        self.assertNotIn("<h2", headline)
+
     def test_web_vitals_ratings_limits_and_the_sample_size(self):
         body, _ = self.render()
         text = visible_text(body.split("id='web-visits-vitals'", 1)[1].split("id='web-visits-errors'", 1)[0])
