@@ -1045,6 +1045,7 @@ def _admin_header(user: dict[str, Any], csrf_token: str, *, active: str = "evide
     devices_class = " class='active'" if active == "devices" else ""
     first_run_class = " class='active'" if active == "first-run" else ""
     web_installer_class = " class='active'" if active == "web-installer" else ""
+    website_stats_class = " class='active'" if active == "website-stats" else ""
     providers_class = " class='active'" if active == "providers" else ""
     map_statistics_class = " class='active'" if active == "map-statistics" else ""
     system_health_class = " class='active'" if active == "system-health" else ""
@@ -1065,7 +1066,7 @@ def _admin_header(user: dict[str, Any], csrf_token: str, *, active: str = "evide
     return f"""<a class="admin-skip-link" href="#main-content">Skip to content</a><header class="admin-topbar"><div class="admin-topbar-inner">
       <div class="admin-header-zone admin-header-left">{_admin_brand(show_badge=False)}<span class="admin-badge">Admin area</span><a class="admin-website-link" href="https://terento.app/" target="_blank" rel="noopener noreferrer" aria-label="Open Terento website in a new tab">Website {_admin_icon('external')}</a></div>
       <button id="admin-menu-toggle" class="secondary-button" type="button" aria-controls="admin-menu-panel" aria-expanded="false" hidden>Menu</button>
-      <div id="admin-menu-panel"><nav class="admin-section-nav" aria-label="Admin sections"><div class="admin-nav-group" role="group" aria-label="Primary"><a{overview_class} href="/admin">Dashboard</a><a{evidence_class} href="/admin/installations">Installations</a><a{first_run_class} href="/admin/first-run">First run</a><a{web_installer_class} href="/admin/web-installer">Web installer</a><a{devices_class} href="/admin/devices">Devices</a><a{map_statistics_class} href="/admin/map-statistics">Maps</a><a{providers_class} href="/admin/providers">Providers</a><a{system_health_class} href="/admin/system-health">Health</a></div>{tools_menu}</nav>
+      <div id="admin-menu-panel"><nav class="admin-section-nav" aria-label="Admin sections"><div class="admin-nav-group" role="group" aria-label="Primary"><a{overview_class} href="/admin">Dashboard</a><a{evidence_class} href="/admin/installations">Installations</a><a{first_run_class} href="/admin/first-run">First run</a><a{web_installer_class} href="/admin/web-installer">Web installer</a><a{website_stats_class} href="/admin/website-stats">Website stats</a><a{devices_class} href="/admin/devices">Devices</a><a{map_statistics_class} href="/admin/map-statistics">Maps</a><a{providers_class} href="/admin/providers">Providers</a><a{system_health_class} href="/admin/system-health">Health</a></div>{tools_menu}</nav>
       <nav class="admin-nav" aria-label="Admin navigation"><label class="timezone-control"><span class="sr-only">Time zone</span><select id="admin-timezone" aria-label="Time zone" title="Time zone"><option value="browser">Automatic (browser)</option><option value="UTC">UTC</option><option value="Europe/Vilnius">Europe/Vilnius</option><option value="Europe/London">Europe/London</option><option value="Europe/Berlin">Europe/Berlin</option><option value="America/New_York">America/New_York</option><option value="America/Los_Angeles">America/Los_Angeles</option><option value="Asia/Tokyo">Asia/Tokyo</select></label><a class="admin-user{account_class}" href="/admin/account" aria-label="Account settings for {username}">{username}</a>
       <a class="admin-mobile-website" href="https://terento.app/" target="_blank" rel="noopener noreferrer">Website {_admin_icon('external')}</a><form method="post" action="/admin/logout"><input type="hidden" name="csrf_token" value="{html.escape(csrf_token)}"><button class="link-button" type="submit">Sign out</button></form></nav></div>
     </div></header>"""
@@ -10921,7 +10922,7 @@ ADMIN_STYLES += ADMIN_DROPDOWN_STYLES
 ADMIN_STYLES += """
 .admin-card-note{margin:0 0 12px;font-size:13px}
 /* First run tables: number columns share one width so side-by-side cards line up. */
-main.first-run-page>.web-installer-grid{gap:var(--admin-card-gap)}main.first-run-page>.web-installer-grid>*{margin:0}
+main.first-run-page>.web-installer-grid,main.website-stats-page>.web-installer-grid{gap:var(--admin-card-gap)}main.first-run-page>.web-installer-grid>*,main.website-stats-page>.web-installer-grid>*{margin:0}
 @media(min-width:701px){main.first-run-page>:not(.heading-row)+*{margin-top:var(--admin-card-gap)}}
 .first-run-table{table-layout:fixed}.first-run-table th.column-number{width:112px}
 @media(min-width:701px){main.web-installer-page>.heading-row{margin-bottom:0}main.web-installer-page.overview-page>*+*{margin-top:var(--admin-card-gap)}}

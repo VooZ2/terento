@@ -93,6 +93,8 @@ from .compatibility_evidence import (
 from .compatibility_status import calculate_compatibility_status
 from .collect import collect_provider_once
 from .admin_web_installer import web_installer_csv, web_installer_page
+from .admin_website_stats import website_stats_blocks, website_stats_page
+from .umami_stats import UmamiStats
 from .web_installer import (
     MAX_WEB_INSTALLER_BYTES,
     WebInstallerValidationError,
@@ -254,6 +256,7 @@ class CatalogService:
         operations_ingest_secret: str | None = None,
         web_installer_ingest_secret: str | None = None,
         admin_read_token_sha256: str | None = None,
+        umami_stats: UmamiStats | None = None,
         opentopomap_contour_mode: str = "off",
         opentopomap_contour_allowlist: tuple[str, ...] = (),
         public_base_url: str = "https://api.terento.app",
@@ -276,6 +279,7 @@ class CatalogService:
         self.operations_ingest_secret = operations_ingest_secret
         self.web_installer_ingest_secret = web_installer_ingest_secret
         self.admin_read_token_sha256 = admin_read_token_sha256
+        self.umami_stats = umami_stats
         self.opentopomap_contour_mode = opentopomap_contour_mode
         self.opentopomap_contour_allowlist = frozenset(opentopomap_contour_allowlist)
 
@@ -627,6 +631,32 @@ class CatalogService:
             "population": "web installer page loads and relay jobs; test records excluded",
             "testRecords": tests,
             **summarize_web_installer(events, jobs),
+        }
+
+    def website_stats(self, period: str, time_zone: str) -> dict[str, Any]:
+        """Website stats (Umami) for the Admin page: the blocks as data and as
+        rendered markup. Never raises; the Umami key is not in the result."""
+        period = period if period in ADMIN_PERIODS else "7d"
+        stats = self.umami_stats
+        snapshot = None
+        if stats is not None:
+            try:
+                snapshot = stats.snapshot(period, time_zone)
+            except Exception:
+                LOGGER.exception("website stats failed")
+        blocks = None if snapshot is None else {
+            name: {**block, "fetchedAt": None if block["fetchedAt"] is None
+                   else datetime.fromtimestamp(block["fetchedAt"], timezone.utc).isoformat()}
+            for name, block in snapshot["blocks"].items()}
+        return {
+            "schemaVersion": 1,
+            "configured": stats is not None,
+            "period": period,
+            "timeZone": time_zone,
+            "startAt": None if snapshot is None else snapshot["startAt"],
+            "endAt": None if snapshot is None else snapshot["endAt"],
+            "blocks": blocks,
+            "html": website_stats_blocks(snapshot, dashboard_url=stats.settings.dashboard_url if stats else None),
         }
 
     def web_installer_export(self, query: dict[str, str]) -> tuple[bytes, str]:
@@ -1743,7 +1773,13 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 else:
                     self._send_admin_html(setup_page(), send_body=send_body)
                 return
+            # Admin JSON under /admin/api/ answers 401, never a login redirect.
+            api_request = request_path.startswith("/admin/api/")
             if not configured:
+                if api_request:
+                    self._send_json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"}, send_body=send_body,
+                                    cache_control="no-store", noindex=True)
+                    return
                 self._redirect("/admin/setup", send_body=send_body)
                 return
             if request_path == "/admin/login":
@@ -1760,11 +1796,29 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 LOGGER.exception("admin session check failed")
                 self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "admin_unavailable"}, send_body=send_body, cache_control="no-store")
                 return
+            if api_request and not (session and csrf_ok):
+                self._send_json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"}, send_body=send_body,
+                                cache_control="no-store", noindex=True)
+                return
             if not session:
                 self._redirect("/admin/login", send_body=send_body, clear_cookie=bool(session_token))
                 return
             if not csrf_ok:
                 self._redirect("/admin/login", send_body=send_body, clear_cookie=True)
+                return
+            if request_path in {"/admin/api/umami", "/admin/api/umami/"}:
+                query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+                period = query.get("period", ["7d"])[-1]
+                time_zone = query.get("timeZone", [self._cookie_value("terento_admin_tz") or "UTC"])[-1]
+                self._send_json(HTTPStatus.OK, service.website_stats(period, _admin_time_zone(time_zone)),
+                                send_body=send_body, cache_control="no-store", noindex=True)
+                return
+            if request_path in {"/admin/website-stats", "/admin/website-stats/"}:
+                query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+                period = query.get("period", ["7d"])[-1]
+                time_zone = query.get("timeZone", [self._cookie_value("terento_admin_tz") or "UTC"])[-1]
+                self._send_admin_html(website_stats_page(session, csrf_token, period=period,
+                                                         time_zone=_admin_time_zone(time_zone)), send_body=send_body)
                 return
             map_assets = {"leaflet-1.9.4.js": "text/javascript", "leaflet-1.9.4.css": "text/css", "coverage-map-v1.js": "text/javascript", "coverage-map-v1.css": "text/css"}
             asset_name = request_path.removeprefix("/admin/map-assets/")

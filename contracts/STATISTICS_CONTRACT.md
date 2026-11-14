@@ -54,7 +54,15 @@ each part shown). The app read models defined below
 stay app-only, and web records never change evidence status (Tested/Verified),
 reconnect-verified installs, distinct-watch counts, Needs attention (except
 the Identity review count, which adds counted web installs with no model) or
-write authority. User-sent support
+write authority. Website stats
+(Umami on terento.app, Admin page `Website stats`) are a separate,
+read-only population owned by Umami: visitors, visits, views, `download-click`
+events, referrers, entry pages, Web Vitals and browser errors as Umami counts
+them. They are never added to, reconciled with or used to explain app or web
+installer Installs, Updates or Downloads (a `download-click` is a click on a
+download link, not a downloaded or installed app). Download conversion is
+Umami visitors with a `download-click` divided by Umami visitors in the same
+period. User-sent support
 reports ([`SUPPORT_REPORT_CONTRACT.md`](SUPPORT_REPORT_CONTRACT.md)) are not a
 statistical population at all: they are review work only and never change any
 count, rate or chart. Optional installation-report `inventoryMetrics`

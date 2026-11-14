@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
 
+from .umami_stats import UmamiSettings
+
 # The production API binds only to the private Docker network and Traefik
 # terminates HTTPS, so the direct peer is the proxy. X-Forwarded-For is honoured
 # only when the direct peer is inside these networks (loopback and private
@@ -29,6 +31,7 @@ class Settings:
     operations_ingest_secret: str | None = None
     web_installer_ingest_secret: str | None = None
     admin_read_token_sha256: str | None = None
+    umami: "UmamiSettings | None" = None
     opentopomap_contour_mode: str = "off"
     opentopomap_contour_allowlist: tuple[str, ...] = ()
     trusted_proxies: tuple[str, ...] = DEFAULT_TRUSTED_PROXIES
@@ -69,6 +72,7 @@ class Settings:
             operations_ingest_secret=_optional_secret("OPERATIONS_INGEST_SECRET"),
             web_installer_ingest_secret=_optional_secret("WEB_INSTALLER_INGEST_SECRET"),
             admin_read_token_sha256=_optional_sha256("ADMIN_READ_TOKEN_SHA256"),
+            umami=UmamiSettings.from_env(),
             opentopomap_contour_mode=_contour_mode(),
             opentopomap_contour_allowlist=_csv("OPENTOPO_MAP_CONTOUR_ALLOWLIST"),
             map_preview_enabled=_boolean("MAP_PREVIEW_ENABLED", False),

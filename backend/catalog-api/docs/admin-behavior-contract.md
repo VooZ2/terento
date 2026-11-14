@@ -288,7 +288,7 @@ while a measured zero is 0.
 ## Page and navigation behavior
 
 The primary sequence is `Dashboard`, `Installations`, `First run`, `Web installer`,
-`Devices`, `Maps`, `Providers`, and `Health`, followed by Tools and account controls. Dashboard
+`Website stats`, `Devices`, `Maps`, `Providers`, and `Health`, followed by Tools and account controls. Dashboard
 Needs attention is the entry point for actionable review work; there is no
 duplicate Review navigation item.
 
@@ -467,6 +467,34 @@ test records excluded) with every stored field, times in the Admin time zone
 Tables that would scroll sideways on a phone (Watch models, Providers, Recent
 requests, Recent results on watches) become records at ≤760 px whose result
 shows at once and whose other fields open below; no field is dropped.
+
+The Website stats page (`/admin/website-stats`, primary navigation after Web
+installer; owner request 2026-11-14) shows Umami's read-only numbers for
+terento.app: its own population (statistics contract, Populations), never
+mixed with app or web installer results. It has the Dashboard period picker
+(default Last 7 days) with an `Umami` mark, `data-admin-no-titles`, no
+explanatory text, and every block follows the picker. Changes compare with
+the previous period of the same length as `▲ +20 vs previous 7 days` (rates in
+percentage points); All time has none. Blocks, in order:
+
+1. `Visitors`: Visitors, Visits, Views, Bounce rate, Visit duration (average
+   per visit), each with its change.
+2. `Downloads`: Downloads (`download-click` events), Visitors who downloaded
+   and Conversion (those visitors of all visitors), each with its change.
+3. `Referrers` (top 10) and `Entry pages` (top 5) side by side, visitors each.
+4. `Web Vitals`: LCP, INP and CLS p75 with a Good / Needs improvement / Poor
+   pill (LCP ≤2.5 s / ≤4 s, INP ≤200 ms / ≤500 ms, CLS ≤0.1 / ≤0.25) and
+   Samples; under 20 samples every value is `—` with `Too little data`.
+5. `Errors`: Errors (occurrences) and Issues in the period, issues ignored in
+   Umami left out, and the 3 most frequent as plain text with their counts.
+6. A last line with the update time and `Open Umami` (new tab).
+
+The page renders at once with every block `Loading…` and fills them from
+`/admin/api/umami`; the Umami key stays on the server. A block Umami could not
+answer shows `Statistics unavailable.`, or its last result with a
+`Statistics unavailable` pill and `Last result <time>`; a block Umami answers
+with 400 or 404 is left out; the other blocks stay. Without Umami settings the
+page shows one unavailable card.
 
 The First run page (`/admin/first-run`, primary navigation after
 Installations) has the Dashboard period picker (default Last 24 hours; an
