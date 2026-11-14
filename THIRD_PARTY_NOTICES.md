@@ -292,6 +292,26 @@ attribution comment. App Store, Google Chrome, Microsoft Edge, Opera, Brave,
 Firefox and Safari names and marks remain the property of their respective
 owners.
 
+The Admin Web visits referrer list uses further unchanged Font Awesome Free
+7.3.1 brands SVGs (`google`, `reddit`, `youtube`, `github`, `x-twitter`,
+`facebook`, `hacker-news`, `linkedin`, `mastodon`, `bluesky`, `wikipedia-w`,
+`telegram`, `discord`, `strava`, `instagram`, `pinterest`, `threads`, `openai`,
+`brave`, `yandex`, `whatsapp`, `slack`, `medium`, `stack-overflow`, `tiktok`),
+inlined in `backend/catalog-api/src/terento_catalog/admin_referrer_icons.py`.
+These names and marks remain the property of their respective owners.
+
+## Simple Icons
+
+- Version: 16.30.0 (npm `simple-icons`)
+- Upstream: https://github.com/simple-icons/simple-icons
+- License: CC0 1.0 Universal, https://creativecommons.org/publicdomain/zero/1.0/
+- Used for Admin Web visits referrer logos that Font Awesome Free does not
+  have (`duckduckgo`, `perplexity`, `lemmy`), inlined unchanged in
+  `backend/catalog-api/src/terento_catalog/admin_referrer_icons.py`. No
+  Simple Icons package, CSS or external icon origin is used. DuckDuckGo,
+  Perplexity and Lemmy names and marks remain the property of their
+  respective owners.
+
 ### Mac App Store installation icon
 
 The Mac App Store build of the app marks a successful installation with the

@@ -2293,9 +2293,12 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertNotIn('aria-label="Analytics"', body)
         primary = body.split('aria-label="Primary"', 1)[1].split('</div>', 1)[0]
         positions = [primary.index(f'>{label}</a>') for label in (
-            'Dashboard', 'Installations', 'Devices', 'Maps', 'Providers', 'Health'
+            'Dashboard', 'Web visits', 'Installations', 'Devices', 'Maps', 'Providers', 'First run'
         )]
         self.assertEqual(positions, sorted(positions))
+        # Health lives in Tools (owner request 2026-11-14).
+        self.assertNotIn('>Health</a>', primary)
+        self.assertIn('href="/admin/system-health">Health</a>', body.split('aria-label="Admin tools"', 1)[1])
         self.assertIn('class="admin-nav" aria-label="Admin navigation"', body)
         self.assertIn(
             'class="admin-website-link" href="https://terento.app/"',

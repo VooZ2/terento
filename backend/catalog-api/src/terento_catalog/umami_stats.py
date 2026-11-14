@@ -38,8 +38,15 @@ CACHE_SECONDS = 15 * 60
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 DOWNLOAD_EVENT = "download-click"
 USER_AGENT = "Terento-Admin/1.0 (+https://terento.app)"
-# Block order on the page; each is one Umami request.
-BLOCKS = ("visitors", "downloads", "referrers", "entries", "vitals", "errors")
+# Block order on the page; each is one Umami request (previousErrors feeds the
+# Errors change, not a card of its own).
+BLOCKS = ("visitors", "downloads", "referrers", "entries", "countries", "vitals", "errors", "previousErrors")
+# Umami has measured terento.app since this day; "all" starts here.
+TRACKING_START = datetime(2026, 8, 20, tzinfo=timezone.utc)
+# Old Maps hash page views inflate Views before this moment (site #686 live).
+CLEAN_VIEWS_SINCE = datetime(2026, 11, 13, 7, 45, tzinfo=timezone.utc)
+# Health reads Umami at most this often.
+HEALTH_SECONDS = 5 * 60
 _UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 _ROLLING = {"24h": timedelta(hours=24), "7d": timedelta(days=7), "30d": timedelta(days=30)}
 
@@ -138,7 +145,7 @@ def period_window(period: str, now: datetime, time_zone: str) -> tuple[int, int]
     """Umami startAt/endAt in milliseconds for an Admin period ending now."""
     end = now.astimezone(timezone.utc)
     if period == "all":
-        start_ms = 0
+        start_ms = int(TRACKING_START.timestamp() * 1000)
     elif period == "today":
         start_ms = int(local_day_start(end, time_zone).timestamp() * 1000)
     else:
@@ -199,12 +206,71 @@ def parse_metrics(raw: Any, limit: int) -> list[dict[str, Any]]:
     return parsed[:limit]
 
 
+# One platform under one name (owner request 2026-11-14): app ids, short
+# links, mobile and country hosts.
+_REFERRER_ALIASES = {
+    "com.reddit.frontpage": "reddit.com", "redd.it": "reddit.com",
+    "com.google.android.googlequicksearchbox": "google.com", "com.google.android.gm": "mail.google.com",
+    "com.google.android.youtube": "youtube.com", "youtu.be": "youtube.com",
+    "com.facebook.katana": "facebook.com", "fb.com": "facebook.com",
+    "t.co": "x.com", "twitter.com": "x.com", "com.twitter.android": "x.com",
+    "chat.openai.com": "chatgpt.com", "org.telegram.messenger": "t.me", "telegram.org": "t.me",
+}
+_REFERRER_FAMILIES = (
+    (re.compile(r"^(?:[a-z0-9-]+\.)*reddit\.com$"), "reddit.com"),
+    (re.compile(r"^(?:[a-z0-9-]+\.)*youtube\.com$"), "youtube.com"),
+    (re.compile(r"^(?:[a-z0-9-]+\.)*facebook\.com$"), "facebook.com"),
+    (re.compile(r"^(?:[a-z0-9-]+\.)*instagram\.com$"), "instagram.com"),
+    (re.compile(r"^(?:[a-z0-9-]+\.)*(?:x|twitter)\.com$"), "x.com"),
+    (re.compile(r"^(?:[a-z0-9-]+\.)*bing\.com$"), "bing.com"),
+    (re.compile(r"^(?:[a-z0-9-]+\.)*duckduckgo\.com$"), "duckduckgo.com"),
+    (re.compile(r"^(?:www\.)?google\.(?:com?\.)?[a-z]{2,3}$"), "google.com"),
+)
+
+
+def referrer_source(name: str) -> str:
+    """The platform a referrer domain belongs to (google.lt -> google.com)."""
+    host = name.strip().lower().rstrip(".")
+    host = _REFERRER_ALIASES.get(host, host)
+    for pattern, source in _REFERRER_FAMILIES:
+        if pattern.match(host):
+            return source
+    for prefix in ("www.", "m."):
+        if host.startswith(prefix) and host.count(".") > 1:
+            host = host[len(prefix):]
+    return _REFERRER_ALIASES.get(host, host)
+
+
+def parse_referrers(raw: Any, limit: int = 10) -> dict[str, Any]:
+    """Every referrer merged per platform: the top ``limit`` and the visitor
+    sum of all of them (Umami counts distinct visitors per referrer)."""
+    merged: dict[str, int] = {}
+    for row in parse_metrics(raw, 10_000):
+        if not row["name"]:
+            continue
+        source = referrer_source(row["name"])
+        merged[source] = merged.get(source, 0) + row["visitors"]
+    rows = sorted(({"name": name, "visitors": count} for name, count in merged.items()),
+                  key=lambda row: (-row["visitors"], row["name"]))
+    return {"rows": rows[:limit], "total": sum(merged.values())}
+
+
+def parse_countries(raw: Any) -> list[dict[str, Any]]:
+    """Top countries as ISO 3166-1 alpha-2 codes; anything else is ``""`` (Unknown)."""
+    rows = parse_metrics(raw, 10)
+    for row in rows:
+        code = row["name"].strip().upper()
+        row["name"] = code if re.fullmatch(r"[A-Z]{2}", code) and code not in {"XX", "ZZ"} else ""
+    return rows
+
+
 def parse_performance(raw: Any) -> dict[str, Any]:
     if not isinstance(raw, dict):
         raise UmamiRequestError("unexpected shape")
     p75 = lambda key: _number((raw.get(key) or {}).get("p75")) if isinstance(raw.get(key), dict) else None
     count = _number(raw.get("count"))
-    return {"lcp": p75("lcp"), "inp": p75("inp"), "cls": p75("cls"), "count": int(count) if count is not None else None}
+    return {**{key: p75(key) for key in ("lcp", "inp", "cls", "fcp", "ttfb")},
+            "count": int(count) if count is not None else None}
 
 
 def parse_errors(raw: Any) -> dict[str, Any]:
@@ -238,6 +304,10 @@ class UmamiStats:
         # (block, period, time zone) -> (fetched at, parsed data)
         self._cache: dict[tuple[str, str, str], tuple[float, Any]] = {}
         self._lock = threading.Lock()
+        # Health: the latest read of Umami, from a probe or a page block.
+        self._last_success: float | None = None
+        self._last_failure: tuple[float, str, int | None] | None = None
+        self._last_probe: float | None = None
 
     def _requests(self, start: int, end: int) -> dict[str, tuple[str, dict[str, Any], Callable[[Any], Any]]]:
         base = f"/api/websites/{self.settings.website_id}"
@@ -245,10 +315,16 @@ class UmamiStats:
         return {
             "visitors": (f"{base}/stats", window, parse_stats),
             "downloads": (f"{base}/events/stats", {**window, "event": DOWNLOAD_EVENT}, parse_event_stats),
-            "referrers": (f"{base}/metrics", {**window, "type": "referrer", "limit": 10}, lambda raw: parse_metrics(raw, 10)),
+            # All referrers (Umami's own limit), so platforms merge and
+            # Direct / none is visitors minus every referred visitor.
+            "referrers": (f"{base}/metrics", {**window, "type": "referrer", "limit": 500}, parse_referrers),
             "entries": (f"{base}/metrics", {**window, "type": "entry", "limit": 5}, lambda raw: parse_metrics(raw, 5)),
+            "countries": (f"{base}/metrics", {**window, "type": "country", "limit": 10}, parse_countries),
             "vitals": (f"{base}/performance/stats", window, parse_performance),
             "errors": (f"{base}/errors", {**window, "pageSize": 100}, parse_errors),
+            # Umami has no error comparison: the same length just before.
+            "previousErrors": (f"{base}/errors", {"startAt": start - (end - start), "endAt": start, "pageSize": 100},
+                               parse_errors),
         }
 
     def snapshot(self, period: str, time_zone: str, now: datetime | None = None) -> dict[str, Any]:
@@ -277,6 +353,8 @@ class UmamiStats:
             for name, future in futures.items():
                 blocks[name] = self._result(name, period, time_zone, future, requests[name][2])
         return {"period": period, "timeZone": time_zone, "startAt": start, "endAt": end,
+                # Umami's comparison: the same length just before startAt.
+                "previousStartAt": start - (end - start),
                 "blocks": {name: blocks[name] for name in BLOCKS}}
 
     def _result(self, name: str, period: str, time_zone: str, future: Any, parse: Callable[[Any], Any]) -> dict[str, Any]:
@@ -288,17 +366,53 @@ class UmamiStats:
             if error.status in (400, 404):
                 LOGGER.info("Website stats %s hidden: Umami HTTP %s", name, error.status)
                 return {"state": "hidden", "fetchedAt": None, "data": None}
-            reason = error.reason
+            reason, status = error.reason, error.status
         except Exception as error:  # never let one block break the page
-            reason = f"failed ({type(error).__name__})"
+            reason, status = f"failed ({type(error).__name__})", None
         else:
             fetched = self._clock()
             with self._lock:
                 self._cache[(name, period, time_zone)] = (fetched, data)
+                self._last_success = fetched
             return {"state": "ok", "fetchedAt": fetched, "data": data}
         LOGGER.warning("Website stats %s unavailable: %s", name, reason)
         with self._lock:
+            self._last_failure = (self._clock(), reason, status)
             cached = self._cache.get((name, period, time_zone))
         if cached:
             return {"state": "stale", "fetchedAt": cached[0], "data": cached[1]}
         return {"state": "unavailable", "fetchedAt": None, "data": None}
+
+    def health(self, *, probe: bool = True) -> dict[str, Any]:
+        """Umami connection state for Admin Health: HEALTHY when the latest read
+        answered, FAILED when it did not. With ``probe`` (Health and the
+        attention read) one small stats read runs when the latest is older
+        than five minutes; without it (the Dashboard) only earlier reads count.
+        """
+        now = self._clock()
+        with self._lock:
+            due = self._last_probe is None or now - self._last_probe >= HEALTH_SECONDS
+            if probe and due:
+                self._last_probe = now
+        if probe and due:
+            end = int(now * 1000)
+            try:
+                parse_stats(self._fetch(self.settings, f"/api/websites/{self.settings.website_id}/stats",
+                                        {"startAt": end - 3_600_000, "endAt": end}))
+            except Exception as error:  # noqa: BLE001 - every failure is a Health state
+                reason = error.reason if isinstance(error, UmamiRequestError) else f"failed ({type(error).__name__})"
+                LOGGER.warning("Website stats health check failed: %s", reason)
+                with self._lock:
+                    self._last_failure = (self._clock(), reason, getattr(error, "status", None))
+            else:
+                with self._lock:
+                    self._last_success = self._clock()
+        with self._lock:
+            success, failure = self._last_success, self._last_failure
+        if failure and (success is None or failure[0] > success):
+            return {"status": "FAILED", "reason": failure[1], "httpStatus": failure[2],
+                    "checkedAt": failure[0], "lastSuccessAt": success}
+        if success is not None:
+            return {"status": "HEALTHY", "reason": "", "httpStatus": None,
+                    "checkedAt": success, "lastSuccessAt": success}
+        return {"status": "UNKNOWN", "reason": "", "httpStatus": None, "checkedAt": None, "lastSuccessAt": None}

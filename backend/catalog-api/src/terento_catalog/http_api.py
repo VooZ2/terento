@@ -315,6 +315,16 @@ class CatalogService:
     def receive_operational_observation(self, document: dict[str, Any]) -> bool:
         return self.database.record_operational_observation(validate_observation(document))
 
+    def umami_health(self, *, probe: bool = True) -> dict[str, Any] | None:
+        """The Umami connection for Health (None: Website stats not configured)."""
+        if self.umami_stats is None:
+            return None
+        try:
+            return self.umami_stats.health(probe=probe)
+        except Exception:
+            LOGGER.exception("website stats health failed")
+            return {"status": "UNKNOWN", "reason": "", "httpStatus": None, "checkedAt": None, "lastSuccessAt": None}
+
     def operational_health(self) -> dict[str, Any]:
         snapshot = self.database.operational_health_snapshot()
         return {
@@ -323,6 +333,7 @@ class CatalogService:
             "database": "HEALTHY",
             **snapshot,
             "providers": self.admin_providers().get("providers", []),
+            "umami": self.umami_health(),
         }
 
     def operational_report_context(self) -> dict[str, Any]:
@@ -1007,9 +1018,10 @@ class CatalogService:
 
         def system_health() -> dict[str, Any]:
             snapshot = self.database.operational_health_snapshot()
+            # Umami: the latest read only; the Dashboard never waits for it.
             return {
                 "schemaVersion": 1, "api": "HEALTHY", "database": "HEALTHY",
-                **snapshot, "providers": providers,
+                **snapshot, "providers": providers, "umami": self.umami_health(probe=False),
             }
 
         # Keep map-operation telemetry and compatibility evidence as
@@ -1808,14 +1820,19 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 return
             if request_path in {"/admin/api/umami", "/admin/api/umami/"}:
                 query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
-                period = query.get("period", ["7d"])[-1]
+                period = self._admin_period(query, "7d")
                 time_zone = query.get("timeZone", [self._cookie_value("terento_admin_tz") or "UTC"])[-1]
                 self._send_json(HTTPStatus.OK, service.website_stats(period, _admin_time_zone(time_zone)),
                                 send_body=send_body, cache_control="no-store", noindex=True)
                 return
             if request_path in {"/admin/website-stats", "/admin/website-stats/"}:
+                # Renamed Web visits (owner 2026-11-14); old links still work.
+                query = urlsplit(self.path).query
+                self._redirect("/admin/web-visits" + (f"?{query}" if query else ""), send_body=send_body)
+                return
+            if request_path in {"/admin/web-visits", "/admin/web-visits/"}:
                 query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
-                period = query.get("period", ["7d"])[-1]
+                period = self._admin_period(query, "7d")
                 time_zone = query.get("timeZone", [self._cookie_value("terento_admin_tz") or "UTC"])[-1]
                 self._send_admin_html(website_stats_page(session, csrf_token, period=period,
                                                          time_zone=_admin_time_zone(time_zone)), send_body=send_body)
@@ -2316,7 +2333,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 return
             if request_path in {"/admin", "/admin/"}:
                 query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
-                period = query.get("period", ["24h"])[-1]
+                period = self._admin_period(query, "24h")
                 time_zone = query.get("timeZone", [self._cookie_value("terento_admin_tz") or "UTC"])[-1]
                 try:
                     body = overview_page(
@@ -2354,9 +2371,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 return
             if request_path in {"/admin/web-installer", "/admin/web-installer/", "/admin/web-installer.json"}:
                 query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
-                period = query.get("period", ["7d"])[-1]
-                if period not in ADMIN_PERIODS:
-                    period = "7d"
+                period = self._admin_period(query, "7d")
                 time_zone = query.get("timeZone", [self._cookie_value("terento_admin_tz") or "UTC"])[-1]
                 try:
                     data = service.web_installer({"period": period, "timeZone": time_zone})
@@ -2375,9 +2390,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 return
             if request_path in {"/admin/first-run", "/admin/first-run/"}:
                 query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
-                period = query.get("period", ["24h"])[-1]
-                if period not in ADMIN_PERIODS:
-                    period = "24h"
+                period = self._admin_period(query, "24h")
                 time_zone = query.get("timeZone", [self._cookie_value("terento_admin_tz") or "UTC"])[-1]
                 try:
                     funnel = service.app_funnel({"period": period, "timeZone": time_zone})
@@ -3232,6 +3245,14 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 return None
             morsel = cookie.get(name)
             return morsel.value if morsel else None
+
+        def _admin_period(self, query: dict[str, list[str]], default: str) -> str:
+            """The Admin period: the link's, else the one last chosen on any
+            period page (one filter for all of Admin), else the page default."""
+            for candidate in (query.get("period", [""])[-1], self._cookie_value("terento_admin_period") or ""):
+                if candidate in ADMIN_PERIODS:
+                    return candidate
+            return default
 
         def _set_admin_cookies(self, session_token: str, csrf_token: str) -> None:
             attributes = f"Max-Age={service.admin_session_ttl_seconds}; Path=/admin; Secure; HttpOnly; SameSite=Strict"

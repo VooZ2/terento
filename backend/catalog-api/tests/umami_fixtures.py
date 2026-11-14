@@ -13,7 +13,10 @@ STATS = {
 }
 EVENT_STATS = {"data": {"events": 30, "visitors": 18, "visits": 20, "uniqueEvents": 1,
                         "comparison": {"events": 25, "visitors": 20, "visits": 21, "uniqueEvents": 1}}}
-REFERRERS = [{"x": "google.com", "y": 40}, {"x": "reddit.com", "y": 12}, {"x": "github.com", "y": 9}]
+REFERRERS = [{"x": "google.com", "y": 34}, {"x": "reddit.com", "y": 10}, {"x": "github.com", "y": 9},
+             {"x": "www.google.lt", "y": 6}, {"x": "com.reddit.frontpage", "y": 2}, {"x": "m.youtube.com", "y": 3},
+             {"x": "youtu.be", "y": 1}, {"x": "forums.garmin.com", "y": 5}, {"x": "example.org", "y": 2}]
+COUNTRIES = [{"x": "LT", "y": 50}, {"x": "DE", "y": 30}, {"x": "US", "y": 20}, {"x": None, "y": 3}]
 ENTRIES = [{"x": "/", "y": 80}, {"x": "/download/", "y": 22}, {"x": "/install/", "y": 11}]
 PERFORMANCE = {
     "lcp": {"p50": 1500, "p75": 2300, "p95": 5100},
@@ -42,7 +45,7 @@ def answer(path: str, params: dict[str, Any]) -> Any:
     if path.endswith("/events/stats"):
         return EVENT_STATS
     if path.endswith("/metrics"):
-        return REFERRERS if params["type"] == "referrer" else ENTRIES
+        return {"referrer": REFERRERS, "entry": ENTRIES, "country": COUNTRIES}[params["type"]]
     if path.endswith("/performance/stats"):
         return PERFORMANCE
     if path.endswith("/errors"):
