@@ -68,7 +68,10 @@ Umami visitors with a `download-click` divided by Umami visitors in the same
 period. Google Search (Google Search Console for `sc-domain:terento.app`, the
 same Admin page) is another separate, read-only population owned by Google:
 web search clicks, impressions, CTR and average position by Pacific Time day,
-with recent days preliminary and rare queries hidden by Google. It is never
+with recent days preliminary and rare queries hidden by Google. It has its own
+period (Last 7 days, Last 30 days by default, All time), never the shared Admin
+period; its totals, changes, queries and pages count final days only, and
+preliminary days appear only in its trend chart. It is never
 added to or reconciled with Umami visitors or any app or web installer count. User-sent support
 reports ([`SUPPORT_REPORT_CONTRACT.md`](SUPPORT_REPORT_CONTRACT.md)) are not a
 statistical population at all: they are review work only and never change any

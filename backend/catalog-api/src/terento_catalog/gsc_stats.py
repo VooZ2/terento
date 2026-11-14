@@ -43,9 +43,14 @@ PACIFIC = ZoneInfo("America/Los_Angeles")
 # Search Console keeps 16 months; "all" asks for all of it.
 ALL_DAYS = 486
 PERIOD_DAYS = {"7d": 7, "30d": 30, "all": ALL_DAYS}
-# Search Console reports whole days only: no request for these periods.
-HOURLY_PERIODS = ("today", "24h")
+# Google Search has its own period picker, separate from the Admin period
+# (owner 2026-11-14): Search Console reports whole days only.
+PERIODS = tuple(PERIOD_DAYS)
+DEFAULT_PERIOD = "30d"
 BLOCKS = ("totals", "previousTotals", "dates", "queries", "pages")
+# What is read from Search Console; totals and previousTotals are computed
+# from the final days of dates and previousDates (owner 2026-11-14).
+REQUESTED = ("dates", "previousDates", "queries", "pages")
 QUERY_ROWS = 100
 TOP_QUERIES = 10
 TOP_PAGES = 5
@@ -208,15 +213,6 @@ def _values(row: dict[str, Any]) -> dict[str, float | None]:
     return {key: _metric(row.get(key)) for key in ("clicks", "impressions", "ctr", "position")}
 
 
-def parse_totals(raw: Any) -> dict[str, float | None]:
-    """Sums of the period; no row means nothing was shown (0 clicks, 0
-    impressions, no CTR or position)."""
-    rows = _rows(raw)
-    if not rows:
-        return {"clicks": 0.0, "impressions": 0.0, "ctr": None, "position": None}
-    return _values(rows[0])
-
-
 def _key(row: dict[str, Any]) -> str:
     keys = row.get("keys")
     return str(keys[0])[:500] if isinstance(keys, list) and keys else ""
@@ -231,7 +227,8 @@ def parse_dates(raw: Any) -> dict[str, Any]:
         except ValueError:
             continue
         values = _values(row)
-        days.append({"date": day, "clicks": values["clicks"] or 0, "impressions": values["impressions"] or 0})
+        days.append({"date": day, "clicks": values["clicks"] or 0, "impressions": values["impressions"] or 0,
+                     "position": values["position"]})
     days.sort(key=lambda item: item["date"])
     metadata = raw.get("metadata") if isinstance(raw.get("metadata"), dict) else {}
     # The API answers camelCase; the documented name is snake_case.
@@ -241,6 +238,22 @@ def parse_dates(raw: Any) -> dict[str, Any]:
     except ValueError:
         incomplete = None
     return {"days": days, "firstIncompleteDate": incomplete}
+
+
+def final_totals(days: list[dict[str, Any]], first: date, last: date) -> dict[str, Any]:
+    """Sums of the days first..last: clicks, impressions, CTR and the
+    impression-weighted average position (Search Console's own property
+    average, day by day). No day with impressions: 0, 0 and no CTR or
+    position."""
+    chosen = [day for day in days if first.isoformat() <= day["date"] <= last.isoformat()]
+    clicks = sum(day["clicks"] for day in chosen)
+    impressions = sum(day["impressions"] for day in chosen)
+    weighted = [(day["position"], day["impressions"]) for day in chosen if day.get("position") is not None and day["impressions"]]
+    weight = sum(count for _, count in weighted)
+    return {"clicks": float(clicks), "impressions": float(impressions),
+            "ctr": clicks / impressions if impressions else None,
+            "position": sum(position * count for position, count in weighted) / weight if weight else None,
+            "days": (last - first).days + 1 if last >= first else 0}
 
 
 def parse_queries(raw: Any) -> dict[str, Any]:
@@ -294,28 +307,49 @@ class GscStats:
 
     def _requests(self, period: str, now: datetime) -> dict[str, tuple[dict[str, Any], Callable[[Any], Any]]]:
         start, end, previous = period_dates(period, now)
-        window = lambda first, last: {"startDate": first.isoformat(), "endDate": last.isoformat(),
-                                      "type": "web", "dataState": "all"}
-        current = window(start, end)
+        window = lambda first, last, state: {"startDate": first.isoformat(), "endDate": last.isoformat(),
+                                             "type": "web", "dataState": state}
+        by_date = {"dimensions": ["date"], "rowLimit": ALL_DAYS + 14}
+        # Only the trend shows preliminary days; queries and pages are final.
+        final = window(start, end, "final")
         requests = {
-            "totals": (current, parse_totals),
-            "dates": ({**current, "dimensions": ["date"], "rowLimit": ALL_DAYS + 14}, parse_dates),
-            "queries": ({**current, "dimensions": ["query"], "rowLimit": QUERY_ROWS}, parse_queries),
-            "pages": ({**current, "dimensions": ["page"], "rowLimit": TOP_PAGES}, parse_pages),
+            "dates": ({**window(start, end, "all"), **by_date}, parse_dates),
+            "queries": ({**final, "dimensions": ["query"], "rowLimit": QUERY_ROWS}, parse_queries),
+            "pages": ({**final, "dimensions": ["page"], "rowLimit": TOP_PAGES}, parse_pages),
         }
         if previous is not None:
-            requests["previousTotals"] = (window(previous, start - timedelta(days=1)), parse_totals)
+            requests["previousDates"] = ({**window(previous, start - timedelta(days=1), "final"), **by_date}, parse_dates)
         return requests
+
+    @staticmethod
+    def _totals(blocks: dict[str, dict[str, Any]], start: date, end: date, has_previous: bool) -> None:
+        """totals: the final days of the period (before Search Console's first
+        incomplete day); previousTotals: the same number of days just before
+        it. Each takes the state and time of the block it is computed from."""
+        dates = blocks.get("dates") or {}
+        if dates.get("data") is None:
+            blocks["totals"] = dict(dates) or {"state": "unavailable", "fetchedAt": None, "data": None}
+            if has_previous:
+                blocks["previousTotals"] = {"state": "unavailable", "fetchedAt": None, "data": None}
+            return
+        incomplete = dates["data"].get("firstIncompleteDate")
+        last = min(end, date.fromisoformat(incomplete) - timedelta(days=1)) if incomplete else end
+        totals = final_totals(dates["data"]["days"], start, last)
+        blocks["totals"] = {**dates, "data": totals}
+        if has_previous:
+            source = blocks.get("previousDates") or {}
+            if source.get("data") is None:
+                blocks["previousTotals"] = dict(source) or {"state": "unavailable", "fetchedAt": None, "data": None}
+            else:
+                first = start - timedelta(days=max(totals["days"], 0))
+                blocks["previousTotals"] = {**source, "data": final_totals(source["data"]["days"], first, start - timedelta(days=1))}
 
     def snapshot(self, period: str, now: datetime | None = None) -> dict[str, Any]:
         """Every block as {state, fetchedAt, data}: ``ok``, ``stale`` (Search
         Console failed; the last good result) or ``unavailable`` (failed,
-        nothing cached). Today and Last 24 hours ask nothing (``daily``
-        False): Search Console has whole days only."""
+        nothing cached). An unknown period is the default, Last 30 days."""
         now = now or datetime.fromtimestamp(self._clock(), timezone.utc)
-        if period in HOURLY_PERIODS:
-            return {"period": period, "daily": False, "blocks": {}}
-        period = period if period in PERIOD_DAYS else "7d"
+        period = period if period in PERIOD_DAYS else DEFAULT_PERIOD
         start, end, previous = period_dates(period, now)
         requests = self._requests(period, now)
         moment = self._clock()
@@ -341,7 +375,8 @@ class GscStats:
                 executor.shutdown(wait=False, cancel_futures=True)
                 for name, future in futures.items():
                     blocks[name] = self._result(name, period, future, requests[name][1])
-        return {"period": period, "daily": True, "startDate": start.isoformat(), "endDate": end.isoformat(),
+        self._totals(blocks, start, end, previous is not None)
+        return {"period": period, "startDate": start.isoformat(), "endDate": end.isoformat(),
                 "previousStartDate": previous.isoformat() if previous else None,
                 "blocks": {name: blocks[name] for name in BLOCKS if name in blocks}}
 
