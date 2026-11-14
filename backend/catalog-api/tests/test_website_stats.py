@@ -408,6 +408,14 @@ class MarkupTests(unittest.TestCase):
         self.assertIn(f"href='https://stats.example.test/websites/{fx.WEBSITE_ID}'", body)
         self.assertNotIn(fx.SECRET_KEY, body)
 
+    def test_visitors_and_downloads_are_one_untitled_headline(self):
+        body, _ = self.render()
+        headline = body.split("<div class='web-installer-grid web-visits-headline'>", 1)[1].split("</div></section></div>", 1)[0]
+        self.assertIn("id='web-visits-visitors' aria-label='Visitors'", headline)
+        self.assertIn("id='web-visits-downloads' aria-label='Downloads'", headline)
+        self.assertNotIn("web-visits-visitors-title", body)
+        self.assertNotIn("<h2", headline)
+
     def test_web_vitals_ratings_limits_and_the_sample_size(self):
         body, _ = self.render()
         text = visible_text(body.split("id='web-visits-vitals'", 1)[1].split("id='web-visits-errors'", 1)[0])
@@ -450,10 +458,10 @@ class MarkupTests(unittest.TestCase):
         self.assertIn("<span class='web-visits-flag' aria-hidden='true'>🇱🇹</span><span data-region-name='LT'>LT</span>", countries)
         self.assertIn("<td>Unknown</td>", countries)
 
-    def test_views_before_the_map_view_cleanup_get_a_grey_note(self):
+    def test_views_before_the_map_view_cleanup_are_grey_without_a_note(self):
         body, _ = self.render()  # 7 days before 2026-11-14 reaches before 2026-11-13
         self.assertIn("data-trend='neutral'><span aria-hidden='true'>▲</span> +30 vs previous 7 days", body)
-        self.assertIn("Before 2026-11-13 includes old map views", body)
+        self.assertNotIn("old map views", body)
         later = datetime(2026, 11, 20, 12, tzinfo=timezone.utc)
         client, _, _ = stats()
         body = website_stats_blocks(client.snapshot("24h", "UTC", now=later), dashboard_url=None)
@@ -470,7 +478,7 @@ class MarkupTests(unittest.TestCase):
     def test_all_time_has_no_change_lines(self):
         body, _ = self.render(period="all")
         self.assertNotIn("funnel-delta", body)
-        self.assertIn("Before 2026-11-13 includes old map views", body)
+        self.assertNotIn("old map views", body)
 
     def test_hidden_unavailable_and_stale_blocks(self):
         fake = FakeUmami()

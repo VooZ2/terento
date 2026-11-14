@@ -45,7 +45,6 @@ VITALS = (
     ("ttfb", "TTFB · p75", (800, 1800)),
 )
 UNAVAILABLE = "Statistics unavailable."
-VIEWS_NOTE = "Before 2026-11-13 includes old map views"
 
 # Referrer platform -> logo; FA = Font Awesome brands, SI = Simple Icons.
 _SOURCE_ICONS = {
@@ -82,13 +81,12 @@ def _rate(part: float | None, whole: float | None) -> float | None:
 
 
 def _delta(current: float | None, previous: float | None, period: str, kind: str = "count", *,
-           better: str = "up", plain: bool = False, note: str = "") -> str:
+           better: str = "up", plain: bool = False) -> str:
     """Change against the previous period of the same length: arrow, sign and
     text, coloured by meaning (green better, red worse, grey same or without a
     base). Rates change in percentage points."""
-    note_markup = f"<span class='web-visits-note'>{html.escape(note)}</span>" if note else ""
     if period not in PREVIOUS or current is None or previous is None:
-        return note_markup
+        return ""
     against = PREVIOUS[period]
     change = current - previous
     if kind == "rate":
@@ -108,7 +106,7 @@ def _delta(current: float | None, previous: float | None, period: str, kind: str
         trend = "neutral" if plain or not previous else (
             "better" if (change > 0) == (better == "up") else "worse")
     return (f"<span class='funnel-delta' data-trend='{trend}'><span aria-hidden='true'>{arrow}</span> "
-            f"{html.escape(text)}</span>{note_markup}")
+            f"{html.escape(text)}</span>")
 
 
 def _stale(block: dict[str, Any]) -> str:
@@ -120,11 +118,20 @@ def _stale(block: dict[str, Any]) -> str:
             + f"<span class='admin-metric-secondary'>Last result {_timestamp_markup(fetched)}</span>")
 
 
+def _headline(name: str, body: str, extra_attributes: str = "") -> str:
+    """An untitled KPI panel, like the Dashboard and Web installer headline;
+    its first tile already names it."""
+    return (f"<section class='admin-card {_HEAD}' id='{_card_id(name)}' aria-label='{TITLES[name]}'"
+            f"{extra_attributes}>{body}</section>")
+
+
 def _card(name: str, block: dict[str, Any], body: Any, css: str = "") -> str:
     if block.get("state") == "hidden":
         return ""
     if block.get("state") not in ("ok", "stale") or block.get("data") is None:
         return _section_card(TITLES[name], _empty_state("unavailable", UNAVAILABLE), card_id=_card_id(name), css=css)
+    if css == _HEAD and block.get("state") == "ok":
+        return _headline(name, body(block["data"]))
     return _section_card(TITLES[name], body(block["data"]), card_id=_card_id(name), css=css, totals=_stale(block))
 
 
@@ -192,7 +199,7 @@ def _countries(rows: list[dict[str, Any]]) -> str:
     return _ranking("Top countries", "Country", cells, "No visits in this period.")
 
 
-def _visitors(data: dict[str, Any], period: str, views_note: str) -> str:
+def _visitors(data: dict[str, Any], period: str, views_mixed: bool) -> str:
     now, before = data.get("current") or {}, data.get("previous") or {}
     bounce = lambda totals: _rate(totals.get("bounces"), totals.get("visits"))
     duration = lambda totals: None if _ratio(totals.get("totaltime"), totals.get("visits")) is None else round(
@@ -201,7 +208,7 @@ def _visitors(data: dict[str, Any], period: str, views_note: str) -> str:
         _metric_tile("Visitors", now.get("visitors"), secondary=_delta(now.get("visitors"), before.get("visitors"), period)),
         _metric_tile("Visits", now.get("visits"), secondary=_delta(now.get("visits"), before.get("visits"), period)),
         _metric_tile("Views", now.get("pageviews"), secondary=_delta(
-            now.get("pageviews"), before.get("pageviews"), period, plain=bool(views_note), note=views_note)),
+            now.get("pageviews"), before.get("pageviews"), period, plain=views_mixed)),
         _metric_tile("Bounce rate", bounce(now), fmt="rate",
                      secondary=_delta(bounce(now), bounce(before), period, "rate", better="down")),
     ]
@@ -283,14 +290,15 @@ def _errors(data: dict[str, Any], previous: dict[str, Any] | None, period: str) 
     )
 
 
-def _views_note(snapshot: dict[str, Any]) -> str:
-    """The Views note while the compared span reaches before the old map
-    views stopped (owner request 2026-11-14)."""
+def _views_mixed(snapshot: dict[str, Any]) -> bool:
+    """Whether the compared span reaches before the old map views stopped;
+    the Views change is then grey, without a note (owner request 2026-11-14)."""
     since = snapshot.get("previousStartAt") if snapshot["period"] != "all" else snapshot.get("startAt")
-    return VIEWS_NOTE if since is not None and since < CLEAN_VIEWS_SINCE.timestamp() * 1000 else ""
+    return since is not None and since < CLEAN_VIEWS_SINCE.timestamp() * 1000
 
 
 _KPI = "admin-kpi-panel web-installer-server"
+_HEAD = "admin-kpi-panel web-visits-kpis"
 _LIST = "map-statistics-popularity"
 
 
@@ -300,10 +308,13 @@ def website_stats_blocks(snapshot: dict[str, Any] | None, *, dashboard_url: str 
         return _section_card("Web visits", _empty_state("unavailable", UNAVAILABLE), card_id="web-visits-unavailable")
     period, blocks = snapshot["period"], snapshot["blocks"]
     visitors = _usable(blocks["visitors"])
-    cards = [
-        _card("visitors", blocks["visitors"], lambda data: _visitors(data, period, _views_note(snapshot)), css=_KPI),
-        _card("downloads", blocks["downloads"], lambda data: _downloads(data, visitors, period), css=_KPI),
-    ]
+    cards = []
+    headline = "".join(part for part in (
+        _card("visitors", blocks["visitors"], lambda data: _visitors(data, period, _views_mixed(snapshot)), css=_HEAD),
+        _card("downloads", blocks["downloads"], lambda data: _downloads(data, visitors, period), css=_HEAD),
+    ) if part)
+    if headline:
+        cards.append(f"<div class='web-installer-grid web-visits-headline'>{headline}</div>")
     lists = "".join(part for part in (
         _card("referrers", blocks["referrers"], lambda data: _referrers(data, visitors), css=_LIST),
         _card("entries", blocks["entries"], _entries, css=_LIST),
@@ -332,7 +343,11 @@ def _loading_blocks() -> str:
         TITLES[name], "<div class='web-visits-skeleton' aria-hidden='true'><span></span><span></span><span></span></div>"
         "<span class='sr-only'>Loading…</span>", card_id=_card_id(name), css=css,
         extra_attributes=" data-website-stats-block aria-busy='true'")
-    return (loading("visitors") + loading("downloads")
+    skeleton = ("<div class='web-visits-skeleton' aria-hidden='true'><span></span><span></span><span></span></div>"
+                "<span class='sr-only'>Loading…</span>")
+    headline = lambda name: _headline(name, skeleton, " aria-busy='true'")
+    return ("<div class='web-installer-grid web-visits-headline' data-website-stats-block>" + headline("visitors")
+            + headline("downloads") + "</div>"
             + "<div class='web-installer-grid web-visits-lists' data-website-stats-block>" + loading("referrers", _LIST)
             + loading("entries", _LIST) + loading("countries", _LIST) + "</div>" + loading("vitals") + loading("errors"))
 
