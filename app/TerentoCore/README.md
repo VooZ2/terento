@@ -95,7 +95,25 @@ the wait. If the session is still busy, the failure says the watch may be
 in use by another app, asks to quit Garmin Express and similar apps and links the
 guide's busy-watch section; it names no running app after one failed open,
 says no map was written only when no earlier map or contour of the same
-installation was written, and the reported failure code is unchanged. Quitting removes retained
+installation was written, and the reported failure code is unchanged. When that
+stop comes before any map or contour of the installation was written (a busy
+session after its retries, the snapshot no longer seeing a Garmin (-2/-3), or a
+confirmed unplug, at the reads before the write), the failure dialog is replaced
+by "Reconnect your watch": unplug the watch, wait 5 seconds and plug it back in,
+with Cancel and no other action. Only a new connection after the unplug can
+continue. The same watch (its local physical key) that is read again and whose
+authorization has resolved starts the normal installation again exactly like Try
+again: a new operation, every identity, authorization, inventory, storage and
+preflight check from the start, and the kept download revalidated before any
+write. A different or unidentifiable watch, an authorization that no longer
+allows installing, 5 minutes without the same watch ready, or Cancel ends with
+the failure dialog (Report issue included); if the watch never left, it shows
+the original failure unchanged, otherwise what happened during the wait. The
+dialog announces its state to VoiceOver, and the update prompt never opens over
+it. The
+wait never touches the watch, adds no telemetry, and the first stop stays
+reported as before. A disconnect keeps the downloads kept for Try again. Custom
+imports are not kept across a disconnect and stop as before. Quitting removes retained
 artifacts. While maps are downloaded, prepared, written or verified, and during
 Update and Remove, the app holds a user-initiated activity that prevents idle
 system sleep; Quit during a device write asks for confirmation. The app has one
