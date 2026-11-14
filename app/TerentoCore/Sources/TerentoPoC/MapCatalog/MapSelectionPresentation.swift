@@ -376,6 +376,96 @@ enum InstallationFlowPresentation: Sendable {
     }
 }
 
+/// A stop before the first write because the watch was busy or no longer
+/// visible (-5, -2/-3, or confirmed unplugged). Instead of ending there,
+/// Terento asks for the same watch to be unplugged and plugged back in, waits
+/// up to `timeout`, and then starts the normal installation again, exactly
+/// like Try again: every identity, authorization, inventory, storage and
+/// preflight check runs from the start, and the download kept for Try again
+/// is revalidated before any write. The wait itself never reads, writes,
+/// removes or renames anything on the watch.
+struct WatchReconnectWait: Identifiable, Equatable, Sendable {
+    static let timeout: TimeInterval = 5 * 60
+
+    let id: UUID
+    /// The local physical key of the watch that stopped. Never sent.
+    let watchKey: String
+    let selectedMapIDs: Set<String>
+    let selectedOptionalArtifactIDs: [String: Set<String>]
+    let mapTitle: String?
+    let watchWasBusy: Bool
+    let deadline: Date
+    /// The stopped session ended (unplug seen). Only a new connection after
+    /// that can continue the installation.
+    var watchWasDisconnected = false
+
+    init(watchKey: String, selectedMapIDs: Set<String>,
+         selectedOptionalArtifactIDs: [String: Set<String>], mapTitle: String?,
+         watchWasBusy: Bool, now: Date = Date()) {
+        id = UUID()
+        self.watchKey = watchKey
+        self.selectedMapIDs = selectedMapIDs
+        self.selectedOptionalArtifactIDs = selectedOptionalArtifactIDs
+        self.mapTitle = mapTitle
+        self.watchWasBusy = watchWasBusy
+        deadline = now.addingTimeInterval(Self.timeout)
+    }
+}
+
+enum WatchReconnectWaitPolicy: Sendable {
+    enum Decision: Equatable, Sendable {
+        case keepWaiting
+        case resume
+        case differentWatch
+        case timedOut
+    }
+
+    static let differentWatchMessage = "A different watch was connected, so Terento stopped. Nothing was written. Connect the watch you chose and install the map again."
+    static let timedOutMessage = "Your watch did not come back within 5 minutes. Nothing was written. Connect it and install the map again."
+
+    /// Only a read before the current component's write, with nothing of
+    /// this operation written, may wait: a busy session (-5), a watch that is
+    /// no longer visible (-2/-3), or a confirmed unplug.
+    static func qualifies(
+        failure: InstallationFailure?,
+        context: InstallationFailureContext?,
+        wroteAnyComponent: Bool
+    ) -> Bool {
+        guard !wroteAnyComponent, let failure, let context,
+              [.initialSnapshot, .initialInventory, .prewriteInventory].contains(context.boundary) else {
+            return false
+        }
+        switch failure {
+        case .deviceDisconnected:
+            return true
+        case .preflightMTPReadFailed:
+            return context.devicePresence == .absent
+                || context.isWatchSessionBusy
+                || context.isWatchNoLongerVisible
+        default:
+            return false
+        }
+    }
+
+    /// A different or unidentifiable watch never continues the installation;
+    /// the same watch continues only after it was unplugged, reconnected,
+    /// read again and its authorization resolved.
+    static func decision(
+        for wait: WatchReconnectWait,
+        now: Date,
+        deviceConnected: Bool,
+        connectedWatchKey: String?,
+        mapScanReady: Bool,
+        authorizationResolved: Bool
+    ) -> Decision {
+        guard now < wait.deadline else { return .timedOut }
+        guard wait.watchWasDisconnected, deviceConnected else { return .keepWaiting }
+        guard let connectedWatchKey, connectedWatchKey == wait.watchKey else { return .differentWatch }
+        guard mapScanReady, authorizationResolved else { return .keepWaiting }
+        return .resume
+    }
+}
+
 /// Geographic browsing is a local presentation projection, never acquisition identity.
 enum MapGeographyGroup: String, CaseIterable, Identifiable, Sendable {
     case all, europe, asia, africa, northAmerica, centralAmericaCaribbean

@@ -185,6 +185,13 @@ extension InstallationFailureContext {
     var isWatchSessionBusy: Bool {
         nativeCodeNamespace == .terentoSnapshot && nativeResultCode == -5
     }
+
+    /// `terento_mtp_read_snapshot_diagnostic` -2 or -3: no Garmin with file
+    /// transfer is visible on USB any more (unplugged, USB dropped, or the
+    /// watch left file transfer), for example after a long download.
+    var isWatchNoLongerVisible: Bool {
+        nativeCodeNamespace == .terentoSnapshot && (nativeResultCode == -2 || nativeResultCode == -3)
+    }
 }
 struct InstallationProtectionContext: Codable, Equatable, Sendable {
     enum Boundary: String, Codable, Sendable {

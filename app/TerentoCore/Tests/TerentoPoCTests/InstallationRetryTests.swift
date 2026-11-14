@@ -20,6 +20,9 @@ struct InstallationRetryTests {
         await testMapReadSurvivesCustomMapClose()
         try testBoundedCheckBeforeRemoval()
         testRetryClassification()
+        testWatchReconnectQualification()
+        testWatchReconnectDecision()
+        try testRetainedDownloadSurvivesDisconnect()
         testActivityPolicy()
         print("PASS: installation retry and keep-awake behavior")
     }
@@ -186,6 +189,94 @@ struct InstallationRetryTests {
               && MapEngine.retainsArtifactsForRetry(after: .preflightMTPReadFailed)
               && MapEngine.retainsArtifactsForRetry(after: .downloadFailed),
               "only sources that passed validation are retained")
+    }
+
+    static func snapshotContext(_ code: Int32, boundary: InstallationFailureContext.Boundary = .initialSnapshot,
+                                presence: InstallationFailureContext.DevicePresence = .unknown,
+                                namespace: InstallationFailureContext.NativeCodeNamespace = .terentoSnapshot)
+        -> InstallationFailureContext {
+        InstallationFailureContext(boundary: boundary, classificationSource: .native, devicePresence: presence,
+            operation: .snapshot, nativeCodeNamespace: namespace, nativeResultCode: code)
+    }
+
+    /// Only a stop before the current write, with nothing of the operation
+    /// written, waits for the watch: busy (-5), no longer visible (-2/-3) or
+    /// a confirmed unplug.
+    static func testWatchReconnectQualification() {
+        for code: Int32 in [-5, -2, -3] {
+            check(WatchReconnectWaitPolicy.qualifies(failure: .preflightMTPReadFailed,
+                    context: snapshotContext(code), wroteAnyComponent: false),
+                  "a pre-write snapshot \(code) waits for the watch to be reconnected")
+        }
+        check(WatchReconnectWaitPolicy.qualifies(failure: .deviceDisconnected,
+                context: snapshotContext(-1, boundary: .prewriteInventory, presence: .absent, namespace: .terentoInventory),
+                wroteAnyComponent: false),
+              "an unplug seen by the last read before the write waits for the watch")
+        check(WatchReconnectWaitPolicy.qualifies(failure: .preflightMTPReadFailed,
+                context: snapshotContext(-1, boundary: .initialInventory, presence: .absent, namespace: .terentoInventory),
+                wroteAnyComponent: false),
+              "a pre-write read of a watch confirmed gone waits for the watch")
+        check(!WatchReconnectWaitPolicy.qualifies(failure: .preflightMTPReadFailed,
+                context: snapshotContext(-5), wroteAnyComponent: true),
+              "a busy watch after an earlier map of the same installation was written does not wait")
+        check(!WatchReconnectWaitPolicy.qualifies(failure: .preflightMTPReadFailed,
+                context: snapshotContext(-1, boundary: .initialInventory, namespace: .terentoInventory),
+                wroteAnyComponent: false),
+              "another pre-write read failure ends as before")
+        check(!WatchReconnectWaitPolicy.qualifies(failure: .writeFailed,
+                context: snapshotContext(-5, boundary: .write), wroteAnyComponent: false),
+              "a failure at or after the write never waits")
+        check(!WatchReconnectWaitPolicy.qualifies(failure: .preflightMTPReadFailed, context: nil, wroteAnyComponent: false),
+              "a failure without its read context never waits")
+        check(!WatchReconnectWaitPolicy.qualifies(failure: .protectionViolation,
+                context: snapshotContext(-5, boundary: .prewriteInventory), wroteAnyComponent: false),
+              "a protection stop never waits")
+    }
+
+    static func testWatchReconnectDecision() {
+        let start = Date(timeIntervalSince1970: 1_000_000)
+        var wait = WatchReconnectWait(watchKey: "watch-a", selectedMapIDs: ["freizeitkarte-fra"],
+            selectedOptionalArtifactIDs: [:], mapTitle: "France", watchWasBusy: true, now: start)
+        let soon = start.addingTimeInterval(30)
+        func decide(_ wait: WatchReconnectWait, now: Date? = nil, connected: Bool = true, key: String? = "watch-a",
+                    scanned: Bool = true, resolved: Bool = true) -> WatchReconnectWaitPolicy.Decision {
+            WatchReconnectWaitPolicy.decision(for: wait, now: now ?? soon, deviceConnected: connected,
+                connectedWatchKey: key, mapScanReady: scanned, authorizationResolved: resolved)
+        }
+        check(WatchReconnectWait.timeout == 5 * 60, "Terento waits up to 5 minutes for the watch")
+        check(MapEngine.retainedArtifactLifetime > WatchReconnectWait.timeout,
+              "the kept download outlives the whole wait")
+        check(decide(wait) == .keepWaiting, "the stopped session alone never continues; a reconnect is required")
+        wait.watchWasDisconnected = true
+        check(decide(wait, connected: false) == .keepWaiting, "while no watch is connected Terento keeps waiting")
+        check(decide(wait, key: "watch-b") == .differentWatch, "a different watch stops the installation")
+        check(decide(wait, key: nil) == .differentWatch, "a watch without a stable identity stops the installation")
+        check(decide(wait, scanned: false) == .keepWaiting, "the same watch continues only after its maps are read again")
+        check(decide(wait, resolved: false) == .keepWaiting, "the same watch continues only after its authorization is resolved")
+        check(decide(wait) == .resume, "the same watch, read again and authorized, continues the installation")
+        check(decide(wait, now: start.addingTimeInterval(WatchReconnectWait.timeout)) == .timedOut,
+              "after 5 minutes the wait ends even if the watch is back")
+    }
+
+    /// The download kept for Try again survives the unplug that the wait asks
+    /// for, so the same watch continues without downloading again.
+    @MainActor static func testRetainedDownloadSurvivesDisconnect() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("terento-reconnect-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let engine = MapEngine(operationGate: MTPOperationGate(),
+            installationAuthorizationClient: InstallationAuthorizationClient(dataLoader: { _ in throw URLError(.cancelled) }))
+        let artifact = try makeArtifact(root: root)
+        engine.retainArtifactsForTesting(["freizeitkarte-fra": [artifact.artifactID: artifact]])
+        engine.setStoppedBeforeWriteForWatchReconnectForTesting(true)
+        engine.resetForDisconnectedDevice(presence: .absent)
+        check(!engine.stoppedBeforeWriteForWatchReconnect, "a disconnect clears the stop fact with the rest of the device state")
+        check(engine.retainedWorkspaceRoots.contains(artifact.workspaceRootURL!)
+              && FileManager.default.fileExists(atPath: artifact.localIMGURL.path),
+              "a disconnect keeps the download kept for Try again")
+        check(engine.takeRetainedArtifactForTesting(packageID: "freizeitkarte-fra", artifactID: artifact.artifactID,
+                                                    version: artifact.version) == artifact,
+              "after reconnecting, the kept download is reused instead of downloading again")
+        engine.purgeRetainedArtifacts()
     }
 
     static func testActivityPolicy() {

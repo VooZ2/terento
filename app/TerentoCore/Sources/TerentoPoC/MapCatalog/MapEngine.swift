@@ -421,6 +421,10 @@ final class MapEngine: ObservableObject {
         cancelActiveTaskAndCleanupWorkspaces()
     }
 
+    func setStoppedBeforeWriteForWatchReconnectForTesting(_ value: Bool) {
+        stoppedBeforeWriteForWatchReconnect = value
+    }
+
     func setFailedInstallationForTesting(_ failure: InstallationFailure?) {
         evidenceFailure = failure
         installationPhase = .failed
@@ -482,6 +486,7 @@ final class MapEngine: ObservableObject {
         preferredOwnershipManifestDeviceKey = nil
         installationSpeedEstimator.reset()
         installationAuthorizationGranted = false
+        stoppedBeforeWriteForWatchReconnect = false
         deviceInstallationAuthorization = .blocked(.catalogUnavailable)
         selectedInstallationPlan = nil
         mapStatisticsEvents = []
@@ -853,6 +858,9 @@ final class MapEngine: ObservableObject {
         var roots = Self.workspaceRoots(validatedArtifactSets)
         roots.formUnion(validatedArtifacts.values.compactMap(\.workspaceRootURL))
         if let root = customMapImportCandidate?.workspaceRootURL { roots.insert(root) }
+        // Downloads kept for Try again survive a disconnect, so the same
+        // watch can continue after it is plugged back in.
+        roots.subtract(retainedWorkspaceRoots)
         guard !roots.isEmpty else { return }
         // CancellableDetached waits for native work to exit, including Finishing
         // and device cleanup. Never unlink a source still being verified.
@@ -1335,6 +1343,12 @@ final class MapEngine: ObservableObject {
         installationAuthorizationGranted = false
     }
 
+    /// The last installation stopped before its first write because the
+    /// watch was busy or no longer visible, and nothing of that operation
+    /// reached the watch (`WatchReconnectWaitPolicy`). The app then waits for
+    /// the same watch to be reconnected and starts the flow again.
+    private(set) var stoppedBeforeWriteForWatchReconnect = false
+
     /// Try again is offered for transient failures where nothing was written.
     /// It restarts the normal flow; every safety check runs again.
     var canRetryFailedInstallation: Bool {
@@ -1629,6 +1643,7 @@ final class MapEngine: ObservableObject {
             return
         }
         installationAuthorizationGranted = true
+        stoppedBeforeWriteForWatchReconnect = false
         mapStatisticsOperationID = operationId
         diagnosticInstallationIdentity = currentIdentity
         mapStatisticsEvents = []
@@ -2383,6 +2398,10 @@ final class MapEngine: ObservableObject {
                     bytesPerSecond: 0
                 )
                 self?.installationErrorMessage = finalResult.primaryFailure?.userLabel
+                self?.stoppedBeforeWriteForWatchReconnect = !(batchSucceeded || hasPartialSuccess)
+                    && WatchReconnectWaitPolicy.qualifies(failure: finalResult.failure,
+                        context: finalResult.failureContext,
+                        wroteAnyComponent: Self.wroteAnyComponent(batch.componentResults))
                 self?.installationPhase = (batchSucceeded || hasPartialSuccess) ? .completed : .failed
                 self?.installationPhaseProgress = (batchSucceeded || hasPartialSuccess) ? 1 : nil
                 self?.state = (batchSucceeded || hasPartialSuccess) ? .scanned : .failed
@@ -2431,6 +2450,9 @@ final class MapEngine: ObservableObject {
                     ?? readFailure?.failure.userLabel
                     ?? (error as? MapAcquisitionError)?.userMessage
                     ?? UserFacingErrorMessage.forInstallation(error)
+                self?.stoppedBeforeWriteForWatchReconnect = WatchReconnectWaitPolicy.qualifies(
+                    failure: readFailure?.failure, context: readFailure?.context,
+                    wroteAnyComponent: componentLog.wroteAnyComponent)
                 self?.installationPhase = .failed
                 self?.installationPhaseProgress = nil
                 self?.state = .failed

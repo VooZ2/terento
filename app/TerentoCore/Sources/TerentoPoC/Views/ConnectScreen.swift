@@ -78,6 +78,9 @@ struct ConnectScreen: View {
     @State private var supportReportPayload: SupportReportPayload?
     @State private var installationFailureFollowUp: InstallationFailureFollowUp = .backToDevice
     @State private var retryInstallationAfterScan = false
+    @State private var watchReconnectWait: WatchReconnectWait?
+    @State private var watchReconnectFollowUp: WatchReconnectFollowUp?
+    @State private var installationFailureOverride: InstallationFailureOverride?
     @State private var evidenceOperationID = UUID()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.openWindow) private var openWindow
@@ -267,6 +270,7 @@ struct ConnectScreen: View {
                 selectedMapProviderID = ""
                 lifecycleViewModel.resetForDisconnectedDevice()
                 mapEngine.resetForDisconnectedDevice(presence: deviceEngine.invalidationDevicePresence)
+                watchReconnectWait?.watchWasDisconnected = true
             }
 
             guard newState == .connected || newState == .ready else {
@@ -283,6 +287,7 @@ struct ConnectScreen: View {
         .onChange(of: mapEngine.state) { newState in
             updatePresenceMonitoring(for: newState)
             continueRetryAfterScanIfReady(newState)
+            continueWatchReconnectWaitIfReady()
         }
         .onChange(of: mapEngine.customMapImportState) { _ in
             updatePresenceMonitoring(for: mapEngine.state)
@@ -298,6 +303,16 @@ struct ConnectScreen: View {
         }
         .onChange(of: deviceEngine.installationAuthorization) { authorization in
             mapEngine.setInstallationAuthorization(authorization)
+            continueWatchReconnectWaitIfReady()
+        }
+        .task(id: watchReconnectWait?.id) {
+            guard let deadline = watchReconnectWait?.deadline else { return }
+            let remaining = deadline.timeIntervalSinceNow
+            if remaining > 0 {
+                try? await Task.sleep(for: .seconds(remaining))
+            }
+            guard !Task.isCancelled else { return }
+            continueWatchReconnectWaitIfReady()
         }
         .onChange(of: mapEngine.latestDeviceStorage) { storage in
             guard let storage else { return }
@@ -355,7 +370,11 @@ struct ConnectScreen: View {
         .onChange(of: mapEngine.installationPhase) { phase in
             updatePresenceMonitoring(for: mapEngine.state)
             if phase == .failed {
-                isShowingInstallationFailure = true
+                if let wait = makeWatchReconnectWait() {
+                    watchReconnectWait = wait
+                } else {
+                    isShowingInstallationFailure = true
+                }
             } else {
                 diagnosticLogMessage = nil
             }
@@ -402,12 +421,26 @@ struct ConnectScreen: View {
             )
         }
         #endif
+        .sheet(item: $watchReconnectWait, onDismiss: handleWatchReconnectWaitDismissed) { presented in
+            let wait = watchReconnectWait ?? presented
+            WatchReconnectWaitDialog(
+                mapTitle: wait.mapTitle,
+                watchWasBusy: wait.watchWasBusy,
+                isCheckingWatch: wait.watchWasDisconnected && deviceEngine.hasConnectedDevice,
+                onCancel: {
+                    watchReconnectFollowUp = .cancel
+                    watchReconnectWait = nil
+                }
+            )
+            .interactiveDismissDisabled(false)
+        }
         .sheet(
             isPresented: $isShowingInstallationFailure,
             onDismiss: handleInstallationFailureDismissed
         ) {
             InstallationFailureDialog(
-                mapTitle: selectedInstallationPlan.flatMap(installationFailureMapTitle),
+                mapTitle: installationFailureOverride.map { $0.mapTitle }
+                    ?? selectedInstallationPlan.flatMap(installationFailureMapTitle),
                 reason: installationFailureReason,
                 safetyMessage: installationFailureSafetyMessage,
                 reportError: diagnosticLogMessage,
@@ -601,6 +634,7 @@ struct ConnectScreen: View {
     private func handleInstallationFailureDismissed() {
         let followUp = installationFailureFollowUp
         installationFailureFollowUp = .backToDevice
+        installationFailureOverride = nil
         switch followUp {
         case .backToDevice:
             returnToDeviceAfterFailure()
@@ -652,6 +686,97 @@ struct ConnectScreen: View {
         case .loadingCatalog, .scanning, .acquiringArtifact, .preparingInstallation, .installing:
             break
         }
+    }
+
+    /// A stop before any write because the watch was busy or no longer
+    /// visible waits for the same watch instead of ending the installation.
+    /// Custom maps are not kept across a disconnect, so they stop as before.
+    private func makeWatchReconnectWait() -> WatchReconnectWait? {
+        guard mapEngine.stoppedBeforeWriteForWatchReconnect,
+              mapEngine.canRetryFailedInstallation,
+              let plan = selectedInstallationPlan,
+              !plan.installItems.isEmpty,
+              !plan.installItems.contains(where: { $0.package.sourceKind == .custom }),
+              let watchKey = identity?.physicalManifestDeviceKey else {
+            return nil
+        }
+        return WatchReconnectWait(
+            watchKey: watchKey,
+            selectedMapIDs: selectedMapIDs,
+            selectedOptionalArtifactIDs: selectedOptionalArtifactIDs,
+            mapTitle: installationFailureMapTitle(in: plan),
+            watchWasBusy: mapEngine.evidenceFailureContext?.isWatchSessionBusy == true
+        )
+    }
+
+    private func continueWatchReconnectWaitIfReady() {
+        guard let wait = watchReconnectWait, watchReconnectFollowUp == nil else { return }
+        let decision = WatchReconnectWaitPolicy.decision(
+            for: wait,
+            now: Date(),
+            deviceConnected: deviceEngine.hasConnectedDevice,
+            connectedWatchKey: identity?.physicalManifestDeviceKey,
+            mapScanReady: mapEngine.state == .scanned,
+            authorizationResolved: deviceEngine.installationAuthorization != .resolving
+        )
+        switch decision {
+        case .keepWaiting:
+            return
+        case .resume:
+            watchReconnectFollowUp = .resume(wait)
+        case .differentWatch:
+            watchReconnectFollowUp = .stop(wait.mapTitle, WatchReconnectWaitPolicy.differentWatchMessage)
+        case .timedOut:
+            // The watch never left: the engine still holds the original
+            // failure, so the normal failure dialog shows it unchanged.
+            watchReconnectFollowUp = !wait.watchWasDisconnected && mapEngine.installationPhase == .failed
+                ? .showFailure
+                : .stop(wait.mapTitle, WatchReconnectWaitPolicy.timedOutMessage)
+        }
+        watchReconnectWait = nil
+    }
+
+    private func handleWatchReconnectWaitDismissed() {
+        let followUp = watchReconnectFollowUp ?? .cancel
+        watchReconnectFollowUp = nil
+        switch followUp {
+        case .cancel:
+            // The download stays kept for Try again; nothing else changes.
+            returnToDeviceAfterFailure()
+        case .showFailure:
+            isShowingInstallationFailure = true
+        case let .stop(mapTitle, reason):
+            installationFailureOverride = InstallationFailureOverride(mapTitle: mapTitle, reason: reason)
+            isShowingInstallationFailure = true
+        case let .resume(wait):
+            resumeInstallationAfterReconnect(wait)
+        }
+    }
+
+    /// The same watch is back and read again: start the normal flow exactly
+    /// like Try again. Every check runs again; a kept download is reused only
+    /// after it is revalidated.
+    private func resumeInstallationAfterReconnect(_ wait: WatchReconnectWait) {
+        selectedMapIDs = wait.selectedMapIDs
+        selectedOptionalArtifactIDs = wait.selectedOptionalArtifactIDs
+        selectedSection = .installMaps
+        guard let plan = currentInstallationPlan, !plan.installItems.isEmpty else {
+            selectedInstallationPlan = nil
+            localInstallStep = .choose
+            return
+        }
+        let availability = installAvailability(for: plan)
+        guard availability.isEnabled else {
+            selectedInstallationPlan = nil
+            localInstallStep = .choose
+            installationFailureOverride = InstallationFailureOverride(mapTitle: wait.mapTitle,
+                reason: availability.userReason ?? "Installation could not be completed safely.")
+            isShowingInstallationFailure = true
+            return
+        }
+        selectedInstallationPlan = plan
+        localInstallStep = .install
+        beginInstallationAfterConsent(plan)
     }
 
     private func installAvailability(for plan: InstallationPlan) -> InstallReviewAvailability {
@@ -2630,6 +2755,7 @@ struct ConnectScreen: View {
     }
 
     private var installationFailureReason: String {
+        if let override = installationFailureOverride { return override.reason }
         let normalized = mapEngine.installationErrorMessage?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return normalized.isEmpty
@@ -2652,6 +2778,8 @@ struct ConnectScreen: View {
     }
 
     private var installationFailureSafetyMessage: String? {
+        // A reconnect wait ends only after a stop before any write.
+        if installationFailureOverride != nil { return "Your existing maps were not changed." }
         if let diagnostics = mapEngine.installationResult?.diagnostics {
             return diagnostics.existingFilesProtectionPassed
                 && diagnostics.unrelatedFilesProtectionPassed
@@ -3140,6 +3268,57 @@ private enum InstallationFailureFollowUp {
     case manageMaps
 }
 
+/// The reason shown when a reconnect wait ends without continuing; the
+/// engine no longer holds the original failure after a disconnect.
+private struct InstallationFailureOverride {
+    let mapTitle: String?
+    let reason: String
+}
+
+private enum WatchReconnectFollowUp {
+    case cancel
+    case showFailure
+    case stop(String?, String)
+    case resume(WatchReconnectWait)
+}
+
+/// Shown instead of the failure dialog after a stop before any write because
+/// the watch was busy or no longer visible. It only waits; reconnecting the
+/// same watch starts the normal installation again.
+private struct WatchReconnectWaitDialog: View {
+    let mapTitle: String?
+    let watchWasBusy: Bool
+    let isCheckingWatch: Bool
+    let onCancel: () -> Void
+
+    private var message: String {
+        if isCheckingWatch {
+            return "Your watch is back. Terento is checking it again before it continues with the map it already downloaded."
+        }
+        let steps = "Unplug your watch, wait 5 seconds and plug it back in. Terento then checks it again and continues with the map it already downloaded."
+        return watchWasBusy
+            ? "Your watch may be in use by another app. Quit Garmin Express and similar apps. " + steps
+            : "Terento could not reach your watch before installing. " + steps
+    }
+
+    var body: some View {
+        TerentoConfirmationDialog(
+            icon: isCheckingWatch ? "arrow.triangle.2.circlepath" : "cable.connector",
+            iconColor: isCheckingWatch ? TerentoColors.interactive : TerentoColors.warning,
+            title: isCheckingWatch ? "Checking your watch" : "Reconnect your watch",
+            subtitle: mapTitle ?? "",
+            message: message,
+            supportingMessage: "Nothing was written to your watch. Terento waits up to 5 minutes.",
+            secondaryLabel: "Cancel",
+            primaryLabel: nil,
+            isDestructive: false,
+            onCancel: onCancel,
+            onConfirm: {}
+        )
+        .accessibilityElement(children: .contain)
+    }
+}
+
 private struct InstallationFailureDialog: View {
     let mapTitle: String?
     let reason: String
@@ -3339,7 +3518,8 @@ private struct TerentoConfirmationDialog: View {
     let secondaryUsesCancelShortcut: Bool
     let tertiaryLabel: String?
     let onTertiary: () -> Void
-    let primaryLabel: String
+    /// nil shows only the secondary action, for a dialog that only waits.
+    let primaryLabel: String?
     let isDestructive: Bool
     let onCancel: () -> Void
     let onConfirm: () -> Void
@@ -3361,7 +3541,7 @@ private struct TerentoConfirmationDialog: View {
         secondaryUsesCancelShortcut: Bool = true,
         tertiaryLabel: String? = nil,
         onTertiary: @escaping () -> Void = {},
-        primaryLabel: String,
+        primaryLabel: String?,
         isDestructive: Bool,
         onCancel: @escaping () -> Void,
         onConfirm: @escaping () -> Void,
@@ -3494,16 +3674,18 @@ private struct TerentoConfirmationDialog: View {
                         )
                     }
 
-                    dialogButton(
-                        primaryLabel,
-                        assetIcon: nil,
-                        color: .white,
-                        background: isDestructive ? TerentoColors.error : TerentoColors.interactive,
-                        border: nil,
-                        role: isDestructive ? .destructive : nil,
-                        action: onConfirm
-                    )
-                    .keyboardShortcut(.defaultAction)
+                    if let primaryLabel {
+                        dialogButton(
+                            primaryLabel,
+                            assetIcon: nil,
+                            color: .white,
+                            background: isDestructive ? TerentoColors.error : TerentoColors.interactive,
+                            border: nil,
+                            role: isDestructive ? .destructive : nil,
+                            action: onConfirm
+                        )
+                        .keyboardShortcut(.defaultAction)
+                    }
                 }
                 .padding(.top, 24)
             }
