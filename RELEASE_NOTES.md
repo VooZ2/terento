@@ -1,5 +1,4 @@
 # Terento v1.2.1 (build 48)
-<!-- DRAFT: staged 1.2.1 build 48; not published until the signed, notarized DMG is on GitHub. -->
 
 Terento 1.2.1 is a fix release for Terento 1.2.0, the free, open-source app for installing community maps on map-capable Garmin smartwatches and Edge bike computers from Apple Silicon Macs running macOS 13 or later. Compatibility is still evaluated model by model.
 
@@ -14,6 +13,8 @@ When the watch is busy or can't be reached before anything is written to it, Ter
 - If the watch is busy or can't be reached before anything is written to it, Terento no longer ends the installation. It asks you to unplug the watch and plug it back in, waits up to 5 minutes, checks that it is the same watch and continues with the map it already downloaded, without downloading it again. Cancel stops the installation and nothing is written.
 - If a different watch is connected while Terento waits, it stops and nothing is written.
 - A download kept for Try again is no longer deleted when the watch is unplugged.
+
+<!-- DMG SHA-256: 06bedd5c494b2788a6764a93aa7d7a00134c134eb052e357961881ecc021ff51 -->
 
 # Terento v1.2.0 (build 47)
 

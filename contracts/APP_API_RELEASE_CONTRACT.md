@@ -1,11 +1,26 @@
 # App–API compatibility and release contract
 
-## 1.2.1 — no server-first change
+## Stable release 1.2.1 build 48 — published
 
-The 1.2.1 build 48 candidate (#699: wait for the same watch after a stop
-before any write) is app-only. It sends the same telemetry and failure context
-as 1.2.0, requests `catalog-v5.json` and adds no route, payload field or
-migration, so no API deploy precedes it.
+Published on 2026-11-14 from GitHub-verified source
+`4fbf4f15598fea8130fe7d3576c961f2ff8ed7fd` (main after PR #702), tag
+`v1.2.1-build48`, on the `stable` update channel. It is app-only (#699: wait
+for the same watch after a stop before any write): it sends the same telemetry
+and failure context as 1.2.0, requests `catalog-v5.json` and adds no route,
+payload field or migration, so no API deploy preceded it. The tag is listed in
+`contracts/released-catalog-clients.json` with `catalog-v5.json`.
+
+The full packaging suite and PR CI passed. Apple notarization was Accepted.
+Signing, stapling, Gatekeeper and ZIP/DMG launch checks passed. The owner gave
+the release word and reported the real-watch check of the reconnect wait as
+passed. The deferred Freizeitkarte and OpenTopoMap Update gate stays recorded
+in `contracts/release-hardware-gates.json`.
+
+DMG: 7,641,713 bytes, SHA-256
+`06bedd5c494b2788a6764a93aa7d7a00134c134eb052e357961881ecc021ff51`.
+ZIP: 6,878,230 bytes, SHA-256
+`ad66c18848feb35becd01975c2057fca21bd610079a8c686bf7256595be9467c`.
+Public GitHub asset digests match independently downloaded files.
 
 ## 1.2.0 server-first acceptance
 
