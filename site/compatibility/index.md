@@ -9,7 +9,7 @@ Terento works with Garmin watches and newer Garmin Edge bike computers with map 
 
 Not seeing your model? That doesn’t mean it won’t work. It may be that no one has shared a successful install from it yet.
 
-**44** models with successful installs**410** successful installsLatest successful install November 14, 2026
+**44** models with successful installs**415** successful installsLatest successful install November 14, 2026
 
 How this list works
 
@@ -25,11 +25,11 @@ fēnix
 
 ### fēnix 8 47 mm, AMOLED
 
-63 successful installs
+64 successful installs
 
-App 62 Web 1
+App 63 Web 1
 
-Latest successful install November 13, 2026
+Latest successful install November 14, 2026
 
 Forerunner
 
@@ -93,6 +93,16 @@ Latest successful install November 9, 2026
 
 fēnix
 
+### fēnix 9 Pro 47 mm, AMOLED
+
+15 successful installs
+
+App 13 Web 2
+
+Latest successful install November 14, 2026
+
+fēnix
+
 ### fēnix 9 Pro 51 mm, AMOLED, inReach
 
 15 successful installs
@@ -130,16 +140,6 @@ fēnix
 App 12 Web 1
 
 Latest successful install November 14, 2026
-
-fēnix
-
-### fēnix 9 Pro 47 mm, AMOLED
-
-13 successful installs
-
-App 13
-
-Latest successful install November 13, 2026
 
 epix
 
@@ -313,6 +313,16 @@ Latest successful install October 29, 2026
 
 fēnix
 
+### fēnix 6X Pro 51 mm, MIP, Historical
+
+3 successful installs
+
+App 3
+
+Latest successful install November 14, 2026
+
+fēnix
+
 ### fēnix 9 Pro 51 mm, MIP, Solar, inReach
 
 3 successful installs
@@ -341,6 +351,16 @@ App 2
 
 Latest successful install October 14, 2026
 
+Edge
+
+### Edge 1040 Smartwatch
+
+2 successful installs
+
+App 2
+
+Latest successful install November 14, 2026
+
 Enduro
 
 ### Enduro 2 Historical
@@ -350,16 +370,6 @@ Enduro
 App 2
 
 Latest successful install October 13, 2026
-
-fēnix
-
-### fēnix 6X Pro 51 mm, MIP, Historical
-
-2 successful installs
-
-App 2
-
-Latest successful install October 24, 2026
 
 fēnix
 
@@ -400,16 +410,6 @@ Venu
 App 2
 
 Latest successful install October 29, 2026
-
-Edge
-
-### Edge 1040 Smartwatch
-
-1 successful install
-
-App 1
-
-Latest successful install November 13, 2026
 
 Edge
 

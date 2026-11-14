@@ -9,7 +9,7 @@ Terento funguje s hodinkami Garmin a novějšími cyklopočítači Garmin Edge s
 
 Pokud zde svůj model nevidíte, neznamená to, že nebude fungovat. Možná z něj zatím nikdo nesdílel úspěšnou instalaci.
 
-**44** modely s úspěšnými instalacemi**410** úspěšných instalacíPoslední úspěšná instalace 14. listopadu 2026
+**44** modely s úspěšnými instalacemi**415** úspěšných instalacíPoslední úspěšná instalace 14. listopadu 2026
 
 Jak tento seznam funguje
 
@@ -25,11 +25,11 @@ fēnix
 
 ### fēnix 8 47 mm, AMOLED
 
-63 úspěšných instalací
+64 úspěšných instalací
 
-App 62 Web 1
+App 63 Web 1
 
-Poslední úspěšná instalace 13. listopadu 2026
+Poslední úspěšná instalace 14. listopadu 2026
 
 Forerunner
 
@@ -93,6 +93,16 @@ Poslední úspěšná instalace 9. listopadu 2026
 
 fēnix
 
+### fēnix 9 Pro 47 mm, AMOLED
+
+15 úspěšných instalací
+
+App 13 Web 2
+
+Poslední úspěšná instalace 14. listopadu 2026
+
+fēnix
+
 ### fēnix 9 Pro 51 mm, AMOLED, inReach
 
 15 úspěšných instalací
@@ -130,16 +140,6 @@ fēnix
 App 12 Web 1
 
 Poslední úspěšná instalace 14. listopadu 2026
-
-fēnix
-
-### fēnix 9 Pro 47 mm, AMOLED
-
-13 úspěšných instalací
-
-App 13
-
-Poslední úspěšná instalace 13. listopadu 2026
 
 epix
 
@@ -313,6 +313,16 @@ Poslední úspěšná instalace 29. října 2026
 
 fēnix
 
+### fēnix 6X Pro 51 mm, MIP, Historical
+
+3 úspěšných instalací
+
+App 3
+
+Poslední úspěšná instalace 14. listopadu 2026
+
+fēnix
+
 ### fēnix 9 Pro 51 mm, MIP, Solar, inReach
 
 3 úspěšných instalací
@@ -341,6 +351,16 @@ App 2
 
 Poslední úspěšná instalace 14. října 2026
 
+Edge
+
+### Edge 1040 Smartwatch
+
+2 úspěšných instalací
+
+App 2
+
+Poslední úspěšná instalace 14. listopadu 2026
+
 Enduro
 
 ### Enduro 2 Historical
@@ -350,16 +370,6 @@ Enduro
 App 2
 
 Poslední úspěšná instalace 13. října 2026
-
-fēnix
-
-### fēnix 6X Pro 51 mm, MIP, Historical
-
-2 úspěšných instalací
-
-App 2
-
-Poslední úspěšná instalace 24. října 2026
 
 fēnix
 
@@ -400,16 +410,6 @@ Venu
 App 2
 
 Poslední úspěšná instalace 29. října 2026
-
-Edge
-
-### Edge 1040 Smartwatch
-
-1 úspěšná instalace
-
-App 1
-
-Poslední úspěšná instalace 13. listopadu 2026
 
 Edge
 

@@ -9,7 +9,7 @@ Terento działa z zegarkami Garmin i nowszymi licznikami rowerowymi Garmin Edge 
 
 Brak Twojego modelu nie oznacza, że nie zadziała. Być może nikt jeszcze nie udostępnił z niego udanej instalacji.
 
-**44** modele z udanymi instalacjami**410** udane instalacjeOstatnia udana instalacja 14 listopada 2026
+**44** modele z udanymi instalacjami**415** udane instalacjeOstatnia udana instalacja 14 listopada 2026
 
 Jak działa ta lista
 
@@ -25,11 +25,11 @@ fēnix
 
 ### fēnix 8 47 mm, AMOLED
 
-63 udanych instalacji
+64 udanych instalacji
 
-App 62 Web 1
+App 63 Web 1
 
-Ostatnia udana instalacja 13 listopada 2026
+Ostatnia udana instalacja 14 listopada 2026
 
 Forerunner
 
@@ -93,6 +93,16 @@ Ostatnia udana instalacja 9 listopada 2026
 
 fēnix
 
+### fēnix 9 Pro 47 mm, AMOLED
+
+15 udanych instalacji
+
+App 13 Web 2
+
+Ostatnia udana instalacja 14 listopada 2026
+
+fēnix
+
 ### fēnix 9 Pro 51 mm, AMOLED, inReach
 
 15 udanych instalacji
@@ -130,16 +140,6 @@ fēnix
 App 12 Web 1
 
 Ostatnia udana instalacja 14 listopada 2026
-
-fēnix
-
-### fēnix 9 Pro 47 mm, AMOLED
-
-13 udanych instalacji
-
-App 13
-
-Ostatnia udana instalacja 13 listopada 2026
 
 epix
 
@@ -313,6 +313,16 @@ Ostatnia udana instalacja 29 października 2026
 
 fēnix
 
+### fēnix 6X Pro 51 mm, MIP, Historical
+
+3 udanych instalacji
+
+App 3
+
+Ostatnia udana instalacja 14 listopada 2026
+
+fēnix
+
 ### fēnix 9 Pro 51 mm, MIP, Solar, inReach
 
 3 udanych instalacji
@@ -341,6 +351,16 @@ App 2
 
 Ostatnia udana instalacja 14 października 2026
 
+Edge
+
+### Edge 1040 Smartwatch
+
+2 udanych instalacji
+
+App 2
+
+Ostatnia udana instalacja 14 listopada 2026
+
 Enduro
 
 ### Enduro 2 Historical
@@ -350,16 +370,6 @@ Enduro
 App 2
 
 Ostatnia udana instalacja 13 października 2026
-
-fēnix
-
-### fēnix 6X Pro 51 mm, MIP, Historical
-
-2 udanych instalacji
-
-App 2
-
-Ostatnia udana instalacja 24 października 2026
 
 fēnix
 
@@ -400,16 +410,6 @@ Venu
 App 2
 
 Ostatnia udana instalacja 29 października 2026
-
-Edge
-
-### Edge 1040 Smartwatch
-
-1 udana instalacja
-
-App 1
-
-Ostatnia udana instalacja 13 listopada 2026
 
 Edge
 

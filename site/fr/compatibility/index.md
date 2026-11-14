@@ -9,7 +9,7 @@ Terento fonctionne avec les montres Garmin et les compteurs vélo Garmin Edge r�
 
 L’absence de votre modèle ne veut pas dire qu’il ne fonctionne pas. Personne n’a peut-être encore partagé d’installation réussie avec ce modèle.
 
-**44** modèles avec des installations réussies**410** installations réussiesDernière installation réussie 14 novembre 2026
+**44** modèles avec des installations réussies**415** installations réussiesDernière installation réussie 14 novembre 2026
 
 Comment fonctionne cette liste
 
@@ -25,11 +25,11 @@ fēnix
 
 ### fēnix 8 47 mm, AMOLED
 
-63 installations réussies
+64 installations réussies
 
-App 62 Web 1
+App 63 Web 1
 
-Dernière installation réussie 13 novembre 2026
+Dernière installation réussie 14 novembre 2026
 
 Forerunner
 
@@ -93,6 +93,16 @@ Dernière installation réussie 9 novembre 2026
 
 fēnix
 
+### fēnix 9 Pro 47 mm, AMOLED
+
+15 installations réussies
+
+App 13 Web 2
+
+Dernière installation réussie 14 novembre 2026
+
+fēnix
+
 ### fēnix 9 Pro 51 mm, AMOLED, inReach
 
 15 installations réussies
@@ -130,16 +140,6 @@ fēnix
 App 12 Web 1
 
 Dernière installation réussie 14 novembre 2026
-
-fēnix
-
-### fēnix 9 Pro 47 mm, AMOLED
-
-13 installations réussies
-
-App 13
-
-Dernière installation réussie 13 novembre 2026
 
 epix
 
@@ -313,6 +313,16 @@ Dernière installation réussie 29 octobre 2026
 
 fēnix
 
+### fēnix 6X Pro 51 mm, MIP, Historical
+
+3 installations réussies
+
+App 3
+
+Dernière installation réussie 14 novembre 2026
+
+fēnix
+
 ### fēnix 9 Pro 51 mm, MIP, Solar, inReach
 
 3 installations réussies
@@ -341,6 +351,16 @@ App 2
 
 Dernière installation réussie 14 octobre 2026
 
+Edge
+
+### Edge 1040 Smartwatch
+
+2 installations réussies
+
+App 2
+
+Dernière installation réussie 14 novembre 2026
+
 Enduro
 
 ### Enduro 2 Historical
@@ -350,16 +370,6 @@ Enduro
 App 2
 
 Dernière installation réussie 13 octobre 2026
-
-fēnix
-
-### fēnix 6X Pro 51 mm, MIP, Historical
-
-2 installations réussies
-
-App 2
-
-Dernière installation réussie 24 octobre 2026
 
 fēnix
 
@@ -400,16 +410,6 @@ Venu
 App 2
 
 Dernière installation réussie 29 octobre 2026
-
-Edge
-
-### Edge 1040 Smartwatch
-
-1 installation réussie
-
-App 1
-
-Dernière installation réussie 13 novembre 2026
 
 Edge
 
