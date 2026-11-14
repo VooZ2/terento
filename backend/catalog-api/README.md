@@ -161,6 +161,11 @@ runtime dependencies.
   reports, failed Health checks) as sanitised JSON. It requires a bearer token
   whose SHA-256 digest is configured as `ADMIN_READ_TOKEN_SHA256` and grants no
   Admin page or write ([contract](docs/api.md#get-internalattention)).
+- `GET /admin/website-stats` and `GET /admin/api/umami` show Umami's
+  terento.app numbers to a signed-in admin. The server reads Umami with
+  `UMAMI_BASE_URL`, `UMAMI_WEBSITE_ID` and a view-only `UMAMI_API_KEY`; the key
+  never reaches the browser or the logs
+  ([contract](docs/api.md#get-httpsapiterentoappadminwebsite-stats-and-get-adminapiumami)).
 - `GET /maps/catalog.json` returns an additive provider-neutral `schemaVersion: 2`
   projection while retaining catalog version 1 fields for existing macOS
   clients. The response includes `ETag`, `Last-Modified`, and cache headers and
