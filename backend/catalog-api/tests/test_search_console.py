@@ -276,6 +276,12 @@ class MarkupTests(unittest.TestCase):
         self.assertEqual(svg.count("class='overview-chart-group gsc-chart-day'"), 7)
         self.assertIn("13 Nov (preliminary) · Clicks 9 · Impressions 121", svg)
         self.assertIn("Google Search Console · dates in Pacific Time · data delayed 2–3 days", markup)
+        # Each series in its own group (its own colour) with a named swatch.
+        for metric, label in (("clicks", "Clicks"), ("impressions", "Impressions")):
+            group = svg.split(f"<g class='gsc-series-{metric}'>", 1)[1].split("</g>", 1)[0]
+            self.assertIn("class='gsc-chart-swatch'", group)
+            self.assertIn(f">{label}</text>", group)
+            self.assertIn("class='gsc-chart-line'", group)
 
     def test_queries_escaped_with_near_top_and_hidden_rare_queries(self):
         markup = self.render()

@@ -529,8 +529,10 @@ unavailable headline block keeps its title for its marks (owner request
    points) and Avg position (lower is better: a fall is `▼` green; change to
    one decimal) count only final days, the days before Search Console's first
    incomplete day, each against as many days just before the period (`vs
-   previous N days`, N the final days counted; owner 2026-11-14); two stacked line charts on one date axis, Clicks over
-   Impressions, days from Search Console's first incomplete day dotted after a
+   previous N days`, N the final days counted; owner 2026-11-14); two stacked
+   line charts on one date axis with a wide gap between them, Clicks
+   (Interactive Primary) over Impressions (Stone dark), each named in its own
+   colour beside a line swatch (owner 2026-11-14), days from Search Console's first incomplete day dotted after a
    `Preliminary` mark, every day focusable with its date and values; under them
    one grey line `Google Search Console · dates in Pacific Time · data delayed
    2–3 days`; `Top queries` (10 by clicks, then impressions: query, clicks,

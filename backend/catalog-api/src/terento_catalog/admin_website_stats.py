@@ -494,7 +494,9 @@ def _gsc_chart_svg(buckets: list[dict[str, Any]], width: int, variant: str) -> s
     """Clicks over Impressions: two small line charts, each with its own Y
     axis, under one date axis (not one chart with two Y axes)."""
     font = 13 if variant == "mobile" else 11
-    height, left, right, top, gap, bottom = 236, 42, 12, 22, 30, 28
+    # A wide gap and each series in its own colour with a named swatch keep
+    # Clicks and Impressions apart (owner 2026-11-14).
+    height, left, right, top, gap, bottom = 252, 42, 12, 22, 46, 28
     panel = (height - top - gap - bottom) / 2
     plot_width = width - left - right
     count = len(buckets)
@@ -504,6 +506,7 @@ def _gsc_chart_svg(buckets: list[dict[str, Any]], width: int, variant: str) -> s
     marks: list[list[tuple[float, float]]] = []
     for row, (metric, label) in enumerate((("clicks", "Clicks"), ("impressions", "Impressions"))):
         panel_top = top + row * (panel + gap)
+        parts.append(f"<g class='gsc-series-{metric}'>")
         base = panel_top + panel
         step = _nice_tick_step(max(bucket[metric] for bucket in buckets))
         scale = step * 4
@@ -512,7 +515,8 @@ def _gsc_chart_svg(buckets: list[dict[str, Any]], width: int, variant: str) -> s
             parts.append(f"<line class='overview-chart-grid' x1='{left}' x2='{width - right}' y1='{y:.1f}' y2='{y:.1f}'/>"
                          f"<text class='overview-chart-axis-label' x='{left - 8}' y='{y + 4:.1f}' text-anchor='end'>"
                          f"{_compact(amount)}</text>")
-        parts.append(f"<text class='gsc-chart-name' x='{left}' y='{panel_top - 8:.1f}'>{label}</text>")
+        parts.append(f"<line class='gsc-chart-swatch' x1='{left}' x2='{left + 14}' y1='{panel_top - 12:.1f}' y2='{panel_top - 12:.1f}'/>"
+                     f"<text class='gsc-chart-name' x='{left + 20}' y='{panel_top - 8:.1f}'>{label}</text>")
         points = [(x, base - panel * bucket[metric] / scale) for x, bucket in zip(xs, buckets)]
         marks.append(points)
         coords = [f"{x:.1f},{y:.1f}" for x, y in points]
@@ -525,6 +529,7 @@ def _gsc_chart_svg(buckets: list[dict[str, Any]], width: int, variant: str) -> s
             parts.append(f"<polyline class='gsc-chart-line is-preliminary' points='{' '.join(dotted)}'/>")
         if count == 1:
             parts.append(f"<circle class='gsc-chart-dot' cx='{points[0][0]:.1f}' cy='{points[0][1]:.1f}' r='3'/>")
+        parts.append("</g>")
     if prelim is not None:
         x = xs[prelim]
         anchor = "end" if x > width - right - 80 else "start"
@@ -537,7 +542,8 @@ def _gsc_chart_svg(buckets: list[dict[str, Any]], width: int, variant: str) -> s
         text = f"{when} · Clicks {bucket['clicks']:,} · Impressions {bucket['impressions']:,}"
         strip = _chart_value_attributes(when, [("gsc-clicks", "Clicks", bucket["clicks"]),
                                                ("gsc-impressions", "Impressions", bucket["impressions"])], None)
-        dots = "".join(f"<circle class='gsc-chart-focus' cx='{x:.1f}' cy='{series[index][1]:.1f}' r='3.5'/>" for series in marks)
+        dots = "".join(f"<circle class='gsc-chart-focus gsc-series-{metric}' cx='{x:.1f}' cy='{series[index][1]:.1f}' r='3.5'/>"
+                       for metric, series in zip(("clicks", "impressions"), marks))
         parts.append(
             f"<g class='overview-chart-group gsc-chart-day' role='img' tabindex='0'{strip} aria-label='{html.escape(text, quote=True)}'>"
             f"<title>{html.escape(text)}</title><rect class='gsc-chart-hit' x='{max(x - slot / 2, left):.1f}' y='{top - 4}' "
