@@ -120,11 +120,20 @@ def _stale(block: dict[str, Any]) -> str:
             + f"<span class='admin-metric-secondary'>Last result {_timestamp_markup(fetched)}</span>")
 
 
+def _headline(name: str, body: str, extra_attributes: str = "") -> str:
+    """An untitled KPI panel, like the Dashboard and Web installer headline;
+    its first tile already names it."""
+    return (f"<section class='admin-card {_HEAD}' id='{_card_id(name)}' aria-label='{TITLES[name]}'"
+            f"{extra_attributes}>{body}</section>")
+
+
 def _card(name: str, block: dict[str, Any], body: Any, css: str = "") -> str:
     if block.get("state") == "hidden":
         return ""
     if block.get("state") not in ("ok", "stale") or block.get("data") is None:
         return _section_card(TITLES[name], _empty_state("unavailable", UNAVAILABLE), card_id=_card_id(name), css=css)
+    if css == _HEAD and block.get("state") == "ok":
+        return _headline(name, body(block["data"]))
     return _section_card(TITLES[name], body(block["data"]), card_id=_card_id(name), css=css, totals=_stale(block))
 
 
@@ -291,6 +300,7 @@ def _views_note(snapshot: dict[str, Any]) -> str:
 
 
 _KPI = "admin-kpi-panel web-installer-server"
+_HEAD = "admin-kpi-panel web-visits-kpis"
 _LIST = "map-statistics-popularity"
 
 
@@ -300,10 +310,13 @@ def website_stats_blocks(snapshot: dict[str, Any] | None, *, dashboard_url: str 
         return _section_card("Web visits", _empty_state("unavailable", UNAVAILABLE), card_id="web-visits-unavailable")
     period, blocks = snapshot["period"], snapshot["blocks"]
     visitors = _usable(blocks["visitors"])
-    cards = [
-        _card("visitors", blocks["visitors"], lambda data: _visitors(data, period, _views_note(snapshot)), css=_KPI),
-        _card("downloads", blocks["downloads"], lambda data: _downloads(data, visitors, period), css=_KPI),
-    ]
+    cards = []
+    headline = "".join(part for part in (
+        _card("visitors", blocks["visitors"], lambda data: _visitors(data, period, _views_note(snapshot)), css=_HEAD),
+        _card("downloads", blocks["downloads"], lambda data: _downloads(data, visitors, period), css=_HEAD),
+    ) if part)
+    if headline:
+        cards.append(f"<div class='web-installer-grid web-visits-headline'>{headline}</div>")
     lists = "".join(part for part in (
         _card("referrers", blocks["referrers"], lambda data: _referrers(data, visitors), css=_LIST),
         _card("entries", blocks["entries"], _entries, css=_LIST),
@@ -332,7 +345,11 @@ def _loading_blocks() -> str:
         TITLES[name], "<div class='web-visits-skeleton' aria-hidden='true'><span></span><span></span><span></span></div>"
         "<span class='sr-only'>Loading…</span>", card_id=_card_id(name), css=css,
         extra_attributes=" data-website-stats-block aria-busy='true'")
-    return (loading("visitors") + loading("downloads")
+    skeleton = ("<div class='web-visits-skeleton' aria-hidden='true'><span></span><span></span><span></span></div>"
+                "<span class='sr-only'>Loading…</span>")
+    headline = lambda name: _headline(name, skeleton, " aria-busy='true'")
+    return ("<div class='web-installer-grid web-visits-headline' data-website-stats-block>" + headline("visitors")
+            + headline("downloads") + "</div>"
             + "<div class='web-installer-grid web-visits-lists' data-website-stats-block>" + loading("referrers", _LIST)
             + loading("entries", _LIST) + loading("countries", _LIST) + "</div>" + loading("vitals") + loading("errors"))
 
