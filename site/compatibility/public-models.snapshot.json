@@ -12,10 +12,26 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://api.terento.app/assets/devices/garmin/fenix-8-47-amoled.webp",
-      "successfulInstallations": 62,
-      "appSuccessfulInstallations": 61,
+      "successfulInstallations": 63,
+      "appSuccessfulInstallations": 62,
       "webSuccessfulInstallations": 1,
-      "lastSuccessfulInstallation": "2026-11-11T18:12:49+00:00"
+      "lastSuccessfulInstallation": "2026-11-13T21:44:55+00:00"
+    },
+    {
+      "model": "Forerunner 970",
+      "variant": null,
+      "caseSizeMm": null,
+      "displayType": null,
+      "screenTechnology": "AMOLED",
+      "solar": null,
+      "inReach": null,
+      "family": "forerunner",
+      "familyName": "Forerunner",
+      "imageUrl": "https://res.garmin.com/en/products/010-02969-12/g/cf-lg.jpg",
+      "successfulInstallations": 34,
+      "appSuccessfulInstallations": 34,
+      "webSuccessfulInstallations": 0,
+      "lastSuccessfulInstallation": "2026-11-13T22:28:19+00:00"
     },
     {
       "model": "Forerunner 965 · Historical",
@@ -32,22 +48,6 @@
       "appSuccessfulInstallations": 29,
       "webSuccessfulInstallations": 3,
       "lastSuccessfulInstallation": "2026-11-01T16:37:09+00:00"
-    },
-    {
-      "model": "Forerunner 970",
-      "variant": null,
-      "caseSizeMm": null,
-      "displayType": null,
-      "screenTechnology": "AMOLED",
-      "solar": null,
-      "inReach": null,
-      "family": "forerunner",
-      "familyName": "Forerunner",
-      "imageUrl": "https://res.garmin.com/en/products/010-02969-12/g/cf-lg.jpg",
-      "successfulInstallations": 30,
-      "appSuccessfulInstallations": 30,
-      "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-11-11T18:34:42+00:00"
     },
     {
       "model": "fēnix 9 Pro · 51 mm",
@@ -706,5 +706,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-11-13T19:27:36.962032+00:00"
+  "generatedAt": "2026-11-14T05:52:06.503486+00:00"
 }

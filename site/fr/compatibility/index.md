@@ -9,7 +9,7 @@ Terento fonctionne avec les montres Garmin et les compteurs vélo Garmin Edge r�
 
 L’absence de votre modèle ne veut pas dire qu’il ne fonctionne pas. Personne n’a peut-être encore partagé d’installation réussie avec ce modèle.
 
-**44** modèles avec des installations réussies**401** installations réussiesDernière installation réussie 13 novembre 2026
+**44** modèles avec des installations réussies**406** installations réussiesDernière installation réussie 13 novembre 2026
 
 Comment fonctionne cette liste
 
@@ -25,11 +25,21 @@ fēnix
 
 ### fēnix 8 47 mm, AMOLED
 
-62 installations réussies
+63 installations réussies
 
-App 61 Web 1
+App 62 Web 1
 
-Dernière installation réussie 11 novembre 2026
+Dernière installation réussie 13 novembre 2026
+
+Forerunner
+
+### Forerunner 970 AMOLED
+
+34 installations réussies
+
+App 34
+
+Dernière installation réussie 13 novembre 2026
 
 Forerunner
 
@@ -40,16 +50,6 @@ Forerunner
 App 29 Web 3
 
 Dernière installation réussie 1 novembre 2026
-
-Forerunner
-
-### Forerunner 970 AMOLED
-
-30 installations réussies
-
-App 30
-
-Dernière installation réussie 11 novembre 2026
 
 fēnix
 
