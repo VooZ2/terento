@@ -162,6 +162,22 @@
       "lastSuccessfulInstallation": "2026-11-12T17:03:40+00:00"
     },
     {
+      "model": "fēnix 7 · 47 mm",
+      "variant": "47 mm",
+      "caseSizeMm": 47,
+      "displayType": "Solar",
+      "screenTechnology": null,
+      "solar": null,
+      "inReach": null,
+      "family": "fenix",
+      "familyName": "fēnix",
+      "imageUrl": "https://res.garmin.com/en/products/010-02540-01/v/cf-lg-f8d67916-945d-46c2-b5a7-768e40f3acd4.jpg",
+      "successfulInstallations": 13,
+      "appSuccessfulInstallations": 12,
+      "webSuccessfulInstallations": 1,
+      "lastSuccessfulInstallation": "2026-11-14T07:44:27+00:00"
+    },
+    {
       "model": "fēnix 9 Pro · 47 mm",
       "variant": "47 mm",
       "caseSizeMm": 47,
@@ -176,22 +192,6 @@
       "appSuccessfulInstallations": 13,
       "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-11-13T14:13:53+00:00"
-    },
-    {
-      "model": "fēnix 7 · 47 mm",
-      "variant": "47 mm",
-      "caseSizeMm": 47,
-      "displayType": "Solar",
-      "screenTechnology": null,
-      "solar": null,
-      "inReach": null,
-      "family": "fenix",
-      "familyName": "fēnix",
-      "imageUrl": "https://res.garmin.com/en/products/010-02540-01/v/cf-lg-f8d67916-945d-46c2-b5a7-768e40f3acd4.jpg",
-      "successfulInstallations": 12,
-      "appSuccessfulInstallations": 11,
-      "webSuccessfulInstallations": 1,
-      "lastSuccessfulInstallation": "2026-10-17T15:39:37+00:00"
     },
     {
       "model": "epix Pro (Gen 2) · 47 mm, AMOLED",
@@ -290,6 +290,22 @@
       "lastSuccessfulInstallation": "2026-11-13T12:55:51+00:00"
     },
     {
+      "model": "Edge 1050",
+      "variant": null,
+      "caseSizeMm": null,
+      "displayType": null,
+      "screenTechnology": null,
+      "solar": null,
+      "inReach": null,
+      "family": "edge",
+      "familyName": "Edge",
+      "imageUrl": "https://res.garmin.com/en/products/010-02890-01/g/cf-lg.jpg",
+      "successfulInstallations": 7,
+      "appSuccessfulInstallations": 7,
+      "webSuccessfulInstallations": 0,
+      "lastSuccessfulInstallation": "2026-11-14T07:26:33+00:00"
+    },
+    {
       "model": "epix (Gen 2) · 47 mm",
       "variant": "47 mm",
       "caseSizeMm": 47,
@@ -352,22 +368,6 @@
       "appSuccessfulInstallations": 6,
       "webSuccessfulInstallations": 0,
       "lastSuccessfulInstallation": "2026-11-11T10:05:46+00:00"
-    },
-    {
-      "model": "Edge 1050",
-      "variant": null,
-      "caseSizeMm": null,
-      "displayType": null,
-      "screenTechnology": null,
-      "solar": null,
-      "inReach": null,
-      "family": "edge",
-      "familyName": "Edge",
-      "imageUrl": "https://res.garmin.com/en/products/010-02890-01/g/cf-lg.jpg",
-      "successfulInstallations": 4,
-      "appSuccessfulInstallations": 4,
-      "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-11-12T17:52:42+00:00"
     },
     {
       "model": "Enduro 3",
@@ -706,5 +706,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-11-14T05:52:06.503486+00:00"
+  "generatedAt": "2026-11-14T13:18:18.859061+00:00"
 }
