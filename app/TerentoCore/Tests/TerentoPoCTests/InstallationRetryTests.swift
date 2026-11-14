@@ -22,7 +22,7 @@ struct InstallationRetryTests {
         testRetryClassification()
         testWatchReconnectQualification()
         testWatchReconnectDecision()
-        try testRetainedDownloadSurvivesDisconnect()
+        try await testRetainedDownloadSurvivesDisconnect()
         testActivityPolicy()
         print("PASS: installation retry and keep-awake behavior")
     }
@@ -236,7 +236,8 @@ struct InstallationRetryTests {
     static func testWatchReconnectDecision() {
         let start = Date(timeIntervalSince1970: 1_000_000)
         var wait = WatchReconnectWait(watchKey: "watch-a", selectedMapIDs: ["freizeitkarte-fra"],
-            selectedOptionalArtifactIDs: [:], mapTitle: "France", watchWasBusy: true, now: start)
+            selectedOptionalArtifactIDs: [:], mapTitle: "France", failureReason: "Your watch may be in use.",
+            watchWasBusy: true, now: start)
         let soon = start.addingTimeInterval(30)
         func decide(_ wait: WatchReconnectWait, now: Date? = nil, connected: Bool = true, key: String? = "watch-a",
                     scanned: Bool = true, resolved: Bool = true) -> WatchReconnectWaitPolicy.Decision {
@@ -256,19 +257,44 @@ struct InstallationRetryTests {
         check(decide(wait) == .resume, "the same watch, read again and authorized, continues the installation")
         check(decide(wait, now: start.addingTimeInterval(WatchReconnectWait.timeout)) == .timedOut,
               "after 5 minutes the wait ends even if the watch is back")
+
+        var stayed = wait
+        stayed.watchWasDisconnected = false
+        check(WatchReconnectWaitPolicy.endMessage(for: stayed, decision: .timedOut, deviceConnected: true)
+              == "Your watch may be in use.", "a watch that never left ends with its original failure")
+        check(WatchReconnectWaitPolicy.endMessage(for: wait, decision: .timedOut, deviceConnected: false)
+              == WatchReconnectWaitPolicy.timedOutMessage, "a watch that never came back says so")
+        check(WatchReconnectWaitPolicy.endMessage(for: wait, decision: .timedOut, deviceConnected: true)
+              == WatchReconnectWaitPolicy.timedOutAfterReconnectMessage,
+              "a watch that came back but was not ready in time is not told it never came back")
+        check(WatchReconnectWaitPolicy.endMessage(for: wait, decision: .differentWatch, deviceConnected: true)
+              == WatchReconnectWaitPolicy.differentWatchMessage, "a different watch says so")
+        check(WatchReconnectWaitPolicy.endMessage(for: wait, decision: .keepWaiting, deviceConnected: false)
+              == "Your watch may be in use.", "Cancel after an unplug shows the original failure")
     }
 
     /// The download kept for Try again survives the unplug that the wait asks
     /// for, so the same watch continues without downloading again.
-    @MainActor static func testRetainedDownloadSurvivesDisconnect() throws {
+    @MainActor static func testRetainedDownloadSurvivesDisconnect() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("terento-reconnect-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: root) }
         let engine = MapEngine(operationGate: MTPOperationGate(),
             installationAuthorizationClient: InstallationAuthorizationClient(dataLoader: { _ in throw URLError(.cancelled) }))
         let artifact = try makeArtifact(root: root)
+        let unkept = try makeArtifact(root: root, packageID: "freizeitkarte-esp")
         engine.retainArtifactsForTesting(["freizeitkarte-fra": [artifact.artifactID: artifact]])
+        // Both are still prepared for the stopped attempt when the watch leaves.
+        engine.setValidatedArtifactSetsForTesting([
+            "freizeitkarte-fra": [artifact.artifactID: artifact],
+            "freizeitkarte-esp": [unkept.artifactID: unkept]
+        ])
         engine.setStoppedBeforeWriteForWatchReconnectForTesting(true)
         engine.resetForDisconnectedDevice(presence: .absent)
+        for _ in 0..<100 where FileManager.default.fileExists(atPath: unkept.workspaceRootURL!.path) {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        check(!FileManager.default.fileExists(atPath: unkept.workspaceRootURL!.path),
+              "a disconnect still removes prepared downloads that are not kept for Try again")
         check(!engine.stoppedBeforeWriteForWatchReconnect, "a disconnect clears the stop fact with the rest of the device state")
         check(engine.retainedWorkspaceRoots.contains(artifact.workspaceRootURL!)
               && FileManager.default.fileExists(atPath: artifact.localIMGURL.path),

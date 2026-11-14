@@ -106,8 +106,11 @@ authorization has resolved starts the normal installation again exactly like Try
 again: a new operation, every identity, authorization, inventory, storage and
 preflight check from the start, and the kept download revalidated before any
 write. A different or unidentifiable watch, an authorization that no longer
-allows installing, or 5 minutes without the same watch ends with the failure
-dialog; if the watch never left, it shows the original failure unchanged. The
+allows installing, 5 minutes without the same watch ready, or Cancel ends with
+the failure dialog (Report issue included); if the watch never left, it shows
+the original failure unchanged, otherwise what happened during the wait. The
+dialog announces its state to VoiceOver, and the update prompt never opens over
+it. The
 wait never touches the watch, adds no telemetry, and the first stop stays
 reported as before. A disconnect keeps the downloads kept for Try again. Custom
 imports are not kept across a disconnect and stop as before. Quitting removes retained

@@ -214,6 +214,8 @@ struct ConnectScreen: View {
             && !lifecycleViewModel.isBusy
             && !installationOperationIsActive
             && updatePrompt == nil
+            && watchReconnectWait == nil
+            && !isShowingInstallationFailure
     }
 
     var body: some View {
@@ -428,7 +430,9 @@ struct ConnectScreen: View {
                 watchWasBusy: wait.watchWasBusy,
                 isCheckingWatch: wait.watchWasDisconnected && deviceEngine.hasConnectedDevice,
                 onCancel: {
-                    watchReconnectFollowUp = .cancel
+                    // Cancel ends the wait with the failure dialog, as before
+                    // the wait existed, so Report issue stays available.
+                    watchReconnectFollowUp = endFollowUp(for: wait, decision: .keepWaiting)
                     watchReconnectWait = nil
                 }
             )
@@ -705,6 +709,7 @@ struct ConnectScreen: View {
             selectedMapIDs: selectedMapIDs,
             selectedOptionalArtifactIDs: selectedOptionalArtifactIDs,
             mapTitle: installationFailureMapTitle(in: plan),
+            failureReason: installationFailureReason,
             watchWasBusy: mapEngine.evidenceFailureContext?.isWatchSessionBusy == true
         )
     }
@@ -724,25 +729,29 @@ struct ConnectScreen: View {
             return
         case .resume:
             watchReconnectFollowUp = .resume(wait)
-        case .differentWatch:
-            watchReconnectFollowUp = .stop(wait.mapTitle, WatchReconnectWaitPolicy.differentWatchMessage)
-        case .timedOut:
-            // The watch never left: the engine still holds the original
-            // failure, so the normal failure dialog shows it unchanged.
-            watchReconnectFollowUp = !wait.watchWasDisconnected && mapEngine.installationPhase == .failed
-                ? .showFailure
-                : .stop(wait.mapTitle, WatchReconnectWaitPolicy.timedOutMessage)
+        case .differentWatch, .timedOut:
+            watchReconnectFollowUp = endFollowUp(for: wait, decision: decision)
         }
         watchReconnectWait = nil
     }
 
+    /// While the watch never left, the engine still holds the original
+    /// failure and the normal failure dialog shows it unchanged (Try again,
+    /// Report issue). After a disconnect it shows what happened instead.
+    private func endFollowUp(for wait: WatchReconnectWait,
+                             decision: WatchReconnectWaitPolicy.Decision) -> WatchReconnectFollowUp {
+        if !wait.watchWasDisconnected, mapEngine.installationPhase == .failed {
+            return .showFailure
+        }
+        return .stop(wait.mapTitle, WatchReconnectWaitPolicy.endMessage(
+            for: wait, decision: decision, deviceConnected: deviceEngine.hasConnectedDevice))
+    }
+
     private func handleWatchReconnectWaitDismissed() {
-        let followUp = watchReconnectFollowUp ?? .cancel
+        // Escape or another dismissal ends the wait like Cancel.
+        let followUp = watchReconnectFollowUp ?? .showFailure
         watchReconnectFollowUp = nil
         switch followUp {
-        case .cancel:
-            // The download stays kept for Try again; nothing else changes.
-            returnToDeviceAfterFailure()
         case .showFailure:
             isShowingInstallationFailure = true
         case let .stop(mapTitle, reason):
@@ -3276,7 +3285,6 @@ private struct InstallationFailureOverride {
 }
 
 private enum WatchReconnectFollowUp {
-    case cancel
     case showFailure
     case stop(String?, String)
     case resume(WatchReconnectWait)
@@ -3301,11 +3309,23 @@ private struct WatchReconnectWaitDialog: View {
             : "Terento could not reach your watch before installing. " + steps
     }
 
+    private var title: String {
+        isCheckingWatch ? "Checking your watch" : "Reconnect your watch"
+    }
+
+    /// VoiceOver hears the state when the dialog opens and when it changes.
+    private func announceState() {
+        NSAccessibility.post(element: NSApp as Any, notification: .announcementRequested, userInfo: [
+            .announcement: title,
+            .priority: NSAccessibilityPriorityLevel.high.rawValue
+        ])
+    }
+
     var body: some View {
         TerentoConfirmationDialog(
             icon: isCheckingWatch ? "arrow.triangle.2.circlepath" : "cable.connector",
             iconColor: isCheckingWatch ? TerentoColors.interactive : TerentoColors.warning,
-            title: isCheckingWatch ? "Checking your watch" : "Reconnect your watch",
+            title: title,
             subtitle: mapTitle ?? "",
             message: message,
             supportingMessage: "Nothing was written to your watch. Terento waits up to 5 minutes.",
@@ -3316,6 +3336,8 @@ private struct WatchReconnectWaitDialog: View {
             onConfirm: {}
         )
         .accessibilityElement(children: .contain)
+        .onAppear(perform: announceState)
+        .onChange(of: isCheckingWatch) { _ in announceState() }
     }
 }
 

@@ -421,6 +421,10 @@ final class MapEngine: ObservableObject {
         cancelActiveTaskAndCleanupWorkspaces()
     }
 
+    func setValidatedArtifactSetsForTesting(_ sets: [String: [String: ValidatedMapArtifact]]) {
+        validatedArtifactSets = sets
+    }
+
     func setStoppedBeforeWriteForWatchReconnectForTesting(_ value: Bool) {
         stoppedBeforeWriteForWatchReconnect = value
     }

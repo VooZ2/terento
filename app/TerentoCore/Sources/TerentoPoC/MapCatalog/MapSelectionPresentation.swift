@@ -393,6 +393,9 @@ struct WatchReconnectWait: Identifiable, Equatable, Sendable {
     let selectedMapIDs: Set<String>
     let selectedOptionalArtifactIDs: [String: Set<String>]
     let mapTitle: String?
+    /// The original failure text, shown if the wait ends after a disconnect
+    /// cleared the engine's failure state.
+    let failureReason: String
     let watchWasBusy: Bool
     let deadline: Date
     /// The stopped session ended (unplug seen). Only a new connection after
@@ -401,12 +404,13 @@ struct WatchReconnectWait: Identifiable, Equatable, Sendable {
 
     init(watchKey: String, selectedMapIDs: Set<String>,
          selectedOptionalArtifactIDs: [String: Set<String>], mapTitle: String?,
-         watchWasBusy: Bool, now: Date = Date()) {
+         failureReason: String, watchWasBusy: Bool, now: Date = Date()) {
         id = UUID()
         self.watchKey = watchKey
         self.selectedMapIDs = selectedMapIDs
         self.selectedOptionalArtifactIDs = selectedOptionalArtifactIDs
         self.mapTitle = mapTitle
+        self.failureReason = failureReason
         self.watchWasBusy = watchWasBusy
         deadline = now.addingTimeInterval(Self.timeout)
     }
@@ -422,6 +426,22 @@ enum WatchReconnectWaitPolicy: Sendable {
 
     static let differentWatchMessage = "A different watch was connected, so Terento stopped. Nothing was written. Connect the watch you chose and install the map again."
     static let timedOutMessage = "Your watch did not come back within 5 minutes. Nothing was written. Connect it and install the map again."
+    static let timedOutAfterReconnectMessage = "Your watch came back, but Terento could not finish checking it within 5 minutes. Nothing was written. Unplug it, plug it back in and install the map again."
+
+    /// The text when the wait ends: the original failure while the watch
+    /// never left (the caller then shows the engine's own failure), otherwise
+    /// what happened during the wait.
+    static func endMessage(for wait: WatchReconnectWait, decision: Decision, deviceConnected: Bool) -> String {
+        switch decision {
+        case .differentWatch:
+            return differentWatchMessage
+        case .timedOut:
+            guard wait.watchWasDisconnected else { return wait.failureReason }
+            return deviceConnected ? timedOutAfterReconnectMessage : timedOutMessage
+        case .keepWaiting, .resume:
+            return wait.failureReason
+        }
+    }
 
     /// Only a read before the current component's write, with nothing of
     /// this operation written, may wait: a busy session (-5), a watch that is
