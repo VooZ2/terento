@@ -10971,7 +10971,7 @@ main.web-visits-page>.web-visits-headline{grid-template-columns:minmax(0,5fr) mi
 @media(max-width:1599px){main.web-visits-page>.web-visits-headline{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:900px){#web-visits-visitors>.admin-metric-row{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .funnel-delta[data-trend='better']{color:var(--success-text)}.funnel-delta[data-trend='worse']{color:var(--error-text)}.funnel-delta:is([data-trend='same'],[data-trend='neutral']){color:var(--secondary)}
-.web-visits-note,.web-visits-limit{display:block;margin-top:2px;color:var(--secondary)}
+.web-visits-limit{display:block;margin-top:2px;color:var(--secondary)}
 .web-visits-source{display:inline-flex;align-items:center;gap:8px;min-width:0}.web-visits-source>span:last-child{min-width:0;overflow-wrap:anywhere}.web-visits-source>.admin-icon{flex:0 0 auto;width:16px;height:16px;color:var(--secondary)}.web-visits-flag{flex:0 0 auto;width:16px;font-size:15px;line-height:1;text-align:center}
 .web-visits-direct td{color:var(--secondary);font-weight:500}
 @media(max-width:700px){main.web-visits-page #web-visits-vitals>.admin-metric-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
