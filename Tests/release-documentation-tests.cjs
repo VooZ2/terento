@@ -145,7 +145,7 @@ for (const candidate of [
   { version: "1.1.0", releaseLabel: "1.0.0", build: 42 },
 ]) assert.throws(() => candidateIdentity(candidate, stagedRc));
 // After 1.0.0 the main manifest stays stable: stable rebuilds and patches, and
-// next-version prereleases from beta that are released only as GitHub prereleases.
+// next-version prereleases from main that are released only as GitHub prereleases.
 const stable = { version: "1.0.0", releaseLabel: "1.0.0", build: 44 };
 for (const [version, releaseLabel] of [["1.0.0", "1.0.0"], ["1.0.1", "1.0.1"], ["1.1.0", "1.1.0"], ["2.0.0", "2.0.0"],
   ["1.1.0", "1.1.0-beta.1"], ["1.1.0", "1.1.0-rc.1"], ["1.0.1", "1.0.1-rc.1"]]) {

@@ -51,8 +51,9 @@ stable label follows [Stable release](#stable-release).
 
 A stable release has a plain `MAJOR.MINOR.PATCH` label, the `stable` update
 channel and a GitHub Release that is not a prerelease and is marked Latest.
-It is built from `main`. Beta and release-candidate prereleases are built from
-`beta` and published only as GitHub prereleases: once a stable release exists,
+It is built from `main`. Beta and release-candidate prereleases are also built
+from `main` (the separate `beta` branch was retired on 2026-11-14) and published
+only as GitHub prereleases: once a stable release exists,
 the update manifest on `main` lists only stable releases. Installed beta.7 and
 later clients, including every release candidate, accept a `stable` manifest;
 a stable installation is never offered a beta.
@@ -95,8 +96,8 @@ DMG URL, concise summary, and trusted full release-notes URL.
 ## Verified release source
 
 New public builds must be packaged from a clean, GitHub-verified signed commit
-already merged into `main` for a stable release, or into `beta` for a beta or
-RC prerelease. Use the actual verified merge commit, not an unsigned
+already merged into `main`, for a stable release and for a beta or RC
+prerelease alike. Use the actual verified merge commit, not an unsigned
 PR head with an equivalent tree. `Packaging/release.sh` enforces this through
 `Packaging/verify-github-release-source.py` before building or contacting Apple;
 `--no-notarize` remains available for undistributed local validation.

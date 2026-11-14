@@ -571,7 +571,7 @@ def verify_release_reporting(swift):
             values = dict(line.split("=", 1) for line in output.read_text().splitlines())
             return set(json.loads(values["suites"]))
         assert dispatch("refs/heads/terento/indexnow-state", "main") == {"site", "shared", "ci"}
-        assert dispatch("refs/heads/terento/indexnow-state", "beta") == {"site", "shared", "ci"}
+        assert dispatch("refs/heads/terento/indexnow-state", "beta") is None
         assert dispatch("refs/heads/terento/indexnow-state", "") == {"site", "app", "native", "backend", "release", "shared", "ci"}
         assert dispatch("refs/heads/terento/indexnow-state", "origin/beta") is None
         assert dispatch("refs/heads/beta", "beta") is None
@@ -598,7 +598,7 @@ def verify_main_only_job(workflow, job):
     def runs(ref, repository="VooZ2/terento"):
         return eval(expression, {}, dict(ref=ref, repository=repository))
     assert runs("refs/heads/main")
-    # A schedule runs on the default branch, which is beta until the cutover.
+    # Old or recreated beta, task branches, tags and PR merges never deploy.
     for ref in ("refs/heads/beta", "refs/heads/terento/task", "refs/tags/v1.0.0-build44",
                 "refs/tags/v1.1.0-beta.1-build50", "refs/pull/1/merge"):
         assert not runs(ref), (job, ref)

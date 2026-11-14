@@ -38,7 +38,7 @@ device telemetry; the audit must pass them through API validation locally.
 | `swift-ci.yml`, shared schema/fixture, brand source, test inventory or unknown path | all suites |
 
 The full release matrix runs on tags, manual full checks, weekly CI and release
-packaging. A manual dispatch with `selection_base` (`beta` or `main`, task
+packaging. A manual dispatch with `selection_base` (`main`, task
 branches only) instead selects suites from the branch's changes since that
 base and skips the live catalog gate; the compatibility refresh and the site
 deploy use it for their snapshot and IndexNow state PRs. The required `build-and-test` aggregate rejects failed/cancelled jobs;
