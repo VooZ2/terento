@@ -35,9 +35,11 @@ releases. Published beta history keeps its labels, tags and build numbers.
 SemVer precedence orders `1.0.0-beta.N` before `1.0.0-rc.N` before `1.0.0`,
 but the update check never compares labels: it orders by marketing version and
 `CFBundleVersion`. A beta or release candidate may contain implemented code
-whose final real-device validation gate is still pending; release notes must
-state that limitation explicitly under KNOWN ISSUES (the release-note format
-is defined in [Packaging/README.md](Packaging/README.md#release-notes-format)).
+whose final real-device validation gate is still pending; its intro must not
+claim that validation (the release-note format is defined in
+[Packaging/README.md](Packaging/README.md#release-notes-format); release notes
+through 1.2.0 listed such limits under KNOWN ISSUES, a block the owner dropped
+from 1.2.1 on 2026-11-14).
 Deferred gates must not be described as passed, and a genuinely new capability line may start the next base version.
 
 Release candidates are distributed on the existing `beta` update channel, the
@@ -77,8 +79,9 @@ remote tags and the packaged `TerentoReleaseChannel` against the label.
 
 A stable release needs every real-device gate of its release candidates to
 have passed. A gate may stay open only by an explicit, dated owner decision
-recorded in the project state; it is then reported as `DEFERRED`, never as
-passed, and the release notes list it under KNOWN ISSUES.
+recorded in `contracts/release-hardware-gates.json`; it is then reported as
+`DEFERRED`, never as passed. Release notes through 1.2.0 also listed it under
+KNOWN ISSUES; from 1.2.1 they have no KNOWN ISSUES block.
 
 Published tags are immutable: never reuse, overwrite, or force-push a tag.
 The release tag is the immutable source identity. The manifest releaseTag,

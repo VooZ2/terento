@@ -40,6 +40,17 @@ same override is used by the web, native, backend, and release checks.
 
 ## Full release validation
 
+The next candidate is **1.2.1 / build 48** on the `stable` channel (see
+[versioning](../VERSIONING.md); a fix release). When a watch is busy or can't
+be reached before anything is written, it asks for a reconnect, waits up to 5
+minutes for the same watch and continues with the download it kept (#699). The
+owner reported the real-watch check of that wait as passed on 2026-11-14. It
+adds no route, telemetry field or migration and still reads
+`catalog-v5.json`. Public metadata continues to identify 1.2.0 until signed,
+notarized artifacts exist, and the draft release-note section stays marked as
+a draft until then. The AppStore configuration carries the same 1.2.1 / 48
+identity; the App Store build is prepared separately.
+
 The published release is **1.2.0 / build 47** on the `stable` channel (see
 [versioning](../VERSIONING.md); the owner named it 1.2.0 because it adds the
 Donate line), from GitHub-verified source
@@ -285,7 +296,7 @@ Before distributing a public build:
 
 ### Release notes format
 
-Every `RELEASE_NOTES.md` section from `1.0.0-rc.1` onward, draft or published,
+Every `RELEASE_NOTES.md` section from `1.2.1` onward, draft or published,
 has exactly this structure:
 
 1. The title `# Terento v<release label> (build <build>)`. A draft keeps its
@@ -294,17 +305,18 @@ has exactly this structure:
    public status, and the real-device validation it actually has.
 3. `## WHAT'S NEW?`: new capabilities and visible improvements.
 4. `## WHAT'S FIXED?`: corrected behavior.
-5. `## KNOWN ISSUES`: limitations, pending real-device validation and
-   unresolved issues.
 
-The three blocks appear in this order, with these exact headings, as bullet
+The two blocks appear in this order, with these exact headings, as bullet
 lists, and no other `##` headings. A block with nothing to report keeps its
 heading and one bullet saying so, for example `- No fixes in this release.`
 Describe outcomes users notice, not implementation mechanics. Deferred
-validation gates belong in KNOWN ISSUES and are never described as passed (see
-[VERSIONING.md](../VERSIONING.md)). Sections published before `1.0.0-rc.1` keep
-their original structure. `Tests/release-documentation-tests.cjs` enforces this
-format.
+validation gates are never described as passed (see
+[VERSIONING.md](../VERSIONING.md)); their dated owner decision is recorded in
+`contracts/release-hardware-gates.json`. The owner dropped the former
+`## KNOWN ISSUES` block on 2026-11-14: sections from `1.0.0-rc.1` through
+`1.2.0` keep it as a third block, and sections published before `1.0.0-rc.1`
+keep their original structure. `Tests/release-documentation-tests.cjs`
+enforces this format.
 
 ### Documentation and help synchronization
 

@@ -300,10 +300,18 @@ assert.throws(() => publishedReleaseNotes("# Terento v1.0.0-beta.18 (build 40)\n
 publishedReleaseNotes(notes, release, artifactIdentity);
 
 // From 1.0.0-rc.1 onward every section is: title, optional DRAFT/TODO
-// comments, a short intro, then WHAT'S NEW?, WHAT'S FIXED? and KNOWN ISSUES
-// as bullet lists (Packaging/README.md, "Release notes format").
-const releaseNoteBlocks = ["## WHAT'S NEW?", "## WHAT'S FIXED?", "## KNOWN ISSUES"];
-function assertReleaseNoteFormat(section, title) {
+// comments, a short intro, then WHAT'S NEW?, WHAT'S FIXED? and, through
+// 1.2.0, KNOWN ISSUES as bullet lists. From 1.2.1 the owner dropped the
+// KNOWN ISSUES block (2026-11-14): sections end with WHAT'S FIXED?
+// (Packaging/README.md, "Release notes format").
+const knownIssuesBlock = "## KNOWN ISSUES";
+const lastReleaseWithKnownIssues = "1.2.0";
+function releaseNoteBlocksFor(label) {
+  const blocks = ["## WHAT'S NEW?", "## WHAT'S FIXED?"];
+  return compareVersions(parseLabel(label).base, lastReleaseWithKnownIssues) <= 0 ? [...blocks, knownIssuesBlock] : blocks;
+}
+function assertReleaseNoteFormat(section, title, label) {
+  const releaseNoteBlocks = releaseNoteBlocksFor(label);
   const body = section.split(/\r?\n/).slice(1).join("\n").replace(/<!--[\s\S]*?-->/g, "");
   const headings = body.split("\n").filter((line) => /^#{1,6}\s/.test(line));
   assert.deepEqual(headings, releaseNoteBlocks, `${title}: release notes need exactly the three blocks in order`);
@@ -330,24 +338,35 @@ function releaseNoteSections(text) {
   return sections;
 }
 const formattedSample = "# Terento v1.0.0-rc.2 (build 42)\n\n<!-- DRAFT: x -->\n\nIntro.\n\n## WHAT'S NEW?\n\n- New.\n\n## WHAT'S FIXED?\n\n- No fixes in this release.\n\n## KNOWN ISSUES\n\n- Issue.\n";
-assertReleaseNoteFormat(formattedSample, "sample");
+assertReleaseNoteFormat(formattedSample, "sample", "1.0.0-rc.2");
 for (const invalid of [
   formattedSample.replace("## WHAT'S FIXED?\n\n- No fixes in this release.\n\n", ""),
   formattedSample.replace("## KNOWN ISSUES", "## Known issues and limits"),
+  formattedSample.replace("## KNOWN ISSUES\n\n- Issue.\n", ""),
   formattedSample.replace("Intro.\n\n", ""),
   formattedSample.replace("- New.", "New."),
   formattedSample.replace("- New.", "- New.\n\n## Validation\n\n- Watch."),
   formattedSample.replace("## WHAT'S NEW?", "## WHAT'S FIXED?").replace("## WHAT'S FIXED?\n\n- No", "## WHAT'S NEW?\n\n- No"),
-]) assert.throws(() => assertReleaseNoteFormat(invalid, "invalid sample"));
+]) assert.throws(() => assertReleaseNoteFormat(invalid, "invalid sample", "1.0.0-rc.2"));
+const currentSample = formattedSample.replace("v1.0.0-rc.2 (build 42)", "v1.2.1 (build 48)").replace("\n## KNOWN ISSUES\n\n- Issue.\n", "");
+assertReleaseNoteFormat(currentSample, "1.2.1 sample", "1.2.1");
+for (const invalid of [
+  formattedSample,
+  currentSample.replace("## WHAT'S FIXED?\n\n- No fixes in this release.\n", ""),
+  currentSample.replace("- No fixes in this release.", "No fixes."),
+]) assert.throws(() => assertReleaseNoteFormat(invalid, "invalid 1.2.1 sample", "1.2.1"));
 const formattedSections = releaseNoteSections(notes).filter((section) => !/-beta\.\d+$/.test(section.label));
 assert.ok(formattedSections.length > 0 || !artifactIdentity || /-beta\./.test(artifactIdentity.releaseLabel),
   "a release candidate or stable section must exist in the new format");
-for (const section of formattedSections) assertReleaseNoteFormat(section.text, section.title);
+for (const section of formattedSections) assertReleaseNoteFormat(section.text, section.title, section.label);
 // Real-device release gates (VERSIONING.md "Stable release"): PASS, FAIL or an
-// owner-dated DEFERRED that a stable release must list under KNOWN ISSUES.
+// owner-dated DEFERRED. A stable release through 1.2.0 listed a deferred gate
+// under KNOWN ISSUES; from 1.2.1 the dated deferral is recorded only in
+// contracts/release-hardware-gates.json.
 function assertHardwareGates(gates, candidate, notesText) {
   assert.equal(gates.schemaVersion, 1);
   const isStable = parseLabel(candidate.releaseLabel).family === "stable";
+  const listsKnownIssues = releaseNoteBlocksFor(candidate.releaseLabel).includes(knownIssuesBlock);
   const section = releaseNoteSections(notesText).find((item) => item.label === candidate.releaseLabel);
   const knownIssues = section ? section.text.split("## KNOWN ISSUES")[1] || "" : "";
   for (const gate of gates.gates) {
@@ -359,7 +378,7 @@ function assertHardwareGates(gates, candidate, notesText) {
     }
     if (!isStable) continue;
     assert.notEqual(gate.status, "FAIL", `${gate.id}: a failed gate blocks a stable release`);
-    if (gate.status === "DEFERRED") {
+    if (gate.status === "DEFERRED" && listsKnownIssues) {
       assert.ok(knownIssues.includes(gate.knownIssue), `${gate.id}: the stable release notes must list the deferred gate`);
     }
   }
@@ -368,6 +387,7 @@ const sampleGates = { schemaVersion: 1, gates: [{ id: "g", status: "DEFERRED", d
 const stableNotes = "# Terento v1.0.0 (build 44)\n\nIntro.\n\n## WHAT'S NEW?\n\n- New.\n\n## WHAT'S FIXED?\n\n- Fix.\n\n## KNOWN ISSUES\n\n- Gate open.\n";
 const stableCandidate = { version: "1.0.0", releaseLabel: "1.0.0", build: 44 };
 assertHardwareGates(sampleGates, stableCandidate, stableNotes);
+assertHardwareGates(sampleGates, { version: "1.2.1", releaseLabel: "1.2.1", build: 48 }, "");
 assertHardwareGates(sampleGates, { version: "1.0.0", releaseLabel: "1.0.0-rc.3", build: 43 }, "");
 for (const [gates, text] of [
   [sampleGates, stableNotes.replace("- Gate open.", "- Other.")],

@@ -142,7 +142,8 @@ the behavior:
 - Changes here need the native fake-libmtp runners
   (`run-native-removal-proof-tests.sh`, `run-native-fast-update-tests.sh`,
   `run-native-map-profile-contract-tests.sh`) and a real-watch check before
-  release. Real-watch status is recorded in `RELEASE_NOTES.md` KNOWN ISSUES.
+  release. Real-watch status is stated in the `RELEASE_NOTES.md` intro (there is
+  no KNOWN ISSUES block from 1.2.1).
 
 Local test builds use the `-local` release label (Debug
 `TERENTO_RELEASE_LABEL`), so their telemetry is stored as test data and
