@@ -65,7 +65,11 @@ old Maps hash page views. They are never added to, reconciled with or used to ex
 installer Installs, Updates or Downloads (a `download-click` is a click on a
 download link, not a downloaded or installed app). Download conversion is
 Umami visitors with a `download-click` divided by Umami visitors in the same
-period. User-sent support
+period. Google Search (Google Search Console for `sc-domain:terento.app`, the
+same Admin page) is another separate, read-only population owned by Google:
+web search clicks, impressions, CTR and average position by Pacific Time day,
+with recent days preliminary and rare queries hidden by Google. It is never
+added to or reconciled with Umami visitors or any app or web installer count. User-sent support
 reports ([`SUPPORT_REPORT_CONTRACT.md`](SUPPORT_REPORT_CONTRACT.md)) are not a
 statistical population at all: they are review work only and never change any
 count, rate or chart. Optional installation-report `inventoryMetrics`
