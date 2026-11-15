@@ -94,7 +94,8 @@ from .compatibility_evidence import (
 from .compatibility_status import calculate_compatibility_status
 from .collect import collect_provider_once
 from .admin_web_installer import web_installer_csv, web_installer_page
-from .admin_website_stats import search_console_blocks, website_stats_blocks, website_stats_page
+from .admin_visits_map import VISITS_MAP_SVG
+from .admin_website_stats import VISITS_MAP_PATH, search_console_blocks, website_stats_blocks, website_stats_page
 from .umami_stats import UmamiStats
 from .gsc_stats import DEFAULT_PERIOD as GSC_DEFAULT_PERIOD, PERIODS as GSC_PERIODS, GscStats
 from .web_installer import (
@@ -1949,7 +1950,8 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             asset_name = request_path.removeprefix("/admin/map-assets/")
             # Content-versioned names: a changed stylesheet or world map is a new URL.
             versioned_assets = {ADMIN_STYLESHEET_PATH: (ADMIN_STYLES, "text/css; charset=utf-8"),
-                                WORLD_MAP_SCRIPT_PATH: (WORLD_MAP_SCRIPT, "text/javascript; charset=utf-8")}
+                                WORLD_MAP_SCRIPT_PATH: (WORLD_MAP_SCRIPT, "text/javascript; charset=utf-8"),
+                                VISITS_MAP_PATH: (VISITS_MAP_SVG, "image/svg+xml; charset=utf-8")}
             if request_path in versioned_assets or (request_path.startswith("/admin/map-assets/") and asset_name in map_assets):
                 if request_path in versioned_assets:
                     text, content_type = versioned_assets[request_path]

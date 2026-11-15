@@ -501,8 +501,9 @@ unavailable headline block keeps its title for its marks (owner request
    note (owner request 2026-11-14).
 2. `Downloads`: Downloads (`download-click` events), Visitors who downloaded
    and Conversion (those visitors of all visitors), each with its change.
-3. `Referrers` (top 10), `Entry pages` (top 5) and `Countries` (top 10), three
-   columns on wide screens, two then one as the page narrows, visitors each.
+3. `Referrers` (top 10) and `Entry pages` (top 5), two columns, one from 900
+   px down, visitors each, then `Countries` across the page (top 10 beside a
+   world map, the map above the list from 900 px down).
    Referrers merge one platform's hosts (google.<country> → google.com, the
    Reddit app and subdomains → reddit.com, m.youtube.com and youtu.be →
    youtube.com, t.co and twitter.com → x.com, a leading `www.`/`m.`), show the
@@ -510,17 +511,51 @@ unavailable headline block keeps its title for its marks (owner request
    has none) or a neutral globe, as plain text, never a favicon or another
    site's image, and end with a grey `Direct / none` row: visitors minus the
    visitors of every referrer. Countries show the flag and the English name
-   the browser gives the ISO code; no code is `Unknown` without a flag.
-4. `Web Vitals`: LCP, INP, CLS, FCP and TTFB p75, each with a Good / Needs
+   the browser gives the ISO code; no code is `Unknown` without a flag. The
+   map (owner request 2026-11-15) colours every country with visitors, not
+   only the 10 listed: OpenStreetMap shapes from the Maps world map in the
+   Equal Earth projection, without Antarctica, read as one content-versioned
+   SVG (`/admin/map-assets/visits-map.<hash>.svg`, under 120 KB) only when the
+   card comes into view; five Interactive Primary steps on a logarithmic scale
+   from 1 to the most visitors (empty steps drop out, so one large country
+   never washes out the rest), countries without visits Surface muted, and a
+   legend with each step's range and `No visits`. Hovering a country, or a
+   row of the list, shows its name, visitors and share of all visitors. The
+   map repeats the list's numbers, so it is `aria-hidden` and not focusable.
+4. `Events` (Umami custom event counts, owner request 2026-11-15) in groups,
+   each event under one name from one table in code: Download
+   (`download-cta-click` Download button, `download-click` Download started),
+   Web installer (`web-installer-cta-click` Installer button,
+   `web-installer-link-click` Installer link, `web-installer-gate` Browser
+   check, `web-installer-connected` Garmin connected, `web-installer-done`
+   Install finished, `installer-result`, `install-link-copy`), Maps
+   (`map-style-switch`, `map-compare`, `maps-link-click`), Navigation & links
+   (`language-switch-click` and every other `*-link-click`) and Other (any
+   other event under its own name, so a new event never disappears). Each
+   group lists its 3 most frequent events with `Show all N` / `Show fewer`;
+   Navigation & links starts closed (`Show N` / `Hide`). Each row has its
+   count and change (`▲ +10`, the compared period for screen readers only):
+   more is better except Navigation & links and Other, which stay grey; an
+   event of the previous period only shows 0. Beside it (stacked to 1200 px):
+   `Key events over time`, one line chart of only `download-click`,
+   `web-installer-done` and `map-compare` (Interactive Primary, Lichen dark,
+   Stone dark; legend with each period total; every day, or hour for Today and
+   Last 24 hours, focusable with its values, empty buckets 0), and `Web
+   installer funnel`: visitors of `web-installer-cta-click`,
+   `web-installer-gate`, `web-installer-connected` and `web-installer-done` as
+   bars with the share of the first step. A step with more visitors than the
+   step before has no share and a grey `Tracking gap` pill instead, never a
+   negative drop-off.
+5. `Web Vitals`: LCP, INP, CLS, FCP and TTFB p75, each with a Good / Needs
    improvement / Poor pill (Google's limits: LCP ≤2.5 s / ≤4 s, INP ≤200 ms /
    ≤500 ms, CLS ≤0.1 / ≤0.25, FCP ≤1.8 s / ≤3 s, TTFB ≤800 ms / ≤1.8 s) and a
    `Good ≤ …` line under it, then Samples. Under 20 samples the values stay and
    a grey `Few samples (N)` pill replaces the rating.
-5. `Errors`: Errors (occurrences) and Issues in the period with their change
+6. `Errors`: Errors (occurrences) and Issues in the period with their change
    against the previous period, issues ignored in Umami left out, and the 3
    most frequent as plain text with their counts.
-6. A last line with the update time and `Open Umami` (new tab).
-7. `Google Search` (Google Search Console, `/admin/api/gsc`; its own
+7. A last line with the update time and `Open Umami` (new tab).
+8. `Google Search` (Google Search Console, `/admin/api/gsc`; its own
    population, statistics contract), with its own period picker in its
    heading (Last 7 days, Last 30 days, All time; Last 30 days on every page
    load): the shared Admin period never changes it, and a new Admin period

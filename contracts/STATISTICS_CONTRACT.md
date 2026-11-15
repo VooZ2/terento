@@ -65,7 +65,13 @@ old Maps hash page views. They are never added to, reconciled with or used to ex
 installer Installs, Updates or Downloads (a `download-click` is a click on a
 download link, not a downloaded or installed app). Download conversion is
 Umami visitors with a `download-click` divided by Umami visitors in the same
-period. Google Search (Google Search Console for `sc-domain:terento.app`, the
+period. Umami events are counts of each custom event as Umami stores it
+(one `web-installer-done` per map result, failed and cancelled included; a
+`web-installer-cta-click` for every installer button), not people or installs;
+the Web installer funnel counts Umami visitors with each step's event, and a
+step above the one before is a tracking gap, not a negative drop-off. The
+Countries map uses Umami visitors per country, its share of the sum of all
+countries (Unknown included). Google Search (Google Search Console for `sc-domain:terento.app`, the
 same Admin page) is another separate, read-only population owned by Google:
 web search clicks, impressions, CTR and average position by Pacific Time day,
 with recent days preliminary and rare queries hidden by Google. It has its own

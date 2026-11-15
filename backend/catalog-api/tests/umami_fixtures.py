@@ -26,6 +26,24 @@ PERFORMANCE = {
     "ttfb": {"p50": 120, "p75": 210, "p95": 600},
     "count": 64,
 }
+# Custom events (metrics type=event: event counts, most first).
+EVENTS = [
+    {"x": "language-switch-click", "y": 90}, {"x": "guide-link-click", "y": 61}, {"x": "map-style-switch", "y": 219},
+    {"x": "download-cta-click", "y": 41}, {"x": "download-click", "y": 30}, {"x": "web-installer-cta-click", "y": 25},
+    {"x": "web-installer-link-click", "y": 12}, {"x": "web-installer-gate", "y": 9}, {"x": "web-installer-connected", "y": 2},
+    {"x": "web-installer-done", "y": 4}, {"x": "installer-result", "y": 4}, {"x": "install-link-copy", "y": 1},
+    {"x": "map-compare", "y": 33}, {"x": "maps-link-click", "y": 20}, {"x": "faq-link-click", "y": 5},
+    {"x": "newsletter-link-click", "y": 3}, {"x": "app-store-click", "y": 2}, {"x": "brand-new-event", "y": 7},
+    {"x": "<b>odd</b>", "y": 1},
+]
+# events/series: one row per event and local bucket that had events.
+EVENT_SERIES = [
+    {"x": "download-click", "t": "2026-11-12 00:00:00", "y": 10}, {"x": "download-click", "t": "2026-11-14 00:00:00", "y": 20},
+    {"x": "web-installer-done", "t": "2026-11-13 00:00:00", "y": 4}, {"x": "map-compare", "t": "2026-11-12T00:00:00Z", "y": 33},
+    {"x": "guide-link-click", "t": "2026-11-12 00:00:00", "y": 61},
+]
+# events/stats per event: the funnel's visitors; connected below done shows a tracking gap.
+FUNNEL_VISITORS = {"web-installer-cta-click": 20, "web-installer-gate": 8, "web-installer-connected": 2, "web-installer-done": 3}
 ERRORS = {
     "data": [
         {"id": "a1", "title": "TypeError: <img src=x onerror=alert(1)>", "status": "unresolved", "occurrences": 4, "visits": 3},
@@ -43,9 +61,15 @@ def answer(path: str, params: dict[str, Any]) -> Any:
     if path.endswith("/stats") and "/events/" not in path and "/performance/" not in path:
         return STATS
     if path.endswith("/events/stats"):
+        if params.get("event") in FUNNEL_VISITORS:
+            visitors = FUNNEL_VISITORS[params["event"]]
+            return {"data": {"events": visitors * 2, "visitors": visitors, "visits": visitors,
+                             "comparison": {"events": 0, "visitors": 0, "visits": 0}}}
         return EVENT_STATS
+    if path.endswith("/events/series"):
+        return EVENT_SERIES
     if path.endswith("/metrics"):
-        return {"referrer": REFERRERS, "entry": ENTRIES, "country": COUNTRIES}[params["type"]]
+        return {"referrer": REFERRERS, "entry": ENTRIES, "country": COUNTRIES, "event": EVENTS}[params["type"]]
     if path.endswith("/performance/stats"):
         return PERFORMANCE
     if path.endswith("/errors"):

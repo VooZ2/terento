@@ -10961,9 +10961,8 @@ ADMIN_STYLES += """
 .admin-card-note{margin:0 0 12px;font-size:13px}
 /* First run tables: number columns share one width so side-by-side cards line up. */
 main.first-run-page>.web-installer-grid,main.web-visits-page>.web-installer-grid{gap:var(--admin-card-gap)}main.first-run-page>.web-installer-grid>*,main.web-visits-page>.web-installer-grid>*{margin:0}
-/* Web visits: three ranking lists, change colours by meaning, logos, Vitals limits, skeleton. */
-main.web-visits-page>.web-visits-lists{grid-template-columns:repeat(3,minmax(0,1fr))}
-@media(max-width:1200px){main.web-visits-page>.web-visits-lists{grid-template-columns:repeat(2,minmax(0,1fr))}main.web-visits-page>.web-visits-lists>:last-child:nth-child(odd){grid-column:1/-1}}
+/* Web visits: two ranking lists, change colours by meaning, logos, Vitals limits, skeleton. */
+main.web-visits-page>.web-visits-lists{grid-template-columns:repeat(2,minmax(0,1fr))}
 @media(max-width:900px){main.web-visits-page>.web-visits-lists{grid-template-columns:minmax(0,1fr)}}
 /* Headline: Visitors and Downloads side by side, one even tile width across both; stacked below 1600 px. */
 main.web-visits-page>.web-visits-headline{grid-template-columns:minmax(0,5fr) minmax(0,3fr)}
@@ -10997,6 +10996,58 @@ table.gsc-table{table-layout:auto;min-width:0}.gsc-table td,.gsc-table th{white-
 @media(max-width:760px){.gsc-table th,.gsc-table td{padding-left:5px;padding-right:5px;font-size:13px}.gsc-table th:first-child,.gsc-table td:first-child{padding-left:10px}}
 .gsc-query{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px 8px}.gsc-query>span:first-child,.gsc-page{overflow-wrap:break-word;min-width:0}.gsc-short{display:none}
 @media(max-width:480px){.gsc-short{display:inline}.gsc-full{position:absolute;width:1px;height:1px;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}}
+/* Web visits Countries: the map beside the list (above it to 900 px); five Interactive steps, no visits Surface muted. */
+.web-visits-countries{display:grid;grid-template-columns:minmax(0,3fr) minmax(260px,2fr);gap:20px 28px;align-items:start}
+@media(max-width:900px){.web-visits-countries{grid-template-columns:minmax(0,1fr)}.web-visits-map{width:100%;max-width:720px;margin:0 auto}}
+.web-visits-map{position:relative;min-width:0}
+.web-visits-map-canvas{width:100%;aspect-ratio:1000/445}
+.web-visits-map:not(.is-ready) .web-visits-map-canvas{border-radius:var(--radius-control);background:var(--surface-muted)}
+.web-visits-map-canvas svg{display:block;width:100%;height:auto}
+.web-visits-map-canvas path,.web-visits-map-legend i.web-visits-map-none{fill:var(--surface-muted);background:var(--surface-muted)}
+.web-visits-map-canvas path{stroke:var(--surface);stroke-width:.6;vector-effect:non-scaling-stroke}
+.web-visits-map-canvas path.is-active{stroke:var(--graphite);stroke-width:1.4}
+.web-visits-map-l1{--visits-map-fill:color-mix(in srgb,var(--interactive) 20%,var(--surface))}
+.web-visits-map-l2{--visits-map-fill:color-mix(in srgb,var(--interactive) 38%,var(--surface))}
+.web-visits-map-l3{--visits-map-fill:color-mix(in srgb,var(--interactive) 58%,var(--surface))}
+.web-visits-map-l4{--visits-map-fill:color-mix(in srgb,var(--interactive) 80%,var(--surface))}
+.web-visits-map-l5{--visits-map-fill:color-mix(in srgb,var(--interactive) 82%,var(--graphite))}
+.web-visits-map-canvas path[class*='web-visits-map-l']{fill:var(--visits-map-fill)}
+.web-visits-map-legend{margin-top:10px}.web-visits-map-legend i[class*='web-visits-map-l']{background:var(--visits-map-fill);border-color:transparent}
+.web-visits-map-legend span{font-variant-numeric:tabular-nums}
+.web-visits-map-tooltip{position:absolute;z-index:2;display:grid;gap:2px;min-width:140px;max-width:240px;padding:8px 10px;border:1px solid color-mix(in srgb,var(--interactive) 28%,var(--border));border-radius:var(--radius-control);background:var(--surface);box-shadow:0 8px 24px color-mix(in srgb,var(--graphite) 14%,transparent);font-size:12px;pointer-events:none}
+.web-visits-map-tooltip span{color:var(--secondary);font-variant-numeric:tabular-nums}
+/* Events beside Key events over time and the Web installer funnel; stacked to 1200 px. */
+main.web-visits-page>.web-visits-events{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}
+@media(max-width:1200px){main.web-visits-page>.web-visits-events{grid-template-columns:minmax(0,1fr)}}
+.web-visits-events-side{display:grid;gap:var(--admin-card-gap);align-content:start;min-width:0}.web-visits-events-side>*{margin:0}
+.web-visits-events-table,.web-visits-funnel{display:block;width:100%;min-width:0;border:0}
+.web-visits-events-table thead,.web-visits-funnel thead{position:absolute;width:1px;height:1px;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
+.web-visits-events-table tbody,.web-visits-funnel tbody{display:grid;width:100%}
+.web-visits-events-table tbody+tbody{margin-top:16px}
+.table-wrap table.admin-table.web-visits-events-table tbody tr,.table-wrap table.admin-table.web-visits-funnel tbody tr{display:grid;grid-template-columns:minmax(0,1fr) auto 92px;align-items:baseline;gap:4px 12px;padding:8px 0;border:0;border-bottom:1px solid var(--border);background:none;min-width:0}
+.table-wrap table.admin-table.web-visits-events-table[data-columns='2'] tbody tr{grid-template-columns:minmax(0,1fr) auto}
+.table-wrap table.admin-table.web-visits-events-table tbody tr[hidden]{display:none}
+.web-visits-events-table td,.web-visits-funnel td{display:block;min-width:0;padding:0!important;border:0!important;font-size:13px;overflow-wrap:anywhere;background:none}
+.web-visits-events-table td.column-number,.web-visits-funnel td.column-number{text-align:right!important;white-space:nowrap;font-variant-numeric:tabular-nums}
+.table-wrap table.admin-table.web-visits-events-table tbody tr.web-visits-events-group{padding:0 0 4px;border-bottom:1px solid var(--border)}
+.web-visits-events-group th{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:32px;padding:0!important;border:0!important;background:none;color:var(--graphite);font-size:13px;font-weight:700;text-align:left}
+.web-visits-events-toggle{min-height:32px;padding:4px 8px;border:0;border-radius:var(--admin-control-radius);background:none;color:var(--interactive);font:600 12px/1.2 var(--font-ui);cursor:pointer}
+.web-visits-events-toggle:hover{background:var(--selected-tint)}.web-visits-events-toggle:focus-visible{outline:var(--admin-focus-ring);outline-offset:1px}
+.table-wrap table.admin-table.web-visits-funnel tbody tr{grid-template-columns:minmax(96px,8.5rem) minmax(0,1fr) 112px;align-items:center}
+.web-visits-funnel-bar{display:flex!important;align-items:center;gap:10px}
+.web-visits-funnel-bar .numeric{min-width:3ch;text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.web-visits-funnel-track{display:block;flex:1;height:10px;border-radius:999px;background:var(--surface-muted)}
+.web-visits-funnel-track>span{display:block;height:100%;border-radius:inherit;background:var(--interactive)}
+.web-visits-funnel tr[data-gap] .web-visits-funnel-track>span{background:color-mix(in srgb,var(--secondary) 55%,var(--surface))}
+@media(max-width:560px){.table-wrap table.admin-table.web-visits-funnel tbody tr{grid-template-columns:minmax(0,1fr) auto}.web-visits-funnel td.web-visits-funnel-bar{grid-column:1/-1;grid-row:2}}
+/* Key events over time: Download started, Install finished, Map compare (Interactive, Lichen dark, Stone dark). */
+.web-visits-series-events-download,.overview-chart-events-download{--gsc-series:var(--interactive);background:var(--interactive)}
+.web-visits-series-events-installed,.overview-chart-events-installed{--gsc-series:var(--lichen-dark);background:var(--lichen-dark)}
+.web-visits-series-events-compare,.overview-chart-events-compare{--gsc-series:var(--stone-dark);background:var(--stone-dark)}
+g[class^='web-visits-series-'],circle[class*='web-visits-series-']{background:none}
+.web-visits-events-chart.overview-trend-desktop{height:auto;aspect-ratio:720/200}
+@media(min-width:901px) and (max-width:1200px){.overview-chart-wrap>.web-visits-events-chart.overview-trend-desktop{display:block}.overview-chart-wrap>.web-visits-events-chart.overview-trend-mobile{display:none}}
+@media(max-width:700px){.web-visits-events-chart.overview-trend-mobile{aspect-ratio:360/200}}
 @media(min-width:701px){main.first-run-page>:not(.heading-row)+*{margin-top:var(--admin-card-gap)}}
 .first-run-table{table-layout:fixed}.first-run-table th.column-number{width:112px}
 @media(min-width:701px){main.web-installer-page>.heading-row{margin-bottom:0}main.web-installer-page.overview-page>*+*{margin-top:var(--admin-card-gap)}}
