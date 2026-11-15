@@ -116,10 +116,15 @@ class SnapshotTests(unittest.TestCase):
             (f"{base}/events/stats", {"startAt": start, "endAt": end, "event": "download-click"}),
             (f"{base}/metrics", {"startAt": start, "endAt": end, "type": "referrer", "limit": 500}),
             (f"{base}/metrics", {"startAt": start, "endAt": end, "type": "entry", "limit": 5}),
-            (f"{base}/metrics", {"startAt": start, "endAt": end, "type": "country", "limit": 10}),
+            (f"{base}/metrics", {"startAt": start, "endAt": end, "type": "country", "limit": 500}),
             (f"{base}/performance/stats", {"startAt": start, "endAt": end}),
             (f"{base}/errors", {"startAt": start, "endAt": end, "pageSize": 100}),
             (f"{base}/errors", {"startAt": 2 * start - end, "endAt": start, "pageSize": 100}),
+            (f"{base}/metrics", {"startAt": start, "endAt": end, "type": "event", "limit": 50}),
+            (f"{base}/metrics", {"startAt": 2 * start - end, "endAt": start, "type": "event", "limit": 50}),
+            (f"{base}/events/series", {"startAt": start, "endAt": end, "unit": "day", "timezone": "UTC"}),
+            *((f"{base}/events/stats", {"startAt": start, "endAt": end, "event": event})
+              for event in ("web-installer-cta-click", "web-installer-gate", "web-installer-connected", "web-installer-done")),
         ])
         self.assertEqual(snapshot["previousStartAt"], 2 * start - end)
         blocks = snapshot["blocks"]
@@ -140,6 +145,30 @@ class SnapshotTests(unittest.TestCase):
         # Ignored issues (a DevTools test) are left out; the most frequent first.
         self.assertEqual(blocks["errors"]["data"]["total"], 14)
         self.assertEqual([issue["count"] for issue in blocks["errors"]["data"]["top"]], [7, 4, 2])
+        self.assertEqual(blocks["events"]["data"][0], {"name": "map-style-switch", "count": 219})
+        self.assertEqual(len(blocks["events"]["data"]), len(fx.EVENTS))
+        # Only the three Key events, per local day; an ISO time counts as its day.
+        self.assertEqual(blocks["eventSeries"]["data"], {"unit": "day", "series": {
+            "download-click": {"2026-11-12": 10, "2026-11-14": 20}, "web-installer-done": {"2026-11-13": 4},
+            "map-compare": {"2026-11-12": 33}}})
+        self.assertEqual(blocks["funnelConnected"]["data"]["current"]["visitors"], 2)
+
+    def test_key_events_are_hourly_for_two_days_or_less(self):
+        for period, unit in (("today", "hour"), ("24h", "hour"), ("7d", "day"), ("30d", "day"), ("all", "day")):
+            with self.subTest(period=period):
+                client, fake, _ = stats()
+                client.snapshot(period, "Europe/Vilnius", now=NOW)
+                series = [params for path, params in fake.calls if path.endswith("/events/series")]
+                self.assertEqual([(params["unit"], params["timezone"]) for params in series], [(unit, "Europe/Vilnius")])
+
+    def test_hourly_series_buckets_by_hour(self):
+        data = umami_stats.parse_event_series([
+            {"x": "download-click", "t": "2026-11-14 09:00:00", "y": 2}, {"x": "download-click", "t": "2026-11-14 10:00:00", "y": 3},
+            {"x": "download-click", "t": "2026-11-14", "y": 9}, {"x": "other", "t": "2026-11-14 10:00:00", "y": 5}], "hour")
+        self.assertEqual(data["series"]["download-click"], {"2026-11-14 09": 2, "2026-11-14 10": 3})
+        self.assertNotIn("other", data["series"])
+        with self.assertRaises(UmamiRequestError):
+            umami_stats.parse_event_series({"error": "bad"}, "day")
 
     def test_requests_run_in_parallel(self):
         barrier = threading.Barrier(len(umami_stats.BLOCKS), timeout=2)
@@ -387,7 +416,8 @@ class MarkupTests(unittest.TestCase):
 
     def test_blocks_in_order_with_values_and_changes(self):
         body, _ = self.render()
-        order = [body.index(f"id='web-visits-{name}'") for name in ("visitors", "downloads", "referrers", "entries", "countries", "vitals", "errors")]
+        order = [body.index(f"id='web-visits-{name}'") for name in (
+            "visitors", "downloads", "referrers", "entries", "countries", "events", "eventSeries", "funnel", "vitals", "errors")]
         self.assertEqual(order, sorted(order))
         self.assertEqual(metric_value(body, "Visitors"), "120")
         self.assertEqual(metric_value(body, "Views"), "410")
@@ -505,7 +535,7 @@ class MarkupTests(unittest.TestCase):
                  "comparison": {"pageviews": 0, "visitors": 0, "visits": 0, "bounces": 0, "totaltime": 0}}
 
         def fetch(settings, path, params):
-            if path.endswith("/metrics"):
+            if path.endswith("/metrics") or path.endswith("/events/series"):
                 return []
             if path.endswith("/errors"):
                 return {"data": [], "count": 0, "page": 1}
@@ -521,8 +551,121 @@ class MarkupTests(unittest.TestCase):
         self.assertEqual(metric_value(body, "Bounce rate"), "—")  # no visits: unknown, not 0%
         self.assertIn("No referrers in this period.", body)
         self.assertIn("No errors in this period.", body)
+        self.assertIn("No events in this period.", body)
+        self.assertIn("No key events in this period.", body)
+        self.assertIn("No web installer visits in this period.", body)
+        self.assertIn("No visits in this period.", body)
+        self.assertNotIn("data-visits-map", body)
         self.assertIn("Same as previous period", body)
         self.assertIn("data-trend='same'", body)
+
+    def section(self, body, name, until):
+        return body.split(f"id='web-visits-{name}'", 1)[1].split(f"id='web-visits-{until}'", 1)[0]
+
+    def test_events_in_groups_with_names_counts_and_changes(self):
+        client, _, _ = stats()
+        snapshot = client.snapshot("7d", "UTC", now=NOW)
+        snapshot["blocks"]["previousEvents"]["data"] = [
+            {"name": "download-cta-click", "count": 31}, {"name": "download-click", "count": 35},
+            {"name": "faq-link-click", "count": 1}, {"name": "web-installer-done", "count": 4},
+            {"name": "outbound-link-click", "count": 6}]
+        body = website_stats_blocks(snapshot, dashboard_url=None)
+        events = self.section(body, "events", "eventSeries")
+        text = visible_text(events)
+        groups = [text.index(group) for group in ("Download", "Web installer", "Maps", "Navigation &amp; links", "Other")]
+        self.assertEqual(groups, sorted(groups))
+        # Friendly names; more is better outside Navigation & links and Other.
+        self.assertIn("<td>Download button</td><td class='column-number'>41</td><td class='column-number'>"
+                      "<span class='funnel-delta' data-trend='better'><span aria-hidden='true'>▲</span> +10", events)
+        self.assertIn("<td>Download started</td><td class='column-number'>30</td><td class='column-number'>"
+                      "<span class='funnel-delta' data-trend='worse'><span aria-hidden='true'>▼</span> −5", events)
+        self.assertIn("<td>Install finished</td><td class='column-number'>4</td><td class='column-number'>"
+                      "<span class='funnel-delta' data-trend='same'>", events)
+        self.assertIn("<td>FAQ link</td><td class='column-number'>5</td><td class='column-number'>"
+                      "<span class='funnel-delta' data-trend='neutral'><span aria-hidden='true'>▲</span> +4", events)
+        # A link event without a name joins Navigation & links; an event gone this period stays at 0.
+        self.assertIn("<td>newsletter-link-click</td>", events)
+        self.assertIn("<td>Outbound link</td><td class='column-number'>0</td>", events)
+        # Unknown events keep their own name in Other, as text.
+        other = events.split("<span>Other</span>", 1)[1]
+        self.assertIn("<td>brand-new-event</td>", other)
+        self.assertIn("<td>&lt;b&gt;odd&lt;/b&gt;</td>", other)
+        self.assertNotIn("<b>odd", body)
+
+    def test_events_groups_show_three_rows_and_navigation_starts_closed(self):
+        body, _ = self.render()
+        events = self.section(body, "events", "eventSeries")
+        bodies = {re.search(r"<span>([^<]+)</span>", part).group(1).replace("&amp;", "&"): part
+                  for part in events.split("<tbody ")[1:]}
+        installer = bodies["Web installer"]
+        self.assertEqual(installer.count("<tr data-events-row>"), 3)
+        self.assertEqual(installer.count("<tr data-events-row hidden>"), 4)
+        self.assertIn("aria-expanded='false'", installer)
+        self.assertIn(">Show all 7<span class='sr-only'> Web installer</span></button>", installer)
+        navigation = bodies["Navigation & links"]
+        self.assertEqual(navigation.count("<tr data-events-row>"), 0)
+        self.assertIn(">Show 4<span class='sr-only'> Navigation &amp; links</span></button>", navigation)
+        self.assertNotIn("data-events-toggle", bodies["Download"])  # two rows: nothing to show
+
+    def test_all_time_events_have_no_change_column(self):
+        body, _ = self.render(period="all")
+        events = self.section(body, "events", "eventSeries")
+        self.assertIn("data-columns='2'", events)
+        self.assertNotIn(">Change</th>", events)
+
+    def test_key_events_chart_three_series_with_zero_days(self):
+        body, _ = self.render()
+        chart = self.section(body, "eventSeries", "funnel")
+        legend = visible_text(chart.split("overview-chart-legend", 1)[1])
+        self.assertIn("Downloadstarted30", legend.replace(" ", ""))
+        self.assertIn("Installfinished4", legend.replace(" ", ""))
+        self.assertIn("Mapcompare33", legend.replace(" ", ""))
+        self.assertNotIn("Guide", chart)
+        # 7 days from 2026-11-07 12:30 to 2026-11-14 12:30 UTC: 8 local days, each focusable.
+        desktop = chart.split("overview-trend-desktop", 1)[1].split("</svg>", 1)[0]
+        self.assertEqual(desktop.count("tabindex='0'"), 8)
+        self.assertIn("aria-label='13 Nov · Download started 0 · Install finished 4 · Map compare 0'", desktop)
+        self.assertEqual(desktop.count("<polyline"), 3)
+
+    def test_funnel_has_shares_and_a_tracking_gap_never_a_negative_drop(self):
+        body, _ = self.render()
+        funnel = visible_text(self.section(body, "funnel", "vitals"))
+        self.assertIn("Installer button20100%", funnel)
+        self.assertIn("Browser check840%", funnel)
+        self.assertIn("Garmin connected210%", funnel)
+        # 3 finished after 2 connected: no percentage, a grey Tracking gap mark.
+        self.assertIn("Install finished3Tracking gap", funnel)
+        self.assertIn("admin-pill-neutral", self.section(body, "funnel", "vitals"))
+        self.assertNotIn("−", funnel)
+
+    def test_countries_map_has_every_country_log_classes_and_is_decorative(self):
+        rows = [{"x": "FR", "y": 32}] + [{"x": code, "y": 1} for code in ("LT", "DE", "PL", "CZ", "IT", "ES", "NL", "SE", "NO", "FI", "DK")]
+        original = list(fx.COUNTRIES)
+        fx.COUNTRIES[:] = rows + [{"x": None, "y": 4}]
+        try:
+            body, _ = self.render()
+        finally:
+            fx.COUNTRIES[:] = original
+        countries = self.section(body, "countries", "events")
+        self.assertIn("class='web-visits-map' aria-hidden='true'", countries)
+        payload = json.loads(re.search(r"data-visits-map='([^']+)'", countries).group(1).replace("&quot;", '"'))
+        self.assertEqual(len(payload), 12)  # every country, not only the 10 listed
+        self.assertEqual(payload["FR"], [32, 5, "68.1%"])  # 32 of 47 visitors (Unknown included), the darkest step
+        self.assertEqual(payload["DK"], [1, 1, "2.1%"])  # one visitor stays visible, not washed out
+        self.assertEqual(countries.count("<tr>"), 1 + 10)  # header and the 10 listed
+        legend = visible_text(countries.split("web-visits-map-legend", 1)[1])
+        self.assertIn("1–23–45–89–1617–32No visits", legend)
+        self.assertIn("data-visits-map-src='/admin/map-assets/visits-map.", countries)
+
+    def test_map_classes(self):
+        from terento_catalog.admin_website_stats import _map_levels
+        level, legend = _map_levels([1])
+        self.assertEqual((legend, level(1)), ([(5, 1, 1)], 5))
+        level, legend = _map_levels([3, 1, 2])
+        self.assertEqual(legend, [(1, 1, 1), (3, 2, 2), (5, 3, 3)])
+        level, legend = _map_levels([50, 1])
+        self.assertEqual(legend, [(1, 1, 2), (2, 3, 4), (3, 5, 10), (4, 11, 22), (5, 23, 50)])
+        self.assertEqual([level(count) for count in (1, 3, 10, 11, 50)], [1, 2, 3, 4, 5])
 
     def test_not_configured(self):
         body = website_stats_blocks(None, dashboard_url=None)
@@ -583,13 +726,33 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(response.status, 200)
         self.assertIn("<h1>Web visits</h1>", body)
         self.assertIn("<option value='24h' selected>", body)
-        self.assertEqual(body.count("Loading…"), 7 + 4)  # Umami blocks, then Google Search
-        self.assertEqual(body.count("web-visits-skeleton"), 7 + 4)
+        self.assertEqual(body.count("Loading…"), 10 + 4)  # Umami blocks, then Google Search
+        self.assertEqual(body.count("web-visits-skeleton"), 10 + 4)
         self.assertIn("/admin/api/umami", body)
         self.assertNotIn(fx.SECRET_KEY, body)
         self.assertEqual(self.fake.calls, [])  # the page itself never waits for Umami
         response, _ = self.get("/admin/web-visits", cookie=None)
         self.assertEqual((response.status, response.headers["Location"]), (303, "/admin/login"))
+
+    def test_the_map_shapes_are_a_small_versioned_asset_behind_the_login(self):
+        from terento_catalog.admin_website_stats import VISITS_MAP_PATH
+        response, body = self.get(VISITS_MAP_PATH)
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.headers["Content-Type"], "image/svg+xml; charset=utf-8")
+        self.assertIn("immutable", response.headers["Cache-Control"])
+        self.assertTrue(body.startswith("<svg"))
+        self.assertLessEqual(len(body.encode()), 120 * 1024)
+        self.assertIn('id="v-lt"', body)
+        self.assertNotIn('id="v-aq"', body)  # no Antarctica
+        # Built from the Admin world map as it is now (tools/build_admin_visits_map.py).
+        import hashlib
+        from terento_catalog.admin_visits_map import VISITS_MAP_SOURCE_SHA256
+        from terento_catalog.admin_world_map import WORLD_MAP_SVG
+        self.assertEqual(VISITS_MAP_SOURCE_SHA256, hashlib.sha256(WORLD_MAP_SVG.encode("utf-8")).hexdigest())
+        response, _ = self.get(VISITS_MAP_PATH, cookie=None)
+        self.assertEqual(response.status, 303)
+        _, page = self.get("/admin/web-visits")
+        self.assertNotIn(VISITS_MAP_PATH, page)  # read only when a map comes into view
 
     def test_the_old_address_leads_to_web_visits(self):
         response, _ = self.get("/admin/website-stats?period=30d")

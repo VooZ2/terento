@@ -395,9 +395,14 @@ session and CSRF cookie as the pages; without them it is
 noindex. The answer is `schemaVersion: 1`, `configured`, `period`, `timeZone`,
 `startAt`/`endAt` (Umami milliseconds; All time starts 2026-08-20), `blocks`
 (`visitors`, `downloads`, `referrers` (`{rows, total}`: platforms merged, top
-10, and the visitor sum of all referrers), `entries`, `countries` (ISO 3166-1
-alpha-2 codes, `""` for unknown), `vitals` (`lcp`, `inp`, `cls`, `fcp`, `ttfb`
-p75 and `count`), `errors` and `previousErrors`, each
+10, and the visitor sum of all referrers), `entries`, `countries` (every
+country, ISO 3166-1 alpha-2 codes, `""` for unknown), `vitals` (`lcp`, `inp`,
+`cls`, `fcp`, `ttfb` p75 and `count`), `errors`, `previousErrors`, `events` and
+`previousEvents` (`[{name, count}]`, at most 50), `eventSeries` (`{unit,
+series}`: `download-click`, `web-installer-done` and `map-compare` counts per
+local `YYYY-MM-DD`, or `YYYY-MM-DD HH` for Today and Last 24 hours), and
+`funnelCta`, `funnelGate`, `funnelConnected`, `funnelDone` (event stats of the
+four web installer steps), each
 `{state, fetchedAt, data}`, or `null` when Umami is not configured) and `html`
 (the rendered blocks). It is always `200`; Umami failures are block states,
 not route errors.
@@ -407,9 +412,12 @@ The server reads Umami 3.5 with `UMAMI_BASE_URL` (HTTPS origin),
 `Authorization: Bearer`). One request per block, in parallel, 10 s limit:
 `/stats` (with its `comparison`, the previous period of the same length),
 `/events/stats?event=download-click`, `/metrics?type=referrer&limit=500`,
-`/metrics?type=entry&limit=5`, `/metrics?type=country&limit=10`,
+`/metrics?type=entry&limit=5`, `/metrics?type=country&limit=500`,
 `/performance/stats`, `/errors?pageSize=100` and `/errors?pageSize=100` for
-the previous period of the same length. Each block result is cached for 15
+the previous period of the same length, `/metrics?type=event&limit=50` for the
+period and the previous period, `/events/series?unit=day|hour&timezone=<Admin
+zone>` and `/events/stats?event=` for each funnel step. The map's shapes are
+`GET /admin/map-assets/visits-map.<hash>.svg` (Admin session, immutable). Each block result is cached for 15
 minutes per (block, period, time zone). States: `ok`; `stale` (Umami failed,
 the last good result and its `fetchedAt`); `unavailable` (failed with nothing
 cached); `hidden` (Umami answered 400 or 404). Redirects are refused, so the

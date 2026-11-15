@@ -38,9 +38,21 @@ CACHE_SECONDS = 15 * 60
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 DOWNLOAD_EVENT = "download-click"
 USER_AGENT = "Terento-Admin/1.0 (+https://terento.app)"
-# Block order on the page; each is one Umami request (previousErrors feeds the
-# Errors change, not a card of its own).
-BLOCKS = ("visitors", "downloads", "referrers", "entries", "countries", "vitals", "errors", "previousErrors")
+# The Web installer funnel: (block, Umami event), in step order. Each step is
+# the event's distinct visitors (owner request 2026-11-15).
+FUNNEL_STEPS = (
+    ("funnelCta", "web-installer-cta-click"),
+    ("funnelGate", "web-installer-gate"),
+    ("funnelConnected", "web-installer-connected"),
+    ("funnelDone", "web-installer-done"),
+)
+# The Key events chart: only these three events, in this order.
+KEY_EVENTS = ("download-click", "web-installer-done", "map-compare")
+EVENT_LIMIT = 50
+# Block order; each is one Umami request (previousErrors and previousEvents
+# feed a change, not a card of their own).
+BLOCKS = ("visitors", "downloads", "referrers", "entries", "countries", "vitals", "errors", "previousErrors",
+          "events", "previousEvents", "eventSeries", *(name for name, _ in FUNNEL_STEPS))
 # Umami has measured terento.app since this day; "all" starts here.
 TRACKING_START = datetime(2026, 8, 20, tzinfo=timezone.utc)
 # Old Maps hash page views inflate Views before this moment (site #686 live).
@@ -153,6 +165,11 @@ def period_window(period: str, now: datetime, time_zone: str) -> tuple[int, int]
     return start_ms, int(end.timestamp() * 1000)
 
 
+def series_unit(period: str) -> str:
+    """Hours for a period of up to two days, else days."""
+    return "hour" if period in ("today", "24h") else "day"
+
+
 def _number(value: Any) -> float | None:
     if isinstance(value, bool) or value is None:
         return None
@@ -256,12 +273,39 @@ def parse_referrers(raw: Any, limit: int = 10) -> dict[str, Any]:
 
 
 def parse_countries(raw: Any) -> list[dict[str, Any]]:
-    """Top countries as ISO 3166-1 alpha-2 codes; anything else is ``""`` (Unknown)."""
-    rows = parse_metrics(raw, 10)
+    """Every country as an ISO 3166-1 alpha-2 code, most visitors first;
+    anything else is ``""`` (Unknown)."""
+    rows = parse_metrics(raw, 10_000)
     for row in rows:
         code = row["name"].strip().upper()
         row["name"] = code if re.fullmatch(r"[A-Z]{2}", code) and code not in {"XX", "ZZ"} else ""
     return rows
+
+
+def parse_events(raw: Any) -> list[dict[str, Any]]:
+    """Custom events by name with their counts (every event, not visitors)."""
+    return [{"name": row["name"], "count": row["visitors"]} for row in parse_metrics(raw, EVENT_LIMIT) if row["name"]]
+
+
+_BUCKET = re.compile(r"^(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}))?")
+
+
+def parse_event_series(raw: Any, unit: str) -> dict[str, Any]:
+    """Counts of the Key events per local day (``2026-11-15``) or hour
+    (``2026-11-15 14``); Umami has no row for a bucket without events."""
+    rows = raw.get("data") if isinstance(raw, dict) else raw
+    if not isinstance(rows, list):
+        raise UmamiRequestError("unexpected shape")
+    series: dict[str, dict[str, int]] = {name: {} for name in KEY_EVENTS}
+    for row in rows:
+        if not isinstance(row, dict) or row.get("x") not in series:
+            continue
+        found, count = _BUCKET.match(str(row.get("t") or "")), _number(row.get("y"))
+        if not found or count is None or (unit == "hour" and not found.group(2)):
+            continue
+        key = found.group(1) + (f" {found.group(2)}" if unit == "hour" else "")
+        series[row["x"]][key] = series[row["x"]].get(key, 0) + int(count)
+    return {"unit": unit, "series": series}
 
 
 def parse_performance(raw: Any) -> dict[str, Any]:
@@ -309,9 +353,12 @@ class UmamiStats:
         self._last_failure: tuple[float, str, int | None] | None = None
         self._last_probe: float | None = None
 
-    def _requests(self, start: int, end: int) -> dict[str, tuple[str, dict[str, Any], Callable[[Any], Any]]]:
+    def _requests(self, start: int, end: int, period: str = "7d",
+                  time_zone: str = "UTC") -> dict[str, tuple[str, dict[str, Any], Callable[[Any], Any]]]:
         base = f"/api/websites/{self.settings.website_id}"
         window = {"startAt": start, "endAt": end}
+        previous = {"startAt": start - (end - start), "endAt": start}
+        unit = series_unit(period)
         return {
             "visitors": (f"{base}/stats", window, parse_stats),
             "downloads": (f"{base}/events/stats", {**window, "event": DOWNLOAD_EVENT}, parse_event_stats),
@@ -319,12 +366,18 @@ class UmamiStats:
             # Direct / none is visitors minus every referred visitor.
             "referrers": (f"{base}/metrics", {**window, "type": "referrer", "limit": 500}, parse_referrers),
             "entries": (f"{base}/metrics", {**window, "type": "entry", "limit": 5}, lambda raw: parse_metrics(raw, 5)),
-            "countries": (f"{base}/metrics", {**window, "type": "country", "limit": 10}, parse_countries),
+            # Every country (Umami's own limit) for the map; the table shows 10.
+            "countries": (f"{base}/metrics", {**window, "type": "country", "limit": 500}, parse_countries),
             "vitals": (f"{base}/performance/stats", window, parse_performance),
             "errors": (f"{base}/errors", {**window, "pageSize": 100}, parse_errors),
             # Umami has no error comparison: the same length just before.
-            "previousErrors": (f"{base}/errors", {"startAt": start - (end - start), "endAt": start, "pageSize": 100},
-                               parse_errors),
+            "previousErrors": (f"{base}/errors", {**previous, "pageSize": 100}, parse_errors),
+            "events": (f"{base}/metrics", {**window, "type": "event", "limit": EVENT_LIMIT}, parse_events),
+            "previousEvents": (f"{base}/metrics", {**previous, "type": "event", "limit": EVENT_LIMIT}, parse_events),
+            "eventSeries": (f"{base}/events/series", {**window, "unit": unit, "timezone": time_zone},
+                            lambda raw: parse_event_series(raw, unit)),
+            **{name: (f"{base}/events/stats", {**window, "event": event}, parse_event_stats)
+               for name, event in FUNNEL_STEPS},
         }
 
     def snapshot(self, period: str, time_zone: str, now: datetime | None = None) -> dict[str, Any]:
@@ -334,7 +387,7 @@ class UmamiStats:
         period = period if period in ADMIN_PERIODS else "7d"
         now = now or datetime.fromtimestamp(self._clock(), timezone.utc)
         start, end = period_window(period, now, time_zone)
-        requests = self._requests(start, end)
+        requests = self._requests(start, end, period, time_zone)
         moment = self._clock()
         blocks: dict[str, dict[str, Any]] = {}
         missing = []

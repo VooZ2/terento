@@ -9,15 +9,20 @@ block loads the same way from ``/admin/api/gsc`` (Search Console, gsc_stats).
 
 from __future__ import annotations
 
+import hashlib
 import html
+import json
+import math
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Callable
+from zoneinfo import ZoneInfo
 
 from .admin import (
     _ADMIN_NONCE_PLACEHOLDER,
     _admin_header,
     _admin_icon,
     _chart_axis_labels,
+    _chart_legend,
     _chart_value_attributes,
     _chart_value_strip,
     _empty_state,
@@ -34,11 +39,13 @@ from .admin_referrer_icons import FONT_AWESOME_BRANDS, SIMPLE_ICONS
 from .admin_web_installer import _duration
 from .gsc_stats import DEFAULT_PERIOD as GSC_DEFAULT_PERIOD, PERIODS as GSC_PERIODS
 from .statistics_periods import ADMIN_PERIOD_LABELS, ADMIN_PERIODS
-from .umami_stats import CLEAN_VIEWS_SINCE
+from .admin_visits_map import VISITS_MAP_SVG
+from .umami_stats import CLEAN_VIEWS_SINCE, FUNNEL_STEPS, KEY_EVENTS
 
 TITLES = {
     "visitors": "Visitors", "downloads": "Downloads", "referrers": "Referrers",
     "entries": "Entry pages", "countries": "Countries", "vitals": "Web Vitals", "errors": "Errors",
+    "events": "Events", "eventSeries": "Key events over time", "funnel": "Web installer funnel",
 }
 PREVIOUS = {"today": "previous period", "24h": "previous 24 h", "7d": "previous 7 days", "30d": "previous 30 days"}
 VITALS_MIN_SAMPLES = 20
@@ -198,14 +205,19 @@ def _flag(code: str) -> str:
 
 
 def _countries(rows: list[dict[str, Any]]) -> str:
-    """Countries by visitors; the browser names each code in English."""
+    """The top 10 countries by visitors (the browser names each code in
+    English) beside the map of every country."""
     cells = []
-    for row in rows:
+    for row in rows[:10]:
         code = row["name"]
-        cell = (f"<span class='web-visits-source'><span class='web-visits-flag' aria-hidden='true'>{_flag(code)}</span>"
-                f"<span data-region-name='{code}'>{code}</span></span>") if code else "Unknown"
+        cell = (f"<span class='web-visits-source' data-country='{code.lower()}'><span class='web-visits-flag' aria-hidden='true'>"
+                f"{_flag(code)}</span><span data-region-name='{code}'>{code}</span></span>") if code else "Unknown"
         cells.append((cell, row["visitors"], ""))
-    return _ranking("Top countries", "Country", cells, "No visits in this period.")
+    table = _ranking("Top countries", "Country", cells, "No visits in this period.")
+    world = _visits_map(rows)
+    if not world:
+        return table
+    return f"<div class='web-visits-countries'>{world}<div class='web-visits-countries-list'>{table}</div></div>"
 
 
 def _visitors(data: dict[str, Any], period: str, views_mixed: bool) -> str:
@@ -299,6 +311,283 @@ def _errors(data: dict[str, Any], previous: dict[str, Any] | None, period: str) 
     )
 
 
+# Every Umami event the site and the web installer send, by group, with the
+# name the Events table shows (owner request 2026-11-15). Another
+# ``*-link-click`` joins Navigation & links and any other event joins Other,
+# each under its own name, so a new event never disappears.
+EVENT_GROUPS: tuple[tuple[str, tuple[tuple[str, str], ...]], ...] = (
+    ("Download", (("download-cta-click", "Download button"), ("download-click", "Download started"))),
+    ("Web installer", (
+        ("web-installer-cta-click", "Installer button"), ("web-installer-link-click", "Installer link"),
+        ("web-installer-gate", "Browser check"), ("web-installer-connected", "Garmin connected"),
+        ("web-installer-done", "Install finished"), ("installer-result", "Installer result"),
+        ("install-link-copy", "Installer link copied"))),
+    ("Maps", (("map-style-switch", "Map style switch"), ("map-compare", "Map compare"),
+              ("maps-link-click", "Maps link"))),
+    ("Navigation & links", (
+        ("language-switch-click", "Language switch"), ("guide-link-click", "Guide link"),
+        ("internal-link-click", "Internal link"), ("compatibility-link-click", "Compatibility link"),
+        ("navigation-link-click", "Navigation link"), ("home-link-click", "Home link"),
+        ("privacy-link-click", "Privacy link"), ("legal-link-click", "Legal link"), ("faq-link-click", "FAQ link"),
+        ("support-link-click", "Support link"), ("social-link-click", "Social link"),
+        ("project-link-click", "Project link"), ("licence-link-click", "Licence link"),
+        ("outbound-link-click", "Outbound link"))),
+    ("Other", (("app-store-click", "App Store button"), ("donate", "Donate"),
+               ("guide-command-copy", "Guide command copied"))),
+)
+_EVENT_NAMES = {event: (group, label) for group, events in EVENT_GROUPS for event, label in events}
+NAVIGATION_GROUP, OTHER_GROUP = "Navigation & links", "Other"
+# Rows a group shows before Show all; Navigation & links starts closed.
+EVENT_GROUP_ROWS = 3
+# Groups whose changes have no better direction: grey.
+_PLAIN_GROUPS = {NAVIGATION_GROUP, OTHER_GROUP}
+# Key events chart: event -> (swatch and line class, legend name), in the
+# fixed colour order Interactive Primary, Lichen dark, Stone dark.
+KEY_EVENT_SERIES = {"download-click": ("events-download", "Download started"),
+                    "web-installer-done": ("events-installed", "Install finished"),
+                    "map-compare": ("events-compare", "Map compare")}
+TRACKING_GAP = "Tracking gap"
+MAP_LEVELS = 5
+
+
+def event_label(name: str) -> tuple[str, str]:
+    """(group, shown name) of one Umami event."""
+    if name in _EVENT_NAMES:
+        return _EVENT_NAMES[name]
+    return (NAVIGATION_GROUP if name.endswith("-link-click") else OTHER_GROUP), name
+
+
+def _change(current: int, previous: int | None, period: str, *, plain: bool) -> str:
+    """The table form of ``_delta``: arrow and signed amount, the compared
+    period for screen readers only."""
+    if period not in PREVIOUS or previous is None:
+        return ""
+    change = current - previous
+    against = f"<span class='sr-only'> vs {PREVIOUS[period]}</span>"
+    if change == 0:
+        return f"<span class='funnel-delta' data-trend='same'><span aria-hidden='true'>=</span><span class='sr-only'>Same</span>{against}</span>"
+    arrow, sign = ("▲", "+") if change > 0 else ("▼", "−")
+    trend = "neutral" if plain or not previous else ("better" if change > 0 else "worse")
+    return (f"<span class='funnel-delta' data-trend='{trend}'><span aria-hidden='true'>{arrow}</span> "
+            f"{sign}{abs(change):,}{against}</span>")
+
+
+def _events(data: list[dict[str, Any]], previous: list[dict[str, Any]] | None, period: str) -> str:
+    """Every event in its group, most frequent first; a group shows 3 rows
+    (Navigation & links none) until Show all."""
+    now = {row["name"]: row["count"] for row in data}
+    before = None if previous is None or period not in PREVIOUS else {row["name"]: row["count"] for row in previous}
+    names = set(now) | set(before or {})
+    if not any(now.values()) and not any((before or {}).values()):
+        return _empty_state("empty", "No events in this period.")
+    grouped: dict[str, list[tuple[str, int, int | None]]] = {}
+    for name in names:
+        group, label = event_label(name)
+        grouped.setdefault(group, []).append((label, now.get(name, 0), None if before is None else before.get(name, 0)))
+    columns = 3 if before is not None else 2
+    bodies = []
+    for index, group in enumerate([group for group, _ in EVENT_GROUPS]):
+        rows = sorted(grouped.get(group) or [], key=lambda row: (-row[1], row[0]))
+        if not rows:
+            continue
+        limit = 0 if group == NAVIGATION_GROUP else EVENT_GROUP_ROWS
+        body_id = f"web-visits-events-{index}"
+        toggle = ""
+        if len(rows) > limit:
+            closed = "Show" if limit == 0 else "Show all"
+            toggle = (f"<button type='button' class='web-visits-events-toggle' data-events-toggle data-limit='{limit}' "
+                      f"data-closed='{closed} {len(rows)}' data-open='{'Hide' if limit == 0 else 'Show fewer'}' "
+                      f"aria-expanded='false' aria-controls='{body_id}'>{closed} {len(rows)}"
+                      f"<span class='sr-only'> {html.escape(group)}</span></button>")
+        cells = "".join(
+            f"<tr data-events-row{' hidden' if position >= limit else ''}><td>{html.escape(label)}</td>"
+            f"<td class='column-number'>{count:,}</td>"
+            + (f"<td class='column-number'>{_change(count, old, period, plain=group in _PLAIN_GROUPS)}</td>"
+               if columns == 3 else "") + "</tr>"
+            for position, (label, count, old) in enumerate(rows))
+        bodies.append(
+            f"<tbody id='{body_id}'><tr class='web-visits-events-group'><th scope='rowgroup' colspan='{columns}'>"
+            f"<span>{html.escape(group)}</span>{toggle}</th></tr>{cells}</tbody>")
+    change_head = "<th scope='col' class='column-number'>Change</th>" if columns == 3 else ""
+    return ("<div class='table-wrap'><table class='admin-table web-visits-events-table' data-own-mobile-layout"
+            f" data-columns='{columns}'><caption class='sr-only'>Events</caption><thead><tr><th scope='col'>Event</th>"
+            f"<th scope='col' class='column-number'>Count</th>{change_head}</tr></thead>{''.join(bodies)}</table></div>")
+
+
+def _series_buckets(snapshot: dict[str, Any], unit: str) -> list[tuple[str, str]]:
+    """(key, axis label) per local day or hour from the period's start to now."""
+    try:
+        zone = ZoneInfo(snapshot.get("timeZone") or "UTC")
+    except Exception:  # noqa: BLE001 - an unknown zone is UTC, as for the page
+        zone = ZoneInfo("UTC")
+    start = datetime.fromtimestamp(snapshot["startAt"] / 1000, timezone.utc).astimezone(zone)
+    end = datetime.fromtimestamp(snapshot["endAt"] / 1000, timezone.utc).astimezone(zone)
+    buckets = []
+    if unit == "hour":
+        moment = start.replace(minute=0, second=0, microsecond=0)
+        while moment <= end and len(buckets) < 200:
+            buckets.append((moment.strftime("%Y-%m-%d %H"), moment.strftime("%H:00")))
+            moment = (moment + timedelta(hours=1)).astimezone(zone)
+    else:
+        day = start.date()
+        while day <= end.date() and len(buckets) < 400:
+            buckets.append((day.isoformat(), _day_label(day)))
+            day += timedelta(days=1)
+    return buckets
+
+
+def _key_events_svg(buckets: list[tuple[str, str]], values: dict[str, list[int]], width: int, variant: str) -> str:
+    font = 13 if variant == "mobile" else 11
+    height, left, right, top, bottom = 200, 36, 12, 12, 28
+    plot, base = width - left - right, height - bottom
+    count = len(buckets)
+    xs = [left + (plot * index / (count - 1) if count > 1 else plot / 2) for index in range(count)]
+    step = _nice_tick_step(max(max(series) for series in values.values()))
+    scale = step * 4
+    parts = []
+    for amount in (0, step * 2, scale):
+        y = base - (base - top) * amount / scale
+        parts.append(f"<line class='overview-chart-grid' x1='{left}' x2='{width - right}' y1='{y:.1f}' y2='{y:.1f}'/>"
+                     f"<text class='overview-chart-axis-label' x='{left - 8}' y='{y + 4:.1f}' text-anchor='end'>"
+                     f"{_compact(amount)}</text>")
+    points: dict[str, list[tuple[float, float]]] = {}
+    for event in KEY_EVENTS:
+        css = KEY_EVENT_SERIES[event][0]
+        points[event] = [(x, base - (base - top) * value / scale) for x, value in zip(xs, values[event])]
+        coords = " ".join(f"{x:.1f},{y:.1f}" for x, y in points[event])
+        parts.append(f"<g class='web-visits-series-{css}'>"
+                     + (f"<polyline class='gsc-chart-line' points='{coords}'/>" if count > 1 else
+                        f"<circle class='gsc-chart-dot' cx='{xs[0]:.1f}' cy='{points[event][0][1]:.1f}' r='3'/>")
+                     + "</g>")
+    slot = plot / max(count - 1, 1) if count > 1 else plot
+    for index, (x, (_, label)) in enumerate(zip(xs, buckets)):
+        items = [(KEY_EVENT_SERIES[event][0], KEY_EVENT_SERIES[event][1], values[event][index]) for event in KEY_EVENTS]
+        text = label + " · " + " · ".join(f"{name} {value:,}" for _, name, value in items)
+        dots = "".join(f"<circle class='gsc-chart-focus web-visits-series-{KEY_EVENT_SERIES[event][0]}' cx='{x:.1f}' "
+                       f"cy='{points[event][index][1]:.1f}' r='3.5'/>" for event in KEY_EVENTS)
+        hit_x = max(x - slot / 2, left)
+        parts.append(
+            f"<g class='overview-chart-group gsc-chart-day' role='img' tabindex='0'"
+            f"{_chart_value_attributes(label, items, None)} aria-label='{html.escape(text, quote=True)}'>"
+            f"<title>{html.escape(text)}</title><rect class='gsc-chart-hit' x='{hit_x:.1f}' y='{top}' "
+            f"width='{min(slot, width - right - hit_x):.1f}' height='{base - top}'/>{dots}</g>")
+    labels = [label for _, label in buckets]
+    for index, anchor in _chart_axis_labels(xs, labels, font_size=font, chart_width=width):
+        parts.append(f"<text x='{xs[index]:.1f}' y='{height - 8}' text-anchor='{anchor}' aria-hidden='true'>"
+                     f"{html.escape(labels[index])}</text>")
+    return (f"<svg class='overview-trend-chart overview-trend-{variant} web-visits-events-chart' viewBox='0 0 {width} {height}' "
+            f"role='group' aria-label='Key events over time'>{''.join(parts)}</svg>")
+
+
+def _key_events(data: dict[str, Any], snapshot: dict[str, Any]) -> str:
+    """Download started, Install finished and Map compare per day (per hour
+    for Today and Last 24 hours); a bucket without events is 0."""
+    unit = data.get("unit") or "day"
+    buckets = _series_buckets(snapshot, unit)
+    series = data.get("series") or {}
+    values = {event: [int((series.get(event) or {}).get(key, 0)) for key, _ in buckets] for event in KEY_EVENTS}
+    if not buckets or not any(any(row) for row in values.values()):
+        return _empty_state("empty", "No key events in this period.")
+    legend = _chart_legend([(KEY_EVENT_SERIES[event][0], KEY_EVENT_SERIES[event][1], sum(values[event]))
+                            for event in KEY_EVENTS], label="Key events")
+    return ("<div class='overview-chart-wrap'>" + "".join(
+        _key_events_svg(buckets, values, width, variant) for width, variant in ((720, "desktop"), (360, "mobile")))
+        + legend + _chart_value_strip() + "</div>")
+
+
+def _funnel(steps: list[tuple[str, int | None]]) -> str:
+    """Visitors of each step as a bar against the first step. A step with
+    more visitors than the step before has no percentage and a grey Tracking
+    gap mark instead (the events count different things), never a negative
+    drop-off."""
+    first = steps[0][1]
+    widest = max((value or 0) for _, value in steps)
+    rows = []
+    for index, (label, value) in enumerate(steps):
+        before = steps[index - 1][1] if index else None
+        gap = value is not None and before is not None and value > before
+        if value is None:
+            share = "—"
+        elif gap:
+            share = _status_pill("neutral", TRACKING_GAP)
+        elif first:
+            share = f"{value / first * 100:.0f}%"
+        else:
+            share = "—"
+        width = 0 if not value or not widest else max(value / widest * 100, 1)
+        number = "—" if value is None else f"{value:,}"
+        rows.append(
+            f"<tr{' data-gap' if gap else ''}><td>{html.escape(label)}</td>"
+            f"<td class='web-visits-funnel-bar'><span class='web-visits-funnel-track' aria-hidden='true'>"
+            f"<span style='width:{width:.1f}%'></span></span><span class='numeric'>{number}</span></td>"
+            f"<td class='column-number'>{share}</td></tr>")
+    return ("<div class='table-wrap'><table class='admin-table web-visits-funnel' data-own-mobile-layout>"
+            "<caption class='sr-only'>Web installer funnel</caption><thead><tr><th scope='col'>Step</th>"
+            "<th scope='col'>Visitors</th><th scope='col' class='column-number'>Of first step</th></tr></thead>"
+            f"<tbody>{''.join(rows)}</tbody></table></div>")
+
+
+def _funnel_card(blocks: dict[str, dict[str, Any]]) -> str:
+    states = [blocks.get(name) or {} for name, _ in FUNNEL_STEPS]
+    if all(state.get("state") == "hidden" for state in states):
+        return ""
+    data = [_usable(state) for state in states]
+    card_id = _card_id("funnel")
+    if not any(data):
+        return _section_card(TITLES["funnel"], _empty_state("unavailable", UNAVAILABLE), card_id=card_id, css=_LIST)
+    steps = [(event_label(event)[1], None if item is None else ((item.get("current") or {}).get("visitors")))
+             for (_, event), item in zip(FUNNEL_STEPS, data)]
+    steps = [(label, None if value is None else int(value)) for label, value in steps]
+    if not any(value for _, value in steps):
+        body = _empty_state("empty", "No web installer visits in this period.")
+    else:
+        body = _funnel(steps)
+    stale = [state for state in states if state.get("state") == "stale"]
+    marks = _stale(min(stale, key=lambda state: state["fetchedAt"])) if stale else ""
+    return _section_card(TITLES["funnel"], body, card_id=card_id, css=_LIST, totals=marks)
+
+
+def _map_levels(values: list[int]) -> tuple[Callable[[int], int], list[tuple[int, int, int]]]:
+    """Five logarithmic classes from 1 to the most visitors, so one large
+    country does not wash out the rest: (level of a count, [(level, low,
+    high)] for the legend). Empty classes drop out; the rest spread over the
+    five colour steps."""
+    top = max(values)
+    edges = [math.floor(top ** (step / MAP_LEVELS) + 1e-9) for step in range(MAP_LEVELS + 1)]
+    edges[0], edges[-1] = 0, top
+    classes = [(edges[step] + 1, edges[step + 1]) for step in range(MAP_LEVELS) if edges[step + 1] > edges[step]]
+    spread = [1 + round(index * (MAP_LEVELS - 1) / max(len(classes) - 1, 1)) for index in range(len(classes))]
+    if len(classes) == 1:
+        spread = [MAP_LEVELS]
+    legend = [(level, low, high) for level, (low, high) in zip(spread, classes)]
+
+    def level(count: int) -> int:
+        return next((step for step, low, high in legend if count <= high), legend[-1][0])
+
+    return level, legend
+
+
+def _visits_map(rows: list[dict[str, Any]]) -> str:
+    """The choropleth beside the Countries list: the same numbers, so it is
+    decorative for screen readers (aria-hidden); the shapes load when the
+    card comes into view."""
+    known = [row for row in rows if row["name"] and row["visitors"] > 0]
+    if not known:
+        return ""
+    total = sum(row["visitors"] for row in rows)
+    level, legend = _map_levels([row["visitors"] for row in known])
+    payload = {row["name"]: [row["visitors"], level(row["visitors"]),
+                             f"{row['visitors'] / total * 100:.1f}".removesuffix(".0") + "%"] for row in known}
+    swatches = "".join(
+        f"<li><i class='web-visits-map-l{step}'></i><span>{low:,}{'' if low == high else f'–{high:,}'}</span></li>"
+        for step, low, high in legend)
+    return (f"<div class='web-visits-map' aria-hidden='true' data-visits-map='{html.escape(json.dumps(payload), quote=True)}'"
+            f" data-visits-map-src='{VISITS_MAP_PATH}'><div class='web-visits-map-canvas'></div>"
+            "<div class='web-visits-map-tooltip' hidden></div>"
+            f"<ul class='admin-legend web-visits-map-legend'>{swatches}"
+            "<li><i class='web-visits-map-none'></i><span>No visits</span></li></ul></div>")
+
+
 def _views_mixed(snapshot: dict[str, Any]) -> bool:
     """Whether the compared span reaches before the old map views stopped;
     the Views change is then grey, without a note (owner request 2026-11-14)."""
@@ -309,6 +598,9 @@ def _views_mixed(snapshot: dict[str, Any]) -> bool:
 _KPI = "admin-kpi-panel web-installer-server"
 _HEAD = "admin-kpi-panel web-visits-kpis"
 _LIST = "map-statistics-popularity"
+# The map's shapes: a content-versioned asset (served by the admin map-assets
+# route), read once when a Countries card with data comes into view.
+VISITS_MAP_PATH = "/admin/map-assets/visits-map." + hashlib.sha256(VISITS_MAP_SVG.encode("utf-8")).hexdigest()[:16] + ".svg"
 
 
 def website_stats_blocks(snapshot: dict[str, Any] | None, *, dashboard_url: str | None) -> str:
@@ -327,10 +619,19 @@ def website_stats_blocks(snapshot: dict[str, Any] | None, *, dashboard_url: str 
     lists = "".join(part for part in (
         _card("referrers", blocks["referrers"], lambda data: _referrers(data, visitors), css=_LIST),
         _card("entries", blocks["entries"], _entries, css=_LIST),
-        _card("countries", blocks["countries"], _countries, css=_LIST),
     ) if part)
     if lists:
         cards.append(f"<div class='web-installer-grid web-visits-lists'>{lists}</div>")
+    cards.append(_card("countries", blocks["countries"], _countries, css=_LIST + " web-visits-countries-card"))
+    events = _card("events", blocks["events"], lambda data: _events(
+        data, _usable(blocks.get("previousEvents")), period), css=_LIST)
+    side = "".join(part for part in (
+        _card("eventSeries", blocks["eventSeries"], lambda data: _key_events(data, snapshot), css="overview-chart-panel"),
+        _funnel_card(blocks),
+    ) if part)
+    if events or side:
+        cards.append(f"<div class='web-installer-grid web-visits-events'>{events}"
+                     + (f"<div class='web-visits-events-side'>{side}</div>" if side else "") + "</div>")
     cards.append(_card("vitals", blocks["vitals"], _vitals, css=_KPI))
     cards.append(_card("errors", blocks["errors"],
                        lambda data: _errors(data, _usable(blocks.get("previousErrors")), period), css=_KPI))
@@ -358,7 +659,10 @@ def _loading_blocks() -> str:
     return ("<div class='web-installer-grid web-visits-headline' data-website-stats-block>" + headline("visitors")
             + headline("downloads") + "</div>"
             + "<div class='web-installer-grid web-visits-lists' data-website-stats-block>" + loading("referrers", _LIST)
-            + loading("entries", _LIST) + loading("countries", _LIST) + "</div>" + loading("vitals") + loading("errors"))
+            + loading("entries", _LIST) + "</div>" + loading("countries", _LIST + " web-visits-countries-card")
+            + "<div class='web-installer-grid web-visits-events' data-website-stats-block>" + loading("events", _LIST)
+            + "<div class='web-visits-events-side'>" + loading("eventSeries", "overview-chart-panel") + loading("funnel", _LIST)
+            + "</div></div>" + loading("vitals") + loading("errors"))
 
 
 def _website_stats_script() -> str:
@@ -399,7 +703,87 @@ def _website_stats_script() -> str:
         failed.before(next.content);
         main.removeAttribute('aria-busy');
         window.TerentoAdminTime?.render();
+        main.querySelectorAll('[data-visits-map]').forEach((box) => (observer ? observer.observe(box) : drawMap(box)));
       };
+      // Events: a group's Show all / Show fewer (Navigation & links: Show / Hide).
+      document.addEventListener('click', (event) => {
+        const button = event.target instanceof Element ? event.target.closest('[data-events-toggle]') : null;
+        const body = button && document.getElementById(button.getAttribute('aria-controls') || '');
+        if (!body) return;
+        const open = button.getAttribute('aria-expanded') !== 'true';
+        const limit = Number(button.dataset.limit || 0);
+        body.querySelectorAll('tr[data-events-row]').forEach((row, index) => { row.hidden = !open && index >= limit; });
+        button.setAttribute('aria-expanded', String(open));
+        button.firstChild.textContent = open ? button.dataset.open : button.dataset.closed;
+      });
+      // Countries map: the shapes are read once, when a map comes into view.
+      let shapes = null;
+      const readShapes = (src) => (shapes ??= fetch(src, {credentials: 'same-origin'})
+        .then((response) => (response.ok ? response.text() : Promise.reject(new Error('map'))))
+        .catch((error) => { shapes = null; throw error; }));
+      const countryName = (code) => {
+        try { return regionNames?.of(code.toUpperCase()) || code.toUpperCase(); } catch (error) { return code.toUpperCase(); }
+      };
+      const drawMap = async (box) => {
+        let values = {};
+        try { values = JSON.parse(box.dataset.visitsMap || '{}'); } catch (error) { values = {}; }
+        let svg = null;
+        try { svg = await readShapes(box.dataset.visitsMapSrc); } catch (error) { svg = null; }
+        const canvas = box.querySelector('.web-visits-map-canvas');
+        const tip = box.querySelector('.web-visits-map-tooltip');
+        if (!box.isConnected || !canvas || !tip) return;
+        if (typeof svg !== 'string' || !svg.startsWith('<svg')) { box.hidden = true; return; }
+        canvas.innerHTML = svg;
+        Object.entries(values).forEach(([code, entry]) => {
+          const shape = canvas.querySelector('#v-' + code.toLowerCase());
+          if (shape && Array.isArray(entry)) shape.classList.add('web-visits-map-l' + Number(entry[1]));
+        });
+        box.classList.add('is-ready');
+        let active = null;
+        const hide = () => { active?.classList.remove('is-active'); active = null; tip.hidden = true; };
+        const show = (shape, x, y) => {
+          const code = shape.id.slice(2);
+          const entry = values[code.toUpperCase()];
+          active?.classList.remove('is-active');
+          active = shape;
+          shape.classList.add('is-active');
+          const title = document.createElement('strong');
+          title.textContent = countryName(code);
+          const line = document.createElement('span');
+          line.textContent = Array.isArray(entry)
+            ? `${Number(entry[0]).toLocaleString('en-US')} visitor${Number(entry[0]) === 1 ? '' : 's'} · ${entry[2]} of all`
+            : 'No visits';
+          tip.replaceChildren(title, line);
+          tip.hidden = false;
+          const room = box.getBoundingClientRect();
+          const left = Math.min(Math.max(x - room.left + 12, 4), room.width - tip.offsetWidth - 4);
+          const top = y - room.top - tip.offsetHeight - 12;
+          tip.style.left = `${left}px`;
+          tip.style.top = `${top < 4 ? y - room.top + 16 : top}px`;
+        };
+        canvas.addEventListener('pointermove', (event) => {
+          const shape = event.target instanceof Element ? event.target.closest('path[id^="v-"]') : null;
+          if (shape) show(shape, event.clientX, event.clientY); else hide();
+        });
+        canvas.addEventListener('pointerleave', hide);
+        // A Countries row points at its country on the map.
+        const list = box.closest('.web-visits-countries')?.querySelector('.web-visits-countries-list');
+        list?.addEventListener('pointerover', (event) => {
+          const code = event.target instanceof Element ? event.target.closest('tr')?.querySelector('[data-country]')?.dataset.country : null;
+          const shape = code ? canvas.querySelector('#v-' + code) : null;
+          if (!shape) { hide(); return; }
+          const box2 = shape.getBoundingClientRect();
+          show(shape, box2.left + box2.width / 2, box2.top + box2.height / 2);
+        });
+        list?.addEventListener('pointerleave', hide);
+      };
+      const observer = 'IntersectionObserver' in window ? new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          observer.unobserve(entry.target);
+          drawMap(entry.target);
+        });
+      }, {rootMargin: '200px 0px'}) : null;
       window.addEventListener('terento-admin-content-changed', load);
       load();
     })();"""

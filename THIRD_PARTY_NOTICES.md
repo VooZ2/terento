@@ -143,7 +143,9 @@ libraries in `Terento.app/Contents/Frameworks`.
   © OpenStreetMap contributors.
 - Use: local, simplified SVG country boundaries in private admin statistics;
   no runtime dependency, external tile service, or OSM request is used.
-- Reproduction: `backend/catalog-api/tools/build_admin_world_map.py`.
+- Reproduction: `backend/catalog-api/tools/build_admin_world_map.py`; the Web
+  visits map (`admin_visits_map.py`, Equal Earth projection) is derived from it
+  by `backend/catalog-api/tools/build_admin_visits_map.py`.
 - Presentation policy: OpenStreetMap's overlapping disputed country relations
   are rendered deterministically with Ukraine above Russia for Crimea. This is a
   display policy only; catalog and event identities remain unchanged.
