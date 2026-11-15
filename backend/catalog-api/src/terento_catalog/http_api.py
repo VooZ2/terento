@@ -23,6 +23,7 @@ from urllib.parse import parse_qs, quote, unquote, urlsplit
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from .admin_agent_view import AGENT_SESSION, agent_page, page_view
 from .admin_attention import attention_report
 from .admin_revisions import statistics_revisions
 from .admin import (
@@ -157,6 +158,10 @@ SUPPORT_REPORT_DAILY_WINDOW_SECONDS = 86_400
 RATE_LIMIT_WINDOW_SECONDS = 60
 # Read-only operator agent reads (GET /internal/attention), counted before auth.
 ATTENTION_RATE_LIMIT = 12
+# Read-only Admin page reads by the same agent (GET /internal/attention?page=).
+ATTENTION_PAGE_RATE_LIMIT = 60
+# Same-host Admin redirects an agent page read follows (old links, period resets).
+ATTENTION_PAGE_REDIRECTS = 3
 # Socket timeout for one blocking read or write. A stalled or slow-loris client
 # cannot pin a server thread indefinitely; large bodies and responses still
 # progress as long as each chunk arrives within this interval.
@@ -1475,6 +1480,16 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
         server_version = "TerentoCatalog"
         sys_version = ""
         timeout = REQUEST_SOCKET_TIMEOUT_SECONDS
+        # While set, an Admin GET render for the read-only agent is captured
+        # here instead of being written (GET /internal/attention?page=).
+        _agent_capture: dict[str, Any] | None = None
+
+        def send_response(self, code: int, message: str | None = None) -> None:
+            if self._agent_capture is not None:
+                # Every agent-readable answer goes through the captured helpers;
+                # a direct write (asset, CSV) is refused, never sent half-captured.
+                raise RuntimeError("direct response during an agent page read")
+            super().send_response(code, message)
 
         def _client_ip(self) -> str:
             return service.client_address_for(
@@ -1595,6 +1610,10 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             )
 
         def _handle_attention(self, *, send_body: bool) -> None:
+            query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+            if "page" in query:
+                self._handle_attention_page(query["page"][-1], send_body=send_body)
+                return
             client = (f"attention:{self._client_ip()}", ATTENTION_RATE_LIMIT, RATE_LIMIT_WINDOW_SECONDS)
             if self._rate_limited(client, record=True):
                 self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=send_body, cache_control="no-store", noindex=True)
@@ -1604,6 +1623,45 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 return
             LOGGER.info("attention read served")
             self._send_json(HTTPStatus.OK, attention_report(service), send_body=send_body, cache_control="no-store", noindex=True)
+
+        def _handle_attention_page(self, raw_page: str, *, send_body: bool) -> None:
+            """One Admin GET page, rendered for the read-only agent and returned as text."""
+            client = (f"attention-page:{self._client_ip()}", ATTENTION_PAGE_RATE_LIMIT, RATE_LIMIT_WINDOW_SECONDS)
+            if self._rate_limited(client, record=True):
+                self._send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"}, send_body=send_body, cache_control="no-store", noindex=True)
+                return
+            if not self._admin_read_authorized():
+                self._send_json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"}, send_body=send_body, cache_control="no-store", noindex=True)
+                return
+            page = agent_page(raw_page)
+            if page is None:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"error": "page_not_readable"}, send_body=send_body, cache_control="no-store", noindex=True)
+                return
+            original_path = self.path
+            try:
+                for _ in range(ATTENTION_PAGE_REDIRECTS + 1):
+                    self._agent_capture = {}
+                    self.path = page
+                    try:
+                        self._handle_admin_get(urlsplit(page).path, send_body=True)
+                    finally:
+                        captured, self._agent_capture = self._agent_capture, None
+                    location = captured.get("location") if captured.get("kind") == "redirect" else None
+                    next_page = agent_page(location) if location else None
+                    if not next_page:
+                        break
+                    page = next_page
+            except Exception:
+                LOGGER.exception("attention page read failed")
+                self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "page_unavailable"}, send_body=send_body, cache_control="no-store", noindex=True)
+                return
+            finally:
+                self.path = original_path
+            if not captured.get("kind"):
+                self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "page_unavailable"}, send_body=send_body, cache_control="no-store", noindex=True)
+                return
+            LOGGER.info("attention page read served path=%s", urlsplit(page).path)
+            self._send_json(HTTPStatus.OK, page_view(page, captured), send_body=send_body, cache_control="no-store", noindex=True)
 
         def _handle_map_event(self) -> None:
             raw = self._intake_body(
@@ -1830,6 +1888,12 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if request_path == "/admin/login":
                 self._send_admin_html(login_page(), send_body=send_body)
                 return
+            if self._agent_capture is not None:
+                # Read-only agent render: a synthetic session that matches no
+                # stored one and an empty CSRF token, so no rendered form can
+                # be submitted and no cookie is read or cleared.
+                self._handle_admin_page(request_path, dict(AGENT_SESSION), "", api_request, send_body=send_body)
+                return
             session_token = self._session_cookie()
             try:
                 session = service.admin_session(session_token)
@@ -1851,6 +1915,12 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if not csrf_ok:
                 self._redirect("/admin/login", send_body=send_body, clear_cookie=True)
                 return
+            self._handle_admin_page(request_path, session, csrf_token, api_request, send_body=send_body)
+
+        def _handle_admin_page(
+            self, request_path: str, session: dict[str, Any], csrf_token: str, api_request: bool, *, send_body: bool,
+        ) -> None:
+            """Admin GET routes after authentication (owner session or read-only agent)."""
             if request_path in {"/admin/api/umami", "/admin/api/umami/"}:
                 query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
                 period = self._admin_period(query, "7d")
@@ -3278,6 +3348,8 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             return self._cookie_value("terento_admin_csrf")
 
         def _cookie_value(self, name: str) -> str | None:
+            if self._agent_capture is not None:
+                return None  # An agent read never uses a browser's cookies.
             cookie = SimpleCookie()
             try:
                 cookie.load(self.headers.get("Cookie", ""))
@@ -3312,6 +3384,9 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
         def _send_admin_html(
             self, body: bytes, *, send_body: bool, status: HTTPStatus = HTTPStatus.OK
         ) -> None:
+            if self._agent_capture is not None:
+                self._agent_capture.update(kind="html", status=status, body=body)
+                return
             nonce = secrets.token_urlsafe(18)
             body = body.replace(
                 _ADMIN_NONCE_PLACEHOLDER.encode("ascii"), nonce.encode("ascii")
@@ -3342,6 +3417,9 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             safe_location = location.replace("\r", "").replace("\n", "")
             if not safe_location.startswith("/") or safe_location.startswith("//"):
                 safe_location = "/admin"
+            if self._agent_capture is not None:
+                self._agent_capture.update(kind="redirect", status=HTTPStatus.SEE_OTHER, location=safe_location)
+                return
             self.send_response(HTTPStatus.SEE_OTHER)
             self.send_header("Location", safe_location)
             if clear_cookie:
@@ -3559,6 +3637,11 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             cache_control: str,
             noindex: bool = False,
         ) -> None:
+            if self._agent_capture is not None:
+                # Round-trip so dates and decimals look as the owner's JSON does.
+                self._agent_capture.update(kind="json", status=status, document=json.loads(
+                    json.dumps(document, default=_format_json_value)))
+                return
             body = json.dumps(document, default=_format_json_value, separators=(",", ":")).encode("utf-8")
             self.send_response(status)
             self._common_headers(

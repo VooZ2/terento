@@ -1451,7 +1451,8 @@ Read-only Needs attention projection for an operator agent (for example a
 scheduled Claude session) so open work is triaged without an Admin login.
 Requests require `Authorization: Bearer` with a token whose lowercase SHA-256
 hex digest is configured as `ADMIN_READ_TOKEN_SHA256`; the server never holds
-the token itself. Without a configured digest, or with any other token, the
+the token itself. With a `page` parameter the same route returns one Admin
+page as text instead ([below](#admin-page-text-get-internalattentionpageadmin)). Without a configured digest, or with any other token, the
 route answers `401 {"error":"unauthorized"}`. At most 12 requests per client
 per minute are counted before authorization (`429` above that). The token
 grants no Admin page, form, CSRF token or write; it is independent of the
@@ -1496,6 +1497,54 @@ serial number, Unit ID, account, local path, raw log, manifest, map content,
 client IP or Admin user data. Reading it changes no diagnostic, report,
 statistic or audit state; resolving, linking and handling stay authenticated
 Admin actions.
+
+### Admin page text: `GET /internal/attention?page=/admin/...`
+
+The same token also reads any Admin GET page as text, so the agent sees what
+the owner sees (Dashboard, Installations and model pages with their history,
+Devices, Maps, Providers, Update reports, Support reports, Web installer,
+First run, Web visits, Health and the review queues). `page` is the
+URL-encoded Admin path with its own query, for example
+`?page=%2Fadmin%2Fdevices%2Fgarmin-fenix-8%3Fperiod%3D30d`. The route stays
+`/internal/attention`, so the existing bearer secret covers it.
+
+The server renders the page with the same Admin code and data as a signed-in
+owner (same populations, periods, deduplication and filters), with a
+synthetic read-only session that matches no stored session and an empty CSRF
+token. Browser cookies are ignored, so the period and time zone come only from
+the page's own `period` and `timeZone` parameters (else each page's default
+and UTC). Admin redirects inside Admin are followed up to three times.
+
+Refused with `400 {"error":"page_not_readable"}`: anything outside `/admin`,
+`/admin/login`, `/admin/setup`, `/admin/logout`, `/admin/account`, static
+assets and downloads (any last segment with an extension other than `.json`,
+for example the Web installer CSV), and paths with `//`, `/.`, a fragment,
+spaces or control characters. A render that would write its own response
+instead of an Admin page or JSON fails closed with `503 page_unavailable`. Page
+reads have their own limit of 60 per client per minute, counted before
+authorization; the Needs attention read keeps its 12.
+
+`schemaVersion: 1` returns `page` (the page finally rendered), `status` (the
+Admin status, such as 200, 404 or 503) and one of:
+
+- HTML pages: `title`, `text`, `truncated` and `links`. `text` is the page's
+  visible text in reading order: headings as `#`, list items as `-`, table
+  cells joined by ` | `, chart labels as `[chart]` and their per-bucket values
+  (data attributes and SVG titles) as `[chart value]`. The top bar, scripts,
+  styles, form fields, option lists, hidden and `aria-hidden` markup are
+  dropped; button labels stay as text. `links` lists up to 400 readable Admin
+  links on the page, for the next `page` value. `text` is cut at 1.5 million
+  characters (`truncated: true`).
+- Admin JSON routes (`/admin/api/umami`, `/admin/api/gsc`, `/admin/*.json`):
+  `json`, with every rendered `html` fragment replaced by `text` and `links`.
+  The Web visits page loads its blocks this way, so read
+  `/admin/api/umami?period=…` and `/admin/api/gsc?period=…` for its numbers.
+- Redirects that leave Admin or reach a refused page: `redirect`.
+
+Every text line and JSON string passes through the same issue-report sanitiser
+as the Needs attention read. The page read writes nothing and is not an Admin
+login: it cannot open the HTML Admin, submit a form, pass CSRF or call a POST
+route. Rotating or removing `ADMIN_READ_TOKEN_SHA256` revokes both reads.
 
 ## Optional contour metadata and admin projections
 

@@ -137,7 +137,8 @@ appear only under Tools → Test data. Presentation rules are owned by
 also readable, with every text value passed through the issue-report
 sanitiser, through the token-protected read-only `GET /internal/attention`
 (`backend/catalog-api/docs/api.md`) so an operator agent can diagnose them;
-that read never changes a report.
+the same token reads the Admin support report pages (open, handled and
+detail) as sanitised text with `?page=`. Neither read changes a report.
 
 ## Population boundary
 

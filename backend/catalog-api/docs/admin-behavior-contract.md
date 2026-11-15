@@ -1418,6 +1418,20 @@ answer with raw JSON: an invalid link, a missing page and an unavailable page
 are HTML error pages with the navigation. The review summary query runs only for
 the Dashboard.
 
+### Read-only agent view
+
+An operator agent with the read-only token reads Admin pages through
+`GET /internal/attention?page=/admin/...`
+([API](api.md#admin-page-text-get-internalattentionpageadmin)). The page is
+rendered by the same route code as for the owner, so every count, period,
+population and deduplication rule in this contract applies unchanged; only the
+transport differs (sanitised plain text or JSON instead of HTML). A change to a
+page changes its agent text with it, without a second implementation. The view
+never offers a write: Resolve, Reopen, Archive, Link issue, Handle and every
+other action stay owner-only behind login and CSRF. Login, setup, logout,
+account and downloads are not readable. Browser cookies do not apply, so a
+period or time zone must be in the page link.
+
 ### Freshness notice
 
 Every page with `#main-content` renders `data-admin-revisions`: one hash per
