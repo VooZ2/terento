@@ -32,6 +32,7 @@ from .admin import (
 )
 from .admin_referrer_icons import FONT_AWESOME_BRANDS, SIMPLE_ICONS
 from .admin_web_installer import _duration
+from .gsc_stats import DEFAULT_PERIOD as GSC_DEFAULT_PERIOD, PERIODS as GSC_PERIODS
 from .statistics_periods import ADMIN_PERIOD_LABELS, ADMIN_PERIODS
 from .umami_stats import CLEAN_VIEWS_SINCE
 
@@ -86,13 +87,13 @@ def _rate(part: float | None, whole: float | None) -> float | None:
 
 
 def _delta(current: float | None, previous: float | None, period: str, kind: str = "count", *,
-           better: str = "up", plain: bool = False) -> str:
+           better: str = "up", plain: bool = False, against: str | None = None) -> str:
     """Change against the previous period of the same length: arrow, sign and
     text, coloured by meaning (green better, red worse, grey same or without a
     base). Rates change in percentage points."""
     if period not in PREVIOUS or current is None or previous is None:
         return ""
-    against = PREVIOUS[period]
+    against = against or PREVIOUS[period]
     change = current - previous
     if kind == "rate":
         change = round(change, 1)
@@ -428,17 +429,27 @@ def website_stats_page(user: dict[str, Any], csrf_token: str, *, period: str, ti
 
 
 # Google Search (Search Console): its own block under the Umami numbers,
-# loaded from /admin/api/gsc for the same Admin period.
+# loaded from /admin/api/gsc with its own period picker (Last 7 days, Last 30
+# days, All time; default Last 30 days): the Admin period does not change it
+# (owner 2026-11-14).
 GSC_UNAVAILABLE = "Search Console unavailable."
 GSC_NOTE = "Google Search Console · dates in Pacific Time · data delayed 2–3 days"
 NEAR_TOP_TITLE = "Position 4–10 with many impressions: closest to page-one top"
 
 
-def _gsc_section(body: str, marks: str = "", *, loading: bool = False) -> str:
+def _gsc_period_picker(period: str) -> str:
+    options = "".join(f"<option value='{value}'{' selected' if value == period else ''}>{ADMIN_PERIOD_LABELS[value]}</option>"
+                      for value in GSC_PERIODS)
+    return ("<div class='filter-bar web-visits-gsc-period'><label><span class='sr-only'>Google Search period</span>"
+            f"<select id='gsc-period' data-admin-dropdown>{options}</select></label></div>")
+
+
+def _gsc_section(body: str, marks: str = "", *, period: str, loading: bool = False) -> str:
     busy = " aria-busy='true'" if loading else ""
-    return (f"<section class='web-visits-gsc' id='web-visits-gsc' aria-labelledby='web-visits-gsc-title'{busy}>"
+    return (f"<section class='web-visits-gsc' id='web-visits-gsc' aria-labelledby='web-visits-gsc-title' data-gsc-period='{period}'{busy}>"
             f"<div class='web-visits-gsc-heading'><h2 id='web-visits-gsc-title'>Google Search</h2>"
-            f"<span class='web-installer-source'>{_source_icon('google.com')}Search Console</span>{marks}</div>"
+            f"<span class='web-installer-source'>{_source_icon('google.com')}Search Console</span>{marks}"
+            f"{_gsc_period_picker(period)}</div>"
             f"{body}</section>")
 
 
@@ -483,7 +494,9 @@ def _gsc_chart_svg(buckets: list[dict[str, Any]], width: int, variant: str) -> s
     """Clicks over Impressions: two small line charts, each with its own Y
     axis, under one date axis (not one chart with two Y axes)."""
     font = 13 if variant == "mobile" else 11
-    height, left, right, top, gap, bottom = 236, 42, 12, 22, 30, 28
+    # A wide gap and each series in its own colour with a named swatch keep
+    # Clicks and Impressions apart (owner 2026-11-14).
+    height, left, right, top, gap, bottom = 252, 42, 12, 22, 46, 28
     panel = (height - top - gap - bottom) / 2
     plot_width = width - left - right
     count = len(buckets)
@@ -493,6 +506,7 @@ def _gsc_chart_svg(buckets: list[dict[str, Any]], width: int, variant: str) -> s
     marks: list[list[tuple[float, float]]] = []
     for row, (metric, label) in enumerate((("clicks", "Clicks"), ("impressions", "Impressions"))):
         panel_top = top + row * (panel + gap)
+        parts.append(f"<g class='gsc-series-{metric}'>")
         base = panel_top + panel
         step = _nice_tick_step(max(bucket[metric] for bucket in buckets))
         scale = step * 4
@@ -501,7 +515,8 @@ def _gsc_chart_svg(buckets: list[dict[str, Any]], width: int, variant: str) -> s
             parts.append(f"<line class='overview-chart-grid' x1='{left}' x2='{width - right}' y1='{y:.1f}' y2='{y:.1f}'/>"
                          f"<text class='overview-chart-axis-label' x='{left - 8}' y='{y + 4:.1f}' text-anchor='end'>"
                          f"{_compact(amount)}</text>")
-        parts.append(f"<text class='gsc-chart-name' x='{left}' y='{panel_top - 8:.1f}'>{label}</text>")
+        parts.append(f"<line class='gsc-chart-swatch' x1='{left}' x2='{left + 14}' y1='{panel_top - 12:.1f}' y2='{panel_top - 12:.1f}'/>"
+                     f"<text class='gsc-chart-name' x='{left + 20}' y='{panel_top - 8:.1f}'>{label}</text>")
         points = [(x, base - panel * bucket[metric] / scale) for x, bucket in zip(xs, buckets)]
         marks.append(points)
         coords = [f"{x:.1f},{y:.1f}" for x, y in points]
@@ -514,6 +529,7 @@ def _gsc_chart_svg(buckets: list[dict[str, Any]], width: int, variant: str) -> s
             parts.append(f"<polyline class='gsc-chart-line is-preliminary' points='{' '.join(dotted)}'/>")
         if count == 1:
             parts.append(f"<circle class='gsc-chart-dot' cx='{points[0][0]:.1f}' cy='{points[0][1]:.1f}' r='3'/>")
+        parts.append("</g>")
     if prelim is not None:
         x = xs[prelim]
         anchor = "end" if x > width - right - 80 else "start"
@@ -526,7 +542,8 @@ def _gsc_chart_svg(buckets: list[dict[str, Any]], width: int, variant: str) -> s
         text = f"{when} · Clicks {bucket['clicks']:,} · Impressions {bucket['impressions']:,}"
         strip = _chart_value_attributes(when, [("gsc-clicks", "Clicks", bucket["clicks"]),
                                                ("gsc-impressions", "Impressions", bucket["impressions"])], None)
-        dots = "".join(f"<circle class='gsc-chart-focus' cx='{x:.1f}' cy='{series[index][1]:.1f}' r='3.5'/>" for series in marks)
+        dots = "".join(f"<circle class='gsc-chart-focus gsc-series-{metric}' cx='{x:.1f}' cy='{series[index][1]:.1f}' r='3.5'/>"
+                       for metric, series in zip(("clicks", "impressions"), marks))
         parts.append(
             f"<g class='overview-chart-group gsc-chart-day' role='img' tabindex='0'{strip} aria-label='{html.escape(text, quote=True)}'>"
             f"<title>{html.escape(text)}</title><rect class='gsc-chart-hit' x='{max(x - slot / 2, left):.1f}' y='{top - 4}' "
@@ -554,15 +571,20 @@ def _ctr(totals: dict[str, Any] | None) -> float | None:
 
 
 def _gsc_kpis(now: dict[str, Any], before: dict[str, Any] | None, period: str) -> str:
-    before = before or {}
+    """Totals of the final days only; the change is against the same number
+    of days just before them."""
+    days = int(now.get("days") or 0)
+    before = before if before and days else {}
+    against = f"previous {days} day{'' if days == 1 else 's'}"
+    delta = lambda current, previous, *args, **kwargs: _delta(current, previous, period, *args, against=against, **kwargs)
     position = now.get("position")
     return _metric_row([
-        _metric_tile("Clicks", now.get("clicks"), secondary=_delta(now.get("clicks"), before.get("clicks"), period)),
+        _metric_tile("Clicks", now.get("clicks"), secondary=delta(now.get("clicks"), before.get("clicks"))),
         _metric_tile("Impressions", now.get("impressions"),
-                     secondary=_delta(now.get("impressions"), before.get("impressions"), period)),
-        _metric_tile("CTR", _ctr(now), fmt="rate", secondary=_delta(_ctr(now), _ctr(before), period, "rate")),
+                     secondary=delta(now.get("impressions"), before.get("impressions"))),
+        _metric_tile("CTR", _ctr(now), fmt="rate", secondary=delta(_ctr(now), _ctr(before), "rate")),
         _metric_tile("Avg position", position, value_html=None if position is None else f"{position:.1f}",
-                     secondary=_delta(position, before.get("position"), period, "decimal", better="down")),
+                     secondary=delta(position, before.get("position"), "decimal", better="down")),
     ], label="Google Search")
 
 
@@ -614,19 +636,20 @@ def _gsc_pages(rows: list[dict[str, Any]]) -> str:
                       lambda row: f"<span class='gsc-page'>{html.escape(row['path'] or '/')}</span>")
 
 
-def search_console_blocks(snapshot: dict[str, Any] | None, *, console_url: str | None) -> str:
+def search_console_blocks(snapshot: dict[str, Any] | None, *, console_url: str | None,
+                          period: str = GSC_DEFAULT_PERIOD) -> str:
     """The Google Search block for one snapshot (None: not configured)."""
+    period = (snapshot or {}).get("period") or period
+    period = period if period in GSC_PERIODS else GSC_DEFAULT_PERIOD
+    section = lambda body, marks="": _gsc_section(body, marks, period=period)
     link = (f"<p class='web-installer-tests muted-value'><a class='section-link' href='{html.escape(console_url, quote=True)}' "
             f"target='_blank' rel='noopener noreferrer'>Open Search Console&nbsp;{_admin_icon('external')}</a></p>"
             if console_url else "")
     if not snapshot:
-        return _gsc_section(_gsc_card("unavailable", "Search Console", _empty_state("unavailable", GSC_UNAVAILABLE)))
-    if not snapshot.get("daily"):
-        return _gsc_section(_gsc_card("daily", "Search Console", _empty_state(
-            "empty", "Search Console reports whole days. Choose Last 7 days or longer.")) + link)
-    blocks, period = snapshot["blocks"], snapshot["period"]
+        return section(_gsc_card("unavailable", "Search Console", _empty_state("unavailable", GSC_UNAVAILABLE)))
+    blocks = snapshot["blocks"]
     if not any(block.get("state") in ("ok", "stale") for block in blocks.values()):
-        return _gsc_section(_gsc_card("unavailable", "Search Console", _empty_state("unavailable", GSC_UNAVAILABLE)) + link)
+        return section(_gsc_card("unavailable", "Search Console", _empty_state("unavailable", GSC_UNAVAILABLE)) + link)
     stale = [block["fetchedAt"] for block in blocks.values() if block.get("state") == "stale"]
     marks = "" if not stale else (_status_pill("unknown", "Search Console unavailable") + "<span class='admin-metric-secondary'>"
                                   f"Last result {_timestamp_markup(datetime.fromtimestamp(min(stale), timezone.utc))}</span>")
@@ -644,46 +667,67 @@ def search_console_blocks(snapshot: dict[str, Any] | None, *, console_url: str |
     footer = (f"Updated {_timestamp_markup(datetime.fromtimestamp(min(fetched), timezone.utc))}" if fetched else "")
     if link:
         footer += (" · " if footer else "") + link.removeprefix("<p class='web-installer-tests muted-value'>").removesuffix("</p>")
-    return _gsc_section(kpis + trend + lists + (f"<p class='web-installer-tests muted-value'>{footer}</p>" if footer else ""), marks)
+    return section(kpis + trend + lists + (f"<p class='web-installer-tests muted-value'>{footer}</p>" if footer else ""), marks)
 
 
 def _kpi_panel(body: str) -> str:
     return f"<section class='admin-card {_HEAD}' id='web-visits-gsc-kpis' aria-label='Google Search totals'>{body}</section>"
 
 
-def _gsc_loading() -> str:
+def _gsc_loading(period: str = GSC_DEFAULT_PERIOD) -> str:
     skeleton = ("<div class='web-visits-skeleton' aria-hidden='true'><span></span><span></span><span></span></div>"
                 "<span class='sr-only'>Loading…</span>")
     return _gsc_section(_kpi_panel(skeleton) + _gsc_card("trend", "Trend", skeleton, css="overview-chart-panel")
                         + "<div class='web-installer-grid web-visits-gsc-lists'>" + _gsc_card("queries", "Top queries", skeleton)
-                        + _gsc_card("pages", "Top pages", skeleton) + "</div>", loading=True)
+                        + _gsc_card("pages", "Top pages", skeleton) + "</div>", period=period, loading=True)
 
 
 def _gsc_script() -> str:
-    """Reads the Google Search block for the shown period and puts it in place
-    of the loading one; a failed read shows Unavailable."""
+    """Reads the Google Search block for its own period (default Last 30
+    days) and puts it in place of the loading one; a failed read shows
+    Unavailable. Its picker reloads only this block. A new Admin period
+    replaces the page content: the block is put back as it was, unread."""
     return r"""(() => {
       let request = 0;
-      const load = async () => {
-        const main = document.querySelector('#main-content');
+      let period = '%(default)s';
+      let markup = null;
+      const place = (html) => {
         const slot = document.querySelector('#web-visits-gsc');
-        const failed = document.querySelector('#gsc-failed');
-        if (!main || !slot || !failed || main.dataset.gscLoaded === 'true') return;
-        main.dataset.gscLoaded = 'true';
-        const number = ++request;
-        const url = new URL('/admin/api/gsc', window.location.origin);
-        url.searchParams.set('period', document.querySelector('#overview-period')?.value || '7d');
-        let markup = null;
-        try {
-          const response = await fetch(url, {credentials: 'same-origin', headers: {'Accept': 'application/json'}});
-          if (response.ok) markup = (await response.json()).html;
-        } catch (error) { markup = null; }
-        if (number !== request || !slot.isConnected) return;
+        if (!slot) return;
         const next = document.createElement('template');
-        next.innerHTML = typeof markup === 'string' ? markup : failed.innerHTML;
+        next.innerHTML = html;
+        const select = next.content.querySelector('#gsc-period');
+        if (select) select.value = period;
         slot.replaceWith(next.content);
         window.TerentoAdminTime?.render();
       };
-      window.addEventListener('terento-admin-content-changed', load);
+      const load = async () => {
+        const slot = document.querySelector('#web-visits-gsc');
+        const failed = document.querySelector('#gsc-failed');
+        if (!slot || !failed) return;
+        const number = ++request;
+        slot.setAttribute('aria-busy', 'true');
+        const url = new URL('/admin/api/gsc', window.location.origin);
+        url.searchParams.set('period', period);
+        let next = null;
+        try {
+          const response = await fetch(url, {credentials: 'same-origin', headers: {'Accept': 'application/json'}});
+          if (response.ok) next = (await response.json()).html;
+        } catch (error) { next = null; }
+        if (number !== request) return;
+        markup = typeof next === 'string' ? next : null;
+        place(markup ?? failed.innerHTML);
+      };
+      document.addEventListener('change', (event) => {
+        if (event.target?.id !== 'gsc-period' || event.target.value === period) return;
+        period = event.target.value;
+        load();
+      });
+      window.addEventListener('terento-admin-content-changed', () => {
+        const slot = document.querySelector('#web-visits-gsc');
+        if (!slot || slot.getAttribute('aria-busy') !== 'true') return;
+        if (markup !== null) place(markup);
+        else load();
+      });
       load();
-    })();"""
+    })();""" % {"default": GSC_DEFAULT_PERIOD}
