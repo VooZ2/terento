@@ -12,10 +12,10 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://api.terento.app/assets/devices/garmin/fenix-8-47-amoled.webp",
-      "successfulInstallations": 64,
-      "appSuccessfulInstallations": 63,
+      "successfulInstallations": 65,
+      "appSuccessfulInstallations": 64,
       "webSuccessfulInstallations": 1,
-      "lastSuccessfulInstallation": "2026-11-14T17:51:32+00:00"
+      "lastSuccessfulInstallation": "2026-11-15T20:35:02+00:00"
     },
     {
       "model": "Forerunner 970",
@@ -514,6 +514,22 @@
       "lastSuccessfulInstallation": "2026-10-16T12:42:44+00:00"
     },
     {
+      "model": "Approach S72 · 47 mm",
+      "variant": "47 mm",
+      "caseSizeMm": 47,
+      "displayType": null,
+      "screenTechnology": "AMOLED",
+      "solar": null,
+      "inReach": null,
+      "family": "approach",
+      "familyName": "Approach",
+      "imageUrl": "https://res.garmin.com/en/products/010-04148-00/g/cf-lg.jpg",
+      "successfulInstallations": 2,
+      "appSuccessfulInstallations": 2,
+      "webSuccessfulInstallations": 0,
+      "lastSuccessfulInstallation": "2026-11-15T13:39:03+00:00"
+    },
+    {
       "model": "Descent Mk3i · 51 mm",
       "variant": "51 mm",
       "caseSizeMm": 51,
@@ -706,5 +722,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-11-15T05:53:09.317922+00:00"
+  "generatedAt": "2026-11-15T22:40:46.529185+00:00"
 }
