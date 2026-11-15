@@ -161,8 +161,9 @@ devices, and automotive devices are outside the current public scope.
 
 ## Download and release status
 
-The latest public release is **1.2.0 (build 47)**, which fixes several ways an
-installation, a map read or a removal could wait without a clear message. Download the notarized macOS app below; no additional software is
+The latest public release is **1.2.1 (build 48)**: when the watch is busy or
+can't be reached before anything is written, Terento asks you to reconnect it
+and continues with the map it already downloaded. Download the notarized macOS app below; no additional software is
 required.
 
 **[Download Terento](https://terento.app/download/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_download)**

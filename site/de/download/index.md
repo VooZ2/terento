@@ -7,11 +7,11 @@ canonical: https://terento.app/de/download/
 
 Eine kostenlose Open-Source-App, die freie Karten auf Garmin-Uhren und Edge-Radcomputer mit Kartenunterstützung installiert.
 
-[Für Mac herunterladen](https://github.com/VooZ2/terento/releases/download/v1.2.0-build47/Terento-1.2.0-macOS-arm64.dmg)
+[Für Mac herunterladen](https://github.com/VooZ2/terento/releases/download/v1.2.1-build48/Terento-1.2.1-macOS-arm64.dmg)
 
 Mac App Store Demnächst
 
-Neueste Version **v1.2.0**, veröffentlicht am 10. November 2026. [Was ist neu](https://github.com/VooZ2/terento/releases/tag/v1.2.0-build47)
+Neueste Version **v1.2.1**, veröffentlicht am 14. November 2026. [Was ist neu](https://github.com/VooZ2/terento/releases/tag/v1.2.1-build48)
 
 Kein Mac mit Apple Silicon? [Nutze den Web-Installer](https://terento.app/de/install/) in Chrome, Microsoft Edge, Opera oder Brave auf dem Mac. Linux ist noch im Test: siehe [Linux-Anleitung](https://terento.app/de/guides/install-garmin-maps-linux/).
 
