@@ -9,7 +9,7 @@ Terento funguje s hodinkami Garmin a novějšími cyklopočítači Garmin Edge s
 
 Pokud zde svůj model nevidíte, neznamená to, že nebude fungovat. Možná z něj zatím nikdo nesdílel úspěšnou instalaci.
 
-**44** modely s úspěšnými instalacemi**415** úspěšných instalacíPoslední úspěšná instalace 14. listopadu 2026
+**44** modely s úspěšnými instalacemi**416** úspěšných instalacíPoslední úspěšná instalace 14. listopadu 2026
 
 Jak tento seznam funguje
 
@@ -35,11 +35,11 @@ Forerunner
 
 ### Forerunner 970 AMOLED
 
-34 úspěšných instalací
+35 úspěšných instalací
 
-App 34
+App 34 Web 1
 
-Poslední úspěšná instalace 13. listopadu 2026
+Poslední úspěšná instalace 14. listopadu 2026
 
 Forerunner
 
