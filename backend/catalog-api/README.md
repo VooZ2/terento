@@ -160,7 +160,10 @@ runtime dependencies.
   Needs attention work (open installation and update problems, open support
   reports, failed Health checks) as sanitised JSON. It requires a bearer token
   whose SHA-256 digest is configured as `ADMIN_READ_TOKEN_SHA256` and grants no
-  Admin page or write ([contract](docs/api.md#get-internalattention)).
+  Admin login or write ([contract](docs/api.md#get-internalattention)). With
+  `?page=/admin/...` the same token reads one Admin GET page as sanitised text,
+  rendered by the same code as for the owner
+  ([contract](docs/api.md#admin-page-text-get-internalattentionpageadmin)).
 - `GET /admin/web-visits` and `GET /admin/api/umami` show Umami's
   terento.app numbers to a signed-in admin. The server reads Umami with
   `UMAMI_BASE_URL`, `UMAMI_WEBSITE_ID` and a view-only `UMAMI_API_KEY`; the key
