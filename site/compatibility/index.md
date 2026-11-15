@@ -9,7 +9,7 @@ Terento works with Garmin watches and newer Garmin Edge bike computers with map 
 
 Not seeing your model? That doesn’t mean it won’t work. It may be that no one has shared a successful install from it yet.
 
-**44** models with successful installs**416** successful installsLatest successful install November 14, 2026
+**45** models with successful installs**419** successful installsLatest successful install November 15, 2026
 
 How this list works
 
@@ -19,17 +19,17 @@ Installation results are shared with Terento by users. They are not Garmin certi
 
 The current version includes every map provider in the catalog. This product information is separate from the device results shown here.
 
-44 models
+45 models
 
 fēnix
 
 ### fēnix 8 47 mm, AMOLED
 
-64 successful installs
+65 successful installs
 
-App 63 Web 1
+App 64 Web 1
 
-Latest successful install November 14, 2026
+Latest successful install November 15, 2026
 
 Forerunner
 
@@ -340,6 +340,16 @@ fēnix
 App 3
 
 Latest successful install October 16, 2026
+
+Approach
+
+### Approach S72 47 mm, AMOLED
+
+2 successful installs
+
+App 2
+
+Latest successful install November 15, 2026
 
 Descent
 
