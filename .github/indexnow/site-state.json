@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "status": "published",
   "published": {
-    "commit": "9d67570f3b0e183ff00bc4a41003404b4172782f",
+    "commit": "979aac1a22391cf11f6fc64e4d27b6a24b3555bd",
     "pages": [
       {
         "path": "/",
@@ -117,8 +117,8 @@
         "file": "site/cs/map-styles/index.html",
         "locale": "cs",
         "indexable": true,
-        "fingerprint": "c5a1b71b8ab421772a42185ced38257318fbd47dcf1804b202914f5e044dbf00",
-        "lastmod": "2026-11-14"
+        "fingerprint": "d9cb98bbc66325f0cdac7f5f8cdb7f7979fc3f7fd7627dbdb23e230326313199",
+        "lastmod": "2026-11-16"
       },
       {
         "path": "/de/",
@@ -206,8 +206,8 @@
         "file": "site/de/map-styles/index.html",
         "locale": "de",
         "indexable": true,
-        "fingerprint": "e7045ec8bbb976df2c42f287c4d44d4ed799e16414f486d80fbddaa5048d0523",
-        "lastmod": "2026-11-14"
+        "fingerprint": "fa42d80017a4b5c473786f20020f56ece870546e5e106fb90d642bedc25c2599",
+        "lastmod": "2026-11-16"
       },
       {
         "path": "/download/",
@@ -304,8 +304,8 @@
         "file": "site/fr/map-styles/index.html",
         "locale": "fr",
         "indexable": true,
-        "fingerprint": "cfa9399243e14c0fc823f8ccbe21928f9254627aa94a3ea451d7cc695f86c0cb",
-        "lastmod": "2026-11-14"
+        "fingerprint": "9015f30548df01dc2a4668c81e9336244c9e005926758f7db117a9a08a02ae56",
+        "lastmod": "2026-11-16"
       },
       {
         "path": "/guides/install-garmin-maps-edge-mac/",
@@ -437,8 +437,8 @@
         "file": "site/it/map-styles/index.html",
         "locale": "it",
         "indexable": true,
-        "fingerprint": "02dcaa55b07ca03de99aa764fc6a736b7dc970645e0152998f9c4854790dcbc4",
-        "lastmod": "2026-11-14"
+        "fingerprint": "a1dae5c2695e78fef9c34d7eb925fca4ee099755bc40d0850a2c078c64d71a05",
+        "lastmod": "2026-11-16"
       },
       {
         "path": "/legal/",
@@ -455,8 +455,8 @@
         "file": "site/map-styles/index.html",
         "locale": "en",
         "indexable": true,
-        "fingerprint": "7caffc0117015d76631afee0f12db387fb3f439dca7f6861daf56e5cf4ace50a",
-        "lastmod": "2026-11-14"
+        "fingerprint": "61a37d5dde7d22755829b2c4972cc954fbb264611e6da90f3f5a7eccb36c92ed",
+        "lastmod": "2026-11-16"
       },
       {
         "path": "/pl/",
@@ -544,8 +544,8 @@
         "file": "site/pl/map-styles/index.html",
         "locale": "pl",
         "indexable": true,
-        "fingerprint": "e93d6564c1b554f6a9c345d4b44dcfab5452688a0770f6479f13901de62d8009",
-        "lastmod": "2026-11-14"
+        "fingerprint": "48a74c818c877749ebcbee70bfd48620f7305666531f4aae77c28cc03f47721a",
+        "lastmod": "2026-11-16"
       },
       {
         "path": "/privacy/",
@@ -8449,21 +8449,57 @@
         "fingerprint": "5f250eb7a3cbd3d7dd5610dd4e45c8babcfcdb7e717391990b9f50cdd29833a6",
         "status": 200,
         "acceptedAt": "2026-11-16T21:57:31Z"
+      },
+      {
+        "url": "https://terento.app/cs/map-styles/",
+        "fingerprint": "d9cb98bbc66325f0cdac7f5f8cdb7f7979fc3f7fd7627dbdb23e230326313199",
+        "status": 200,
+        "acceptedAt": "2026-11-16T22:19:26Z"
+      },
+      {
+        "url": "https://terento.app/de/map-styles/",
+        "fingerprint": "fa42d80017a4b5c473786f20020f56ece870546e5e106fb90d642bedc25c2599",
+        "status": 200,
+        "acceptedAt": "2026-11-16T22:19:26Z"
+      },
+      {
+        "url": "https://terento.app/fr/map-styles/",
+        "fingerprint": "9015f30548df01dc2a4668c81e9336244c9e005926758f7db117a9a08a02ae56",
+        "status": 200,
+        "acceptedAt": "2026-11-16T22:19:26Z"
+      },
+      {
+        "url": "https://terento.app/it/map-styles/",
+        "fingerprint": "a1dae5c2695e78fef9c34d7eb925fca4ee099755bc40d0850a2c078c64d71a05",
+        "status": 200,
+        "acceptedAt": "2026-11-16T22:19:26Z"
+      },
+      {
+        "url": "https://terento.app/map-styles/",
+        "fingerprint": "61a37d5dde7d22755829b2c4972cc954fbb264611e6da90f3f5a7eccb36c92ed",
+        "status": 200,
+        "acceptedAt": "2026-11-16T22:19:26Z"
+      },
+      {
+        "url": "https://terento.app/pl/map-styles/",
+        "fingerprint": "48a74c818c877749ebcbee70bfd48620f7305666531f4aae77c28cc03f47721a",
+        "status": 200,
+        "acceptedAt": "2026-11-16T22:19:26Z"
       }
     ],
     "pending": [],
-    "lastSubmissionAt": "2026-11-16T21:57:30Z",
-    "lastSuccessfulSubmissionAt": "2026-11-16T21:57:30Z",
+    "lastSubmissionAt": "2026-11-16T22:19:26Z",
+    "lastSuccessfulSubmissionAt": "2026-11-16T22:19:26Z",
     "lastResult": "submitted",
     "lastErrorCode": null
   },
   "lastRun": {
-    "at": "2026-11-16T21:57:31Z",
+    "at": "2026-11-16T22:19:26Z",
     "status": "accepted",
     "bootstrap": false,
     "planned": 6,
     "accepted": 6,
     "pending": 0,
-    "previousAccepted": 1309
+    "previousAccepted": 1315
   }
 }
