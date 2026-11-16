@@ -51,11 +51,11 @@ Terento jest bezpłatne i takie zostanie. Jeśli Ci pomaga, darowizna pomaga op�
 
 - **Obietnicą, że każdy Garmin zadziała.** Strona [Kompatybilność](https://terento.app/pl/compatibility/) pokazuje modele, na które już wgrano mapy.
 
-## Piszą o Terento
+## Pisali o Terento
 
-Autorzy i recenzenci, którzy wypróbowali Terento i podzielili się nim z innymi użytkownikami Garmina. Dziękuję!
+Dziękuję serwisom i recenzentom, którzy wypróbowali, opisali lub polecili Terento.
 
-- the5krunner: [Terento Makes Installing Custom Maps on Garmin Watches Effortless for Mac Users](https://the5krunner.com/2026/09/22/garmin-mac-custom-maps-terento/)
+- the5krunner (Indie Spotlight): [Terento Makes Installing Custom Maps on Garmin Watches Effortless for Mac Users](https://the5krunner.com/2026/09/22/garmin-mac-custom-maps-terento/)
 
 - HikingGuy: [Garmin Fenix 9 Pro Review](https://hikingguy.com/gear/garmin-fenix-9-pro-review/)
 

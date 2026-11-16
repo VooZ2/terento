@@ -192,7 +192,8 @@ for (const locale of Object.keys(locales)) {
     "Garmin Fenix 9 Pro Review",
     "Garmin Fenix: 17 Tips I Wish I Knew Sooner",
   ], `${locale} mention titles stay in the original language`);
-  assert.deepEqual(mentionLinks.map(match => match[1].split(/ ?:/)[0].split(" (")[0]), ["the5krunner", "HikingGuy", "HikingGuy"], `${locale} mention sources`);
+  assert.match(mentionLinks[0][1], /^the5krunner \(Indie Spotlight\) ?: $/, `${locale} the5krunner label stays in English`);
+  assert.match(mentionLinks[1][1], /^HikingGuy ?: $/, `${locale} HikingGuy label`);
   assert.match(mentionLinks[2][1], /^HikingGuy \([^)]+\)/, `${locale} the video mention says it is a video`);
   for (const match of mentionLinks) {
     assert.doesNotMatch(match[3], /rel=|target=/, `${locale} mentions are normal followed links`);

@@ -81,8 +81,8 @@ COPY = {
         ],
         "compatibility": "Compatibility",
         "maps": "Maps",
-        "mentions_heading": "Written about Terento",
-        "mentions_intro": "Writers and reviewers who tried Terento and shared it with other Garmin users. Thank you!",
+        "mentions_heading": "Featured on",
+        "mentions_intro": "Thank you to the websites and reviewers who have tried, featured or recommended Terento.",
         "mention_item": "{source}: {title}",
         "video": "video",
     },
@@ -125,8 +125,8 @@ COPY = {
         ],
         "compatibility": "Kompatibilität",
         "maps": "Karten",
-        "mentions_heading": "Berichte über Terento",
-        "mentions_intro": "Autoren und Tester, die Terento ausprobiert und mit anderen Garmin-Nutzern geteilt haben. Danke!",
+        "mentions_heading": "Vorgestellt auf",
+        "mentions_intro": "Danke an die Websites und Tester, die Terento ausprobiert, vorgestellt oder empfohlen haben.",
         "mention_item": "{source}: {title}",
         "video": "Video",
     },
@@ -169,8 +169,8 @@ COPY = {
         ],
         "compatibility": "Compatibilité",
         "maps": "Cartes",
-        "mentions_heading": "Ils parlent de Terento",
-        "mentions_intro": "Des auteurs et testeurs qui ont essayé Terento et l’ont partagé avec d’autres utilisateurs Garmin. Merci !",
+        "mentions_heading": "Présenté sur",
+        "mentions_intro": "Merci aux sites et aux testeurs qui ont essayé, présenté ou recommandé Terento.",
         "mention_item": "{source} : {title}",
         "video": "vidéo",
     },
@@ -213,8 +213,8 @@ COPY = {
         ],
         "compatibility": "Kompatybilność",
         "maps": "Mapy",
-        "mentions_heading": "Piszą o Terento",
-        "mentions_intro": "Autorzy i recenzenci, którzy wypróbowali Terento i podzielili się nim z innymi użytkownikami Garmina. Dziękuję!",
+        "mentions_heading": "Pisali o Terento",
+        "mentions_intro": "Dziękuję serwisom i recenzentom, którzy wypróbowali, opisali lub polecili Terento.",
         "mention_item": "{source}: {title}",
         "video": "wideo",
     },
@@ -257,8 +257,8 @@ COPY = {
         ],
         "compatibility": "Kompatibilita",
         "maps": "Mapy",
-        "mentions_heading": "Píšou o Terento",
-        "mentions_intro": "Autoři a recenzenti, kteří Terento vyzkoušeli a sdíleli ho s dalšími uživateli Garminu. Děkuji!",
+        "mentions_heading": "Psali o Terento",
+        "mentions_intro": "Děkuji webům a recenzentům, kteří Terento vyzkoušeli, představili nebo doporučili.",
         "mention_item": "{source}: {title}",
         "video": "video",
     },
@@ -301,20 +301,20 @@ COPY = {
         ],
         "compatibility": "Compatibilità",
         "maps": "Mappe",
-        "mentions_heading": "Hanno scritto di Terento",
-        "mentions_intro": "Autori e recensori che hanno provato Terento e lo hanno condiviso con altri utenti Garmin. Grazie!",
+        "mentions_heading": "In evidenza su",
+        "mentions_intro": "Grazie ai siti e ai recensori che hanno provato, presentato o consigliato Terento.",
         "mention_item": "{source}: {title}",
         "video": "video",
     },
 }
 
 
-# Mentions of Terento, shared by all six locales. Add a new one as a new entry
-# at the end. Titles stay in their original language; "kind" is "article" or
+# "Featured on" mentions, shared by all six locales. Add a new one as a new entry
+# at the end. Source labels and titles stay in English; "kind" is "article" or
 # "video" (video adds the localized word after the source name).
 MENTIONS = (
     {
-        "source": "the5krunner",
+        "source": "the5krunner (Indie Spotlight)",
         "title": "Terento Makes Installing Custom Maps on Garmin Watches Effortless for Mac Users",
         "url": "https://the5krunner.com/2026/09/22/garmin-mac-custom-maps-terento/",
         "kind": "article",
