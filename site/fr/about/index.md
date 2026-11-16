@@ -41,7 +41,7 @@ Terento est gratuit et le restera. S’il vous est utile, un don aide à payer l
 
 - **Un produit Garmin.** Garmin ne fabrique, ne recommande ni ne certifie Terento.
 
-- **Un éditeur de cartes.** Les cartes viennent des projets communautaires cités plus bas.
+- **Un éditeur de cartes.** Les cartes viennent de projets communautaires, cités sur la page [Cartes](https://terento.app/fr/map-styles/).
 
 - **Une application de navigation.** Vous naviguez sur votre Garmin, comme d’habitude.
 
@@ -51,8 +51,12 @@ Terento est gratuit et le restera. S’il vous est utile, un don aide à payer l
 
 - **Une promesse que chaque Garmin fonctionne.** La page [Compatibilité](https://terento.app/fr/compatibility/) liste les modèles sur lesquels des cartes ont déjà été installées.
 
-## Code ouvert, cartes communautaires
+## Ils parlent de Terento
 
-Le code de Terento est public sur [GitHub](https://github.com/VooZ2/terento), sous licence GPL-3.0. Vous pouvez le lire, signaler un problème ou aider à l’améliorer.
+Des auteurs et testeurs qui ont essayé Terento et l’ont partagé avec d’autres utilisateurs Garmin. Merci !
 
-Les cartes sont réalisées par [OpenTopoMap](https://garmin.opentopomap.org/), [Freizeitkarte](https://www.freizeitkarte-osm.de/), [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [BBBike](https://garmin.bbbike.org) et [OSMapaPL](https://osmapa-garmin.las.org.pl/), à partir des données des [contributeurs d’OpenStreetMap](https://www.openstreetmap.org/copyright). Terento récupère chaque carte auprès de son projet d’origine ; licences et attributions restent les leurs.
+- the5krunner : [Terento Makes Installing Custom Maps on Garmin Watches Effortless for Mac Users](https://the5krunner.com/2026/09/22/garmin-mac-custom-maps-terento/)
+
+- HikingGuy : [Garmin Fenix 9 Pro Review](https://hikingguy.com/gear/garmin-fenix-9-pro-review/)
+
+- HikingGuy (vidéo) : [Garmin Fenix: 17 Tips I Wish I Knew Sooner](https://www.youtube.com/watch?v=szqwPHHWiTM)

@@ -7,7 +7,7 @@ const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "u
 const styles = read("site/styles.css");
 const shellSource = read("site/site-shell.js");
 const languageSource = read("site/language.js");
-const styleVersion = "20261113-steps-v1";
+const styleVersion = "20261116-about-mentions-v1";
 const mobileLanguageNames = { en: "English", de: "Deutsch", fr: "Français", pl: "Polski", cs: "Čeština", it: "Italiano" };
 
 const cssBlock = (selector) => {
@@ -169,9 +169,35 @@ for (const locale of Object.keys(locales)) {
   assert.equal((storyCopy.match(/<p>/g) || []).length, 2, `${locale} must keep the maker story concise`);
   assert.ok(html.indexOf('class="about-intro"') < html.indexOf('class="about-story"'), `${locale} maker note follows the intro`);
   assert.ok(html.indexOf('class="about-story"') < html.indexOf('class="about-main"'));
-  assert.match(html, /href="https:\/\/github\.com\/VooZ2\/terento"[^>]*>GitHub<\/a>/, `${locale} About links the source code`);
-  assert.match(html, /GPL-3\.0/, `${locale} About names the licence`);
-  for (const project of ["OpenTopoMap", "Freizeitkarte", "MapRando", "BBBike", "OSMapaPL"]) assert.match(html, new RegExp(`>${project}</a>`), `${locale} About credits ${project}`);
+  // Code and map credits live in the footer and on Map styles, not in a separate About section (2026-11-16).
+  const aboutMain = html.match(/<main[\s\S]*?<\/main>/)[0];
+  assert.doesNotMatch(html, /about-v2-open|about-open-title/, `${locale} About no longer repeats the code and map credits`);
+  assert.match(html, /<a class="footer-project-link" data-project-link href="https:\/\/github\.com\/VooZ2\/terento"/, `${locale} footer links the source code`);
+  assert.match(aboutMain, new RegExp(`href="/${prefix}map-styles/" data-umami-event="maps-link-click" data-umami-event-location="about-main"`), `${locale} About points to the map credits`);
+  const mapStyles = read(`site/${prefix}map-styles/index.html`);
+  assert.equal((mapStyles.match(/© [^<]*OpenStreetMap[^<]* \(ODbL\)/g) || []).length, 5, `${locale} Map styles keeps the © OpenStreetMap (ODbL) credit for every map project`);
+  for (const project of ["OpenTopoMap", "Freizeitkarte", "MapRando", "BBBike", "OSMapaPL"]) assert.match(mapStyles, new RegExp(project), `${locale} Map styles credits ${project}`);
+  const mentions = aboutMain.match(/<section class="about-v2-mentions" aria-labelledby="about-mentions-title">[\s\S]*?<\/section>/)?.[0];
+  assert.ok(mentions, `${locale} About lists who wrote about Terento`);
+  assert.ok(aboutMain.indexOf('class="about-main"') < aboutMain.indexOf('class="about-v2-mentions"'), `${locale} mentions close the page`);
+  assert.match(mentions, /<h2 id="about-mentions-title">[^<]+<\/h2>\s*<p>[^<]+<\/p>\s*<ul class="about-bullet-list">/);
+  const mentionLinks = [...mentions.matchAll(/<li>([^<]+)<a class="text-link" href="([^"]+)"([^>]*)>([^<]+)<\/a><\/li>/g)];
+  assert.deepEqual(mentionLinks.map(match => match[2]), [
+    "https://the5krunner.com/2026/09/22/garmin-mac-custom-maps-terento/",
+    "https://hikingguy.com/gear/garmin-fenix-9-pro-review/",
+    "https://www.youtube.com/watch?v=szqwPHHWiTM",
+  ], `${locale} mention order`);
+  assert.deepEqual(mentionLinks.map(match => match[4]), [
+    "Terento Makes Installing Custom Maps on Garmin Watches Effortless for Mac Users",
+    "Garmin Fenix 9 Pro Review",
+    "Garmin Fenix: 17 Tips I Wish I Knew Sooner",
+  ], `${locale} mention titles stay in the original language`);
+  assert.deepEqual(mentionLinks.map(match => match[1].split(/ ?:/)[0].split(" (")[0]), ["the5krunner", "HikingGuy", "HikingGuy"], `${locale} mention sources`);
+  assert.match(mentionLinks[2][1], /^HikingGuy \([^)]+\)/, `${locale} the video mention says it is a video`);
+  for (const match of mentionLinks) {
+    assert.doesNotMatch(match[3], /rel=|target=/, `${locale} mentions are normal followed links`);
+    assert.equal(match[3], locale === "en" ? "" : ' lang="en"', `${locale} English titles carry their language`);
+  }
   assert.doesNotMatch(html, /vibe coding|software developer|Softwareentwickler|développeur logiciel|programistą|vývojář|sviluppatore software/i);
   const main = html.match(/<main[\s\S]*?<\/main>/)[0];
   assert.equal((main.match(/class="download-action"/g) || []).length, 1);
@@ -180,15 +206,14 @@ for (const locale of Object.keys(locales)) {
   assert.match(main, new RegExp(`href="/${prefix}compatibility/"`));
   assert.match(main, /\.img/);
   assert.match(html, /class="[^"]*about-slogan/);
-  assert.equal((html.match(/class="about-bullet-list"/g) || []).length, 2, `${locale} must use lists for Does and Doesn't`);
+  assert.equal((html.match(/class="about-bullet-list"/g) || []).length, 3, `${locale} must use lists for Does, Doesn't and mentions`);
   assert.match(html, /href="https:\/\/www\.linkedin\.com\/in\/gediminasc\/"[^>]+data-umami-event="social-link-click"[^>]+data-umami-event-location="about-story"[^>]+data-umami-event-channel="linkedin"[^>]+data-umami-event-destination="linkedin\.com"/);
   assert.match(html, /href="https:\/\/www\.reddit\.com\/user\/MrDonas\/"[^>]+data-umami-event="social-link-click"[^>]+data-umami-event-location="about-story"[^>]+data-umami-event-channel="reddit"[^>]+data-umami-event-destination="reddit\.com"/);
   assert.match(html, /<a class="about-social-link about-email-link" href="mailto:hello&#64;terento\.app"[^>]+data-umami-event="support-link-click"[^>]+data-umami-event-location="about-story"[^>]+data-umami-event-channel="email"[^>]*>[\s\S]*<span>(?:Email|E-Mail|E-mail)<\/span><\/a>/);
   assert.doesNotMatch(html, /about-social-address|hello&#64;terento\.app<\/a>/, `${locale} must keep the email address out of the visible About social links`);
   assert.match(html, /href="https:\/\/buymeacoffee\.com\/vooz2"[^>]+data-umami-event="donate"[^>]+data-umami-event-location="about-story"[^>]+data-umami-event-channel="donate"/);
   assert.equal((html.match(/class="about-social-link(?:\s|\")/g) || []).length, 4, `${locale} must have LinkedIn, Reddit, Email, and Donate links`);
-  assert.equal((html.match(/class="about-bullet-list"/g) || []).length, 2, `${locale} must use two About bullet lists`);
-  assert.doesNotMatch(html, /does not promise compatibility|verspricht keine Kompatibilität|ne promet pas la compatibilité|nie obiecuje kompatybilności|neslibuje kompatibilitu|non promette la compatibilità/);
+    assert.doesNotMatch(html, /does not promise compatibility|verspricht keine Kompatibilität|ne promet pas la compatibilité|nie obiecuje kompatybilności|neslibuje kompatibilitu|non promette la compatibilità/);
   assert.match(html, /\/assets\/social\/(?:email|linkedin|reddit|buymeacoffee)\.svg/);
   assert.doesNotMatch(html, /href="mailto:hello@terento\.app"/);
   assert.doesNotMatch(html, /Your device, ready for where you['’]re going|Open source by choice|Open source par choix|Open source od podstaw|Open source jako základ|Open source alla base/);

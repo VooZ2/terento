@@ -14,7 +14,7 @@ SCHEMA = runpy.run_path(str(ROOT / "scripts/page_schema.py"))
 BASE_URL = "https://terento.app"
 ABOUT_SLUG = "about/"
 SHELL_VERSION = "20260905-in-page-language-v1"
-STYLE_VERSION = "20261113-steps-v1"
+STYLE_VERSION = "20261116-about-mentions-v1"
 UMAMI_SCRIPT_VERSION = "20261114-umami-monitoring"
 SOCIAL_IMAGE = "/assets/social/terento-og.png"
 EMAIL_ADDRESS = "hello@terento.app"
@@ -73,17 +73,18 @@ COPY = {
         "isnt_title": "What it isn’t",
         "isnt_items": [
             "A Garmin product. Garmin doesn’t make, endorse or certify Terento.",
-            "A map maker. The maps come from the community projects listed below.",
+            "A map maker. The maps come from community projects, credited on the {maps} page.",
             "A navigation app. You navigate on your Garmin, as you always do.",
             "An app for Windows, phones or tablets.",
             "A risk to your original Garmin maps. Terento never touches them.",
             "A promise that every Garmin works. {compatibility} lists the models people have already installed maps on.",
         ],
         "compatibility": "Compatibility",
-        "open_heading": "Open code, community maps",
-        "open_code": "Terento’s code is public on {github} under the GPL-3.0 licence. You can read it, report a problem or help improve it.",
-        "open_maps": "The maps are made by {opentopomap}, {freizeitkarte}, {maprando}, {bbbike} and {osmapapl}, from data by {osm}. Terento gets each map from its original project, and the licences and credits stay with them.",
-        "osm": "OpenStreetMap contributors",
+        "maps": "Maps",
+        "mentions_heading": "Written about Terento",
+        "mentions_intro": "Writers and reviewers who tried Terento and shared it with other Garmin users. Thank you!",
+        "mention_item": "{source}: {title}",
+        "video": "video",
     },
     "de": {
         "title": "Über Terento: kostenlose Open-Source-Garmin-Karten",
@@ -116,17 +117,18 @@ COPY = {
         "isnt_title": "Was es nicht ist",
         "isnt_items": [
             "Ein Garmin-Produkt. Garmin hat Terento weder entwickelt noch empfohlen oder zertifiziert.",
-            "Ein Kartenhersteller. Die Karten stammen von den unten genannten Community-Projekten.",
+            "Ein Kartenhersteller. Die Karten stammen von Community-Projekten, die auf der Seite {maps} genannt sind.",
             "Eine Navigations-App. Du navigierst wie gewohnt auf deiner Garmin.",
             "Eine App für Windows, Smartphones oder Tablets.",
             "Eine Gefahr für deine originalen Garmin-Karten. Terento rührt sie nie an.",
             "Ein Versprechen, dass jede Garmin funktioniert. Die Seite {compatibility} zeigt die Modelle, auf denen schon Karten installiert wurden.",
         ],
         "compatibility": "Kompatibilität",
-        "open_heading": "Offener Code, Community-Karten",
-        "open_code": "Der Code von Terento ist öffentlich auf {github}, unter der Lizenz GPL-3.0. Du kannst ihn lesen, ein Problem melden oder beim Verbessern helfen.",
-        "open_maps": "Die Karten stammen von {opentopomap}, {freizeitkarte}, {maprando}, {bbbike} und {osmapapl}, mit Daten der {osm}. Terento holt jede Karte beim ursprünglichen Projekt; Lizenzen und Quellenangaben bleiben bei ihnen.",
-        "osm": "OpenStreetMap-Mitwirkenden",
+        "maps": "Karten",
+        "mentions_heading": "Berichte über Terento",
+        "mentions_intro": "Autoren und Tester, die Terento ausprobiert und mit anderen Garmin-Nutzern geteilt haben. Danke!",
+        "mention_item": "{source}: {title}",
+        "video": "Video",
     },
     "fr": {
         "title": "À propos de Terento : cartes Garmin gratuites et libres",
@@ -159,17 +161,18 @@ COPY = {
         "isnt_title": "Ce qu’il n’est pas",
         "isnt_items": [
             "Un produit Garmin. Garmin ne fabrique, ne recommande ni ne certifie Terento.",
-            "Un éditeur de cartes. Les cartes viennent des projets communautaires cités plus bas.",
+            "Un éditeur de cartes. Les cartes viennent de projets communautaires, cités sur la page {maps}.",
             "Une application de navigation. Vous naviguez sur votre Garmin, comme d’habitude.",
             "Une application pour Windows, téléphones ou tablettes.",
             "Un risque pour vos cartes Garmin d’origine. Terento n’y touche jamais.",
             "Une promesse que chaque Garmin fonctionne. La page {compatibility} liste les modèles sur lesquels des cartes ont déjà été installées.",
         ],
         "compatibility": "Compatibilité",
-        "open_heading": "Code ouvert, cartes communautaires",
-        "open_code": "Le code de Terento est public sur {github}, sous licence GPL-3.0. Vous pouvez le lire, signaler un problème ou aider à l’améliorer.",
-        "open_maps": "Les cartes sont réalisées par {opentopomap}, {freizeitkarte}, {maprando}, {bbbike} et {osmapapl}, à partir des données des {osm}. Terento récupère chaque carte auprès de son projet d’origine ; licences et attributions restent les leurs.",
-        "osm": "contributeurs d’OpenStreetMap",
+        "maps": "Cartes",
+        "mentions_heading": "Ils parlent de Terento",
+        "mentions_intro": "Des auteurs et testeurs qui ont essayé Terento et l’ont partagé avec d’autres utilisateurs Garmin. Merci !",
+        "mention_item": "{source} : {title}",
+        "video": "vidéo",
     },
     "pl": {
         "title": "O Terento: darmowe mapy open source na Garmina",
@@ -202,17 +205,18 @@ COPY = {
         "isnt_title": "Czym nie jest",
         "isnt_items": [
             "Produktem Garmina. Garmin nie tworzy, nie poleca ani nie certyfikuje Terento.",
-            "Twórcą map. Mapy pochodzą od projektów społecznościowych wymienionych niżej.",
+            "Twórcą map. Mapy pochodzą od projektów społecznościowych wymienionych na stronie {maps}.",
             "Aplikacją do nawigacji. Nawigujesz na Garminie, jak zawsze.",
             "Aplikacją na Windows, telefony ani tablety.",
             "Zagrożeniem dla oryginalnych map Garmina. Terento nigdy ich nie dotyka.",
             "Obietnicą, że każdy Garmin zadziała. Strona {compatibility} pokazuje modele, na które już wgrano mapy.",
         ],
         "compatibility": "Kompatybilność",
-        "open_heading": "Otwarty kod, mapy społeczności",
-        "open_code": "Kod Terento jest publiczny na {github}, na licencji GPL-3.0. Możesz go przeczytać, zgłosić problem lub pomóc go ulepszyć.",
-        "open_maps": "Mapy tworzą {opentopomap}, {freizeitkarte}, {maprando}, {bbbike} i {osmapapl} na podstawie danych {osm}. Terento pobiera każdą mapę z jej oryginalnego projektu, a licencje i informacje o autorstwie pozostają przy nich.",
-        "osm": "współtwórców OpenStreetMap",
+        "maps": "Mapy",
+        "mentions_heading": "Piszą o Terento",
+        "mentions_intro": "Autorzy i recenzenci, którzy wypróbowali Terento i podzielili się nim z innymi użytkownikami Garmina. Dziękuję!",
+        "mention_item": "{source}: {title}",
+        "video": "wideo",
     },
     "cs": {
         "title": "O Terento: bezplatné open-source mapy pro Garmin",
@@ -245,17 +249,18 @@ COPY = {
         "isnt_title": "Co není",
         "isnt_items": [
             "Produkt Garminu. Garmin Terento nevyrábí, nedoporučuje ani necertifikuje.",
-            "Tvůrce map. Mapy pocházejí od komunitních projektů uvedených níže.",
+            "Tvůrce map. Mapy pocházejí od komunitních projektů uvedených na stránce {maps}.",
             "Navigační aplikace. Navigujete v Garminu jako obvykle.",
             "Aplikace pro Windows, telefony nebo tablety.",
             "Riziko pro vaše původní mapy Garmin. Terento se jich nikdy nedotkne.",
             "Slib, že bude fungovat každý Garmin. Stránka {compatibility} ukazuje modely, do kterých už někdo mapy nahrál.",
         ],
         "compatibility": "Kompatibilita",
-        "open_heading": "Otevřený kód, komunitní mapy",
-        "open_code": "Kód Terento je veřejně na {github} pod licencí GPL-3.0. Můžete si ho přečíst, nahlásit problém nebo pomoct s vylepšením.",
-        "open_maps": "Mapy vytvářejí {opentopomap}, {freizeitkarte}, {maprando}, {bbbike} a {osmapapl} z dat {osm}. Terento bere každou mapu z jejího původního projektu a licence i uvedení autorů zůstávají u nich.",
-        "osm": "přispěvatelů OpenStreetMap",
+        "maps": "Mapy",
+        "mentions_heading": "Píšou o Terento",
+        "mentions_intro": "Autoři a recenzenti, kteří Terento vyzkoušeli a sdíleli ho s dalšími uživateli Garminu. Děkuji!",
+        "mention_item": "{source}: {title}",
+        "video": "video",
     },
     "it": {
         "title": "Informazioni su Terento: mappe Garmin gratuite e libere",
@@ -288,28 +293,46 @@ COPY = {
         "isnt_title": "Cosa non è",
         "isnt_items": [
             "Un prodotto Garmin. Garmin non produce, non approva e non certifica Terento.",
-            "Un produttore di mappe. Le mappe vengono dai progetti della community elencati sotto.",
+            "Un produttore di mappe. Le mappe vengono da progetti della community, citati nella pagina {maps}.",
             "Un’app di navigazione. Navighi sul tuo Garmin, come sempre.",
             "Un’app per Windows, telefoni o tablet.",
             "Un rischio per le mappe Garmin originali. Terento non le tocca mai.",
             "Una promessa che ogni Garmin funzioni. La pagina {compatibility} elenca i modelli su cui sono già state installate mappe.",
         ],
         "compatibility": "Compatibilità",
-        "open_heading": "Codice aperto, mappe della community",
-        "open_code": "Il codice di Terento è pubblico su {github}, con licenza GPL-3.0. Puoi leggerlo, segnalare un problema o aiutare a migliorarlo.",
-        "open_maps": "Le mappe sono realizzate da {opentopomap}, {freizeitkarte}, {maprando}, {bbbike} e {osmapapl}, con i dati dei {osm}. Terento prende ogni mappa dal suo progetto originale; licenze e attribuzioni restano loro.",
-        "osm": "contributori di OpenStreetMap",
+        "maps": "Mappe",
+        "mentions_heading": "Hanno scritto di Terento",
+        "mentions_intro": "Autori e recensori che hanno provato Terento e lo hanno condiviso con altri utenti Garmin. Grazie!",
+        "mention_item": "{source}: {title}",
+        "video": "video",
     },
 }
 
 
-MAP_PROJECTS = {
-    "opentopomap": ("OpenTopoMap", "https://garmin.opentopomap.org/"),
-    "freizeitkarte": ("Freizeitkarte", "https://www.freizeitkarte-osm.de/"),
-    "maprando": ("MapRando", "https://ravenfeld.gitlab.io/open-garmin-map/"),
-    "bbbike": ("BBBike", "https://garmin.bbbike.org"),
-    "osmapapl": ("OSMapaPL", "https://osmapa-garmin.las.org.pl/"),
-}
+# Mentions of Terento, shared by all six locales. Add a new one as a new entry
+# at the end. Titles stay in their original language; "kind" is "article" or
+# "video" (video adds the localized word after the source name).
+MENTIONS = (
+    {
+        "source": "the5krunner",
+        "title": "Terento Makes Installing Custom Maps on Garmin Watches Effortless for Mac Users",
+        "url": "https://the5krunner.com/2026/09/22/garmin-mac-custom-maps-terento/",
+        "kind": "article",
+    },
+    {
+        "source": "HikingGuy",
+        "title": "Garmin Fenix 9 Pro Review",
+        "url": "https://hikingguy.com/gear/garmin-fenix-9-pro-review/",
+        "kind": "article",
+    },
+    {
+        "source": "HikingGuy",
+        "title": "Garmin Fenix: 17 Tips I Wish I Knew Sooner",
+        "url": "https://www.youtube.com/watch?v=szqwPHHWiTM",
+        "kind": "video",
+    },
+)
+MENTION_LANGUAGE = "en"
 
 
 def with_links(text: str, links: dict[str, str]) -> str:
@@ -329,6 +352,18 @@ def isnt_item(text: str, links: dict[str, str]) -> str:
     return f"<strong>{with_links(lead, links)}.</strong> {with_links(rest, links)}"
 
 
+def mention_item(locale: str, copy: dict[str, object], mention: dict[str, str]) -> str:
+    """One list entry: the source name, then the original title as the link."""
+    assert mention["kind"] in ("article", "video"), f"unknown mention kind: {mention['kind']}"
+    assert mention["url"].startswith("https://"), f"mention URL must be https: {mention['url']}"
+    source = esc(mention["source"])
+    if mention["kind"] == "video":
+        source += f' ({esc(copy["video"])})'
+    language = "" if locale == MENTION_LANGUAGE else f' lang="{MENTION_LANGUAGE}"'
+    title = f'<a class="text-link" href="{esc(mention["url"])}"{language}>{esc(mention["title"])}</a>'
+    return esc(copy["mention_item"]).replace("{source}", source).replace("{title}", title)
+
+
 def render(locale: str, copy: dict[str, object]) -> str:
     canonical = f"{BASE_URL}{localized_path(locale, ABOUT_SLUG)}"
     meta_locale = META_LOCALES[locale]
@@ -339,13 +374,12 @@ def render(locale: str, copy: dict[str, object]) -> str:
     links = {
         "web_installer": f'<a class="text-link" href="{localized_path(locale, "install/")}" data-umami-event="web-installer-link-click" data-umami-event-location="about-main">{esc(copy["web_installer"])}</a>',
         "compatibility": f'<a class="text-link" href="{localized_path(locale, "compatibility/")}" data-umami-event="compatibility-link-click" data-umami-event-location="about-main">{esc(copy["compatibility"])}</a>',
-        "github": '<a class="text-link" href="https://github.com/VooZ2/terento">GitHub</a>',
-        "osm": f'<a class="text-link" href="https://www.openstreetmap.org/copyright">{esc(copy["osm"])}</a>',
-        **{key: f'<a class="text-link" href="{url}">{name}</a>' for key, (name, url) in MAP_PROJECTS.items()},
+        "maps": f'<a class="text-link" href="{localized_path(locale, "map-styles/")}" data-umami-event="maps-link-click" data-umami-event-location="about-main">{esc(copy["maps"])}</a>',
     }
     story = "\n".join(f'            <p>{esc(paragraph)}</p>' for paragraph in copy["story"])
     is_items = "\n".join(f'              <li>{with_links(item, links)}</li>' for item in copy["is_items"])
     isnt_items = "\n".join(f'              <li>{isnt_item(item, links)}</li>' for item in copy["isnt_items"])
+    mentions = "\n".join(f'            <li>{mention_item(locale, copy, mention)}</li>' for mention in MENTIONS)
     social = f'''          <div class="about-socials" aria-labelledby="about-social-title">
             <h3 class="about-social-label" id="about-social-title">{esc(copy["social_label"])}</h3>
             <div class="about-social-links">
@@ -430,11 +464,13 @@ def render(locale: str, copy: dict[str, object]) -> str:
           </div>
         </div>
       </section>
-      <section class="about-v2-open" aria-labelledby="about-open-title">
+      <section class="about-v2-mentions" aria-labelledby="about-mentions-title">
         <div class="shell">
-          <h2 id="about-open-title">{esc(copy["open_heading"])}</h2>
-          <p>{with_links(copy["open_code"], links)}</p>
-          <p>{with_links(copy["open_maps"], links)}</p>
+          <h2 id="about-mentions-title">{esc(copy["mentions_heading"])}</h2>
+          <p>{esc(copy["mentions_intro"])}</p>
+          <ul class="about-bullet-list">
+{mentions}
+          </ul>
         </div>
       </section>
     </main>

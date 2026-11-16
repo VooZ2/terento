@@ -41,7 +41,7 @@ Terento je zdarma a zdarma zůstane. Pokud vám pomáhá, příspěvek pomůže 
 
 - **Produkt Garminu.** Garmin Terento nevyrábí, nedoporučuje ani necertifikuje.
 
-- **Tvůrce map.** Mapy pocházejí od komunitních projektů uvedených níže.
+- **Tvůrce map.** Mapy pocházejí od komunitních projektů uvedených na stránce [Mapy](https://terento.app/cs/map-styles/).
 
 - **Navigační aplikace.** Navigujete v Garminu jako obvykle.
 
@@ -51,8 +51,12 @@ Terento je zdarma a zdarma zůstane. Pokud vám pomáhá, příspěvek pomůže 
 
 - **Slib, že bude fungovat každý Garmin.** Stránka [Kompatibilita](https://terento.app/cs/compatibility/) ukazuje modely, do kterých už někdo mapy nahrál.
 
-## Otevřený kód, komunitní mapy
+## Píšou o Terento
 
-Kód Terento je veřejně na [GitHub](https://github.com/VooZ2/terento) pod licencí GPL-3.0. Můžete si ho přečíst, nahlásit problém nebo pomoct s vylepšením.
+Autoři a recenzenti, kteří Terento vyzkoušeli a sdíleli ho s dalšími uživateli Garminu. Děkuji!
 
-Mapy vytvářejí [OpenTopoMap](https://garmin.opentopomap.org/), [Freizeitkarte](https://www.freizeitkarte-osm.de/), [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [BBBike](https://garmin.bbbike.org) a [OSMapaPL](https://osmapa-garmin.las.org.pl/) z dat [přispěvatelů OpenStreetMap](https://www.openstreetmap.org/copyright). Terento bere každou mapu z jejího původního projektu a licence i uvedení autorů zůstávají u nich.
+- the5krunner: [Terento Makes Installing Custom Maps on Garmin Watches Effortless for Mac Users](https://the5krunner.com/2026/09/22/garmin-mac-custom-maps-terento/)
+
+- HikingGuy: [Garmin Fenix 9 Pro Review](https://hikingguy.com/gear/garmin-fenix-9-pro-review/)
+
+- HikingGuy (video): [Garmin Fenix: 17 Tips I Wish I Knew Sooner](https://www.youtube.com/watch?v=szqwPHHWiTM)
