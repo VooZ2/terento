@@ -9,7 +9,7 @@ Terento funziona con gli orologi Garmin e i ciclocomputer Garmin Edge più recen
 
 Se il tuo modello non c’è, non significa che non funzioni. Forse nessuno ha ancora condiviso un’installazione riuscita con quel modello.
 
-**45** modelli con installazioni riuscite**419** installazioni riusciteUltima installazione riuscita 15 novembre 2026
+**45** modelli con installazioni riuscite**421** installazioni riusciteUltima installazione riuscita 16 novembre 2026
 
 Come funziona questo elenco
 
@@ -95,11 +95,11 @@ fēnix
 
 ### fēnix 9 Pro 47 mm, AMOLED
 
-15 installazioni riuscite
+16 installazioni riuscite
 
-App 13 Web 2
+App 14 Web 2
 
-Ultima installazione riuscita 14 novembre 2026
+Ultima installazione riuscita 16 novembre 2026
 
 fēnix
 
@@ -141,6 +141,16 @@ App 12 Web 1
 
 Ultima installazione riuscita 14 novembre 2026
 
+fēnix
+
+### fēnix 8 Pro 51 mm, AMOLED, inReach
+
+11 installazioni riuscite
+
+App 11
+
+Ultima installazione riuscita 16 novembre 2026
+
 epix
 
 ### epix Pro (Gen 2) 47 mm, AMOLED
@@ -150,16 +160,6 @@ epix
 App 6 Web 4
 
 Ultima installazione riuscita 3 novembre 2026
-
-fēnix
-
-### fēnix 8 Pro 51 mm, AMOLED, inReach
-
-10 installazioni riuscite
-
-App 10
-
-Ultima installazione riuscita 10 novembre 2026
 
 fēnix
 

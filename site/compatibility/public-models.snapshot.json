@@ -124,10 +124,10 @@
       "family": "fenix",
       "familyName": "fēnix",
       "imageUrl": "https://res.garmin.com/en/products/010-04336-05/g/cf-lg.jpg",
-      "successfulInstallations": 15,
-      "appSuccessfulInstallations": 13,
+      "successfulInstallations": 16,
+      "appSuccessfulInstallations": 14,
       "webSuccessfulInstallations": 2,
-      "lastSuccessfulInstallation": "2026-11-14T06:19:56+00:00"
+      "lastSuccessfulInstallation": "2026-11-16T05:14:42+00:00"
     },
     {
       "model": "fēnix 9 Pro · inReach, 51 mm",
@@ -194,6 +194,22 @@
       "lastSuccessfulInstallation": "2026-11-14T07:44:27+00:00"
     },
     {
+      "model": "fēnix 8 Pro · 51 mm, AMOLED",
+      "variant": "51 mm, AMOLED",
+      "caseSizeMm": 51,
+      "displayType": null,
+      "screenTechnology": "AMOLED",
+      "solar": null,
+      "inReach": true,
+      "family": "fenix",
+      "familyName": "fēnix",
+      "imageUrl": "https://res.garmin.com/en/products/010-03199-00/g/cf-lg.jpg",
+      "successfulInstallations": 11,
+      "appSuccessfulInstallations": 11,
+      "webSuccessfulInstallations": 0,
+      "lastSuccessfulInstallation": "2026-11-16T11:27:02+00:00"
+    },
+    {
       "model": "epix Pro (Gen 2) · 47 mm, AMOLED",
       "variant": "47 mm, AMOLED",
       "caseSizeMm": 47,
@@ -208,22 +224,6 @@
       "appSuccessfulInstallations": 6,
       "webSuccessfulInstallations": 4,
       "lastSuccessfulInstallation": "2026-11-03T08:38:35+00:00"
-    },
-    {
-      "model": "fēnix 8 Pro · 51 mm, AMOLED",
-      "variant": "51 mm, AMOLED",
-      "caseSizeMm": 51,
-      "displayType": null,
-      "screenTechnology": "AMOLED",
-      "solar": null,
-      "inReach": true,
-      "family": "fenix",
-      "familyName": "fēnix",
-      "imageUrl": "https://res.garmin.com/en/products/010-03199-00/g/cf-lg.jpg",
-      "successfulInstallations": 10,
-      "appSuccessfulInstallations": 10,
-      "webSuccessfulInstallations": 0,
-      "lastSuccessfulInstallation": "2026-11-10T19:32:33+00:00"
     },
     {
       "model": "fēnix 7 Pro · Historical",
@@ -722,5 +722,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-11-16T05:53:27.731290+00:00"
+  "generatedAt": "2026-11-16T15:25:27.406103+00:00"
 }
