@@ -7,10 +7,6 @@ canonical: https://terento.app/fr/map-styles/
 
 OpenTopoMap, Freizeitkarte, MapRando, BBBike et OSMapaPL sont des cartes topographiques gratuites issues d’OpenStreetMap, pour les montres Garmin et les compteurs vélo Edge. Voyez comment chacune représente le même lieu, puis installez celle qui convient à vos sorties.
 
-Lieu
-
-Chamonix–Mont Blanc
-
 Style de la carte de gauche Style de la carte de droite
 
 Les aperçus sont proches, mais pas exacts : votre montre dessine elle-même la carte, les couleurs et le niveau de détail peuvent donc varier selon le modèle et ses réglages de carte.

@@ -7,10 +7,6 @@ canonical: https://terento.app/cs/map-styles/
 
 OpenTopoMap, Freizeitkarte, MapRando, BBBike a OSMapaPL jsou bezplatné topografické mapy z OpenStreetMap pro hodinky Garmin a cyklopočítače Edge. Podívejte se, jak každá zobrazuje stejné místo, a nainstalujte tu, která sedí vašim výletům.
 
-Místo
-
-Krkonoše
-
 Styl levé mapy Styl pravé mapy
 
 Náhledy jsou blízké, ale ne přesné: hodinky kreslí mapu samy, takže barvy a podrobnosti se mohou lišit podle modelu a nastavení mapy.

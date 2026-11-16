@@ -7,10 +7,6 @@ canonical: https://terento.app/it/map-styles/
 
 OpenTopoMap, Freizeitkarte, MapRando, BBBike e OSMapaPL sono mappe topografiche gratuite create da OpenStreetMap, per orologi Garmin e ciclocomputer Edge. Guarda come ognuna disegna lo stesso luogo, poi installa quella adatta alle tue uscite.
 
-Luogo
-
-Dolomites – Tre Cime
-
 Stile della mappa a sinistra Stile della mappa a destra
 
 Le anteprime sono vicine, ma non identiche: l’orologio disegna la mappa da sé, quindi colori e dettagli possono variare in base al modello e alle impostazioni della mappa.

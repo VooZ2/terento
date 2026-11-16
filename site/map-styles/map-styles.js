@@ -20,7 +20,6 @@
   const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (char) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[char]));
   // Lucide 0.460.0 icons (ISC, see THIRD_PARTY_NOTICES.md): original paths.
   const icon = (paths) => `<svg class="map-styles-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><!-- @license lucide-static v0.460.0 - ISC -->${paths}</svg>`;
-  const ICON_PIN = icon('<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>');
   const ICON_STAR = icon('<path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>');
   const ICON_MINUS = icon('<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/>');
   const ICON_CLOCK = icon('<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>');
@@ -208,11 +207,7 @@
     const current = area();
     $("map-styles-place-kind").textContent = copy.kind[current.kind];
     $("map-styles-area-title").textContent = current.name;
-    const countries = current.countryCodes.map(countryName).join(", ");
-    const tags = current.tags.filter((tag) => copy.tags[tag]).slice(0, 2)
-      .map((tag) => `<span class="map-styles-tag">${escapeHtml(copy.tags[tag])}</span>`).join("");
-    const covered = D.coveredCount(manifest, current.id, styleIds);
-    $("map-styles-area-meta").innerHTML = `${ICON_PIN}<span>${escapeHtml(countries)}</span>${tags}<span>${escapeHtml(D.format(copy.styles_of, {n: covered, total: styleIds.length}))}</span>`;
+    $("map-styles-open-places").setAttribute("aria-label", `${copy.change}: ${current.name}`);
   }
 
   function styleOption(styleId, selected, other) {
@@ -297,13 +292,19 @@
 
   // Statistics: the #fragment is not a page view (data-exclude-hash on the
   // Umami tag). A person's change of place, style, compared style or view is
-  // one map-compare event once the view has been still for a second.
+  // one map-compare event once the view has been still for a second. Its
+  // change says what the person changed: area, style, compare, swap or mode;
+  // a place picked within that second wins over a style changed with it.
   let compareTimer = 0;
   let reportedView = null;
-  function reportCompare() {
+  let pendingChange = null;
+  function reportCompare(change) {
+    if (pendingChange !== "area") pendingChange = change;
     clearTimeout(compareTimer);
     compareTimer = setTimeout(() => {
       const view = D.serializeHash(state);
+      const what = pendingChange;
+      pendingChange = null;
       if (view === reportedView) return;
       reportedView = view;
       const umami = window.umami;
@@ -314,6 +315,7 @@
           style: state.a,
           compare: state.mode === "single" ? "none" : state.b,
           mode: state.mode,
+          change: what,
           location: "map-styles",
         });
       } catch (error) {
@@ -321,9 +323,9 @@
       }
     }, 1000);
   }
-  function changed(options) {
+  function changed(change, options) {
     refresh(options);
-    reportCompare();
+    reportCompare(change);
   }
 
   function refresh({frame = false} = {}) {
@@ -415,7 +417,7 @@
       state.b = styleIds.find((styleId) => styleId !== state.a && status(styleId) !== "NOT_COVERED") || state.b;
     }
     closePlaces(true);
-    changed({frame: true});
+    changed("area", {frame: true});
     announce(D.format(copy.showing, {style: styleById[state.a].name, place: area().name}));
   }
 
@@ -423,7 +425,7 @@
     if (status(styleId) === "NOT_COVERED") return;
     state.a = styleId;
     if (state.b === state.a) state.b = styleIds.find((id) => id !== state.a && status(id) !== "NOT_COVERED") || state.b;
-    changed();
+    changed("style");
     announce(D.format(copy.showing, {style: styleById[state.a].name, place: area().name}));
     if (focus) {
       const button = document.querySelector(`.map-styles-pill[data-style="${styleId}"]`);
@@ -464,11 +466,11 @@
     const step = event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : -1;
     selectStyle(usable[(index + step + usable.length) % usable.length], true);
   });
-  $("map-styles-style-a").addEventListener("change", (event) => { state.a = event.target.value; changed(); });
-  $("map-styles-style-b").addEventListener("change", (event) => { state.b = event.target.value; changed(); });
+  $("map-styles-style-a").addEventListener("change", (event) => { state.a = event.target.value; changed("style"); });
+  $("map-styles-style-b").addEventListener("change", (event) => { state.b = event.target.value; changed("compare"); });
   $("map-styles-swap").addEventListener("click", () => {
     [state.a, state.b] = [state.b, state.a];
-    changed();
+    changed("swap");
   });
   // The view menu stays folded to one button so it covers little of the map.
   const tools = $("map-styles-tools");
@@ -493,18 +495,12 @@
     button.addEventListener("click", () => {
       state.mode = button.dataset.mode;
       if (state.b === state.a) state.b = styleIds.find((id) => id !== state.a) || state.b;
-      changed();
+      changed("mode");
       setViewMenu(false, true);
       announce(copy.modes[state.mode]);
     });
   });
 
-  const placeToggle = $("map-styles-place-toggle");
-  placeToggle.addEventListener("click", () => {
-    const open = placeToggle.getAttribute("aria-expanded") !== "true";
-    placeToggle.setAttribute("aria-expanded", String(open));
-    $("map-styles-area-meta").hidden = !open;
-  });
   $("map-styles-zoom-in").addEventListener("click", () => mapA.zoomIn());
   $("map-styles-zoom-out").addEventListener("click", () => mapA.zoomOut());
 
