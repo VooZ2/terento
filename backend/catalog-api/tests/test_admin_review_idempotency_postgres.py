@@ -43,13 +43,16 @@ class AdminReviewIdempotencyTests(PGliteTestCase):
     def resolve(self, event_id, action, device=None):
         return self.db.resolve_compatibility_identity(
             f"legacy:{event_id}", action=action, canonical_device_model_id=device,
-            admin_user_id=self.admin,
+            admin_user_id=self.admin, note="Reviewed." if action == "MANUAL_ASSIGN" else None,
         )
 
     def legacy_diagnostic(self, **overrides):
         event_id = self.rows.uuid()
         self.rows.diagnostic(event_id=event_id, **overrides)
-        self.sql("UPDATE compatibility_evidence_event SET operation_id = NULL WHERE event_id = %s", (event_id,))
+        # An unmapped USB code: the fixture's code has a reviewed link to the
+        # fēnix 8 row, which refuses any other model (identity code protection).
+        self.sql("UPDATE compatibility_evidence_event SET operation_id = NULL, usb_product_id = 1"
+                 " WHERE event_id = %s", (event_id,))
         return event_id
 
     def test_identical_identity_retry_after_correction_keeps_one_decision(self):

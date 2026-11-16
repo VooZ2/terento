@@ -864,6 +864,30 @@ operation scope, so the queue never offers a group-wide confirm. With nothing
 pending the page says `No installations wait for identity review.`; a failed
 read renders an `Unavailable` card with Retry.
 
+Garmin code protection (owner decision 2026-11-16). A reviewed Garmin XML part
+number or USB code link is a hard fact: an assignment (`ASSIGN` or
+`MANUAL_ASSIGN`, app or web) to a model that a completely reviewed link rules
+out (the code is `APPROVED` for other models and no other target is still
+`PENDING`) or that a `REJECTED` link names is refused with 409
+`identity_code_conflict`; only a review of the link itself changes that.
+Other contradictions (name, size, screen, Solar, inReach) keep the manual path,
+which needs a written `Reason` (`identity_note`; otherwise 409
+`identity_manual_reason_required`). The picker lists the models the reported
+codes name first and disables (`Code conflict`) the ones they rule out; a
+preselected code conflict hides `Confirm manual assignment`. A `Conflicts`
+card above the queue lists every assigned result the current catalog
+contradicts (date, reported name, assigned model link, conflicting fields,
+`Code` or `Reported facts`, source); the attention API reports the same
+population as `identityConflicts`. Approving a code link in Model sources is
+refused (409 `identity_mapping_report_conflict`, with a count) while a real
+result with that code reports a name or variant fact that the target model
+contradicts and no other model linked to the code fits it.
+A pending result whose remaining candidates share one name and are all
+reviewed targets of a reported code, with that code's review complete (for
+example fēnix 8 Pro 51 mm AMOLED and MicroLED), is marked
+`NOT_IDENTIFIABLE` automatically ("variant unknown") with an audit row and
+leaves the queue; write authorization never reads identity.
+
 Discovery reuses the Installations source (identities whose active results are
 identity pending) and the existing detail read, once for all pending identities
 (never one read per identity); the Needs
@@ -880,7 +904,8 @@ reported) and the same inline identity form keyed `web:<event id>`; the Needs at
 `Identity review` count adds them. The form
 offers only the models the reported text may name (the whole catalog when it
 names none); `Confirm` refuses a model the reported text or USB code
-contradicts (409) and `Confirm manual assignment` assigns it explicitly. Test
+contradicts (409) and `Confirm manual assignment` assigns it explicitly with
+a reason, except against a reviewed USB code link (above). Test
 records and failures before writing are refused (404). An assigned install
 (`identity_resolution = MANUAL`) shows `Unassign` in the Action column of the
 model page Installation history, which removes the model and returns the

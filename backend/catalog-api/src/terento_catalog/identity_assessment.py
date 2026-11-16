@@ -196,10 +196,33 @@ def selected_identity_conflicts(
                 and mapping.get('value') == value
                 and mapping.get('status') == 'APPROVED'
             }
-            if approved_ids and device_id not in approved_ids:
+            rejected = any(
+                mapping.get('kind') == kind and mapping.get('value') == value
+                and mapping.get('status') == 'REJECTED'
+                and str(mapping.get('device_model_id')) == device_id
+                for mapping in mappings)
+            # Same rule as assess_identity: while another target of the code
+            # is still PENDING, its review is incomplete and the approved
+            # targets do not yet rule other models out for certain.
+            pending_alternatives = any(
+                mapping.get('kind') == kind and mapping.get('value') == value
+                and mapping.get('status') == 'PENDING'
+                and str(mapping.get('device_model_id')) not in approved_ids
+                for mapping in mappings)
+            if (approved_ids and device_id not in approved_ids) or rejected:
+                # A completely reviewed Garmin code link, or a REJECTED one, is
+                # a hard fact: no assignment, manual or not, may contradict it
+                # (owner decision 2026-11-16).
                 conflicts.append({'field': kind, 'source': f'{kind} mapping',
-                                  'reported': value, 'mappingDeviceIds': sorted(approved_ids)})
+                                  'reported': value, 'mappingDeviceIds': sorted(approved_ids),
+                                  'rejectedMapping': rejected,
+                                  'hard': rejected or not pending_alternatives})
     return conflicts
+
+
+def hard_identity_conflicts(conflicts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The conflicts with a reviewed Garmin XML part number or USB code link."""
+    return [conflict for conflict in conflicts if conflict.get('hard')]
 
 
 def preferred_candidates(assessment: dict) -> list[dict]:
@@ -226,6 +249,33 @@ def preferred_candidates(assessment: dict) -> list[dict]:
     if sized:
         candidates = sized
     return candidates
+
+
+def indistinguishable_candidates(assessment: dict) -> list[str]:
+    """Catalog variants the reported facts can never tell apart, or ``[]``.
+
+    True only when no model is resolved and every remaining candidate (after
+    ``preferred_candidates``) has the same model name, matches every reported
+    name, and is a reviewed target of a reported Garmin code whose review is
+    complete, for example fēnix 8 Pro 51 mm AMOLED and MicroLED, which share
+    one name and one code. Such a result is "variant unknown"
+    (``NOT_IDENTIFIABLE``) instead of waiting in Identity review; it never
+    affects write authorization, which ignores identity.
+    """
+    if assessment.get('canonicalDeviceId'):
+        return []
+    candidates = preferred_candidates(assessment)
+    if len(candidates) < 2 or len({model_label(c.get('model')) for c in candidates}) != 1:
+        return []
+    for candidate in candidates:
+        checks = candidate.get('checks') or []
+        model = next((c for c in checks if c.get('name') == 'model'), None)
+        codes = [c for c in checks if c.get('name') in {'xmlPartNumber', 'usb'}]
+        if (not model or model.get('observedState') != 'MATCH'
+                or any(c.get('pendingAlternativeTargets') for c in codes)
+                or not any(c.get('state') == 'MATCH' for c in codes)):
+            return []
+    return sorted(str(c['deviceId']) for c in candidates)
 
 
 def assess_identity(event: dict, devices: list[dict], mappings: list[dict]) -> dict:
@@ -349,11 +399,17 @@ def assess_identity(event: dict, devices: list[dict], mappings: list[dict]) -> d
         for name, kind in (('xmlPartNumber', part_kind), ('usb', 'USB')):
             group = matched[kind]
             matches = [m for m in group if m['device_model_id'] == device_id]
-            checks.append({'name': name, 'state': 'MISSING' if incomplete[kind] else ('MATCH' if matches else ('CONFLICT' if group else 'MISSING')),
+            # A reviewed REJECTED link says this code is not this model.
+            rejected = any(m['status'] == 'REJECTED' and m['device_model_id'] == device_id
+                           for m in observed_mappings[kind])
+            checks.append({'name': name, 'state': 'CONFLICT' if rejected else (
+                               'MISSING' if incomplete[kind] else ('MATCH' if matches else ('CONFLICT' if group else 'MISSING'))),
                            'pendingAlternativeTargets': incomplete[kind],
                            'value': codes[kind], 'codeKind': kind, 'evidence': [
                                {'source': m['source_url'], 'version': m['source_version'],
                                 'value': m['value'], 'deviceId': m['device_model_id']} for m in group]})
+            if rejected:
+                checks[-1]['rejectedMapping'] = True
         candidates.append({'deviceId': device_id, 'model': device['model'],
                            'checks': checks, 'conflict': any(c['state'] == 'CONFLICT' for c in checks)})
     possible = [c for c in candidates if not c['conflict']]

@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from .admin import (
+    IDENTITY_REVIEW_PATH,
     _HEALTH_ISSUE_STATES,
     _admin_app_version_label,
     _diagnostic_error_reason,
@@ -51,10 +52,16 @@ def attention_report(service: Any) -> dict[str, Any]:
             LOGGER.exception("attention section %s failed", name)
             return {"available": False}
 
+    identity_conflicts = section("identityConflicts", lambda: _identity_conflicts(service.database, admin_url))
+    counts = section("counts", lambda: _counts(service.database))
+    if counts.get("available") is not False:
+        counts["identityConflicts"] = (identity_conflicts.get("total")
+                                       if identity_conflicts.get("available") is not False else None)
     return {
         "schemaVersion": SCHEMA_VERSION,
         "generatedAt": datetime.now(timezone.utc).isoformat(),
-        "counts": section("counts", lambda: _counts(service.database)),
+        "counts": counts,
+        "identityConflicts": identity_conflicts,
         "installationProblems": section("installationProblems", lambda: _installation_problems(service, admin_url)),
         "updateProblems": section("updateProblems", lambda: _update_problems(service.database, admin_url)),
         "supportReports": section("supportReports", lambda: _support_reports(service.database, admin_url)),
@@ -149,6 +156,22 @@ def _update_problems(database: Any, admin_url: str) -> dict[str, Any]:
         # The list read alone cannot give the Open total.
         raise RuntimeError("update report totals unavailable")
     return {"total": int(totals["open_failed"]), "items": items}
+
+
+def _identity_conflicts(database: Any, admin_url: str) -> dict[str, Any]:
+    """Assigned results the current catalog contradicts (Identity review, Conflicts)."""
+    findings = database.identity_assignment_conflicts()
+    items = [{
+        "source": item["source"],
+        "operationKey": item["operationKey"],
+        "occurredAt": _timestamp_iso(item.get("occurredAt")) or None,
+        "reported": item.get("reported"),
+        "canonicalDeviceModelId": item["canonicalDeviceModelId"],
+        "codeConflict": item["hard"],
+        "fields": item["fields"],
+        "adminUrl": _absolute(admin_url, IDENTITY_REVIEW_PATH + "#identity-conflicts"),
+    } for item in findings[:LIST_LIMIT]]
+    return {"total": len(findings), "items": items}
 
 
 def _support_reports(database: Any, admin_url: str) -> dict[str, Any]:

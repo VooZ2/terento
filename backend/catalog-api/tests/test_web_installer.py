@@ -910,9 +910,9 @@ class WebInstallerEndToEndTests(PGliteTestCase):
         self.assertIn(f"data-identity-device-id='{wifi}'", learned_item)
         self.assertIn(f"data-identity-device-id='{no_wifi}'", learned_item)
 
-    def post_identity(self, key, action, device_id="", return_to="/admin/review/identity"):
+    def post_identity(self, key, action, device_id="", return_to="/admin/review/identity", note=""):
         body = urlencode({"csrf_token": self.csrf, "operation_key": key, "identity_action": action,
-                          "canonical_device_model_id": device_id, "return_to": return_to})
+                          "canonical_device_model_id": device_id, "return_to": return_to, "identity_note": note})
         return self.request("POST", "/admin/diagnostics/identity", body.encode(), secret=None, admin=True,
                             content_type="application/x-www-form-urlencoded")
 
@@ -985,7 +985,10 @@ class WebInstallerEndToEndTests(PGliteTestCase):
         _, page = self.request("GET", "/admin/review/identity", secret=None, admin=True)
         self.assertIn(f"name='operation_key' value='{key}'", page)
 
-        response, _ = self.post_identity(key, "MANUAL_ASSIGN", "garmin-epix-pro-gen-2-47")
+        # A manual assignment against reported facts needs a written reason.
+        response, payload = self.post_identity(key, "MANUAL_ASSIGN", "garmin-epix-pro-gen-2-47")
+        self.assertEqual((response.status, json.loads(payload)["error"]), (409, "identity_manual_reason_required"))
+        response, _ = self.post_identity(key, "MANUAL_ASSIGN", "garmin-epix-pro-gen-2-47", note="Owner checked the watch")
         self.assertEqual(response.status, 303)
         self.assertEqual(stored(), {"id": "garmin-epix-pro-gen-2-47", "resolution": "MANUAL"})
         self.assertEqual(audit()[-1], ("MANUAL_ASSIGN", "garmin-epix-pro-gen-2-47"))

@@ -2200,9 +2200,14 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 except Exception:
                     LOGGER.exception("identity review web installs failed")
                     web_results = None
+                try:
+                    identity_conflicts: list[dict[str, Any]] | None = service.database.identity_assignment_conflicts()
+                except Exception:
+                    LOGGER.exception("identity review conflicts failed")
+                    identity_conflicts = None
                 self._send_admin_html(identity_review_page(
                     pending_operations, session, csrf_token, identity_devices=identity_devices,
-                    web_results=web_results,
+                    web_results=web_results, conflicts=identity_conflicts,
                 ), send_body=send_body)
                 return
             if request_path in {"/admin/support-reports", "/admin/support-reports/"}:
@@ -3070,6 +3075,10 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                         form.get("reason", ""), int(session["id"]))
                     if not changed:
                         raise ValueError("mapping not found")
+                except IdentityResolutionError as exc:
+                    self._send_json(HTTPStatus.CONFLICT, {"error": exc.code, "details": exc.details},
+                                    send_body=True, cache_control="no-store")
+                    return
                 except ValueError:
                     self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_mapping_review"}, send_body=True, cache_control="no-store")
                     return
@@ -3092,7 +3101,10 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                         return
                 except IdentityResolutionError as exc:
                     error_code = getattr(exc, "code", "invalid_identity_resolution")
-                    status = HTTPStatus.CONFLICT if error_code == "identity_conflict_manual_required" else (
+                    status = HTTPStatus.CONFLICT if error_code in {
+                        "identity_conflict_manual_required", "identity_code_conflict",
+                        "identity_manual_reason_required",
+                    } else (
                         HTTPStatus.NOT_FOUND if error_code in {"diagnostic_not_found", "canonical_device_not_found"} else HTTPStatus.BAD_REQUEST
                     )
                     payload = {"error": error_code}

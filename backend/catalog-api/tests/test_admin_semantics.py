@@ -2097,9 +2097,17 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             )
         self.assertEqual(error.exception.code, "identity_conflict_manual_required")
         database.calls.clear()
+        # Manual assignment against reported facts needs a written reason.
+        with self.assertRaises(IdentityResolutionError) as error:
+            database.resolve_compatibility_identity(
+                "operation-1", action="MANUAL_ASSIGN", canonical_device_model_id=selected["id"], admin_user_id=7,
+            )
+        self.assertEqual(error.exception.code, "identity_manual_reason_required")
+        database.calls.clear()
         self.assertEqual(
             database.resolve_compatibility_identity(
                 "operation-1", action="MANUAL_ASSIGN", canonical_device_model_id=selected["id"], admin_user_id=7,
+                note="Owner checked the watch.",
             ),
             1,
         )
@@ -2115,6 +2123,11 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
                   "case_size_mm": 47, "screen_technology": "MIP", "solar": True, "inreach": False}
         mapping = {"kind": "USB", "value": "091e:51b8", "device_model_id": mapped["id"],
                    "status": "APPROVED", "source_url": "https://example.org/usb", "source_version": "1"}
+        # Another target of the code is still PENDING: the review is incomplete,
+        # so the code conflict stays one of the details manual assignment can
+        # confirm (a completely reviewed code is refused outright, see
+        # test_identity_code_protection_postgres).
+        pending = {**mapping, "device_model_id": "garmin-fenix-7-47-other", "status": "PENDING"}
         rows = [
             {"event_id": "event-1", "operation_id": "123e4567-e89b-12d3-a456-426614174000", "map_result_index": 0,
              "raw_mtp_model": "fenix 7 47mm MIP Solar", "model": "fenix 7", "case_size_mm": 47,
@@ -2127,7 +2140,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         ]
         database = RecordingDatabase(
             identity_rows=rows, canonical_row=selected,
-            catalog_devices=[selected, mapped], identity_mappings=[mapping],
+            catalog_devices=[selected, mapped], identity_mappings=[mapping, pending],
         )
         with self.assertRaises(IdentityResolutionError) as error:
             database.resolve_compatibility_identity(
@@ -2157,6 +2170,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
                 {"name": "size", "state": "CONFLICT", "expected": 51,
                  "evidence": [{"source": "caseSizeMm", "value": 47}]},
                 {"name": "usb", "state": "CONFLICT", "value": "091e:51b8", "codeKind": "USB",
+                 "pendingAlternativeTargets": True,
                  "evidence": [{"source": "USB mapping", "value": "091e:51b8", "deviceId": "mapped"}]},
             ]}]}
         results = [

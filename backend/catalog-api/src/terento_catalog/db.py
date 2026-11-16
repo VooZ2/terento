@@ -14,6 +14,8 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from .identity_assessment import (
     assess_identity,
     apply_corrections,
+    hard_identity_conflicts,
+    indistinguishable_candidates,
     selected_identity_conflicts,
     validate_correction,
 )
@@ -2889,6 +2891,107 @@ class Database:
             corrections = list(connection.execute("SELECT * FROM device_identity_source_correction ORDER BY id").fetchall())
             return build_assignment_audit(events, devices, mappings, corrections)
 
+    def identity_assignment_conflicts(self) -> list[dict[str, Any]]:
+        """Assigned results whose catalog model the current catalog contradicts.
+
+        App results (active, nonlocal, counted) and counted web results with a
+        catalog model, checked with the same rule as a new assignment
+        (``selected_identity_conflicts``): a reviewed Garmin code link names a
+        different model (``hard``), or a reported fact contradicts the model
+        and no manual assignment with a written reason confirmed it. Read
+        only; it never changes an assignment. Newest first.
+        """
+        with self.connection() as connection:
+            app_rows = list(connection.execute(
+                """
+                SELECT e.*, COALESCE(e.operation_id::text, 'legacy:' || e.event_id::text) AS operation_key,
+                       latest.action AS latest_action,
+                       latest.new_canonical_device_model_id AS latest_device_id,
+                       latest.assessment -> 'decision' ->> 'decisionType' AS latest_decision,
+                       NULLIF(btrim(COALESCE(latest.note, '')), '') AS latest_note
+                FROM compatibility_evidence_event AS e
+                LEFT JOIN LATERAL (
+                    SELECT a.action, a.new_canonical_device_model_id, a.assessment, a.note
+                    FROM compatibility_identity_resolution_audit AS a
+                    WHERE a.event_id = e.event_id
+                    ORDER BY a.id DESC LIMIT 1
+                ) AS latest ON TRUE
+                WHERE e.diagnostic_status = 'ACTIVE'
+                  AND e.is_local_test IS NOT TRUE
+                  AND e.statistics_exclusion_code IS NULL
+                  AND NULLIF(btrim(e.canonical_device_model_id), '') IS NOT NULL
+                ORDER BY e.occurred_at DESC, e.event_id
+                """
+            ).fetchall())
+            web_rows = list(connection.execute(
+                """
+                SELECT e.event_id, e.occurred_at, e.model, e.usb_vendor_id, e.usb_product_id,
+                       e.canonical_device_model_id, latest.action AS latest_action,
+                       latest.new_canonical_device_model_id AS latest_device_id,
+                       NULLIF(btrim(COALESCE(latest.note, '')), '') AS latest_note
+                FROM web_installer_map_result AS w
+                JOIN web_installer_event AS e USING (event_id)
+                LEFT JOIN LATERAL (
+                    SELECT a.action, a.new_canonical_device_model_id, a.note
+                    FROM web_installer_identity_audit AS a
+                    WHERE a.event_id = e.event_id
+                    ORDER BY a.id DESC LIMIT 1
+                ) AS latest ON TRUE
+                WHERE e.canonical_device_model_id IS NOT NULL
+                ORDER BY e.occurred_at DESC, e.event_id
+                """
+            ).fetchall())
+            if not app_rows and not web_rows:
+                return []
+            devices = {str(row["id"]): row for row in connection.execute(
+                "SELECT id, model, variant, case_size_mm, screen_technology, solar, inreach FROM device_model").fetchall()}
+            mappings = list(connection.execute(IDENTITY_MAPPING_QUERY).fetchall())
+            corrections: dict[Any, list[dict[str, Any]]] = {}
+            for correction in connection.execute(
+                    "SELECT * FROM device_identity_source_correction ORDER BY id").fetchall():
+                corrections.setdefault(correction["event_id"], []).append(correction)
+        findings: list[dict[str, Any]] = []
+
+        def add(source: str, row: dict[str, Any], event: dict[str, Any], key: str, confirmed: bool) -> None:
+            device_id = str(row.get("canonical_device_model_id") or "").strip()
+            device = devices.get(device_id)
+            if device is None:
+                return
+            conflicts = selected_identity_conflicts(event, device, mappings)
+            hard = hard_identity_conflicts(conflicts)
+            if not hard and (not conflicts or confirmed):
+                return
+            findings.append({
+                "source": source,
+                "operationKey": key,
+                "eventId": str(row.get("event_id")),
+                "occurredAt": row.get("occurred_at"),
+                "canonicalDeviceModelId": device_id,
+                "reported": str(event.get("rawMTPModel") or event.get("garminModelDescription")
+                                or event.get("model") or "").strip() or None,
+                "hard": bool(hard),
+                "fields": sorted({str(conflict.get("field")) for conflict in (hard or conflicts)}),
+            })
+
+        for row in app_rows:
+            event = apply_corrections(self._identity_event(row), corrections.get(row["event_id"], []))
+            current = str(row.get("canonical_device_model_id") or "").strip()
+            # Soft facts stay confirmed by a manual assignment with a written
+            # reason to this same model; a reviewed code link never does.
+            confirmed = (row.get("latest_decision") == "MANUAL_ASSIGNMENT"
+                         and row.get("latest_device_id") == current and bool(row.get("latest_note")))
+            key = (f"result:{row['operation_id']}:{row['map_result_index']}"
+                   if row.get("operation_id") is not None and row.get("map_result_index") is not None
+                   else str(row["operation_key"]))
+            add("app", row, event, key, confirmed)
+        for row in web_rows:
+            current = str(row.get("canonical_device_model_id") or "").strip()
+            confirmed = (row.get("latest_action") == "MANUAL_ASSIGN"
+                         and row.get("latest_device_id") == current and bool(row.get("latest_note")))
+            add("web", row, web_installer_identity_event(row), f"web:{row['event_id']}", confirmed)
+        findings.sort(key=lambda item: str(item.get("occurredAt") or ""), reverse=True)
+        return findings
+
     def review_identity_mapping(self, mapping_id: int, status: str, reason: str, admin_user_id: int) -> bool:
         if status not in {"APPROVED", "REJECTED"} or not reason.strip() or len(reason) > 1000:
             raise ValueError("a mapping review requires status and evidence reason")
@@ -2896,11 +2999,80 @@ class Database:
             row = connection.execute("SELECT * FROM device_identity_mapping WHERE id=%s FOR UPDATE", (mapping_id,)).fetchone()
             if row is None:
                 return False
+            if status == "APPROVED" and row["status"] != "APPROVED":
+                self._refuse_mapping_against_reports(connection, row)
             connection.execute("INSERT INTO device_identity_mapping_audit (mapping_id,previous_status,new_status,reason,reviewed_by) VALUES (%s,%s,%s,%s,%s)",
                                (mapping_id, row["status"], status, reason, admin_user_id))
             connection.execute("UPDATE device_identity_mapping SET status=%s, review_reason=%s, reviewed_by=%s, reviewed_at=now() WHERE id=%s",
                                (status, reason, admin_user_id, mapping_id))
             return True
+
+    def _refuse_mapping_against_reports(self, connection: Any, mapping: dict[str, Any]) -> None:
+        """Refuse to approve a code link that real results contradict (D).
+
+        A result that reports this code but a name, size, screen, Solar or
+        inReach fact the target model contradicts, while no other model linked
+        to the same code (approved or pending) fits it, would become a hard
+        code conflict once the link is approved (libmtp 091e:5359 named every
+        fēnix 9 Pro size). Such a link needs the right variant first.
+        """
+        kind, value = str(mapping["kind"]), str(mapping["value"])
+        device = connection.execute(
+            "SELECT id, model, variant, case_size_mm, screen_technology, solar, inreach FROM device_model WHERE id=%s",
+            (mapping["device_model_id"],)).fetchone()
+        if device is None:
+            return
+        app_events: list[dict[str, Any]] = []
+        web_events: list[dict[str, Any]] = []
+        usb = re.fullmatch(r"([0-9a-f]{4}):([0-9a-f]{4})", value.lower()) if kind == "USB" else None
+        if kind == "USB" and usb:
+            vendor, product = int(usb.group(1), 16), int(usb.group(2), 16)
+            app_events = list(connection.execute(
+                "SELECT * FROM compatibility_evidence_event WHERE is_local_test IS NOT TRUE "
+                "AND usb_vendor_id=%s AND usb_product_id=%s", (vendor, product)).fetchall())
+            web_events = list(connection.execute(
+                "SELECT event_id, model, usb_vendor_id, usb_product_id FROM web_installer_event "
+                "WHERE is_test IS NOT TRUE AND usb_vendor_id=%s AND usb_product_id=%s AND model IS NOT NULL",
+                (vendor, product)).fetchall())
+        elif kind in {"XML_PART_NUMBER", "RETAIL_SKU"}:
+            app_events = list(connection.execute(
+                "SELECT * FROM compatibility_evidence_event WHERE is_local_test IS NOT TRUE "
+                "AND garmin_model_part_number=%s", (value,)).fetchall())
+        if not app_events and not web_events:
+            return
+        alternatives = [
+            row for row in connection.execute(
+                "SELECT d.id, d.model, d.variant, d.case_size_mm, d.screen_technology, d.solar, d.inreach "
+                "FROM device_identity_mapping m JOIN device_model d ON d.id = m.device_model_id "
+                "WHERE m.kind=%s AND m.value=%s AND m.status IN ('APPROVED', 'PENDING') AND m.id <> %s",
+                (kind, value, mapping["id"])).fetchall()
+        ]
+        corrections: dict[Any, list[dict[str, Any]]] = {}
+        if app_events:
+            for correction in connection.execute(
+                    "SELECT * FROM device_identity_source_correction WHERE event_id = ANY(%s) ORDER BY id",
+                    ([row["event_id"] for row in app_events],)).fetchall():
+                corrections.setdefault(correction["event_id"], []).append(correction)
+        contradicting: list[dict[str, Any]] = []
+        for row, event in [
+            *((row, apply_corrections(self._identity_event(row), corrections.get(row["event_id"], [])))
+              for row in app_events),
+            *((row, web_installer_identity_event(row)) for row in web_events),
+        ]:
+            conflicts = selected_identity_conflicts(event, device)
+            if conflicts and all(selected_identity_conflicts(event, other) for other in alternatives):
+                contradicting.append({
+                    "eventId": str(row["event_id"]),
+                    "reported": str(event.get("rawMTPModel") or event.get("garminModelDescription")
+                                    or event.get("model") or "")[:200] or None,
+                    "fields": sorted({str(conflict["field"]) for conflict in conflicts}),
+                })
+        if contradicting:
+            raise IdentityResolutionError(
+                "identity_mapping_report_conflict",
+                "Results with this code report a different model or variant.",
+                details={"total": len(contradicting), "examples": contradicting[:5]},
+            )
 
     def correct_identity_source(self, event_id: str, field: str, value: Any, reason: str, admin_user_id: int) -> bool:
         validate_correction(field, value)
@@ -3027,12 +3199,18 @@ class Database:
                 devices = list(connection.execute("SELECT * FROM device_model").fetchall())
                 mappings = list(connection.execute("SELECT * FROM device_identity_mapping").fetchall())
                 conflict_details: list[dict[str, Any]] = []
+                code_conflict_details: list[dict[str, Any]] = []
                 for row in rows:
                     corrections = list(connection.execute("SELECT * FROM device_identity_source_correction WHERE event_id=%s ORDER BY id", (row["event_id"],)).fetchall())
                     event = apply_corrections(self._identity_event(row), corrections)
                     assessment = assess_identity(event, devices, mappings)
                     conflicts = selected_identity_conflicts(event, device, mappings)
-                    if conflicts and normalized_action == "ASSIGN":
+                    hard_conflicts = hard_identity_conflicts(conflicts)
+                    if hard_conflicts:
+                        code_conflict_details.extend(self._identity_conflict_details(row, device, hard_conflicts, devices))
+                    elif conflicts and normalized_action == "ASSIGN":
+                        conflict_details.extend(self._identity_conflict_details(row, device, conflicts, devices))
+                    elif conflicts and not note:
                         conflict_details.extend(self._identity_conflict_details(row, device, conflicts, devices))
                     previous_id = str(row.get("canonical_device_model_id") or "").strip() or None
                     if normalized_action == "MANUAL_ASSIGN":
@@ -3078,12 +3256,7 @@ class Database:
                     reviewed_assessments[row["event_id"]] = (
                         json.dumps(assessment), assessment, reason or generated_reason,
                     )
-                if conflict_details:
-                    raise IdentityResolutionError(
-                        "identity_conflict_manual_required",
-                        "The selected model conflicts with reported information. Use manual assignment to confirm it.",
-                        details={"conflicts": conflict_details},
-                    )
+                self._raise_identity_conflicts(normalized_action, code_conflict_details, conflict_details)
             target_state = "RESOLVED" if normalized_action in {"ASSIGN", "MANUAL_ASSIGN"} else (
                 "NOT_IDENTIFIABLE" if normalized_action == "NOT_IDENTIFIABLE" else "UNRESOLVED"
             )
@@ -3176,6 +3349,7 @@ class Database:
                 """ + (" FOR UPDATE SKIP LOCKED" if apply else ""),
             ).fetchall())
             summary = {"pendingResults": len(rows), "resolvedResults": 0, "exact": 0, "singleMatch": 0,
+                       "notIdentifiable": 0,
                        "pendingOperations": len({row["operation_key"] for row in rows}), "clearedOperations": 0}
             if not rows:
                 return summary
@@ -3197,6 +3371,40 @@ class Database:
                 assessment = assess_identity(event, devices, mappings)
                 device_id = assessment["canonicalDeviceId"]
                 device = by_id.get(device_id)
+                variants = indistinguishable_candidates(assessment) if device is None else []
+                if variants:
+                    # Variant unknown (owner 2026-11-16): the reported name and
+                    # Garmin code fit several catalog variants and nothing
+                    # reported can tell them apart.
+                    summary["notIdentifiable"] += 1
+                    if apply:
+                        reason = "Automatically marked variant unknown: the reported name and Garmin code fit several catalog variants."
+                        assessment["decision"] = {
+                            "method": "AUTOMATIC", "deviceId": None,
+                            "decisionType": "AUTOMATIC_VARIANT_UNKNOWN", "reason": reason,
+                            "adminId": None, "scope": row["operation_key"],
+                            "candidates": variants, "missing": [], "conflicts": [],
+                        }
+                        connection.execute(
+                            """
+                            UPDATE compatibility_evidence_event SET identity_resolution_state = 'NOT_IDENTIFIABLE'
+                            WHERE event_id = %s AND canonical_device_model_id IS NULL
+                            """,
+                            (row["event_id"],),
+                        )
+                        connection.execute(
+                            """
+                            INSERT INTO compatibility_identity_resolution_audit (
+                                event_id, previous_identity,
+                                previous_canonical_device_model_id,
+                                new_identity, new_canonical_device_model_id,
+                                action, reason, note, corrected_by, assessment
+                            ) VALUES (%s, %s, NULL, 'Identity not identifiable', NULL, 'NOT_IDENTIFIABLE', %s, NULL, NULL, %s::jsonb)
+                            """,
+                            (row["event_id"], str(row.get("compatibility_identity") or "Identity unresolved"),
+                             reason, json.dumps(assessment)),
+                        )
+                    continue
                 if device is None:
                     unresolved_operations.add(row["operation_key"])
                     continue
@@ -3244,6 +3452,36 @@ class Database:
                 )
             summary["clearedOperations"] = summary["pendingOperations"] - len(unresolved_operations)
             return summary
+
+    @staticmethod
+    def _raise_identity_conflicts(
+        action: str, code_conflicts: list[dict[str, Any]], conflicts: list[dict[str, Any]],
+    ) -> None:
+        """Refuse an assignment that contradicts reported facts.
+
+        A reviewed Garmin XML part number or USB code link is a hard fact
+        (owner decision 2026-11-16): no action overrides it, only a review of
+        the code link itself. Other contradictions (name, size, screen,
+        Solar, inReach) need ``MANUAL_ASSIGN`` with a written reason.
+        """
+        if code_conflicts:
+            raise IdentityResolutionError(
+                "identity_code_conflict",
+                "The Garmin code of this watch names a different catalog model.",
+                details={"conflicts": code_conflicts},
+            )
+        if conflicts and action == "MANUAL_ASSIGN":
+            raise IdentityResolutionError(
+                "identity_manual_reason_required",
+                "Write why this manual assignment is correct.",
+                details={"conflicts": conflicts},
+            )
+        if conflicts:
+            raise IdentityResolutionError(
+                "identity_conflict_manual_required",
+                "The selected model conflicts with reported information. Use manual assignment to confirm it.",
+                details={"conflicts": conflicts},
+            )
 
     @staticmethod
     def _identity_conflict_details(
@@ -4869,9 +5107,10 @@ class Database:
         note: str | None = None,
     ) -> int:
         """Apply an administrator identity decision to one counted web result,
-        with the app rules: ``ASSIGN`` refuses a model that conflicts with the
-        reported model text or USB code, ``MANUAL_ASSIGN`` confirms it
-        explicitly, ``LEAVE_UNRESOLVED`` removes the model again. Every
+        with the app rules: no action may contradict a reviewed USB code link,
+        ``ASSIGN`` refuses a model that conflicts with the reported model text,
+        ``MANUAL_ASSIGN`` confirms it explicitly with a written reason,
+        ``LEAVE_UNRESOLVED`` removes the model again. Every
         decision is audited; a repeat of the latest decision writes nothing."""
         normalized_action = action.strip().upper()
         if normalized_action not in {"ASSIGN", "MANUAL_ASSIGN", "LEAVE_UNRESOLVED"}:
@@ -4907,16 +5146,16 @@ class Database:
                 ).fetchone()
                 if device is None:
                     raise IdentityResolutionError("canonical_device_not_found", "That catalog model is no longer available.")
-                if normalized_action == "ASSIGN":
-                    mappings = list(connection.execute(IDENTITY_MAPPING_QUERY).fetchall())
-                    conflicts = selected_identity_conflicts(web_installer_identity_event(row), device, mappings)
-                    if conflicts:
-                        devices = list(connection.execute("SELECT * FROM device_model").fetchall())
-                        raise IdentityResolutionError(
-                            "identity_conflict_manual_required",
-                            "The selected model conflicts with reported information. Use manual assignment to confirm it.",
-                            details={"conflicts": self._identity_conflict_details(row, device, conflicts, devices)},
-                        )
+                mappings = list(connection.execute(IDENTITY_MAPPING_QUERY).fetchall())
+                conflicts = selected_identity_conflicts(web_installer_identity_event(row), device, mappings)
+                hard_conflicts = hard_identity_conflicts(conflicts)
+                if hard_conflicts or (conflicts and (normalized_action == "ASSIGN" or not note)):
+                    devices = list(connection.execute("SELECT * FROM device_model").fetchall())
+                    self._raise_identity_conflicts(
+                        normalized_action,
+                        self._identity_conflict_details(row, device, hard_conflicts, devices),
+                        self._identity_conflict_details(row, device, conflicts, devices),
+                    )
             target_resolution = "UNRESOLVED" if canonical_device_model_id is None else "MANUAL"
             latest = connection.execute(
                 "SELECT action, new_canonical_device_model_id FROM web_installer_identity_audit "

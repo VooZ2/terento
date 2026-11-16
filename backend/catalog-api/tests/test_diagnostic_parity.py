@@ -225,7 +225,7 @@ class DiagnosticDetailLayoutTests(unittest.TestCase):
         self.assertEqual(forms['/admin/diagnostics/resolve'], self.HIDDEN + ['resolution_reason', 'resolution_note'])
         self.assertEqual(forms['/admin/diagnostics/workflow'], self.HIDDEN + ['diagnostic_workflow_status'])
         self.assertEqual(forms['/admin/diagnostics/identity'],
-                         self.HIDDEN + ['canonical_device_model_id', 'identity_action', 'identity_action'])
+                         self.HIDDEN + ['canonical_device_model_id', 'identity_note', 'identity_action', 'identity_action'])
         issue_forms = [names for action, names in structure.forms if action == '/admin/diagnostics/issue']
         self.assertEqual(issue_forms, [self.HIDDEN + ['linked_github_issue']] * 2)
         self.assertIn("<button type='button' class='secondary-button' data-identity-edit>Edit</button><button type='submit' name='identity_action' value='ASSIGN' data-identity-confirm>Confirm</button>", markup)
