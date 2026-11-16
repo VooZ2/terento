@@ -57,9 +57,9 @@ REPORTED_APPROVED = {
     "Edge Explore 2": "garmin-edge-explore-2",
 }
 
-# Older generations (091: Maps Unknown) and other Edge names stay PENDING.
-REPORTED_PENDING = ("Edge 530", "Edge 830", "Edge 1030", "Edge 1030 Plus", "Edge 130 Plus",
-                    "Edge Explore", "Edge", "Edge 10400")
+# Older generations Garmin publishes no Maps value for (091 NULL, unchanged by
+# 093) and other Edge names stay PENDING. 093 covers the other older models.
+REPORTED_PENDING = ("Edge 1030 Bontrager", "Edge 520", "Edge 500", "Edge", "Edge 10400")
 
 
 class MigrationSourceTests(unittest.TestCase):

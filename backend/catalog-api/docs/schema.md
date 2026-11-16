@@ -838,3 +838,18 @@ app's permission check returned `PENDING` (Admin First run `Waiting models`).
 It also inserts PENDING identity code links: XML 006-B4257-00 / 006-B4258-00
 and USB 091e:50a1 / 091e:50a2. No report, assignment, statistic or other row
 changes; the previous revision reads every row unchanged.
+
+### Migration093: older Edge Maps values
+
+Data-only (canonical rule:
+[`contracts/INSTALLATION_AUTHORIZATION.md`](../../../contracts/INSTALLATION_AUTHORIZATION.md),
+older Edge Maps). One guarded `UPDATE` of the 27 older Edge rows from migration
+091: it writes only a row that still has Maps NULL, is `HISTORICAL_REVIEWED`,
+not collector-managed and in the Edge family, and, for specification evidence,
+still points at the reviewed product page. Maps=Yes with
+`specification_evidence.map_capable` for 16 models (Garmin specification row
+`Ability to add maps: yes`, or Garmin's TopoActive cycling maps compatible-device
+list for Edge 820, Explore, Explore 820 and Explore 1000), Maps=No for 6 (reviewed
+owner decision: no map row, not on the compatibility list). Edge 1030 Bontrager,
+520, 500, 25 and 20 are not touched. No schema, identity, report, assignment or
+statistic changes; the previous revision reads every row unchanged.

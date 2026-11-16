@@ -21,6 +21,7 @@ from terento_catalog.installation_policy import (
 )
 from terento_catalog.migrate import _statements
 from terento_catalog.models import CollectedDevice, RETAIL_RETIREMENT_MISSED_RUNS
+from test_edge_historical_maps import HISTORICAL_EDGE_MAPS
 from test_installation_policy import app_resolve, garmin
 
 MIGRATION = (
@@ -142,7 +143,8 @@ class MigratedCatalogTests(PGliteTestCase):
                 if device_id in HISTORICAL:
                     self.assertEqual((row["record_source"], row["collector_managed"]),
                                      ("HISTORICAL_REVIEWED", False))
-                    self.assertIsNone(row["map_capable"])
+                    # 091 stored NULL; 093 stores Garmin's published value.
+                    self.assertIs(row["map_capable"], HISTORICAL_EDGE_MAPS[device_id])
                     continue
                 self.assertEqual((row["record_source"], row["collector_managed"]), ("CURRENT_RETAIL", True))
                 self.assertEqual(row["source_url"], CYCLING)
@@ -157,7 +159,8 @@ class MigratedCatalogTests(PGliteTestCase):
         for model in (*CURRENT.values(), *RETIRED.values(), "Edge® 1040 Solar", "Edge 540 Solar"):
             with self.subTest(model=model):
                 self.assertEqual(app_resolve(document, garmin(model))[0], "APPROVED")
-        for model in (*HISTORICAL.values(), "Edge", "Edge 10400", "Edge 1030 Plus Solar"):
+        pending = [model for device_id, model in HISTORICAL.items() if HISTORICAL_EDGE_MAPS[device_id] is None]
+        for model in (*pending, "Edge", "Edge 10400", "Edge 1030 Bontrager Solar"):
             with self.subTest(model=model):
                 self.assertEqual(app_resolve(document, garmin(model))[0], "PENDING")
 
@@ -195,7 +198,8 @@ class MigratedCatalogTests(PGliteTestCase):
             self.assertEqual(rows[device_id]["consecutive_missed_collections"], RETAIL_RETIREMENT_MISSED_RUNS + 1)
             self.assertEqual((rows[device_id]["active"], rows[device_id]["map_capable"]), (True, True))
         for device_id in HISTORICAL:
-            self.assertEqual((rows[device_id]["collector_managed"], rows[device_id]["map_capable"]), (False, None))
+            self.assertEqual((rows[device_id]["collector_managed"], rows[device_id]["map_capable"]),
+                             (False, HISTORICAL_EDGE_MAPS[device_id]))
 
     def test_withdrawing_a_retail_edge_needs_maps_false(self):
         # The contract's withdrawal rule for Edge rows the collector still sees:
