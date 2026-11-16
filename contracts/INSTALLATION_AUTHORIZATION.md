@@ -144,9 +144,11 @@ row like any new collector model. Every released native client
 approves these models under the ordinary rule; no client change is involved.
 The web installer derives the base model exactly as the native client (see
 **Web installer** below), so a reported Solar name (`Edge 1040 Solar`) is the
-`edge 1040` base model there too. The rows are not a public support claim: the public site and README
-keep Edge outside the public scope, and public Compatibility shows an Edge model
-only after the separate Admin publication. Withdrawing Edge is a later reviewed
+`edge 1040` base model there too. The rows alone are not a public support claim.
+The public site and README describe newer Garmin Edge bike computers with map
+support as in scope and name only Edge models with public installation evidence
+(Edge 540, 840, 1040 and 1050); public Compatibility shows an Edge model only
+after the separate Admin publication. Withdrawing Edge is a later reviewed
 catalog change shipped as a migration, because Admin has no Maps editor. For a
 collector-managed Edge row (current or retired from retail) the migration must
 write Maps=`false` (`BLOCKED`): the next collection that sees the model makes

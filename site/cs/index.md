@@ -5,7 +5,7 @@ canonical: https://terento.app/cs/
 
 # Nainstalujte do zařízení Garmin mapy zdarma
 
-Terento nahraje mapy zdarma z projektů OpenStreetMap do hodinek Garmin a cyklopočítačů Edge. V aplikaci pro Mac, nebo přímo z prohlížeče v počítači. Zdarma a open source.
+Terento nahraje mapy zdarma z projektů OpenStreetMap do hodinek Garmin a cyklopočítačů Edge. V aplikaci pro Mac, nebo přímo z prohlížeče v počítači. Zdarma, aplikace pro Mac je open source.
 
 [Stáhnout pro Mac](https://terento.app/cs/download/) [Instalovat z prohlížeče](https://terento.app/cs/install/)
 
