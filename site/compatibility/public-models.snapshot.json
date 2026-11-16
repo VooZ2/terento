@@ -427,7 +427,7 @@
       "inReach": null,
       "family": "edge",
       "familyName": "Edge",
-      "imageUrl": "https://res.garmin.com/en/products/010-02694-00/v/cf-lg.jpg",
+      "imageUrl": "https://res.garmin.com/en/products/010-02694-00/g/cf-lg.jpg",
       "successfulInstallations": 3,
       "appSuccessfulInstallations": 3,
       "webSuccessfulInstallations": 0,
@@ -651,7 +651,7 @@
       "inReach": null,
       "family": "edge",
       "familyName": "Edge",
-      "imageUrl": "https://res.garmin.com/en/products/010-02695-00/v/cf-lg.jpg",
+      "imageUrl": "https://res.garmin.com/en/products/010-02695-00/g/cf-lg.jpg",
       "successfulInstallations": 1,
       "appSuccessfulInstallations": 1,
       "webSuccessfulInstallations": 0,
@@ -722,5 +722,5 @@
       "lastSuccessfulInstallation": "2026-10-07T12:59:55+00:00"
     }
   ],
-  "generatedAt": "2026-11-15T22:40:46.529185+00:00"
+  "generatedAt": "2026-11-16T05:53:27.731290+00:00"
 }
