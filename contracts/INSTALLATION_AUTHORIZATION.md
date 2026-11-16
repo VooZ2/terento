@@ -136,9 +136,20 @@ It adds Edge MTB, Explore 3, Explore 3 Plus and the Solar editions (540, 840,
 1040 Solar) of the same generation with Maps=Yes from the same specification
 row; a Solar row must match its base row, because a base model is approved
 only when all its rows are Maps=Yes. Every older Edge model Garmin sold (Edge
-1030 Plus and earlier, back to Edge 205) is a `HISTORICAL_REVIEWED` row with
-Maps Unknown, so it stays `PENDING` until an install is verified; many of them
-connect as USB mass storage, which Terento does not use. A new Edge model that
+1030 Plus and earlier, back to Edge 205) is a `HISTORICAL_REVIEWED` row. *Older
+Edge Maps (owner, 2026-11-16: every model that supports maps, watches and Edge,
+is not blocked)*: migration 093 replaces 091's Maps Unknown with the value
+Garmin publishes. Maps=Yes when the Garmin specifications list `Ability to add
+maps: yes` (Edge 1030 Plus, 1030, 830, 530, 520 Plus, 1000, Touring, Touring
+Plus, 810, 800, 705, 605) or, for a model with no product page left, when
+Garmin's TopoActive cycling maps compatible-device list names it (Edge 820,
+Explore, Explore 820, Explore 1000). Maps=No (reviewed owner decision) when the
+Garmin specifications list courses but no map row and the same compatibility
+list does not name it (Edge 130 Plus, 130, 510, 200, 305, 205). A model with
+neither (Edge 1030 Bontrager, 520, 500, 25, 20) keeps Maps Unknown and stays
+`PENDING`. Many older Edge models connect as USB mass storage, which Terento
+does not use, so a Maps=Yes row there approves a model the app usually cannot
+open. A new Edge model that
 appears in the cycling category takes its Maps value from its specification
 row like any new collector model. Every released native client
 approves these models under the ordinary rule; no client change is involved.
@@ -213,7 +224,7 @@ Migration 075 applies these decisions; the per-row evidence is stored in
   fēnix 6X Pro), from the Garmin product specifications or the fēnix 6 Pro
   Series owner's manual. The standard fēnix 6 and 6S Dual Power editions are
   not added: Garmin publishes no map row for them, so they stay `PENDING`.
-  Handheld products are not added (Edge rows: migrations 090 and 091,
+  Handheld products are not added (Edge rows: migrations 090, 091 and 093,
   above). *Non-map watches that users connect (2026-11-16)*: a watch Garmin no
   longer sells that reaches the app's permission check (Admin First run
   `Waiting models`) is added as an active `HISTORICAL_REVIEWED` row with

@@ -139,12 +139,16 @@ struct InstallationAuthorizationTests {
             let unknown = await client(for: data).resolve(identity: identity(model: "unknown audit model", displayType: nil))
             try require(unknown.blockReason == .pending, "unknown live model remains pending")
             // Migration 090 (owner, 2026-11-02) adds the MTP Edge rows with
-            // Maps=Yes; migration 091 keeps older Edge generations Maps Unknown.
+            // Maps=Yes; migration 093 (owner, 2026-11-16) stores Garmin's Maps
+            // value for older Edge models and keeps Maps Unknown only where
+            // Garmin publishes none (Edge 1030 Bontrager, 520, 500, 25, 20).
             let edge = await client(for: data).resolve(identity: identity(model: "Edge 840", family: "Edge", displayType: nil))
             try require(edge.canInstall, "live MTP Edge 840 row is approved")
-            let absentEdge = await client(for: data).resolve(identity: identity(model: "Edge 830", family: "Edge", displayType: nil))
-            try require(absentEdge.blockReason == .pending, "older live Edge 830 remains pending")
-            print("PASS: current native resolver accepts the live policy, approves MTP Edge rows and keeps unknown/older Edge pending")
+            let olderMapEdge = await client(for: data).resolve(identity: identity(model: "Edge 830", family: "Edge", displayType: nil))
+            try require(olderMapEdge.canInstall, "older live Edge 830 with Garmin's Maps=Yes is approved")
+            let unknownEdge = await client(for: data).resolve(identity: identity(model: "Edge 520", family: "Edge", displayType: nil))
+            try require(unknownEdge.blockReason == .pending, "older live Edge 520 with Maps Unknown remains pending")
+            print("PASS: current native resolver accepts the live policy, approves map Edge rows and keeps unknown models pending")
         }
         let exact = await client(for: allMapsYesPolicy).resolve(identity: identity())
         try require(exact.canInstall, "exact fenix 8 47 AMOLED Maps=Yes is installable")
