@@ -44,6 +44,15 @@ EVENT_SERIES = [
 ]
 # events/stats per event: the funnel's visitors; connected below done shows a tracking gap.
 FUNNEL_VISITORS = {"web-installer-cta-click": 20, "web-installer-gate": 8, "web-installer-connected": 2, "web-installer-done": 3}
+# The Map styles page (path filter "c./map-styles/"): its visitors, top
+# countries and map-compare change and area values (event-data/values).
+MAP_PAGE_STATS = {"pageviews": 70, "visitors": 40, "visits": 45, "bounces": 10, "totaltime": 3000,
+                  "comparison": {"pageviews": 0, "visitors": 0, "visits": 0, "bounces": 0, "totaltime": 0}}
+MAP_COMPARE_VISITORS = 9
+MAP_COUNTRIES = [{"x": "FR", "y": 12}, {"x": "US", "y": 8}]
+MAP_CHANGES = [{"value": "style", "total": 12}, {"value": "area", "total": 12}, {"value": "swap", "total": 3},
+               {"value": "<i>new</i>", "total": 1}]
+MAP_AREAS = [{"value": "cinque-terre", "total": 20}, {"value": "zermatt", "total": 9}, {"value": "gone-area", "total": 4}]
 ERRORS = {
     "data": [
         {"id": "a1", "title": "TypeError: <img src=x onerror=alert(1)>", "status": "unresolved", "occurrences": 4, "visits": 3},
@@ -59,8 +68,12 @@ ERRORS = {
 def answer(path: str, params: dict[str, Any]) -> Any:
     """The fixture answer for one request path and query."""
     if path.endswith("/stats") and "/events/" not in path and "/performance/" not in path:
-        return STATS
+        return MAP_PAGE_STATS if params.get("path") else STATS
+    if path.endswith("/event-data/values"):
+        return {"change": MAP_CHANGES, "area": MAP_AREAS}[params["propertyName"]]
     if path.endswith("/events/stats"):
+        if params.get("event") == "map-compare":
+            return {"data": {"events": 33, "visitors": MAP_COMPARE_VISITORS, "visits": 10}}
         if params.get("event") in FUNNEL_VISITORS:
             visitors = FUNNEL_VISITORS[params["event"]]
             return {"data": {"events": visitors * 2, "visitors": visitors, "visits": visitors,
@@ -69,6 +82,8 @@ def answer(path: str, params: dict[str, Any]) -> Any:
     if path.endswith("/events/series"):
         return EVENT_SERIES
     if path.endswith("/metrics"):
+        if params.get("path"):
+            return {"country": MAP_COUNTRIES}[params["type"]]
         return {"referrer": REFERRERS, "entry": ENTRIES, "country": COUNTRIES, "event": EVENTS}[params["type"]]
     if path.endswith("/performance/stats"):
         return PERFORMANCE

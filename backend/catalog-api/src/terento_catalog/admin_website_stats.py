@@ -13,6 +13,7 @@ import hashlib
 import html
 import json
 import math
+from functools import lru_cache
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Callable
 from zoneinfo import ZoneInfo
@@ -40,13 +41,19 @@ from .admin_web_installer import _duration
 from .gsc_stats import DEFAULT_PERIOD as GSC_DEFAULT_PERIOD, PERIODS as GSC_PERIODS
 from .statistics_periods import ADMIN_PERIOD_LABELS, ADMIN_PERIODS
 from .admin_visits_map import VISITS_MAP_SVG
-from .umami_stats import CLEAN_VIEWS_SINCE, FUNNEL_STEPS, KEY_EVENTS
+from .map_preview.areas import load_areas
+from .umami_stats import CLEAN_VIEWS_SINCE, FUNNEL_STEPS, KEY_EVENTS, MAP_STYLES_LIMIT
 
 TITLES = {
     "visitors": "Visitors", "downloads": "Downloads", "referrers": "Referrers",
     "entries": "Entry pages", "countries": "Countries", "vitals": "Web Vitals", "errors": "Errors",
     "events": "Events", "eventSeries": "Key events over time", "funnel": "Web installer funnel",
+    "mapPage": "Map styles page", "mapCountries": "Map styles countries", "mapChanges": "Map changes",
+    "mapAreas": "Map places",
 }
+# map-compare change values (site/map-styles/map-styles.js), in this order
+# when counts tie; any other value shows under its own name.
+MAP_CHANGES = (("area", "Place"), ("style", "Style"), ("compare", "Compared style"), ("swap", "Swap"), ("mode", "View"))
 PREVIOUS = {"today": "previous period", "24h": "previous 24 h", "7d": "previous 7 days", "30d": "previous 30 days"}
 VITALS_MIN_SAMPLES = 20
 # Google's p75 limits (good, needs improvement); above the second is Poor.
@@ -155,8 +162,9 @@ def _usable(block: dict[str, Any] | None) -> Any:
     return (block or {}).get("data") if (block or {}).get("state") in ("ok", "stale") else None
 
 
-def _ranking(caption: str, label: str, rows: list[tuple[str, int, str]], empty: str) -> str:
-    """A ranking table; each row is (cell markup, visitors, row class)."""
+def _ranking(caption: str, label: str, rows: list[tuple[str, int, str]], empty: str, *,
+             count_label: str = "Visitors") -> str:
+    """A ranking table; each row is (cell markup, visitors or events, row class)."""
     if not rows:
         return _empty_state("empty", empty)
     body = "".join(
@@ -166,7 +174,7 @@ def _ranking(caption: str, label: str, rows: list[tuple[str, int, str]], empty: 
     return (
         "<div class='table-wrap'><table class='admin-table popular-maps-table' data-own-mobile-layout>"
         f"<caption class='sr-only'>{html.escape(caption)}</caption><thead><tr><th scope='col'>{html.escape(label)}</th>"
-        f"<th scope='col' class='column-number'>Visitors</th></tr></thead><tbody>{body}</tbody></table></div>"
+        f"<th scope='col' class='column-number'>{html.escape(count_label)}</th></tr></thead><tbody>{body}</tbody></table></div>"
     )
 
 
@@ -204,16 +212,21 @@ def _flag(code: str) -> str:
     return "".join(chr(0x1F1E6 + ord(letter) - ord("A")) for letter in code)
 
 
-def _countries(rows: list[dict[str, Any]]) -> str:
-    """The top 10 countries by visitors (the browser names each code in
-    English) beside the map of every country."""
+def _country_cells(rows: list[dict[str, Any]]) -> list[tuple[str, int, str]]:
+    """The top 10 countries with flag and code (the browser names each code
+    in English); no code is Unknown."""
     cells = []
     for row in rows[:10]:
         code = row["name"]
         cell = (f"<span class='web-visits-source' data-country='{code.lower()}'><span class='web-visits-flag' aria-hidden='true'>"
                 f"{_flag(code)}</span><span data-region-name='{code}'>{code}</span></span>") if code else "Unknown"
         cells.append((cell, row["visitors"], ""))
-    table = _ranking("Top countries", "Country", cells, "No visits in this period.")
+    return cells
+
+
+def _countries(rows: list[dict[str, Any]]) -> str:
+    """The top 10 countries by visitors beside the map of every country."""
+    table = _ranking("Top countries", "Country", _country_cells(rows), "No visits in this period.")
     world = _visits_map(rows)
     if not world:
         return table
@@ -495,7 +508,7 @@ def _key_events(data: dict[str, Any], snapshot: dict[str, Any]) -> str:
         + legend + _chart_value_strip() + "</div>")
 
 
-def _funnel(steps: list[tuple[str, int | None]]) -> str:
+def _funnel(steps: list[tuple[str, int | None]], caption: str = "Web installer funnel") -> str:
     """Visitors of each step as a bar against the first step. A step with
     more visitors than the step before has no percentage and a grey Tracking
     gap mark instead (the events count different things), never a negative
@@ -522,7 +535,7 @@ def _funnel(steps: list[tuple[str, int | None]]) -> str:
             f"<span style='width:{width:.1f}%'></span></span><span class='numeric'>{number}</span></td>"
             f"<td class='column-number'>{share}</td></tr>")
     return ("<div class='table-wrap'><table class='admin-table web-visits-funnel' data-own-mobile-layout>"
-            "<caption class='sr-only'>Web installer funnel</caption><thead><tr><th scope='col'>Step</th>"
+            f"<caption class='sr-only'>{html.escape(caption)}</caption><thead><tr><th scope='col'>Step</th>"
             "<th scope='col'>Visitors</th><th scope='col' class='column-number'>Of first step</th></tr></thead>"
             f"<tbody>{''.join(rows)}</tbody></table></div>")
 
@@ -545,6 +558,72 @@ def _funnel_card(blocks: dict[str, dict[str, Any]]) -> str:
     stale = [state for state in states if state.get("state") == "stale"]
     marks = _stale(min(stale, key=lambda state: state["fetchedAt"])) if stale else ""
     return _section_card(TITLES["funnel"], body, card_id=card_id, css=_LIST, totals=marks)
+
+
+@lru_cache(maxsize=1)
+def _area_names() -> dict[str, str]:
+    """Preview area id -> English name (the packaged copy of
+    contracts/map-preview-areas.json)."""
+    return {area.id: area.name.get("en") or area.id for area in load_areas()}
+
+
+def _marks(states: list[dict[str, Any]]) -> str:
+    stale = [state for state in states if state.get("state") == "stale"]
+    return _stale(min(stale, key=lambda state: state["fetchedAt"])) if stale else ""
+
+
+def _map_card(name: str, states: list[dict[str, Any]], body: Callable[[list[Any]], str]) -> str:
+    """One Map styles card from its Umami blocks: hidden or unavailable with
+    its first block, with the oldest stale mark of all."""
+    if states[0].get("state") == "hidden":
+        return ""
+    data = [_usable(state) for state in states]
+    if data[0] is None:
+        return _section_card(TITLES[name], _empty_state("unavailable", UNAVAILABLE), card_id=_card_id(name), css=_LIST)
+    return _section_card(TITLES[name], body(data), card_id=_card_id(name), css=_LIST, totals=_marks(states))
+
+
+def _map_page(data: list[Any]) -> str:
+    """Visitors of /map-styles/ in every language and those who changed the
+    map (map-compare visitors), as funnel bars."""
+    visitors = lambda item: None if item is None or (item.get("current") or {}).get("visitors") is None else int(
+        item["current"]["visitors"])
+    steps = [("Page visitors", visitors(data[0])), ("Changed the map", visitors(data[1]))]
+    if not any(value for _, value in steps):
+        return _empty_state("empty", "No Map styles visits in this period.")
+    return _funnel(steps, TITLES["mapPage"])
+
+
+def _map_changes(data: list[Any]) -> str:
+    """map-compare events per change, most first (ties in MAP_CHANGES order),
+    and a grey Not recorded row for events without one (before 2026-11-17)."""
+    changes, compare = data
+    events = int(((compare or {}).get("current") or {}).get("events") or 0)
+    order = {value: index for index, (value, _) in enumerate(MAP_CHANGES)}
+    labels = dict(MAP_CHANGES)
+    rows = [(html.escape(labels.get(row["name"], row["name"])), row["count"], "")
+            for row in sorted(changes or [], key=lambda row: (-row["count"], order.get(row["name"], len(order)), row["name"]))]
+    missing = events - sum(row["count"] for row in changes or [])
+    if missing > 0:
+        rows.append(("Not recorded", missing, "web-visits-direct"))
+    return _ranking(TITLES["mapChanges"], "Change", rows, "No map changes in this period.", count_label="Events")
+
+
+def _map_areas(data: list[Any]) -> str:
+    names = _area_names()
+    rows = [(html.escape(names.get(row["name"], row["name"])), row["count"], "") for row in (data[0] or [])[:MAP_STYLES_LIMIT]]
+    return _ranking(TITLES["mapAreas"], "Place", rows, "No map changes in this period.", count_label="Events")
+
+
+def _map_cards(blocks: dict[str, dict[str, Any]]) -> str:
+    state = lambda name: blocks.get(name) or {}
+    return "".join(part for part in (
+        _map_card("mapPage", [state("mapPage"), state("mapCompare")], _map_page),
+        _map_card("mapCountries", [state("mapCountries")],
+                  lambda data: _ranking(TITLES["mapCountries"], "Country", _country_cells(data[0]), "No visits in this period.")),
+        _map_card("mapChanges", [state("mapChanges"), state("mapCompare")], _map_changes),
+        _map_card("mapAreas", [state("mapAreas")], _map_areas),
+    ) if part)
 
 
 def _map_levels(values: list[int]) -> tuple[Callable[[int], int], list[tuple[int, int, int]]]:
@@ -632,6 +711,9 @@ def website_stats_blocks(snapshot: dict[str, Any] | None, *, dashboard_url: str 
     if events or side:
         cards.append(f"<div class='web-installer-grid web-visits-events'>{events}"
                      + (f"<div class='web-visits-events-side'>{side}</div>" if side else "") + "</div>")
+    maps = _map_cards(blocks)
+    if maps:
+        cards.append(f"<div class='web-installer-grid web-visits-lists'>{maps}</div>")
     cards.append(_card("vitals", blocks["vitals"], _vitals, css=_KPI))
     cards.append(_card("errors", blocks["errors"],
                        lambda data: _errors(data, _usable(blocks.get("previousErrors")), period), css=_KPI))
@@ -662,7 +744,10 @@ def _loading_blocks() -> str:
             + loading("entries", _LIST) + "</div>" + loading("countries", _LIST + " web-visits-countries-card")
             + "<div class='web-installer-grid web-visits-events' data-website-stats-block>" + loading("events", _LIST)
             + "<div class='web-visits-events-side'>" + loading("eventSeries", "overview-chart-panel") + loading("funnel", _LIST)
-            + "</div></div>" + loading("vitals") + loading("errors"))
+            + "</div></div>"
+            + "<div class='web-installer-grid web-visits-lists' data-website-stats-block>"
+            + "".join(loading(name, _LIST) for name in ("mapPage", "mapCountries", "mapChanges", "mapAreas"))
+            + "</div>" + loading("vitals") + loading("errors"))
 
 
 def _website_stats_script() -> str:

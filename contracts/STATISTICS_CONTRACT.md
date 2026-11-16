@@ -70,6 +70,9 @@ period. Umami events are counts of each custom event as Umami stores it
 `web-installer-cta-click` for every installer button), not people or installs;
 the Web installer funnel counts Umami visitors with each step's event, and a
 step above the one before is a tracking gap, not a negative drop-off. The
+Map styles page counts Umami visitors of paths containing `/map-styles/`,
+`map-compare` visitors among them, and `map-compare` events per `change` and
+`area` value (events, not people; one event per settled view change). The
 Countries map uses Umami visitors per country, its share of the sum of all
 countries (Unknown included). Google Search (Google Search Console for `sc-domain:terento.app`, the
 same Admin page) is another separate, read-only population owned by Google:

@@ -125,6 +125,12 @@ class SnapshotTests(unittest.TestCase):
             (f"{base}/events/series", {"startAt": start, "endAt": end, "unit": "day", "timezone": "UTC"}),
             *((f"{base}/events/stats", {"startAt": start, "endAt": end, "event": event})
               for event in ("web-installer-cta-click", "web-installer-gate", "web-installer-connected", "web-installer-done")),
+            # The Map styles page: every language's path, map-compare and its change and area values.
+            (f"{base}/stats", {"startAt": start, "endAt": end, "path": "c./map-styles/"}),
+            (f"{base}/events/stats", {"startAt": start, "endAt": end, "event": "map-compare"}),
+            (f"{base}/metrics", {"startAt": start, "endAt": end, "type": "country", "limit": 10, "path": "c./map-styles/"}),
+            (f"{base}/event-data/values", {"startAt": start, "endAt": end, "eventName": "map-compare", "propertyName": "change"}),
+            (f"{base}/event-data/values", {"startAt": start, "endAt": end, "eventName": "map-compare", "propertyName": "area"}),
         ])
         self.assertEqual(snapshot["previousStartAt"], 2 * start - end)
         blocks = snapshot["blocks"]
@@ -152,6 +158,12 @@ class SnapshotTests(unittest.TestCase):
             "download-click": {"2026-11-12": 10, "2026-11-14": 20}, "web-installer-done": {"2026-11-13": 4},
             "map-compare": {"2026-11-12": 33}}})
         self.assertEqual(blocks["funnelConnected"]["data"]["current"]["visitors"], 2)
+        self.assertEqual(blocks["mapPage"]["data"]["current"]["visitors"], 40)
+        self.assertEqual(blocks["mapCompare"]["data"]["current"], {"events": 33, "visitors": 9})
+        self.assertEqual(blocks["mapCountries"]["data"], [{"name": "FR", "visitors": 12}, {"name": "US", "visitors": 8}])
+        self.assertEqual(blocks["mapChanges"]["data"], [{"name": "area", "count": 12}, {"name": "style", "count": 12},
+                                                        {"name": "swap", "count": 3}, {"name": "<i>new</i>", "count": 1}])
+        self.assertEqual(blocks["mapAreas"]["data"][0], {"name": "cinque-terre", "count": 20})
 
     def test_key_events_are_hourly_for_two_days_or_less(self):
         for period, unit in (("today", "hour"), ("24h", "hour"), ("7d", "day"), ("30d", "day"), ("all", "day")):
@@ -535,7 +547,7 @@ class MarkupTests(unittest.TestCase):
                  "comparison": {"pageviews": 0, "visitors": 0, "visits": 0, "bounces": 0, "totaltime": 0}}
 
         def fetch(settings, path, params):
-            if path.endswith("/metrics") or path.endswith("/events/series"):
+            if path.endswith("/metrics") or path.endswith("/events/series") or path.endswith("/event-data/values"):
                 return []
             if path.endswith("/errors"):
                 return {"data": [], "count": 0, "page": 1}
@@ -554,6 +566,8 @@ class MarkupTests(unittest.TestCase):
         self.assertIn("No events in this period.", body)
         self.assertIn("No key events in this period.", body)
         self.assertIn("No web installer visits in this period.", body)
+        self.assertIn("No Map styles visits in this period.", body)
+        self.assertIn("No map changes in this period.", body)
         self.assertIn("No visits in this period.", body)
         self.assertNotIn("data-visits-map", body)
         self.assertIn("Same as previous period", body)
@@ -637,6 +651,44 @@ class MarkupTests(unittest.TestCase):
         self.assertIn("Install finished3Tracking gap", funnel)
         self.assertIn("admin-pill-neutral", self.section(body, "funnel", "vitals"))
         self.assertNotIn("−", funnel)
+
+    def test_map_styles_page_visitors_countries_changes_and_places(self):
+        body, _ = self.render()
+        order = [body.index(f"id='web-visits-{name}'") for name in (
+            "funnel", "mapPage", "mapCountries", "mapChanges", "mapAreas", "vitals")]
+        self.assertEqual(order, sorted(order))
+        text = visible_text(self.section(body, "mapPage", "mapCountries"))
+        self.assertIn("Page visitors40100%", text)
+        self.assertIn("Changed the map922%", text)  # 9 of 40 visitors (22.5)
+        countries = self.section(body, "mapCountries", "mapChanges")
+        self.assertIn("data-region-name='FR'", countries)
+        self.assertNotIn("data-visits-map", countries)  # a list only, no second world map
+        changes = self.section(body, "mapChanges", "mapAreas")
+        text = visible_text(changes)
+        # Ties keep the change order; an unknown value is text; events without a change are Not recorded (33 - 28).
+        self.assertLess(text.index("Place12"), text.index("Style12"))
+        self.assertIn("Swap3", text)
+        self.assertIn("&lt;i&gt;new&lt;/i&gt;", changes)
+        self.assertIn("<tr class='web-visits-direct'><td>Not recorded</td><td class='column-number'>5</td></tr>", changes)
+        self.assertIn("<th scope='col' class='column-number'>Events</th>", changes)
+        text = visible_text(self.section(body, "mapAreas", "vitals"))
+        self.assertIn("Cinque Terre20", text)
+        self.assertIn("Zermatt9", text)
+        self.assertIn("gone-area4", text)  # an area no longer listed keeps its id
+
+    def test_map_styles_blocks_hide_and_fail_on_their_own(self):
+        fake = FakeUmami()
+        fake.fail["/event-data/values"] = UmamiRequestError("HTTP 404", 404)
+        body, _ = self.render(fake)
+        self.assertNotIn("web-visits-mapChanges", body)
+        self.assertNotIn("web-visits-mapAreas", body)
+        self.assertIn("Changed the map", body)
+        fake = FakeUmami()
+        fake.fail["/event-data/values"] = UmamiRequestError("HTTP 503", 503)
+        with self.assertLogs(umami_stats.LOGGER, level="WARNING"):
+            body, _ = self.render(fake)
+        self.assertIn("Statistics unavailable.", self.section(body, "mapChanges", "mapAreas"))
+        self.assertIn("Statistics unavailable.", self.section(body, "mapAreas", "vitals"))
 
     def test_countries_map_has_every_country_log_classes_and_is_decorative(self):
         rows = [{"x": "FR", "y": 32}] + [{"x": code, "y": 1} for code in ("LT", "DE", "PL", "CZ", "IT", "ES", "NL", "SE", "NO", "FI", "DK")]
@@ -726,8 +778,8 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(response.status, 200)
         self.assertIn("<h1>Web visits</h1>", body)
         self.assertIn("<option value='24h' selected>", body)
-        self.assertEqual(body.count("Loading…"), 10 + 4)  # Umami blocks, then Google Search
-        self.assertEqual(body.count("web-visits-skeleton"), 10 + 4)
+        self.assertEqual(body.count("Loading…"), 14 + 4)  # Umami blocks, then Google Search
+        self.assertEqual(body.count("web-visits-skeleton"), 14 + 4)
         self.assertIn("/admin/api/umami", body)
         self.assertNotIn(fx.SECRET_KEY, body)
         self.assertEqual(self.fake.calls, [])  # the page itself never waits for Umami

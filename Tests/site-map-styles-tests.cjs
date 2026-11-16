@@ -113,7 +113,8 @@ function testPages() {
     assert.deepEqual(page.styles.filter((style) => style.optional).map((style) => style.id),
       ["osmapa-podstawowa", "osmapa-ogonki", "osmapa-light"], `${locale}: OSMapaPL styles wait for the manifest`);
     assert.ok(page.styles.every((style) => style.name && style.summary), `${locale}: every style has a name and summary`);
-    assert.ok(!/\b[0-9]\b/.test(page.copy.styles_of.replace(/\{\w+\}/g, "")) && page.copy.styles_of.includes("{total}"), `${locale}: style count follows the listed styles`);
+    assert.ok(!("styles_of" in page.copy) && !("details" in page.copy), `${locale}: no place details copy left`);
+    assert.ok(page.copy.change, `${locale}: the place card names its action`);
     // Each language opens on a well-known place near its audience, OpenTopoMap beside Freizeitkarte.
     const defaultArea = {en: "cinque-terre", de: "berchtesgaden-koenigssee", fr: "chamonix-mont-blanc", pl: "high-tatras", cs: "krkonose", it: "dolomites-tre-cime"}[locale];
     assert.deepEqual(page.defaults, {area: defaultArea, a: "opentopomap", b: "freizeitkarte"}, `${locale}: default view`);
@@ -138,10 +139,14 @@ function testPages() {
     assert.ok(source.includes("/assets/vendor/leaflet-1.9.4/leaflet.js"), `${locale}: self-hosted Leaflet`);
     assert.ok(!/unpkg|cdnjs|jsdelivr|tile\.openstreetmap/.test(source), `${locale}: no third-party map hosts`);
 
-    // The overlays stay small: no captions or zoom percentage, collapsed place details and view menu.
+    // The overlays stay small: no captions or zoom percentage, no place details and a folded view menu.
     assert.ok(!/map-styles-caption|map-styles-zoom-level|map-styles-side/.test(source), `${locale}: no caption, zoom level or Left/Right words over the map`);
-    assert.match(source, /id="map-styles-place-toggle" aria-expanded="false" aria-controls="map-styles-area-meta"/, `${locale}: place details expand`);
-    assert.match(source, /<p class="map-styles-place-meta" id="map-styles-area-meta" hidden>/, `${locale}: place details start collapsed`);
+    // The whole place card is one button that opens the place list (owner 2026-11-16): no separate details toggle.
+    assert.match(source, /<button type="button" class="map-styles-place-head" id="map-styles-open-places" aria-expanded="false" aria-controls="map-styles-browser" aria-label="[^"]+: [^"]+" title="[^"]+">/, `${locale}: the place card opens the place list`);
+    const placeCard = source.match(/<div class="map-styles-place-card" id="map-styles-place-card">([\s\S]*?)<\/button>\s*<\/div>/);
+    assert.ok(placeCard && (placeCard[1].match(/<button/g) || []).length === 1, `${locale}: one control in the place card`);
+    assert.match(placeCard[1], /<span class="map-styles-place-name" id="map-styles-area-title">/, `${locale}: place name inside the button`);
+    assert.ok(!/map-styles-place-toggle|map-styles-area-meta/.test(source), `${locale}: no place details toggle`);
     assert.match(source, /id="map-styles-view-toggle" aria-expanded="false" aria-controls="map-styles-view-menu"/, `${locale}: view modes sit in a menu`);
     assert.match(source, /id="map-styles-view-menu"[^>]*hidden>/, `${locale}: view menu starts closed`);
     assert.match(source, /class="map-styles-viewer"[^>]*data-mode="split"/, `${locale}: Side by side is the default view`);

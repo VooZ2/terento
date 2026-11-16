@@ -7,10 +7,6 @@ canonical: https://terento.app/pl/map-styles/
 
 OpenTopoMap, Freizeitkarte, MapRando, BBBike i OSMapaPL to darmowe mapy topograficzne z OpenStreetMap na zegarki Garmin i liczniki rowerowe Edge. Zobacz, jak każda przedstawia to samo miejsce, i zainstaluj tę, która pasuje do Twoich wycieczek.
 
-Miejsce
-
-High Tatras
-
 Styl lewej mapy Styl prawej mapy
 
 Podglądy są zbliżone, ale nie dokładne: zegarek sam rysuje mapę, więc kolory i szczegóły mogą się różnić w zależności od modelu i ustawień mapy.

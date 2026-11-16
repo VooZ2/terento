@@ -78,8 +78,12 @@ map_styles_script = (root / "site/map-styles/map-styles.js").read_text(encoding=
 assert 'umami.track("map-compare", {' in map_styles_script
 assert 'location: "map-styles",' in map_styles_script
 assert "}, 1000);" in map_styles_script
-for name in ("area: state.area", "style: state.a", "compare:", "mode: state.mode"):
+for name in ("area: state.area", "style: state.a", "compare:", "mode: state.mode", "change: what"):
     assert name in map_styles_script, name
+# Every view change names what changed (Admin Web visits, Map styles page).
+for change in ("area", "style", "compare", "swap", "mode"):
+    assert f'changed("{change}"' in map_styles_script, change
+assert "changed()" not in map_styles_script
 
 
 class AnchorParser(HTMLParser):

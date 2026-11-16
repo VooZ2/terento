@@ -3461,19 +3461,17 @@ details p {
 .map-styles-place { top: 16px; left: 16px; display: flex; flex-direction: column; width: max-content; max-width: min(320px, calc(100% - 120px)); max-height: calc(100% - 32px); }
 .map-styles-place[data-open="true"] { width: 320px; max-width: calc(100% - 32px); }
 .map-styles-place[data-open="true"] { bottom: 16px; }
-.map-styles-place-card { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; min-width: 0; padding: 4px 4px 4px 12px; }
-.map-styles-place-head { display: flex; align-items: center; gap: 4px; }
-.map-styles-place-title { flex: 1; min-width: 0; padding-right: 6px; }
-.map-styles-place-title .map-styles-overlay-eyebrow { margin-bottom: 1px; }
-.map-styles-place-button { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 40px; height: 40px; border: 0; border-radius: 10px; background: transparent; color: var(--graphite); cursor: pointer; }
-.map-styles-place-button:hover { background: color-mix(in srgb, var(--surface-muted) 45%, transparent); }
+.map-styles-place-card { min-width: 0; }
+/* The whole card is one button that opens the place list. */
+.map-styles-place-head { display: flex; align-items: center; gap: 4px; width: 100%; min-width: 0; margin: 0; padding: 4px 4px 4px 12px; border: 0; border-radius: 15px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.map-styles-place-head:hover { background: color-mix(in srgb, var(--surface-muted) 45%, transparent); }
+.map-styles-place-title { display: block; flex: 1; min-width: 0; padding-right: 6px; }
+.map-styles-place-title .map-styles-overlay-eyebrow { display: block; margin-bottom: 1px; }
+.map-styles-place-button { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 10px; color: var(--graphite); }
 .map-styles-place-more .map-styles-icon, .map-styles-view-toggle > .map-styles-icon { transform: rotate(90deg); transition: transform 0.15s; }
-.map-styles-place-more[aria-expanded="true"] .map-styles-icon, .map-styles-view-toggle[aria-expanded="true"] > .map-styles-icon { transform: rotate(-90deg); }
+.map-styles-view-toggle[aria-expanded="true"] > .map-styles-icon { transform: rotate(-90deg); }
 .map-styles-overlay-eyebrow { margin: 0; color: var(--eyebrow-text); font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none; }
-.map-styles-place-name { overflow: hidden; margin: 0; color: var(--graphite); font-family: var(--font-brand); font-size: 18px; font-weight: 600; line-height: 1.25; letter-spacing: -0.01em; text-overflow: ellipsis; white-space: nowrap; }
-.map-styles-place-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 0; color: var(--muted-text); font-size: 13px; line-height: 1.4; }
-.map-styles-place-meta .map-styles-icon { width: 16px; height: 16px; }
-.map-styles-tag { display: inline-flex; align-items: center; min-height: 22px; padding: 1px 8px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted-text); font-size: 13px; font-weight: 600; }
+.map-styles-place-name { display: block; overflow: hidden; margin: 0; color: var(--graphite); font-family: var(--font-brand); font-size: 18px; font-weight: 600; line-height: 1.25; letter-spacing: -0.01em; text-overflow: ellipsis; white-space: nowrap; }
 .map-styles-browser { display: flex; flex: 1; flex-direction: column; gap: 12px; min-height: 0; padding: 14px 16px 16px; }
 .map-styles-browser-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .map-styles-browser-title { margin: 0; font: 600 17px/1.35 var(--font-ui); letter-spacing: 0; }
@@ -3559,7 +3557,6 @@ details p {
   .map-styles-place { top: 10px; left: 10px; max-width: calc(100% - 104px); }
   .map-styles-place[data-open="true"] { right: 10px; bottom: 10px; width: auto; max-width: none; }
   .map-styles-place-name { font-size: 17px; }
-  .map-styles-place-meta .map-styles-tag { display: none; }
   .map-styles-tools { top: 10px; right: 10px; }
   /* Phones zoom with two fingers and name each map in the selectors below. */
   .map-styles-zoom, .map-styles-stage[data-mode] .map-styles-pane-label { display: none; }
