@@ -853,3 +853,19 @@ list for Edge 820, Explore, Explore 820 and Explore 1000), Maps=No for 6 (review
 owner decision: no map row, not on the compatibility list). Edge 1030 Bontrager,
 520, 500, 25 and 20 are not touched. No schema, identity, report, assignment or
 statistic changes; the previous revision reads every row unchanged.
+
+### Migration094: Forerunner 955 and 955 Solar
+
+Data-only. Garmin's device list has one Forerunner 955 device type
+(`006-B4024-00`, urlName `forerunner955`, named "Forerunner® 955 Dual Power"),
+and production results of both `Forerunner 955` and `Forerunner 955 Solar`
+report it, so no reported fact separates Standard from Solar. The historical
+row `garmin-forerunner-955` is the whole generation: its variant `Standard`
+becomes `Historical` (guarded: only while still `Standard`,
+`HISTORICAL_REVIEWED` and not collector-managed). Code `006-B4024-00` gets an
+`APPROVED` link to that row and its `PENDING` link to
+`garmin-forerunner-955-dual-power` is approved, each with an audit row; an
+administrator's earlier decision stays. USB `091e:4fb8` stays `PENDING`. No
+result, assignment, statistic or permission changes: the Solar results already
+assigned to the row are correct under the new label. The previous revision
+reads the rows unchanged.

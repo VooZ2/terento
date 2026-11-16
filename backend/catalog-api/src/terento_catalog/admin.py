@@ -6204,6 +6204,40 @@ def _identity_candidate(results: list[dict[str, Any]], device_id: str | None = N
     return _identity_recommendation(results)
 
 
+def _identity_code_scope(results: list[dict[str, Any]]) -> tuple[set[str] | None, set[str]]:
+    """Catalog models the reviewed Garmin codes of these results allow.
+
+    Returns ``(allowed, rejected)``: ``allowed`` is the set of models every
+    reported code with an approved link names (``None`` when no reported code
+    has one), ``rejected`` the models a reviewed link rules out. Same facts as
+    the server's hard conflict check (identity_assessment.hard_identity_conflicts).
+    """
+    allowed: set[str] | None = None
+    rejected: set[str] = set()
+    for assessment in _identity_assessments(results):
+        scopes: dict[str, set[str]] = {}
+        for candidate in assessment.get("candidates", []) or []:
+            for check in candidate.get("checks", []) or []:
+                if check.get("name") not in {"xmlPartNumber", "usb"}:
+                    continue
+                if check.get("rejectedMapping"):
+                    rejected.add(str(candidate.get("deviceId") or ""))
+                if check.get("pendingAlternativeTargets"):
+                    continue
+                ids = {str(evidence.get("deviceId") or "") for evidence in check.get("evidence") or []
+                       if evidence.get("deviceId")}
+                if ids:
+                    scopes[str(check.get("codeKind") or check.get("name"))] = ids
+        for ids in scopes.values():
+            allowed = set(ids) if allowed is None else allowed & ids
+    return allowed, rejected
+
+
+def _identity_code_blocked(device_id: str, scope: tuple[set[str] | None, set[str]]) -> bool:
+    allowed, rejected = scope
+    return bool(device_id) and (device_id in rejected or (allowed is not None and device_id not in allowed))
+
+
 def _identity_conflict_lines(
     results: list[dict[str, Any]], selected_id: str | None,
     identity_devices: list[dict[str, Any]] | None = None,
@@ -6785,10 +6819,20 @@ def _identity_review_form(
         )
     selected_candidate = _identity_candidate(results, selection_id or None)
     conflict_lines = _identity_conflict_lines(results, selection_id, identity_devices)
+    code_scope = _identity_code_scope(results)
+    code_conflict = _identity_code_blocked(selection_id, code_scope)
     selection_conflict = bool(conflict_lines) or bool(selected_candidate and (selected_candidate.get("conflict") or any(
         check.get("state") == "CONFLICT" for check in selected_candidate.get("checks", []))))
     conflict_detail = " ".join(conflict_lines) if conflict_lines else (
-        "The selected model conflicts with reported information." if selection_conflict else ""
+        "The selected model conflicts with reported information." if selection_conflict or code_conflict else ""
+    )
+    conflict_next = ("Choose the model this code names." if code_conflict
+                     else "Use the explicit manual assignment action if this is the intended correction.")
+    manual_hidden = code_conflict or not selection_conflict
+    allowed_ids, rejected_ids = code_scope
+    code_attributes = (
+        (f" data-identity-code-models='{html.escape(' '.join(sorted(allowed_ids)), quote=True)}'" if allowed_ids is not None else "")
+        + (f" data-identity-code-rejected='{html.escape(' '.join(sorted(rejected_ids)), quote=True)}'" if rejected_ids else "")
     )
     # The queue keeps every picker closed until Edit / Pick model, so each
     # pending item stays one compact row.
@@ -6806,7 +6850,7 @@ def _identity_review_form(
     for_result = f"<p class='identity-review-for'>{html.escape(result_label)}</p>" if result_label else ""
     inline_attribute = " data-identity-inline" if inline else ""
     return f"""
-      <form method='post' action='/admin/diagnostics/identity' class='diagnostic-action-form identity-review-form admin-async-action' data-identity-form{inline_attribute}>
+      <form method='post' action='/admin/diagnostics/identity' class='diagnostic-action-form identity-review-form admin-async-action' data-identity-form{inline_attribute}{code_attributes}>
         <input type='hidden' name='csrf_token' value='{html.escape(csrf_token, quote=True)}'>
         <input type='hidden' name='operation_key' value='{html.escape(operation_key, quote=True)}'>
         <input type='hidden' name='return_to' value='{html.escape(return_to, quote=True)}'>
@@ -6816,8 +6860,9 @@ def _identity_review_form(
           <input type='hidden' name='canonical_device_model_id' id='{canonical_id}' value='{html.escape(selection_id, quote=True)}'>
           <div class='identity-search-results' id='{canonical_id}-options' data-identity-results{" data-identity-catalog='page'" if use_page_catalog else ""} role='listbox' aria-label='Matching Garmin catalog models'>{options}</div>
         </div>
-        {f"<p class='identity-conflict-warning' data-identity-conflict role='alert'>{html.escape(conflict_detail)} Use the explicit manual assignment action if this is the intended correction.</p>" if conflict_detail else ""}
-        <div class='identity-review-actions'><button type='button' class='secondary-button' data-identity-edit{' hidden' if edit_hidden else ''}>{edit_label}</button><button type='submit' name='identity_action' value='ASSIGN' data-identity-confirm>Confirm</button><button type='submit' name='identity_action' value='MANUAL_ASSIGN' class='secondary-button' data-manual-confirm{' hidden' if not selection_conflict else ''}>Confirm manual assignment</button></div>
+        {f"<p class='identity-conflict-warning' data-identity-conflict role='alert'>{html.escape(conflict_detail)} {conflict_next}</p>" if conflict_detail else ""}
+        <label class='identity-manual-reason' data-manual-reason{' hidden' if manual_hidden else ''}>Reason<input type='text' name='identity_note' maxlength='500' autocomplete='off'></label>
+        <div class='identity-review-actions'><button type='button' class='secondary-button' data-identity-edit{' hidden' if edit_hidden else ''}>{edit_label}</button><button type='submit' name='identity_action' value='ASSIGN' data-identity-confirm>Confirm</button><button type='submit' name='identity_action' value='MANUAL_ASSIGN' class='secondary-button' data-manual-confirm{' hidden' if manual_hidden else ''}>Confirm manual assignment</button></div>
         <p class='admin-action-status' data-identity-status role='status' aria-live='polite'></p>
       </form>"""
 
@@ -7704,15 +7749,63 @@ def _web_identity_review_groups(
     return groups
 
 
+def _identity_conflict_card(
+    conflicts: list[dict[str, Any]] | tuple[()] | None, identity_devices: list[dict[str, Any]] | None,
+) -> str:
+    """Assigned results the current catalog contradicts; omitted when none."""
+    if conflicts is None:
+        return _unavailable_card("Conflicts", "identity-conflicts", retry_href=IDENTITY_REVIEW_PATH)
+    if not conflicts:
+        return ""
+    devices = {str(device.get("id") or device.get("device_id") or ""): device for device in identity_devices or []}
+    field_labels = {
+        "model": "Model", "caseSizeMm": "Case size", "screenTechnology": "Display", "solar": "Solar",
+        "inReach": "inReach", "USB": "USB code", "XML_PART_NUMBER": "Product code", "RETAIL_SKU": "Retail SKU",
+    }
+    rows = []
+    for item in conflicts:
+        device_id = str(item.get("canonicalDeviceModelId") or "")
+        device = devices.get(device_id)
+        label = _identity_device_label(device) if device else device_id
+        href = f"/admin/devices/{quote(device_id, safe='')}?from=installations#installations"
+        fields = ", ".join(field_labels.get(str(field), str(field)) for field in item.get("fields") or [])
+        source = "Web installer" if item.get("source") == "web" else "App"
+        rows.append(
+            "<tr data-identity-conflict-row>"
+            f"<td class='column-date'>{_timestamp_markup(item.get('occurredAt'))}</td>"
+            f"<td>{html.escape(str(item.get('reported') or 'Not reported'))}</td>"
+            f"<td><a class='section-link' href='{html.escape(href, quote=True)}'>{html.escape(label)}</a></td>"
+            f"<td>{html.escape(fields)}</td>"
+            f"<td class='column-status'>{_status_pill('danger' if item.get('hard') else 'warning', 'Code' if item.get('hard') else 'Reported facts')}</td>"
+            f"<td>{source}</td>"
+            "</tr>"
+        )
+    return (
+        "<section class='admin-card identity-conflicts' id='identity-conflicts' aria-labelledby='identity-conflicts-title'>"
+        "<header class='admin-card-head'>"
+        "<h2 id='identity-conflicts-title'>Conflicts</h2>"
+        f"<span class='table-help' data-identity-conflict-count>{_count_label(len(conflicts), 'installation')}</span>"
+        "</header>"
+        "<div class='table-wrap'><table class='admin-table mobile-record-table'><caption class='sr-only'>Assigned installations that conflict with the catalog</caption>"
+        "<thead><tr><th scope='col' class='column-date'>Date</th><th scope='col'>Reported</th><th scope='col'>Assigned model</th>"
+        "<th scope='col'>Conflict</th><th scope='col' class='column-status'>Type</th><th scope='col'>Source</th></tr></thead>"
+        f"<tbody>{''.join(rows)}</tbody></table></div>"
+        "</section>"
+    )
+
+
 def identity_review_page(
     operations: list[dict[str, Any]] | None,
     user: dict[str, Any],
     csrf_token: str,
     *, identity_devices: list[dict[str, Any]] | None = None,
     web_results: list[dict[str, Any]] | None = None,
+    conflicts: list[dict[str, Any]] | tuple[()] | None = (),
 ) -> bytes:
     """Every installation operation whose identity is pending, confirmable in
-    place: app results and counted web installer results, newest group first."""
+    place: app results and counted web installer results, newest group first.
+    Assigned results that the current catalog contradicts are listed first
+    (``Database.identity_assignment_conflicts``)."""
     total = 0
     if operations is None:
         body = _unavailable_card("Identity review", "identity-review-list", retry_href=IDENTITY_REVIEW_PATH)
@@ -7774,6 +7867,7 @@ def identity_review_page(
       <main class='dashboard identity-review-page' id='main-content'>
         <p class='back-link'><a href='/admin'>{_admin_icon('arrow-left')} Dashboard</a></p>
         <div class='heading-row'><div><h1>Identity review</h1></div>{summary}</div>
+        {_identity_conflict_card(conflicts, identity_devices)}
         {body}
       </main>
       <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_diagnostics_script()}</script>
@@ -9258,10 +9352,12 @@ def _diagnostics_script() -> str:
               solar: 'Solar', inReach: 'inReach', USB: 'USB mapping',
               XML_PART_NUMBER: 'Product mapping', RETAIL_SKU: 'Retail SKU mapping',
             };
-            const identityConflictMessage = (responsePayload) => {
+            const identityConflictMessage = (responsePayload,
+              lead = 'The selected model conflicts with reported information.',
+              next = 'Use manual assignment to confirm it.') => {
               const conflicts = responsePayload?.details?.conflicts;
               if (!Array.isArray(conflicts) || !conflicts.length) {
-                return 'The selected model conflicts with reported information. Confirm manual assignment if this is the intended correction.';
+                return `${lead} ${next}`;
               }
               const lines = conflicts.map((detail, index) => {
                 const field = identityFieldLabels[detail?.field] || safeIdentityText(detail?.field, 'Identity field');
@@ -9275,13 +9371,17 @@ def _diagnostics_script() -> str:
                   : '';
                 return `${resultLabel}: ${field}: reported ${reported} from ${source}; selected model ${selected}.${mappings}`;
               });
-              return `The selected model conflicts with reported information. ${lines.join(' ')} Use manual assignment to confirm it.`;
+              return `${lead} ${lines.join(' ')} ${next}`;
             };
             const messages = {
               missing_model_selection: 'Choose a specific catalog model before confirming.',
               canonical_device_not_found: 'That catalog model is no longer available. Choose another model.',
               diagnostic_not_found: 'This diagnostic result is no longer available. Reload the review queue.',
               identity_conflict_manual_required: identityConflictMessage(payload),
+              identity_code_conflict: identityConflictMessage(payload,
+                'The Garmin code of this watch names a different catalog model.', 'Choose the model this code names.'),
+              identity_manual_reason_required: 'Write why this manual assignment is correct.',
+              identity_mapping_report_conflict: `${Number(payload?.details?.total) || 'Some'} results with this code report a different model or variant. Link the model they report first.`,
               invalid_diagnostic_record: 'This diagnostic result identifier is invalid. Reload the review queue.',
             };
             const message = messages[payload.error] || (form.matches('[data-identity-form]')
@@ -9307,9 +9407,17 @@ def _diagnostics_script() -> str:
           });
           if (submit) submit.textContent = originalLabel;
           status.textContent = error?.message || 'Could not save. Check the values and try again.';
-          if (form.matches('[data-identity-form]') && error?.identityCode === 'identity_conflict_manual_required') {
-            const manual = form.querySelector('[data-manual-confirm]');
-            if (manual) manual.hidden = false;
+          if (form.matches('[data-identity-form]')) {
+            const manualAllowed = ['identity_conflict_manual_required', 'identity_manual_reason_required'].includes(error?.identityCode);
+            const codeConflict = error?.identityCode === 'identity_code_conflict';
+            if (manualAllowed || codeConflict) {
+              form.querySelectorAll('[data-manual-confirm], [data-manual-reason]').forEach((control) => { control.hidden = !manualAllowed; });
+            }
+            if (error?.identityCode === 'identity_manual_reason_required') {
+              form.querySelector('[data-manual-reason] input')?.focus();
+              delete form.dataset.submitting;
+              return;
+            }
           }
           delete form.dataset.submitting;
           submit?.focus();
@@ -9380,14 +9488,21 @@ def _diagnostics_script() -> str:
         const optionSource = pageCatalog
           ? [...(document.getElementById('identity-picker-catalog')?.content.querySelectorAll('[data-identity-device-id]') || [])]
           : (results ? [...results.querySelectorAll('[data-identity-device-id]')] : []);
+        // Reviewed Garmin code links (B, owner 2026-11-16): the models the
+        // code names come first, models it rules out cannot be chosen.
+        const codeModels = form.dataset.identityCodeModels === undefined
+          ? null : new Set(form.dataset.identityCodeModels.split(' ').filter(Boolean));
+        const codeRejected = new Set((form.dataset.identityCodeRejected || '').split(' ').filter(Boolean));
+        const codeBlocked = id => codeRejected.has(id) || (codeModels !== null && !codeModels.has(id));
         const choices = optionSource.map((option) => ({
           id: option.dataset.identityDeviceId,
           label: option.dataset.identityDeviceLabel || option.textContent.trim(),
-        }));
+        })).map((choice, index) => ({ ...choice, index, blocked: codeBlocked(choice.id) }))
+          .sort((left, right) => Number(left.blocked) - Number(right.blocked) || left.index - right.index);
         const normalize = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
         const clearStaleSelectionState = () => {
           form.querySelector('[data-identity-conflict]')?.setAttribute('hidden', '');
-          form.querySelector('[data-manual-confirm]')?.setAttribute('hidden', '');
+          form.querySelectorAll('[data-manual-confirm], [data-manual-reason]').forEach((control) => control.setAttribute('hidden', ''));
         };
         const sync = () => {
           const hasSelection = Boolean(canonical?.value);
@@ -9408,6 +9523,12 @@ def _diagnostics_script() -> str:
             button.dataset.identityDeviceId = choice.id;
             button.dataset.identityDeviceLabel = choice.label;
             button.textContent = choice.label;
+            if (choice.blocked) {
+              button.disabled = true;
+              button.dataset.identityCodeConflict = '';
+              button.append(' · Code conflict');
+              return button;
+            }
             button.addEventListener('click', () => {
               clearStaleSelectionState();
               if (canonical) canonical.value = choice.id;
@@ -9444,14 +9565,14 @@ def _diagnostics_script() -> str:
           const selected = choices.find(choice => choice.id === canonical?.value);
           if (!selected || normalize(search.value) !== normalize(selected.label)) {
             if (canonical) canonical.value = '';
-            form.querySelector('[data-manual-confirm]')?.setAttribute('hidden', '');
+            form.querySelectorAll('[data-manual-confirm], [data-manual-reason]').forEach((control) => control.setAttribute('hidden', ''));
           }
           if (wrap) wrap.hidden = false;
           render(search.value);
           sync();
         });
         search?.addEventListener('keydown', (event) => {
-          const visible = results ? [...results.querySelectorAll('[data-identity-device-id]')] : [];
+          const visible = results ? [...results.querySelectorAll('[data-identity-device-id]:not(:disabled)')] : [];
           if (event.key === 'ArrowDown' && visible.length) { event.preventDefault(); visible[0].focus(); }
           if (event.key === 'ArrowUp' && visible.length) { event.preventDefault(); visible[visible.length - 1].focus(); }
           if (event.key === 'Escape' && wrap) { wrap.hidden = Boolean(canonical?.value); if (results) results.hidden = true; sync(); }
@@ -10411,7 +10532,9 @@ button:active:not(:disabled),.copy-button:active{transform:scale(.96)}
 .identity-picker{margin-top:10px}.identity-picker[hidden]{display:none}
 .identity-search-results{display:grid;gap:4px;max-height:260px;margin-top:6px;overflow:auto;padding:4px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface)}
 .identity-picker-option{display:block;width:100%;min-height:38px;margin:0;padding:8px 10px;border:0;border-radius:6px;background:transparent;color:var(--graphite);font:inherit;font-size:12px;text-align:left;white-space:normal;overflow-wrap:anywhere}
-.identity-picker-option:hover{background:var(--surface-muted)}.identity-picker-option:focus-visible{background:var(--surface-muted);outline:var(--admin-focus-ring);outline-offset:-3px}
+.identity-picker-option:hover{background:var(--surface-muted)}.identity-picker-option:disabled{color:var(--secondary);cursor:not-allowed;background:transparent}
+.identity-manual-reason{display:grid;gap:4px;margin-top:10px;font-size:var(--admin-type-label-size);font-weight:650}.identity-manual-reason[hidden]{display:none}.identity-manual-reason input{font:inherit;font-weight:400}
+.identity-picker-option:focus-visible{background:var(--surface-muted);outline:var(--admin-focus-ring);outline-offset:-3px}
 .identity-picker-empty{margin:8px;color:var(--secondary);font-size:12px}
 .identity-review-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.identity-review-actions button[disabled]{opacity:.55;cursor:not-allowed}
 .identity-conflict-warning{margin:10px 0;padding:9px 11px;border:1px solid var(--status-error-border);border-radius:var(--radius-control);background:var(--status-error-surface);color:var(--status-error-text);font-size:12px;overflow-wrap:anywhere}

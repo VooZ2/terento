@@ -1463,12 +1463,22 @@ grants no Admin page, form, CSRF token or write; it is independent of the
 Admin login, `OPERATIONS_INGEST_SECRET` and `WEB_INSTALLER_INGEST_SECRET`.
 Rotating or removing the digest and redeploying revokes it.
 
-`schemaVersion: 1` returns `generatedAt` and five sections. A section whose
+`schemaVersion: 1` returns `generatedAt` and six sections. A section whose
 read fails is `{"available": false}`, never a shorter list:
 
 - `counts`: the Dashboard Needs attention counts (`installationIssues`,
   `githubIssuesInProgress`, `identityPending`, `readyToPublish`,
-  `missingDiagnostics`, `supportReports`).
+  `missingDiagnostics`, `supportReports`) and `identityConflicts` (the
+  `identityConflicts` total, `null` when that read fails).
+- `identityConflicts`: `total` and up to 50 newest `items`, one per assigned
+  app or counted web result whose catalog model the current catalog
+  contradicts (Identity review `Conflicts`, owner decision 2026-11-16): a
+  reviewed Garmin XML part number or USB code link names another model
+  (`codeConflict: true`), or a reported name, size, screen, Solar or inReach
+  fact contradicts it and no manual assignment with a written reason
+  confirmed it. Each item has `source` (`app`/`web`), `operationKey`,
+  `occurredAt`, `reported`, `canonicalDeviceModelId`, `codeConflict`,
+  `fields` and `adminUrl`.
 - `installationProblems`: `total` and up to 50 newest `items`, one per open
   installation problem operation (the `installationIssues` population and
   unit). Each item has `operationKey`, `occurredAt`, catalog `model`/`variant`

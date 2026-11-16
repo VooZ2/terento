@@ -121,7 +121,8 @@ HISTORICAL_DEVICE_REGISTRY: tuple[HistoricalDeviceSpec, ...] = (
         "garmin-forerunner-955",
         "Forerunner 955",
         "forerunner 955",
-        "Standard",
+        # One Garmin device type for Standard and Solar (migration 094).
+        "Historical",
         None,
         family_id="garmin-forerunner",
         family_name="Forerunner",

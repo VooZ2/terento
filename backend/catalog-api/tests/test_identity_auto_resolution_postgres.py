@@ -47,7 +47,7 @@ class IdentityAutoResolutionTests(PGliteTestCase):
         single = self.pending()
         self.pending(raw_mtp_model="Testwatch 9")
         summary = self.db.auto_resolve_pending_identities(apply=False)
-        self.assertEqual(summary, {"pendingResults": 2, "resolvedResults": 1, "exact": 0, "singleMatch": 1,
+        self.assertEqual(summary, {"pendingResults": 2, "resolvedResults": 1, "exact": 0, "singleMatch": 1, "notIdentifiable": 0,
                                    "pendingOperations": 2, "clearedOperations": 1})
         self.assertIsNone(self.stored(single)["canonical_device_model_id"])
         self.assertEqual(self.audits(single), [])

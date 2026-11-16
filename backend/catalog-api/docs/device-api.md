@@ -74,7 +74,8 @@ all remaining candidates. Thus conflicting variant hints with all-Yes
 candidates still produce `APPROVED`. Edge is not permanently excluded: an
 Edge base model absent from the catalog is `PENDING`, and the MTP Edge rows of
 migrations 090 and 091 (Maps=Yes) are authorized by the same rules; the older
-Edge generations of migration 091 have Maps Unknown and stay `PENDING`. Safe Update
+Edge generations of migration 091 carry Garmin's Maps value since migration 093
+(five without any published value stay `PENDING`). Safe Update
 refreshes the policy at start and before its first write.
 
 The historical registry in `terento_catalog.historical_devices` is versioned
