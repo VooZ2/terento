@@ -824,3 +824,17 @@ authorization. Withdrawing a collector-managed Edge row needs Maps=`false`:
 the collector reactivates a row it sees and fills a NULL Maps value from the
 specification, but keeps a stored `false` (pinned by
 `test_edge_retail_catalog`).
+
+### Migration092: Forerunner 265 catalog rows
+
+Data-only, additive (canonical rule:
+[`contracts/INSTALLATION_AUTHORIZATION.md`](../../../contracts/INSTALLATION_AUTHORIZATION.md),
+non-map watches that users connect). Inserts (`ON CONFLICT (id) DO NOTHING`)
+Forerunner 265 and 265S as active `HISTORICAL_REVIEWED` rows with Maps=No
+(`BLOCKED`), AMOLED, their Garmin product pages and images, and
+`specification_evidence.map_capable` stating why (checked 2026-11-16). Garmin's
+category no longer lists them, so the collector never created a row and the
+app's permission check returned `PENDING` (Admin First run `Waiting models`).
+It also inserts PENDING identity code links: XML 006-B4257-00 / 006-B4258-00
+and USB 091e:50a1 / 091e:50a2. No report, assignment, statistic or other row
+changes; the previous revision reads every row unchanged.

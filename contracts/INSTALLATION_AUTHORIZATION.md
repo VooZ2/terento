@@ -99,6 +99,19 @@ a Gen 2 watch that reported a plain first-generation name would also be
 approved correctly. No Edge name is aliased; Edge rows decide under their own
 reported base model.
 
+**Web installer (2026-11-16).** The WebUSB installer
+(`internal/lab/web-installer/public/safety.mjs`, `authorize`) applies the same
+rule to the MTP model name the watch reports: the base model is the name up to
+its first variant word (`NN mm`, Sapphire, Solar, AMOLED, MIP, MicroLED,
+inReach, Leather, Titanium, Stainless, Silicone; explicit negations such as
+`no Solar` are removed first), compared as a whole normalized name with the
+policy `baseModel`. A reported size, screen, Solar or inReach fact narrows the
+candidates only when it contradicts a stated row fact; unknown or conflicting
+facts never narrow. It additionally requires every remaining candidate to be
+`IN_SCOPE` and `APPROVED`. Before this date it removed only a trailing
+`- NN mm`, so a watch that reports `Forerunner 955 Solar` or `fēnix 7 Pro
+Solar` was refused on the web while the app approved it.
+
 The public Compatibility directory and its `TESTED`/`SUPPORTED`/`VERIFIED`
 evidence categories, `successfulInstallations`, Admin `support_status`, and
 prior successful installs neither grant nor revoke write authority. Catalog
@@ -129,9 +142,9 @@ connect as USB mass storage, which Terento does not use. A new Edge model that
 appears in the cycling category takes its Maps value from its specification
 row like any new collector model. Every released native client
 approves these models under the ordinary rule; no client change is involved.
-The web installer approves a reported plain base model (for example `Edge 840`)
-but strips only a trailing case size, so a reported Solar name (`Edge 1040
-Solar`) is not found there and fails closed. The rows are not a public support claim: the public site and README
+The web installer derives the base model exactly as the native client (see
+**Web installer** below), so a reported Solar name (`Edge 1040 Solar`) is the
+`edge 1040` base model there too. The rows are not a public support claim: the public site and README
 keep Edge outside the public scope, and public Compatibility shows an Edge model
 only after the separate Admin publication. Withdrawing Edge is a later reviewed
 catalog change shipped as a migration, because Admin has no Maps editor. For a
@@ -200,8 +213,18 @@ Migration 075 applies these decisions; the per-row evidence is stored in
   fēnix 6X Pro), from the Garmin product specifications or the fēnix 6 Pro
   Series owner's manual. The standard fēnix 6 and 6S Dual Power editions are
   not added: Garmin publishes no map row for them, so they stay `PENDING`.
-  Handheld and
-  non-map products are not added (Edge rows: migrations 090 and 091, above). Current-category models (for example
+  Handheld products are not added (Edge rows: migrations 090 and 091,
+  above). *Non-map watches that users connect (2026-11-16)*: a watch Garmin no
+  longer sells that reaches the app's permission check (Admin First run
+  `Waiting models`) is added as an active `HISTORICAL_REVIEWED` row with
+  Maps=No only when Garmin's specifications for every SKU list no mapping row
+  while the same generation's map model lists one, and the reviewed Map
+  Manager list (`map_capability.KNOWN_NON_MAP_PREFIXES`, native
+  `GarminMapCapabilityRegistry`) names it non-map, the same evidence that set
+  Forerunner 570, 255 and 165 to No in migration 021. Both conditions are
+  required; either alone leaves the model `PENDING`. Neither result writes; the
+  user sees "Not available for this model" instead of "Not yet enabled".
+  Migration 092 adds Forerunner 265 and 265S this way. Current-category models (for example
   Enduro 4, Approach S72) are added by the weekly collector from their
   specification rows.
 - *Golf watches (owner rule, 2026-10-09).* A golf watch has Maps=Yes only
