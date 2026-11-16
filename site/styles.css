@@ -3904,7 +3904,7 @@ details p {
 
 .home-way {
   padding-top: 20px;
-  border-top: 2px solid var(--graphite);
+  border-top: 1px solid var(--border);
 }
 
 .home-way h3 {
@@ -4174,7 +4174,7 @@ details p {
   }
 }
 
-/* v2: about (scripts/build-about-pages.py). Maker note first, then what Terento is and isn't, then code and map credits. */
+/* v2: about (scripts/build-about-pages.py). Maker note first, then what Terento is and isn't, then who wrote about Terento. */
 .about-page .about-intro {
   padding-bottom: clamp(48px, 6vw, 80px);
 }
@@ -4190,7 +4190,7 @@ details p {
 
 .about-page .about-story,
 .about-page .about-main,
-.about-v2-open {
+.about-v2-mentions {
   padding: clamp(48px, 6vw, 88px) 0;
   border-top: 1px solid var(--border);
   border-bottom: 0;
@@ -4219,7 +4219,7 @@ details p {
   grid-row: 1 / -1;
   margin-top: 0;
   padding-top: 20px;
-  border-top: 2px solid var(--graphite);
+  border-top: 1px solid var(--border);
 }
 
 .about-page .about-social-label {
@@ -4260,19 +4260,19 @@ details p {
 }
 
 .about-page .about-bullet-list .text-link,
-.about-v2-open .text-link {
+.about-v2-mentions .text-link {
   display: inline;
   font-size: inherit;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
-.about-v2-open h2 {
+.about-v2-mentions h2 {
   margin: 0 0 20px;
   font-size: clamp(30px, 3.5vw, 44px);
 }
 
-.about-v2-open p {
+.about-v2-mentions p {
   max-width: 68ch;
   margin: 0;
   color: var(--secondary);
@@ -4280,7 +4280,7 @@ details p {
   line-height: 1.55;
 }
 
-.about-v2-open p + p {
+.about-v2-mentions p + :is(p, ul) {
   margin-top: 16px;
 }
 
@@ -4543,7 +4543,7 @@ details p {
 #main-content :is(.hero-lede, .download-intro, .about-intro-copy, .guide-lede, .legal-summary p) { max-width: 62ch; font-size: var(--type-lede); line-height: 1.5; }
 #main-content :is(.step p, .provider-copy, .about-bullet-list li, .download-v2-needs li, .download-v2-steps p, .guide-step-copy p, .guide-v2-help-item p, .guide-v2-section > p, .guide-v2-more, .guide-preflight-copy p, .troubleshooting-guide-link, .map-styles-v2-map-copy p, .about-story-copy p, .map-styles-v2-map-summary) { font-size: 17px; line-height: 1.55; }
 :root { --section-space: clamp(64px, 8vw, 96px); }
-#main-content > :is(.home-steps, .home-edge, .provider-section, .home-ways, .faq, .about-story, .about-main, .about-v2-open) { padding-top: var(--section-space); padding-bottom: var(--section-space); }
+#main-content > :is(.home-steps, .home-edge, .provider-section, .home-ways, .faq, .about-story, .about-main, .about-v2-mentions) { padding-top: var(--section-space); padding-bottom: var(--section-space); }
 #main-content > .home-manage { padding-bottom: var(--section-space); }
 #main-content .compatibility-missing-note { margin-top: 16px; font-size: 17px; line-height: 1.55; }
 @media (max-width: 480px) { .home-switch { flex-wrap: nowrap; max-width: 100%; } .home-switch-button { padding: 8px 9px; font-size: 13px; white-space: nowrap; } }
