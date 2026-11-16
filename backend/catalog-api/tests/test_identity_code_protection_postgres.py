@@ -73,6 +73,15 @@ class ConflictRuleTests(unittest.TestCase):
         self.assertEqual(len(conflicts), 1)
         self.assertEqual(hard_identity_conflicts(conflicts), [])
 
+    def test_generation_label_alias_is_no_name_conflict(self):
+        # Production 2026-11-16: "EPIX PRO" / "epix Pro 51mm" results assigned
+        # to epix Pro (Gen 2) were counted as name conflicts.
+        epix = {**self.device, "id": "garmin-epix-pro-gen-2-51", "model": "epix Pro (Gen 2)", "case_size_mm": 51}
+        for raw in ("EPIX PRO", "epix Pro 51mm"):
+            self.assertEqual(selected_identity_conflicts({"rawMTPModel": raw}, epix, []), [], raw)
+        self.assertEqual([c["field"] for c in selected_identity_conflicts(
+            {"rawMTPModel": "fenix 8"}, epix, [])], ["model"])
+
     def test_assessment_marks_a_rejected_candidate_as_conflict(self):
         devices = [{**self.device}, {**self.device, "id": "watch-b"}]
         assessment = assess_identity(self.event, devices, [
@@ -211,6 +220,20 @@ class CodeProtectionPostgresTests(PGliteTestCase):
         self.assertEqual(self.db.identity_assignment_conflicts(), [])
         self.assertNotIn("id='identity-conflicts'", identity_review_page(
             [], {"username": "a", "csrf_token": "t"}, "t", conflicts=[]).decode())
+
+    def test_incomplete_code_review_is_not_counted(self):
+        # Production 2026-11-16: a USB code APPROVED for one fēnix 8 51 mm row
+        # with another target still PENDING is no fact yet, so the other row's
+        # assignments are not conflicts.
+        for device, status in ((SEVEN_PRO, "APPROVED"), (SEVEN_PRO_NO_WIFI, "PENDING")):
+            self.sql("INSERT INTO device_identity_mapping (kind, value, device_model_id, source_url, source_version,"
+                     " status) VALUES ('USB', '091e:abcd', %s, 'https://example.org', 'test', %s)", (device, status))
+        self.result(part_number=None, raw="fenix 7 Pro Solar", device=SEVEN_PRO_NO_WIFI, usb=(2334, 43981))
+        self.assertEqual(self.db.identity_assignment_conflicts(), [])
+        self.sql("UPDATE device_identity_mapping SET status = 'REJECTED' WHERE value = '091e:abcd'"
+                 " AND device_model_id = %s", (SEVEN_PRO_NO_WIFI,))
+        [finding] = self.db.identity_assignment_conflicts()
+        self.assertEqual((finding["hard"], finding["fields"]), (True, ["USB"]))
 
     def test_manual_reason_confirms_soft_facts_but_never_a_code(self):
         soft = self.result(part_number=None, raw="fenix 7 Pro Solar")

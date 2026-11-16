@@ -878,7 +878,10 @@ preselected code conflict hides `Confirm manual assignment`. A `Conflicts`
 card above the queue lists every assigned result the current catalog
 contradicts (date, reported name, assigned model link, conflicting fields,
 `Code` or `Reported facts`, source); the attention API reports the same
-population as `identityConflicts`. Approving a code link in Model sources is
+population as `identityConflicts`. A code link whose review is incomplete
+(another target still `PENDING`) is not counted there, and a reviewed
+generation-label alias (reported `epix Pro` for catalog `epix Pro (Gen 2)`)
+is no name conflict. Approving a code link in Model sources is
 refused (409 `identity_mapping_report_conflict`, with a count) while a real
 result with that code reports a name or variant fact that the target model
 contradicts and no other model linked to the code fits it.

@@ -2957,7 +2957,11 @@ class Database:
             device = devices.get(device_id)
             if device is None:
                 return
-            conflicts = selected_identity_conflicts(event, device, mappings)
+            # A code link whose review is still incomplete (another target
+            # PENDING) is no fact yet, so it is not counted; it only asks for
+            # a confirmed manual decision when an assignment is made.
+            conflicts = [conflict for conflict in selected_identity_conflicts(event, device, mappings)
+                         if "hard" not in conflict or conflict["hard"]]
             hard = hard_identity_conflicts(conflicts)
             if not hard and (not conflicts or confirmed):
                 return

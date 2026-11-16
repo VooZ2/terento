@@ -1476,7 +1476,9 @@ read fails is `{"available": false}`, never a shorter list:
   reviewed Garmin XML part number or USB code link names another model
   (`codeConflict: true`), or a reported name, size, screen, Solar or inReach
   fact contradicts it and no manual assignment with a written reason
-  confirmed it. Each item has `source` (`app`/`web`), `operationKey`,
+  confirmed it. A code link whose review is incomplete (another target still
+  `PENDING`) is not counted, and a reviewed generation-label alias is no name
+  conflict. Each item has `source` (`app`/`web`), `operationKey`,
   `occurredAt`, `reported`, `canonicalDeviceModelId`, `codeConflict`,
   `fields` and `adminUrl`.
 - `installationProblems`: `total` and up to 50 newest `items`, one per open

@@ -156,10 +156,13 @@ def selected_identity_conflicts(
     observations = _identity_observations(event)
     conflicts: list[dict[str, Any]] = []
     expected_model = model_label(device.get('model'))
-    # A reviewed ambiguous name ("epix") is no contradiction of any generation it names.
+    # A reviewed ambiguous name ("epix") is no contradiction of any generation
+    # it names, and a reviewed generation-label alias ("epix Pro") is none of
+    # the catalog model it names ("epix Pro (Gen 2)").
     for source, value in observations['labels']:
         reported_model = model_label(value)
         if (reported_model and expected_model and reported_model != expected_model
+                and GENERATION_LABEL_BASE_MODEL_ALIASES.get(reported_model) != expected_model
                 and expected_model not in AMBIGUOUS_REPORTED_BASE_MODELS.get(reported_model, ())):
             conflicts.append({'field': 'model', 'source': source,
                               'reported': reported_model, 'reportedRaw': value,
