@@ -7,10 +7,6 @@ canonical: https://terento.app/map-styles/
 
 OpenTopoMap, Freizeitkarte, MapRando, BBBike and OSMapaPL are free topographic maps made from OpenStreetMap, for Garmin watches and Edge bike computers. See how each one draws the same place, then install the one that fits your trips.
 
-Place
-
-Cinque Terre
-
 Left map style Right map style
 
 Previews are close, not exact: your watch draws the map itself, so colours and detail can differ with the watch model and its map settings.

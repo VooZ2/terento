@@ -7,10 +7,6 @@ canonical: https://terento.app/de/map-styles/
 
 OpenTopoMap, Freizeitkarte, MapRando, BBBike und OSMapaPL sind kostenlose topografische Karten aus OpenStreetMap für Garmin-Uhren und Edge-Radcomputer. Sieh dir an, wie jede denselben Ort darstellt, und installiere die, die zu deinen Touren passt.
 
-Ort
-
-Berchtesgaden–Königssee
-
 Kartenstil links Kartenstil rechts
 
 Vorschauen sind nah dran, aber nicht exakt: Deine Uhr zeichnet die Karte selbst, daher können Farben und Details je nach Modell und Karteneinstellungen abweichen.

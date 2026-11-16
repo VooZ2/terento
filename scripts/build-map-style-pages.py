@@ -35,7 +35,7 @@ GUIDE_MAPS = (
     ("osmapa", "osmapa", "osmapa-podstawowa"),
 )
 LEAFLET_VERSION = "1.9.4"
-SCRIPT_VERSION = "20261113-map-styles-v16"
+SCRIPT_VERSION = "20261117-map-styles-v17"
 MANIFEST_URL = "https://api.terento.app/maps/previews/manifest.json"
 # The view each language opens on: a well-known place close to that audience where
 # both compared styles have previews (OSMapaPL waits for the manifest, so never a default).
@@ -92,12 +92,10 @@ COPY: dict[str, dict[str, object]] = {
         "search_label": "Search places",
         "search_placeholder": "Search a place or country",
         "change": "Change place",
-        "details": "Place details",
         "close": "Close place list",
         "count": {"place": {"one": "{n} place", "other": "{n} places"}, "route": {"one": "{n} trail", "other": "{n} trails"}, "city": {"one": "{n} city", "other": "{n} cities"}},
         "no_match": "No places match “{q}”. Try a country name, such as Italy or Nepal.",
         "best": "Best for comparing",
-        "styles_of": "{n} of {total} styles",
         "styles_short": "styles",
         "view": "View",
         "modes": {"single": "One map", "split": "Side by side", "swipe": "Swipe"},
@@ -138,12 +136,10 @@ COPY: dict[str, dict[str, object]] = {
         "search_label": "Orte suchen",
         "search_placeholder": "Ort oder Land suchen",
         "change": "Ort ändern",
-        "details": "Ortsdetails",
         "close": "Ortsliste schließen",
         "count": {"place": {"one": "{n} Ort", "other": "{n} Orte"}, "route": {"one": "{n} Weg", "other": "{n} Wege"}, "city": {"one": "{n} Stadt", "other": "{n} Städte"}},
         "no_match": "Keine Orte passen zu „{q}“. Versuche einen Ländernamen wie Italien oder Nepal.",
         "best": "Am besten zum Vergleichen",
-        "styles_of": "{n} von {total} Stilen",
         "styles_short": "Stile",
         "view": "Ansicht",
         "modes": {"single": "Eine Karte", "split": "Nebeneinander", "swipe": "Schieberegler"},
@@ -184,12 +180,10 @@ COPY: dict[str, dict[str, object]] = {
         "search_label": "Rechercher des lieux",
         "search_placeholder": "Rechercher un lieu ou un pays",
         "change": "Changer de lieu",
-        "details": "Détails du lieu",
         "close": "Fermer la liste des lieux",
         "count": {"place": {"one": "{n} lieu", "other": "{n} lieux"}, "route": {"one": "{n} sentier", "other": "{n} sentiers"}, "city": {"one": "{n} ville", "other": "{n} villes"}},
         "no_match": "Aucun lieu ne correspond à « {q} ». Essayez un nom de pays, comme Italie ou Népal.",
         "best": "Idéal pour comparer",
-        "styles_of": "{n} styles sur {total}",
         "styles_short": "styles",
         "view": "Affichage",
         "modes": {"single": "Une carte", "split": "Côte à côte", "swipe": "Curseur"},
@@ -230,12 +224,10 @@ COPY: dict[str, dict[str, object]] = {
         "search_label": "Szukaj miejsc",
         "search_placeholder": "Szukaj miejsca lub kraju",
         "change": "Zmień miejsce",
-        "details": "Szczegóły miejsca",
         "close": "Zamknij listę miejsc",
         "count": {"place": {"one": "{n} miejsce", "few": "{n} miejsca", "many": "{n} miejsc", "other": "{n} miejsca"}, "route": {"one": "{n} szlak", "few": "{n} szlaki", "many": "{n} szlaków", "other": "{n} szlaku"}, "city": {"one": "{n} miasto", "few": "{n} miasta", "many": "{n} miast", "other": "{n} miasta"}},
         "no_match": "Brak miejsc pasujących do „{q}”. Spróbuj nazwy kraju, np. Włochy lub Nepal.",
         "best": "Najlepsze do porównania",
-        "styles_of": "{n} z {total} stylów",
         "styles_short": "stylów",
         "view": "Widok",
         "modes": {"single": "Jedna mapa", "split": "Obok siebie", "swipe": "Suwak"},
@@ -276,12 +268,10 @@ COPY: dict[str, dict[str, object]] = {
         "search_label": "Hledat místa",
         "search_placeholder": "Hledat místo nebo zemi",
         "change": "Změnit místo",
-        "details": "Podrobnosti o místě",
         "close": "Zavřít seznam míst",
         "count": {"place": {"one": "{n} místo", "few": "{n} místa", "many": "{n} místa", "other": "{n} míst"}, "route": {"one": "{n} stezka", "few": "{n} stezky", "many": "{n} stezky", "other": "{n} stezek"}, "city": {"one": "{n} město", "few": "{n} města", "many": "{n} města", "other": "{n} měst"}},
         "no_match": "Hledání „{q}“ neodpovídá žádné místo. Zkuste název země, například Itálie nebo Nepál.",
         "best": "Nejlepší k porovnání",
-        "styles_of": "{n}/{total} stylů",
         "styles_short": "stylů",
         "view": "Zobrazení",
         "modes": {"single": "Jedna mapa", "split": "Vedle sebe", "swipe": "Posuvník"},
@@ -322,12 +312,10 @@ COPY: dict[str, dict[str, object]] = {
         "search_label": "Cerca luoghi",
         "search_placeholder": "Cerca un luogo o un paese",
         "change": "Cambia luogo",
-        "details": "Dettagli del luogo",
         "close": "Chiudi l’elenco dei luoghi",
         "count": {"place": {"one": "{n} luogo", "other": "{n} luoghi"}, "route": {"one": "{n} sentiero", "other": "{n} sentieri"}, "city": {"one": "{n} città", "other": "{n} città"}},
         "no_match": "Nessun luogo corrisponde a “{q}”. Prova con il nome di un paese, come Italia o Nepal.",
         "best": "Ideali per il confronto",
-        "styles_of": "{n} stili su {total}",
         "styles_short": "stili",
         "view": "Vista",
         "modes": {"single": "Una mappa", "split": "Affiancate", "swipe": "Cursore"},
@@ -365,7 +353,6 @@ COPY: dict[str, dict[str, object]] = {
 ICONS = {
     "search": '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
     "close": '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
-    "pin": '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
     "single": '<rect width="18" height="18" x="3" y="3" rx="2"/>',
     "split": '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M12 3v18"/>',
     "swipe": '<path d="m9 7-5 5 5 5"/><path d="m15 7 5 5-5 5"/>',
@@ -607,15 +594,13 @@ def render(locale: str) -> str:
 
           <div class="map-styles-overlay map-styles-place" id="map-styles-place" data-open="false">
             <div class="map-styles-place-card" id="map-styles-place-card">
-              <div class="map-styles-place-head">
-                <div class="map-styles-place-title">
-                  <p class="map-styles-overlay-eyebrow" id="map-styles-place-kind">{esc(copy["kind"][default["kind"]])}</p>
-                  <p class="map-styles-place-name" id="map-styles-area-title">{esc(area_name(default, locale))}</p>
-                </div>
-                <button type="button" class="map-styles-place-button" id="map-styles-open-places" aria-expanded="false" aria-controls="map-styles-browser" aria-label="{esc(copy["change"])}" title="{esc(copy["change"])}">{icon("search")}</button>
-                <button type="button" class="map-styles-place-button map-styles-place-more" id="map-styles-place-toggle" aria-expanded="false" aria-controls="map-styles-area-meta" aria-label="{esc(copy["details"])}" title="{esc(copy["details"])}">{icon("chevron")}</button>
-              </div>
-              <p class="map-styles-place-meta" id="map-styles-area-meta" hidden></p>
+              <button type="button" class="map-styles-place-head" id="map-styles-open-places" aria-expanded="false" aria-controls="map-styles-browser" aria-label="{esc(copy["change"])}: {esc(area_name(default, locale))}" title="{esc(copy["change"])}">
+                <span class="map-styles-place-title">
+                  <span class="map-styles-overlay-eyebrow" id="map-styles-place-kind">{esc(copy["kind"][default["kind"]])}</span>
+                  <span class="map-styles-place-name" id="map-styles-area-title">{esc(area_name(default, locale))}</span>
+                </span>
+                <span class="map-styles-place-button map-styles-place-more" aria-hidden="true">{icon("chevron")}</span>
+              </button>
             </div>
             <div class="map-styles-browser" id="map-styles-browser" hidden>
               <div class="map-styles-browser-head">

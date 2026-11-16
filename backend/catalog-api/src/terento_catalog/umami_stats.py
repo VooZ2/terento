@@ -49,10 +49,17 @@ FUNNEL_STEPS = (
 # The Key events chart: only these three events, in this order.
 KEY_EVENTS = ("download-click", "web-installer-done", "map-compare")
 EVENT_LIMIT = 50
+# The Map styles page (owner request 2026-11-16): its visitors in every
+# language (Umami's "contains" path filter, so /de/map-styles/ and old hash
+# views count too), the map-compare event and its change and area values.
+MAP_COMPARE_EVENT = "map-compare"
+MAP_STYLES_PATH = "c./map-styles/"
+MAP_STYLES_LIMIT = 10
 # Block order; each is one Umami request (previousErrors and previousEvents
 # feed a change, not a card of their own).
 BLOCKS = ("visitors", "downloads", "referrers", "entries", "countries", "vitals", "errors", "previousErrors",
-          "events", "previousEvents", "eventSeries", *(name for name, _ in FUNNEL_STEPS))
+          "events", "previousEvents", "eventSeries", *(name for name, _ in FUNNEL_STEPS),
+          "mapPage", "mapCompare", "mapCountries", "mapChanges", "mapAreas")
 # Umami has measured terento.app since this day; "all" starts here.
 TRACKING_START = datetime(2026, 8, 20, tzinfo=timezone.utc)
 # Old Maps hash page views inflate Views before this moment (site #686 live).
@@ -282,6 +289,22 @@ def parse_countries(raw: Any) -> list[dict[str, Any]]:
     return rows
 
 
+def parse_event_values(raw: Any) -> list[dict[str, Any]]:
+    """One event property's values with their event counts, most first
+    (Umami event-data/values: [{value, total}])."""
+    rows = raw.get("data") if isinstance(raw, dict) else raw
+    if not isinstance(rows, list):
+        raise UmamiRequestError("unexpected shape")
+    values: dict[str, int] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        name, count = str(row.get("value") or "").strip()[:200], _number(row.get("total"))
+        if name and count:
+            values[name] = values.get(name, 0) + int(count)
+    return [{"name": name, "count": count} for name, count in sorted(values.items(), key=lambda item: (-item[1], item[0]))]
+
+
 def parse_events(raw: Any) -> list[dict[str, Any]]:
     """Custom events by name with their counts (every event, not visitors)."""
     return [{"name": row["name"], "count": row["visitors"]} for row in parse_metrics(raw, EVENT_LIMIT) if row["name"]]
@@ -378,6 +401,14 @@ class UmamiStats:
                             lambda raw: parse_event_series(raw, unit)),
             **{name: (f"{base}/events/stats", {**window, "event": event}, parse_event_stats)
                for name, event in FUNNEL_STEPS},
+            "mapPage": (f"{base}/stats", {**window, "path": MAP_STYLES_PATH}, parse_stats),
+            "mapCompare": (f"{base}/events/stats", {**window, "event": MAP_COMPARE_EVENT}, parse_event_stats),
+            "mapCountries": (f"{base}/metrics", {**window, "type": "country", "limit": MAP_STYLES_LIMIT,
+                                                 "path": MAP_STYLES_PATH}, parse_countries),
+            "mapChanges": (f"{base}/event-data/values", {**window, "eventName": MAP_COMPARE_EVENT,
+                                                         "propertyName": "change"}, parse_event_values),
+            "mapAreas": (f"{base}/event-data/values", {**window, "eventName": MAP_COMPARE_EVENT,
+                                                       "propertyName": "area"}, parse_event_values),
         }
 
     def snapshot(self, period: str, time_zone: str, now: datetime | None = None) -> dict[str, Any]:
