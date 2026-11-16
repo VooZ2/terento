@@ -57,6 +57,19 @@ http_status() {
   curl --silent --show-error --output "$2" --write-out '%{http_code}' "$1"
 }
 
+# A bare `! grep` never stops a `set -e` script, so absence checks must exit.
+refute_grep() {
+  description=$1
+  shift
+  if grep "$@"; then
+    echo "FAIL: $description" >&2
+    exit 1
+  else
+    grep_status=$?
+  fi
+  [ "$grep_status" -eq 1 ] || { echo "FAIL: could not check: $description" >&2; exit 1; }
+}
+
 home_body="$temporary/home.html"
 markdown_body="$temporary/home.md"
 sitemap_body="$temporary/sitemap.xml"
@@ -68,7 +81,7 @@ grep -iq '^Content-Type: text/markdown; charset=utf-8' "$temporary/markdown-head
 grep -iq '^Vary: Accept' "$temporary/markdown-headers"
 cmp -s "$repo_root/site/index.md" "$markdown_body"
 grep -q '^# Install free maps on your Garmin device$' "$markdown_body"
-! grep -qi '<html' "$markdown_body"
+refute_grep "Markdown home response contains HTML." -qi '<html' "$markdown_body"
 curl --silent --show-error --head --dump-header "$temporary/markdown-head-headers" --header 'Accept: text/markdown' "http://127.0.0.1:$port/" >/dev/null
 grep -iq '^Content-Type: text/markdown; charset=utf-8' "$temporary/markdown-head-headers"
 curl --silent --show-error --dump-header "$temporary/html-headers" --output "$temporary/default-home.html" "http://127.0.0.1:$port/"
@@ -123,7 +136,7 @@ done
 curl --fail --silent --show-error --dump-header "$temporary/html-headers" \
   --output "$temporary/campaign.html" "http://127.0.0.1:$port/?utm_source=chatgpt.com"
 cmp -s "$home_body" "$temporary/campaign.html"
-! grep -iq '^X-Robots-Tag:.*noindex' "$temporary/html-headers"
+refute_grep "Campaign home URL is marked noindex." -iq '^X-Robots-Tag:.*noindex' "$temporary/html-headers"
 curl --fail --silent --show-error --dump-header "$temporary/json-headers" \
   --output "$temporary/update.json" "http://127.0.0.1:$port/updates/macos-arm64.json"
 grep -iq '^X-Robots-Tag: noindex, nofollow' "$temporary/json-headers"
@@ -151,9 +164,9 @@ cmp -s "$key_file" "$key_body"
 
 bad_key=$(python3 -c 'import sys; key=sys.argv[1]; print(key[:-1] + ("0" if key[-1] != "0" else "1"), end="")' "$test_key")
 [ "$(http_status "http://127.0.0.1:$port/$bad_key.txt" "$bad_body")" = 404 ]
-! grep -Fq "$test_key" "$bad_body"
+refute_grep "404 response leaks the IndexNow key." -Fq "$test_key" "$bad_body"
 [ "$(http_status "http://127.0.0.1:$port/not-a-key.txt" "$bad_body")" = 404 ]
-! grep -Fq "$test_key" "$bad_body"
+refute_grep "404 response leaks the IndexNow key." -Fq "$test_key" "$bad_body"
 
 docker run --detach --name "$missing_container" --read-only --cap-drop=ALL \
   --security-opt no-new-privileges:true --user 10001:10001 \
@@ -174,6 +187,6 @@ done
 [ -n "$missing_port" ] || { echo "FAIL: runtime container without the key mount did not become reachable." >&2; exit 1; }
 [ "$(http_status "http://127.0.0.1:$missing_port/" "$home_body")" = 200 ]
 [ "$(http_status "http://127.0.0.1:$missing_port/$test_key.txt" "$bad_body")" = 404 ]
-! grep -Fq "$test_key" "$bad_body"
+refute_grep "404 response leaks the IndexNow key." -Fq "$test_key" "$bad_body"
 
 echo "IndexNow Docker/Caddy runtime checks passed with an isolated synthetic key and localhost-only containers."

@@ -141,9 +141,11 @@ for what it records.
 
 - macOS 13 or later on an Apple Silicon Mac; Intel Macs are not supported.
 - A Garmin smartwatch with map support, or a newer Garmin Edge bike computer
-  with map support (such as Edge 540, 840, 1040, 1050 or Explore 2).
+  with map support (such as Edge 540, 840, 1040 or 1050).
 - A USB cable that supports data transfer.
-- An Internet connection for downloading catalog maps.
+- An Internet connection. Before every install, including your own `.img`
+  file, Terento checks online that your Garmin model can install maps;
+  catalog maps are also downloaded from their providers.
 
 Compatibility is evaluated for each exact model and variant using real
 installation evidence. The Compatibility page is a successful-installation
