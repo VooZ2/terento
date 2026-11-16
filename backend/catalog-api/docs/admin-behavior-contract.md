@@ -546,6 +546,19 @@ unavailable headline block keeps its title for its marks (owner request
    bars with the share of the first step. A step with more visitors than the
    step before has no share and a grey `Tracking gap` pill instead, never a
    negative drop-off.
+   Then four cards, two side by side (one from 900 px down, owner request
+   2026-11-16): `Map styles page`: visitors of every page whose path contains
+   `/map-styles/` (all six languages) and `Changed the map` (`map-compare`
+   visitors) as the funnel's bars with the share of the first step; `Map
+   styles countries`: that page's top 10 countries (flag and name as in
+   Countries, without a map); `Map changes`: `map-compare` events per
+   `change` (Place `area`, Style `style`, Compared style `compare`, Swap
+   `swap`, View `mode`; any other value under its own name), most first, with
+   a grey `Not recorded` row for events without a change (sent before
+   2026-11-17); `Map places`: the top 10 places (`area`) by events under their
+   English preview area name, an id no longer listed as itself. Each counts
+   events or visitors as Umami stores them; a hidden or failed request hides
+   or empties only its own card.
 5. `Web Vitals`: LCP, INP, CLS, FCP and TTFB p75, each with a Good / Needs
    improvement / Poor pill (Google's limits: LCP ≤2.5 s / ≤4 s, INP ≤200 ms /
    ≤500 ms, CLS ≤0.1 / ≤0.25, FCP ≤1.8 s / ≤3 s, TTFB ≤800 ms / ≤1.8 s) and a

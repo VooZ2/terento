@@ -402,7 +402,11 @@ country, ISO 3166-1 alpha-2 codes, `""` for unknown), `vitals` (`lcp`, `inp`,
 series}`: `download-click`, `web-installer-done` and `map-compare` counts per
 local `YYYY-MM-DD`, or `YYYY-MM-DD HH` for Today and Last 24 hours), and
 `funnelCta`, `funnelGate`, `funnelConnected`, `funnelDone` (event stats of the
-four web installer steps), each
+four web installer steps), `mapPage` (`stats` for paths containing
+`/map-styles/`, every language), `mapCompare` (`map-compare` event stats),
+`mapCountries` (top 10 countries of those paths), `mapChanges` and `mapAreas`
+(`[{name, count}]`: `map-compare` events per `change` and `area` value, from
+Umami `event-data/values`), each
 `{state, fetchedAt, data}`, or `null` when Umami is not configured) and `html`
 (the rendered blocks). It is always `200`; Umami failures are block states,
 not route errors.
