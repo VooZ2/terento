@@ -9,7 +9,7 @@ const locales = new Map([
   ["en", {
     file: path.join(root, "site", "index.html"),
     h1: "Install free maps on your Garmin device",
-    hero: "Terento puts free maps from OpenStreetMap projects on Garmin watches and Edge bike computers. Use the Mac app, or install straight from your desktop browser. Free and open source.",
+    hero: "Terento puts free maps from OpenStreetMap projects on Garmin watches and Edge bike computers. Use the Mac app, or install straight from your desktop browser. Free, and the Mac app is open source.",
     experienceLabel: "How it works",
     manageLabel: "Manage maps",
     installStep: "Choose maps from the catalog, or add your own compatible .img map.",
@@ -25,7 +25,7 @@ const locales = new Map([
   ["de", {
     file: path.join(root, "site", "de", "index.html"),
     h1: "Kostenlose Karten auf deinem Garmin-Gerät installieren",
-    hero: "Terento bringt kostenlose Karten aus OpenStreetMap-Projekten auf Garmin-Uhren und Edge-Fahrradcomputer. Mit der Mac-App oder direkt im Desktop-Browser. Kostenlos und Open Source.",
+    hero: "Terento bringt kostenlose Karten aus OpenStreetMap-Projekten auf Garmin-Uhren und Edge-Fahrradcomputer. Mit der Mac-App oder direkt im Desktop-Browser. Kostenlos, und die Mac-App ist Open Source.",
     experienceLabel: "So funktioniert es",
     manageLabel: "Karten verwalten",
     installStep: "Wähle Karten aus dem Katalog oder füge deine eigene kompatible .img-Karte hinzu.",
@@ -41,7 +41,7 @@ const locales = new Map([
   ["fr", {
     file: path.join(root, "site", "fr", "index.html"),
     h1: "Installez des cartes gratuites sur votre appareil Garmin",
-    hero: "Terento installe des cartes gratuites issues de projets OpenStreetMap sur les montres Garmin et les compteurs vélo Edge. Avec l’app Mac ou directement dans le navigateur de votre ordinateur. Gratuit et open source.",
+    hero: "Terento installe des cartes gratuites issues de projets OpenStreetMap sur les montres Garmin et les compteurs vélo Edge. Avec l’app Mac ou directement dans le navigateur de votre ordinateur. Gratuit, et l’app Mac est open source.",
     experienceLabel: "Comment ça marche",
     manageLabel: "Gérer les cartes",
     installStep: "Choisissez des cartes dans le catalogue ou ajoutez votre propre carte .img compatible.",
@@ -57,7 +57,7 @@ const locales = new Map([
   ["pl", {
     file: path.join(root, "site", "pl", "index.html"),
     h1: "Instaluj darmowe mapy na urządzeniu Garmin",
-    hero: "Terento wgrywa darmowe mapy z projektów OpenStreetMap na zegarki Garmin i liczniki rowerowe Edge. W aplikacji na Maca albo prosto z przeglądarki na komputerze. Za darmo i open source.",
+    hero: "Terento wgrywa darmowe mapy z projektów OpenStreetMap na zegarki Garmin i liczniki rowerowe Edge. W aplikacji na Maca albo prosto z przeglądarki na komputerze. Za darmo, a aplikacja na Maca jest open source.",
     experienceLabel: "Jak to działa",
     manageLabel: "Zarządzaj mapami",
     installStep: "Wybierz mapy z katalogu albo dodaj własną zgodną mapę .img.",
@@ -73,7 +73,7 @@ const locales = new Map([
   ["cs", {
     file: path.join(root, "site", "cs", "index.html"),
     h1: "Nainstalujte do zařízení Garmin mapy zdarma",
-    hero: "Terento nahraje mapy zdarma z projektů OpenStreetMap do hodinek Garmin a cyklopočítačů Edge. V aplikaci pro Mac, nebo přímo z prohlížeče v počítači. Zdarma a open source.",
+    hero: "Terento nahraje mapy zdarma z projektů OpenStreetMap do hodinek Garmin a cyklopočítačů Edge. V aplikaci pro Mac, nebo přímo z prohlížeče v počítači. Zdarma, aplikace pro Mac je open source.",
     experienceLabel: "Jak to funguje",
     manageLabel: "Spravovat mapy",
     installStep: "Vybírejte mapy z katalogu podle oblasti nebo přidejte vlastní kompatibilní mapu .img.",
@@ -89,7 +89,7 @@ const locales = new Map([
   ["it", {
     file: path.join(root, "site", "it", "index.html"),
     h1: "Installa mappe gratuite sul tuo dispositivo Garmin",
-    hero: "Terento installa mappe gratuite dai progetti OpenStreetMap su orologi Garmin e ciclocomputer Edge. Con l’app per Mac o direttamente dal browser del computer. Gratis e open source.",
+    hero: "Terento installa mappe gratuite dai progetti OpenStreetMap su orologi Garmin e ciclocomputer Edge. Con l’app per Mac o direttamente dal browser del computer. Gratis, e l’app per Mac è open source.",
     experienceLabel: "Come funziona",
     manageLabel: "Gestisci le mappe",
     installStep: "Scegli le mappe dal catalogo oppure aggiungi la tua mappa .img compatibile.",
@@ -225,7 +225,7 @@ for (const [locale, expected] of locales) {
 }
 
 const englishHome = pageFor("en");
-assert.match(englishHome, /<p class="hero-lede">Terento puts free maps from OpenStreetMap projects on Garmin watches and Edge bike computers\. Use the Mac app, or install straight from your desktop browser\. Free and open source\.<\/p>/);
+assert.match(englishHome, /<p class="hero-lede">Terento puts free maps from OpenStreetMap projects on Garmin watches and Edge bike computers\. Use the Mac app, or install straight from your desktop browser\. Free, and the Mac app is open source\.<\/p>/);
 assert.match(englishHome, /<h1 id="hero-title">Install free maps on your Garmin device<\/h1>/);
 assert.doesNotMatch(englishHome, /<p class="hero-lede">[^<]*Freizeitkarte/i);
 assert.match(englishHome, /<meta name="description" content="Install free OpenTopoMap, Freizeitkarte and other OpenStreetMap maps on Garmin watches and Edge bike computers\. Free Mac app or web installer\.">/);

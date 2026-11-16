@@ -5,7 +5,7 @@ canonical: https://terento.app/fr/
 
 # Installez des cartes gratuites sur votre appareil Garmin
 
-Terento installe des cartes gratuites issues de projets OpenStreetMap sur les montres Garmin et les compteurs vélo Edge. Avec l’app Mac ou directement dans le navigateur de votre ordinateur. Gratuit et open source.
+Terento installe des cartes gratuites issues de projets OpenStreetMap sur les montres Garmin et les compteurs vélo Edge. Avec l’app Mac ou directement dans le navigateur de votre ordinateur. Gratuit, et l’app Mac est open source.
 
 [Télécharger pour Mac](https://terento.app/fr/download/) [Installer depuis votre navigateur](https://terento.app/fr/install/)
 

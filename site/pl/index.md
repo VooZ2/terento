@@ -5,7 +5,7 @@ canonical: https://terento.app/pl/
 
 # Instaluj darmowe mapy na urządzeniu Garmin
 
-Terento wgrywa darmowe mapy z projektów OpenStreetMap na zegarki Garmin i liczniki rowerowe Edge. W aplikacji na Maca albo prosto z przeglądarki na komputerze. Za darmo i open source.
+Terento wgrywa darmowe mapy z projektów OpenStreetMap na zegarki Garmin i liczniki rowerowe Edge. W aplikacji na Maca albo prosto z przeglądarki na komputerze. Za darmo, a aplikacja na Maca jest open source.
 
 [Pobierz na Maca](https://terento.app/pl/download/) [Zainstaluj z przeglądarki](https://terento.app/pl/install/)
 
