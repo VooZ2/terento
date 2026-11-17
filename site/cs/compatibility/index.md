@@ -9,7 +9,7 @@ Terento funguje s hodinkami Garmin a novějšími cyklopočítači Garmin Edge s
 
 Pokud zde svůj model nevidíte, neznamená to, že nebude fungovat. Možná z něj zatím nikdo nesdílel úspěšnou instalaci.
 
-**45** modely s úspěšnými instalacemi**421** úspěšných instalacíPoslední úspěšná instalace 16. listopadu 2026
+**45** modely s úspěšnými instalacemi**431** úspěšných instalacíPoslední úspěšná instalace 17. listopadu 2026
 
 Jak tento seznam funguje
 
@@ -55,21 +55,21 @@ fēnix
 
 ### fēnix 9 Pro 51 mm, AMOLED
 
-25 úspěšných instalací
+26 úspěšných instalací
 
-App 25
+App 26
 
-Poslední úspěšná instalace 12. listopadu 2026
+Poslední úspěšná instalace 16. listopadu 2026
 
 epix
 
 ### epix Pro (Gen 2) 51 mm, AMOLED
 
-20 úspěšných instalací
+22 úspěšných instalací
 
-App 19 Web 1
+App 21 Web 1
 
-Poslední úspěšná instalace 6. listopadu 2026
+Poslední úspěšná instalace 16. listopadu 2026
 
 fēnix
 
@@ -101,6 +101,16 @@ App 14 Web 2
 
 Poslední úspěšná instalace 16. listopadu 2026
 
+Forerunner
+
+### Forerunner 955 Solar, Historical
+
+15 úspěšných instalací
+
+App 15
+
+Poslední úspěšná instalace 16. listopadu 2026
+
 fēnix
 
 ### fēnix 9 Pro 51 mm, AMOLED, inReach
@@ -111,15 +121,15 @@ App 15
 
 Poslední úspěšná instalace 31. října 2026
 
-Forerunner
+fēnix
 
-### Forerunner 955 Solar, Standard
+### fēnix 7 Pro Solar, Historical
 
 14 úspěšných instalací
 
 App 14
 
-Poslední úspěšná instalace 12. listopadu 2026
+Poslední úspěšná instalace 30. října 2026
 
 fēnix
 
@@ -161,15 +171,15 @@ App 6 Web 4
 
 Poslední úspěšná instalace 3. listopadu 2026
 
-fēnix
+epix
 
-### fēnix 7 Pro Solar, Historical
+### epix (Gen 2) 47 mm
 
 8 úspěšných instalací
 
-App 8
+App 4 Web 4
 
-Poslední úspěšná instalace 30. října 2026
+Poslední úspěšná instalace 17. listopadu 2026
 
 fēnix
 
@@ -211,15 +221,15 @@ App 7
 
 Poslední úspěšná instalace 14. listopadu 2026
 
-epix
+Enduro
 
-### epix (Gen 2) 47 mm
+### Enduro 3 MIP, Solar
 
 6 úspěšných instalací
 
-App 2 Web 4
+App 6
 
-Poslední úspěšná instalace 9. listopadu 2026
+Poslední úspěšná instalace 17. listopadu 2026
 
 fēnix
 
@@ -233,16 +243,6 @@ Poslední úspěšná instalace 26. října 2026
 
 fēnix
 
-### fēnix 7 Pro Solar, (no Wi-Fi)
-
-6 úspěšných instalací
-
-App 6
-
-Poslední úspěšná instalace 12. října 2026
-
-fēnix
-
 ### fēnix 8 Pro 47 mm, AMOLED, inReach
 
 6 úspěšných instalací
@@ -251,15 +251,15 @@ App 6
 
 Poslední úspěšná instalace 11. listopadu 2026
 
-Enduro
+Edge
 
-### Enduro 3 MIP, Solar
+### Edge 540 Smartwatch
 
 4 úspěšných instalací
 
-App 4
+App 3 Web 1
 
-Poslední úspěšná instalace 9. listopadu 2026
+Poslední úspěšná instalace 16. listopadu 2026
 
 fēnix
 
@@ -280,16 +280,6 @@ fēnix
 App 4
 
 Poslední úspěšná instalace 23. září 2026
-
-Edge
-
-### Edge 540 Smartwatch
-
-3 úspěšných instalací
-
-App 3
-
-Poslední úspěšná instalace 5. listopadu 2026
 
 Enduro
 
@@ -430,6 +420,16 @@ Edge
 App 1
 
 Poslední úspěšná instalace 13. listopadu 2026
+
+Edge
+
+### Edge 850 Smartwatch
+
+1 úspěšná instalace
+
+App 1
+
+Poslední úspěšná instalace 17. listopadu 2026
 
 fēnix
 
