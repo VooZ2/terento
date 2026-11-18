@@ -46,6 +46,31 @@ COPY = {
 }
 
 
+# Device-type filter chips (site refresh): all cards stay in the HTML; the chips only filter in the browser.
+DEVICE_CHIPS = {
+    "en": {"label": "Device type", "ALL": "All", "watch": "Watches", "edge": "Edge bike computers"},
+    "de": {"label": "Gerätetyp", "ALL": "Alle", "watch": "Uhren", "edge": "Edge Fahrradcomputer"},
+    "fr": {"label": "Type d’appareil", "ALL": "Tous", "watch": "Montres", "edge": "Compteurs vélo Edge"},
+    "pl": {"label": "Typ urządzenia", "ALL": "Wszystkie", "watch": "Zegarki", "edge": "Liczniki rowerowe Edge"},
+    "cs": {"label": "Typ zařízení", "ALL": "Vše", "watch": "Hodinky", "edge": "Cyklopočítače Edge"},
+    "it": {"label": "Tipo di dispositivo", "ALL": "Tutti", "watch": "Smartwatch", "edge": "Ciclocomputer Edge"},
+}
+
+
+def device_type(model: dict[str, object]) -> str:
+    """'edge' for Garmin Edge bike computers, 'watch' for everything else (keep in sync with compatibility.js)."""
+    return "edge" if str(model.get("family") or model.get("familyName") or "").strip().lower() == "edge" else "watch"
+
+
+def chips_markup(locale: str) -> str:
+    chip = DEVICE_CHIPS[locale]
+    buttons = "".join(
+        f'<button type="button" class="chip" data-device-filter="{value}" aria-pressed="{str(value == "ALL").lower()}">{esc(chip[value])}</button>'
+        for value in ("ALL", "watch", "edge")
+    )
+    return f'<div class="chips compatibility-chips" role="group" aria-label="{esc(chip["label"])}">{buttons}</div>'
+
+
 def page_path(locale: str) -> Path:
     return ROOT / ("site/compatibility/index.html" if locale == "en" else f"site/{locale}/compatibility/index.html")
 
@@ -230,7 +255,7 @@ def card_markup(model: dict[str, object], locale: str) -> str:
     latest_markup = f'<p class="watch-card-meta">{esc(copy["card_latest"])} {esc(latest)}</p>' if latest else ""
     image = model.get("imageUrl") or FALLBACK_IMAGE_URL
     accessible = ", ".join(filter(None, (display_model, variant, install_label(count, locale), sources_accessible(model, locale), f'{copy["card_latest"]} {latest}' if latest else "")))
-    return f'''<article class="watch-card" aria-label="{esc(accessible)}"><div class="watch-card-image"><img data-remote-src="{esc(image)}" src="{esc(image)}" alt="" loading="lazy"></div><div class="watch-card-body"><div class="watch-card-heading"><p class="watch-family">{esc(model.get("familyName") or "Garmin")}</p><div class="watch-card-model-row"><h3>{esc(display_model)} <span class="watch-variant">{esc(variant)}</span></h3></div></div><p class="watch-install-count">{esc(install_label(count, locale))}</p>{sources_markup(model, locale)}{latest_markup}</div></article>'''
+    return f'''<article class="watch-card card card--media" data-device-type="{device_type(model)}" aria-label="{esc(accessible)}"><div class="watch-card-image"><img data-remote-src="{esc(image)}" src="{esc(image)}" alt="" loading="lazy"></div><div class="watch-card-body"><div class="watch-card-heading"><p class="watch-family">{esc(model.get("familyName") or "Garmin")}</p><div class="watch-card-model-row"><h3>{esc(display_model)} <span class="watch-variant">{esc(variant)}</span></h3></div></div><p class="watch-install-count">{esc(install_label(count, locale))}</p>{sources_markup(model, locale)}{latest_markup}</div></article>'''
 
 
 def summary_markup(snapshot: dict, locale: str) -> str:
@@ -239,8 +264,42 @@ def summary_markup(snapshot: dict, locale: str) -> str:
     latest = max((row.get("lastSuccessfulInstallation") for row in models if row.get("lastSuccessfulInstallation")), default=None)
     latest_text = date_text(latest, locale)
     label = copy["model_one"] if len(models) == 1 else copy["model_many"]
-    updated = f'<span class="compatibility-summary-item compatibility-summary-updated" data-summary-updated>{esc(copy["latest"])} <time data-summary="updated" datetime="{esc(latest or "")}">{esc(latest_text)}</time></span>' if latest_text else ""
-    return f'''<div class="compatibility-summary" id="compatibility-summary" aria-live="polite" aria-busy="false"><p class="compatibility-summary-line" data-summary-content><span class="compatibility-summary-item"><strong data-summary="models">{len(models)}</strong> <span data-summary-model-label>{esc(label)}</span><span class="compatibility-summary-separator" aria-hidden="true">&nbsp;&nbsp;</span></span><span class="compatibility-summary-item"><strong data-summary="successes">{total}</strong> {esc(copy["successes"])}<span class="compatibility-summary-separator" aria-hidden="true">&nbsp;&nbsp;</span></span>{updated}</p><p class="compatibility-freshness" role="status" hidden><span id="compatibility-freshness"></span> <button type="button" id="compatibility-retry" hidden>{esc(copy["retry"])}</button></p></div>'''
+    updated = f'<span class="compatibility-summary-item trust-strip-item compatibility-summary-updated" data-summary-updated><strong><time data-summary="updated" datetime="{esc(latest or "")}">{esc(latest_text)}</time></strong> {esc(copy["latest"])}</span>' if latest_text else ""
+    return f'''<div class="compatibility-summary" id="compatibility-summary" aria-live="polite" aria-busy="false"><p class="compatibility-summary-line trust-strip" data-summary-content><span class="compatibility-summary-item trust-strip-item"><strong data-summary="models">{len(models)}</strong> <span data-summary-model-label>{esc(label)}</span><span class="compatibility-summary-separator" aria-hidden="true">&nbsp;&nbsp;</span></span><span class="compatibility-summary-item trust-strip-item"><strong data-summary="successes">{total}</strong> {esc(copy["successes"])}<span class="compatibility-summary-separator" aria-hidden="true">&nbsp;&nbsp;</span></span>{updated}</p><p class="compatibility-freshness" role="status" hidden><span id="compatibility-freshness"></span> <button type="button" id="compatibility-retry" hidden>{esc(copy["retry"])}</button></p></div>'''
+
+
+HOME_TRUST_RE = re.compile(r'<ul class="trust-strip home-trust-strip"[^>]*>[\s\S]*?</ul>')
+
+
+def home_path(locale: str) -> Path:
+    return ROOT / ("site/index.html" if locale == "en" else f"site/{locale}/index.html")
+
+
+def home_trust_strip(snapshot: dict, locale: str, label: str) -> str:
+    """Home trust strip: static snapshot numbers, rewritten by every snapshot refresh (no runtime JS)."""
+    copy, models = COPY[locale], snapshot["models"]
+    total = sum(int(row["successfulInstallations"]) for row in models)
+    latest = max((row.get("lastSuccessfulInstallation") for row in models if row.get("lastSuccessfulInstallation")), default=None)
+    items = [
+        (format_number(len(models), locale), copy["model_one"] if len(models) == 1 else copy["model_many"]),
+        (format_number(total, locale), copy["successes"]),
+    ]
+    latest_text = date_text(latest, locale)
+    latest_item = f'<li><strong><time datetime="{esc(latest)}">{esc(latest_text)}</time></strong> {esc(copy["latest"])}</li>' if latest_text else ""
+    body = "".join(f"<li><strong>{esc(number)}</strong> {esc(text)}</li>" for number, text in items) + latest_item
+    return f'<ul class="trust-strip home-trust-strip" aria-label="{esc(label)}">{body}</ul>'
+
+
+def update_home_trust_strip(snapshot: dict, locale: str) -> None:
+    path = home_path(locale)
+    source = path.read_text(encoding="utf-8")
+    match = HOME_TRUST_RE.search(source)
+    if not match:
+        raise ValueError(f"{path}: home trust strip not found")
+    label = re.search(r'aria-label="([^"]*)"', match.group(0)).group(1)
+    updated = source[: match.start()] + home_trust_strip(snapshot, locale, html.unescape(label)) + source[match.end():]
+    if updated != source:
+        path.write_text(updated, encoding="utf-8")
 
 
 def how_markup(locale: str) -> str:
@@ -250,7 +309,7 @@ def how_markup(locale: str) -> str:
 
 def filters_markup(locale: str) -> str:
     copy = COPY[locale]
-    return f'''<form class="compatibility-filters" id="compatibility-filters" role="search"><label class="compatibility-filter-control compatibility-search"><span class="sr-only">{esc(copy["search"])}</span><input id="watch-search" type="search" placeholder="{esc(copy["search"])}" autocomplete="off"></label><label class="compatibility-filter-control compatibility-filter-select"><span class="sr-only">{esc(copy["filter_successful"])}</span><select id="successful-install-filter"><option value="ALL">{esc(copy["all_successful"])}</option><option value="1_2">{esc(copy["one_two"])}</option><option value="3_4">{esc(copy["three_four"])}</option><option value="5_PLUS">{esc(copy["five_plus"])}</option></select></label><label class="compatibility-filter-control compatibility-filter-select"><span class="sr-only">{esc(copy["filter_family"])}</span><select id="family-filter"><option value="ALL">{esc(copy["all_families"])}</option></select></label><label class="compatibility-filter-control compatibility-filter-select"><span class="sr-only">{esc(copy["sort"])}</span><select id="sort-filter"><option value="successful">{esc(copy["most_successful"])}</option><option value="name">{esc(copy["name"])}</option></select></label><button type="button" class="compatibility-clear" id="compatibility-clear" disabled><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><!-- @license lucide-static v0.460.0 - ISC --><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>{esc(copy["clear"])}</button></form>'''
+    return f'''<form class="compatibility-filters" id="compatibility-filters" role="search">{chips_markup(locale)}<label class="compatibility-filter-control compatibility-search"><span class="sr-only">{esc(copy["search"])}</span><input id="watch-search" type="search" placeholder="{esc(copy["search"])}" autocomplete="off"></label><label class="compatibility-filter-control compatibility-filter-select"><span class="sr-only">{esc(copy["filter_successful"])}</span><select id="successful-install-filter"><option value="ALL">{esc(copy["all_successful"])}</option><option value="1_2">{esc(copy["one_two"])}</option><option value="3_4">{esc(copy["three_four"])}</option><option value="5_PLUS">{esc(copy["five_plus"])}</option></select></label><label class="compatibility-filter-control compatibility-filter-select"><span class="sr-only">{esc(copy["filter_family"])}</span><select id="family-filter"><option value="ALL">{esc(copy["all_families"])}</option></select></label><label class="compatibility-filter-control compatibility-filter-select"><span class="sr-only">{esc(copy["sort"])}</span><select id="sort-filter"><option value="successful">{esc(copy["most_successful"])}</option><option value="name">{esc(copy["name"])}</option></select></label><button type="button" class="compatibility-clear" id="compatibility-clear" disabled><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><!-- @license lucide-static v0.460.0 - ISC --><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>{esc(copy["clear"])}</button></form>'''
 
 
 def results_markup(snapshot: dict, locale: str) -> str:
@@ -282,7 +341,7 @@ def web_installer_link(locale: str) -> str:
 def community_markup(locale: str) -> str:
     copy, prefix = COPY[locale], "" if locale == "en" else f"/{locale}"
     guide, download = f"{prefix}/guides/install-garmin-maps-mac/", f"{prefix}/download/"
-    return f'''<div class="compatibility-community-cta"><div class="compatibility-community-copy"><h2>{esc(copy["community_heading"])}</h2><p>{esc(copy["community_body"])}</p><a class="text-link compatibility-guide-link" href="{guide}" data-umami-event="guide-link-click" data-umami-event-location="compatibility-community-testing">{esc(copy["guide_link"])}</a>{web_installer_link(locale)}</div><a class="download-action download-action-primary compatibility-community-link" href="{download}" data-umami-event="download-cta-click" data-umami-event-location="compatibility-community-testing">{esc(copy["download"])}</a></div>'''
+    return f'''<div class="compatibility-community-cta card card--quiet"><div class="compatibility-community-copy"><h2>{esc(copy["community_heading"])}</h2><p>{esc(copy["community_body"])}</p><a class="text-link compatibility-guide-link" href="{guide}" data-umami-event="guide-link-click" data-umami-event-location="compatibility-community-testing">{esc(copy["guide_link"])}</a>{web_installer_link(locale)}</div><a class="download-action download-action-primary compatibility-community-link" href="{download}" data-umami-event="download-cta-click" data-umami-event-location="compatibility-community-testing">{esc(copy["download"])}</a></div>'''
 
 
 def render_page(source: str, locale: str, snapshot: dict) -> str:
@@ -306,12 +365,13 @@ def render_page(source: str, locale: str, snapshot: dict) -> str:
     if start < 0 or end < 0:
         raise ValueError(f"{page_path(locale)}: compatibility results insertion point not found")
     source = source[:start] + results_markup(snapshot, locale) + "\n          " + source[end:]
-    source, count = re.subn(r'<div class="compatibility-community-cta">[\s\S]*?</div>\s*</div>\s*</section>', community_markup(locale) + "</div></section>", source, count=1)
+    source, count = re.subn(r'<div class="compatibility-community-cta[^"]*">[\s\S]*?</div>\s*</div>\s*</section>', community_markup(locale) + "</div></section>", source, count=1)
     if count != 1:
         raise ValueError(f"{page_path(locale)}: compatibility community CTA not found")
     source = re.sub(r'/compatibility/compatibility-data\.js\?v=[^" ]+', f'/compatibility/compatibility-data.js?v={ASSET_VERSION}', source)
     source = re.sub(r'/compatibility/compatibility-locales\.js\?v=[^" ]+', f'/compatibility/compatibility-locales.js?v={LOCALES_ASSET_VERSION}', source)
     source = re.sub(r'/compatibility/compatibility\.js\?v=[^" ]+', f'/compatibility/compatibility.js?v={ASSET_VERSION}', source)
+    source = re.sub(r'<section class="compatibility-hero[^"]*"', '<section class="compatibility-hero page-hero"', source, count=1)
     source = re.sub(r'(<p class="compatibility-error"[^>]*>)[^<]*(</p>)', rf'\g<1>{esc(copy["error"])}\g<2>', source, count=1)
     # One web-page + breadcrumb JSON-LD block (no device list: the snapshot is not a support list).
     source = re.sub(r'\n[ \t]*<script type="application/ld\+json">[\s\S]*?</script>', "", source)
@@ -328,6 +388,7 @@ def main() -> None:
         path = page_path(locale)
         path.write_text(render_page(path.read_text(encoding="utf-8"), locale, snapshot), encoding="utf-8")
         print(path.relative_to(ROOT))
+        update_home_trust_strip(snapshot, locale)
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@ const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "u
 const styles = read("site/styles.css");
 const shellSource = read("site/site-shell.js");
 const languageSource = read("site/language.js");
-const styleVersion = "20261118-apple-badge-v1";
+const styleVersion = "20261119-site-refresh-v1";
 const mobileLanguageNames = { en: "English", de: "Deutsch", fr: "Français", pl: "Polski", cs: "Čeština", it: "Italiano" };
 
 const cssBlock = (selector) => {
@@ -106,7 +106,7 @@ for (const [locale, contract] of Object.entries(locales)) {
   assert.ok(main.indexOf("download-v2-actions") < main.indexOf("download-v2-shot"));
   for (const need of copy.needs) assert.ok(main.includes(need.replace(/’/g, "’")), `${locale} lists requirement: ${need}`);
   assert.equal((main.match(/<h2 /g) || []).length, 2, `${locale} has one requirements and one after-download heading`);
-  assert.equal((main.match(/<ol>[\s\S]*?<\/ol>/)[0].match(/<li>/g) || []).length, 3, `${locale} has three after-download steps`);
+  assert.equal((main.match(/<ol class="steps">[\s\S]*?<\/ol>/)[0].match(/<li>/g) || []).length, 3, `${locale} has three after-download steps`);
   assert.doesNotMatch(main, /<code>|\.zip"/, `${locale} keeps checksum and ZIP off the page`);
   const links = [...main.matchAll(/<a class="text-link( download-info-link)?" href="([^"]+)" data-umami-event="([^"]+)" data-umami-event-location="([^"]+)">/g)].map((m) => [m[2], m[3], m[4], Boolean(m[1])]);
   assert.deepEqual(links, [

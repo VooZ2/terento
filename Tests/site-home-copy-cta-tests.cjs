@@ -118,7 +118,7 @@ const anchorFor = (page, className) => {
 
 for (const [locale, expected] of locales) {
   const page = pageFor(locale);
-  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20261118-apple-badge-v1">/, `${locale}: Home stylesheet cache bust`);
+  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20261119-site-refresh-v1">/, `${locale}: Home stylesheet cache bust`);
   assert.match(page, /<script defer src="\/home-features\.js\?v=20261105-home-map-switch-v4"><\/script>/, `${locale}: Home feature script cache bust`);
   assert.match(page, /installing-maps-1600\.png\?v=20260912-app-screens-v2/, `${locale}: installation screenshot cache bust`);
   const heroDevice = page.match(/<figure class="home-device" data-map-switch>[\s\S]*?<\/figure>/)?.[0];
@@ -143,28 +143,29 @@ for (const [locale, expected] of locales) {
   const download = anchorFor(page, "hero-download-action");
   const heroCompatibility = anchorFor(page, "hero-compatibility-link");
   assert.doesNotMatch(page, /final-cta/, `${locale}: the closing download block was removed (owner 2026-11-13)`);
-  const experience = page.match(/<section class="home-steps section" id="how-it-works"[\s\S]*?<\/section>/)?.[0];
+  const experience = page.match(/<section class="block home-how" id="how-it-works"[\s\S]*?<\/section>/)?.[0];
   assert.ok(experience);
   assert.equal(experience.match(/<h2 id="steps-title">([^<]+)<\/h2>/)?.[1], expected.experienceLabel);
-  const steps = [...experience.matchAll(/<li class="step">([\s\S]*?)<\/li>/g)];
+  const steps = [...experience.matchAll(/<li>([\s\S]*?)<\/li>/g)];
   assert.equal(steps.length, 3);
   assert.equal(steps[1][1].match(/<p>([^<]+)<\/p>\s*$/)?.[1], expected.installStep);
   assert.equal(steps[2][1].match(/<h3>([^<]+)<\/h3>/)?.[1], expected.doneLabel);
   assert.equal(steps[2][1].match(/<p>([^<]+)<\/p>\s*$/)?.[1], expected.doneStep);
-  const manage = page.match(/<section class="home-manage section"[\s\S]*?<\/section>/)?.[0];
+  const manage = page.match(/<section class="card card--media col-4 home-bento-manage"[\s\S]*?<\/section>/)?.[0];
   assert.ok(manage, `${locale}: missing manage maps section`);
   assert.equal(manage.match(/<h2 id="manage-title">([^<]+)<\/h2>/)?.[1], expected.manageLabel);
   assert.equal(manage.match(/<h2 id="manage-title">[^<]+<\/h2>\s*<p>([^<]+)<\/p>/)?.[1], expected.manageShowcase);
   assert.doesNotMatch(page, /class="map-feature-section"|role="tablist"|class="eyebrow"/, `${locale}: no tabs or eyebrow labels on Home`);
+  assert.equal((experience.match(/<figure class="col-8 app-shot app-shot--feature">/g) || []).length, 1);
+  assert.equal((manage.match(/<picture class="card-media">/g) || []).length, 1);
   for (const [section, stem] of [[experience, "install-maps"], [manage, "manage-maps"]]) {
-    assert.equal((section.match(/<figure class="app-shot app-shot--feature">/g) || []).length, 1);
     assert.match(section, /width="2358" height="1575"/);
     for (const url of section.match(/\/assets\/app\/optimized\/[^"\s,]+/g) || []) {
       assert.ok(url.startsWith(`/assets/app/optimized/${stem}-`));
       assert.ok(url.endsWith("?v=20260912-app-screens-v2"), `${locale}: screenshot cache version`);
     }
   }
-  const edge = page.match(/<section class="home-edge section" id="edge"[\s\S]*?<\/section>/)?.[0];
+  const edge = page.match(/<section class="card card--quiet col-8 row-2 home-bento-edge" id="edge"[\s\S]*?<\/section>/)?.[0];
   assert.ok(edge, `${locale}: Garmin Edge section`);
   assert.match(edge, /Edge 540, 840/);
   assert.match(edge, new RegExp(`href="${locale === "en" ? "" : `/${locale}`}/guides/install-garmin-maps-edge-mac/" data-umami-event="guide-link-click" data-umami-event-location="home-edge"`));
@@ -177,25 +178,25 @@ for (const [locale, expected] of locales) {
   const badgeMarkup = `<a class="app-store-badge home-app-store" href="https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&amp;ct=site-home&amp;mt=8" data-umami-event="app-store-click" data-umami-event-location="home-hero"><img src="/assets/app-store/download-on-the-mac-app-store-${badge.artwork}.svg?v=${appStoreBadge.asset_version}" width="156" height="40" alt="${badge.alt}"${badgeLang}></a>`;
   assert.ok(heroActions.includes(badgeMarkup), `${locale}: App Store badge keeps its Umami event and campaign link`);
   assert.ok(heroActions.indexOf('class="download-action hero-download-action"') < heroActions.indexOf(badgeMarkup), `${locale}: App Store badge follows Download`);
-  const providerSection = page.match(/<section class="provider-section section"[\s\S]*?<\/section>/)?.[0];
+  const providerSection = page.match(/<section class="block block--muted home-providers"[\s\S]*?<\/section>/)?.[0];
   assert.ok(providerSection, `${locale}: missing provider cards section`);
   assert.match(providerSection, new RegExp(`<h2 id="providers-title">${expected.providerTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/h2>`));
   assert.match(providerSection, new RegExp(`<p class="provider-copy">${expected.providerCopy.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/p>`));
-  assert.equal((providerSection.match(/<article class="provider-card"/g) || []).length, 5, `${locale}: one card per provider`);
-  const osmapa = providerSection.match(/<article class="provider-card" data-provider-card="osmapa" hidden>[\s\S]*?<\/article>/)?.[0];
+  assert.equal((providerSection.match(/<article class="provider-card[ "]/g) || []).length, 5, `${locale}: one card per provider`);
+  const osmapa = providerSection.match(/<article class="provider-card[^"]*" data-provider-card="osmapa" hidden>[\s\S]*?<\/article>/)?.[0];
   assert.ok(osmapa, `${locale}: OSMapaPL stays hidden until the catalog lists it as active`);
   assert.ok(osmapa.includes("<h3>OSMapaPL</h3>"));
   assert.match(osmapa, /data-provider-count[^>]* hidden><\/p>/);
-  const maprando = providerSection.match(/<article class="provider-card" data-provider-card="maprando">[\s\S]*?<\/article>/)?.[0];
+  const maprando = providerSection.match(/<article class="provider-card[^"]*" data-provider-card="maprando">[\s\S]*?<\/article>/)?.[0];
   assert.ok(maprando, `${locale}: MapRando card`);
   assert.match(maprando, /class="provider-language-note"><span aria-hidden="true">ⓘ<\/span><span>[^<]+<\/span><\/p>/);
   assert.match(maprando, /data-provider-count[^>]* hidden><\/p>/);
   assert.match(maprando, /OpenStreetMap/);
-  const bbbike = providerSection.match(/<article class="provider-card" data-provider-card="bbbike" hidden>[\s\S]*?<\/article>/)?.[0];
+  const bbbike = providerSection.match(/<article class="provider-card[^"]*" data-provider-card="bbbike" hidden>[\s\S]*?<\/article>/)?.[0];
   assert.ok(bbbike, `${locale}: one BBBike card, hidden until the catalog lists BBBike`);
   assert.ok(bbbike.includes("<h3>BBBike</h3>"));
   assert.doesNotMatch(providerSection, /data-provider-type=/, `${locale}: BBBike variants share one card`);
-  const otm = providerSection.match(/<article class="provider-card" data-provider-card="opentopomap">[\s\S]*?<\/article>/)?.[0];
+  const otm = providerSection.match(/<article class="provider-card[^"]*" data-provider-card="opentopomap">[\s\S]*?<\/article>/)?.[0];
   assert.ok(otm, `${locale}: OpenTopoMap card`);
   assert.match(otm, /<details class="provider-addon" data-provider-addon="contours">\s*<summary class="provider-addon-toggle">/);
   assert.doesNotMatch(otm, /<details[^>]*\bopen(?:\s|=|>)/);
@@ -289,9 +290,7 @@ assert.match(styles, /a:focus-visible,\s*button:focus-visible,\s*summary:focus-v
 assert.match(styles, /\.experience\.section\s*\{[^}]*padding:\s*clamp\(72px, 9vw, 116px\) 0 clamp\(40px, 5vw, 64px\)/s);
 assert.match(styles, /\.product-showcase\s*\{[^}]*padding:\s*clamp\(68px, 7\.5vw, 100px\) 0/s);
 assert.match(styles, /\.product-showcase-panel\s*\{[^}]*border:\s*1px solid var\(--border\)[^}]*border-radius:\s*24px[^}]*background:\s*var\(--surface\)/s);
-assert.match(styles, /\.steps::before\s*\{[^}]*background:\s*var\(--border\)/s);
-assert.match(styles, /\.steps::before\s*\{[^}]*display:\s*none/s);
-assert.match(styles, /\.step,\s*\.step \+ \.step\s*\{[^}]*border-bottom:\s*0/s);
+assert.match(styles, /\.steps > li::before\s*\{[^}]*content:\s*counter\(steps\)/s);
 assert.match(styles, /\.map-feature-tabs\s*\{[^}]*border-radius:\s*14px/s);
 assert.match(styles, /\.map-feature-tab\s*\{[^}]*border-radius:\s*10px/s);
 assert.match(styles, /\.section-heading h2 span\s*\{[^}]*color:\s*var\(--sky\)[^}]*font-family:\s*var\(--font-ui\)/s);

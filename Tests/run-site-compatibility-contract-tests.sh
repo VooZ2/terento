@@ -26,7 +26,7 @@ assert not any(status in js for status in ("TESTING", "TESTED", "SUPPORTED", "VE
 for path in compatibility_files:
     page = path.read_text()
     assert 'id="compatibility-snapshot"' in page, f"{path}: missing checked-in snapshot"
-    assert '<article class="watch-card"' in page, f"{path}: missing server-rendered cards"
+    assert '<article class="watch-card card card--media" data-device-type=' in page, f"{path}: missing server-rendered cards"
     assert 'id="successful-install-filter"' in page, f"{path}: missing successful-install filter"
     assert 'id="compatibility-clear"' in page
     assert 'Not seeing your model' in page or 'Brak Twojego modelu' in page or 'Wenn dein Modell' in page or 'L’absence de votre modèle' in page or 'Pokud zde svůj model' in page or 'Se il tuo modello' in page
@@ -34,7 +34,7 @@ for path in compatibility_files:
     assert 'class="compatibility-status' not in page
     assert 'successful-install-filter' in page
     assert '1–2' in page and '5+' in page
-    assert 'compatibility.js?v=20261105-compatibility-clear-v2' in page
+    assert 'compatibility.js?v=20261119-compatibility-chips-v1' in page
     assert '<noscript class="compatibility-noscript">' in page
 
     assert 'class="watch-install-sources"' in page, f"{path}: missing app/web install split"

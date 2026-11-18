@@ -80,7 +80,7 @@ for (const language of languages) {
   assert.ok(Array.isArray(snapshot.models), `${language}: snapshot models`);
   assert.ok(snapshot.models.every(model => model.successfulInstallations >= 1), `${language}: no zero-success rows`);
   assert.ok(snapshot.models.some(model => model.model === "fēnix 8 · 47 mm, AMOLED"), `${language}: current model row`);
-  assert.match(page, /class="watch-card"/, `${language}: server-rendered cards`);
+  assert.match(page, /class="watch-card card card--media" data-device-type="(?:watch|edge)"/, `${language}: server-rendered cards`);
   assert.equal((page.match(/<p class="watch-install-sources">/g) || []).length, snapshot.models.length, `${language}: every card shows the app/web split`);
   const facts = assertSnapshotFacts(page, snapshot, language);
   localeFacts.push({ language, ...facts });

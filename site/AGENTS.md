@@ -56,3 +56,19 @@ preserve the same meaning in each locale.
 - Initial HTML must contain the current published snapshot; JavaScript may refresh
   it live. The generator/source is canonical; do not hand-edit divergent locale
   HTML, and preserve the same semantics in all six locales.
+
+## Shared page components (site refresh, 2026-11)
+
+- Indexed pages are moving to one component layer in `styles.css`: `.grid`
+  (12 columns, one on phones, `col-4|6|8|12`, `row-2`), `.card`
+  (`--media`, `--link`, `--quiet`), `.page-hero`, `.section-head`,
+  `.trust-strip`, `.steps`, `.callout` and `.cta-band`. Markup helpers live in
+  `scripts/site_components.py`. Reuse them instead of page-specific variants.
+- `.card--link`: the card's one real link covers the card through
+  `.card-link::after`; no nested links and no click handlers.
+- `.cta-band` titles are `<p class="cta-band__title">`, never headings, so
+  the H2 list does not change.
+- Run `python3 scripts/check-site-refresh.py` for any layout change: it
+  compares title, H1, meta description, canonical, hreflang, robots, the H2
+  list, JSON-LD types, Umami events and FAQPage questions against
+  `origin/main` for every page and locale.

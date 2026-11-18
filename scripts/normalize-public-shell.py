@@ -12,11 +12,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SHELL_VERSION = "20261105-copy-command-v1"
 PROVIDER_SCRIPT_VERSION = "20261026-osmapa-v1"
-STYLE_VERSION = "20261118-apple-badge-v1"
+STYLE_VERSION = "20261119-site-refresh-v1"
 IMAGE_VERSION = "20260912-app-screens-v2"
 LANGUAGE_VERSION = "20260926-static-shell-v1"
 COMPATIBILITY_LOCALES_VERSION = "20261106-compatibility-title-v1"
-COMPATIBILITY_VERSION = "20261105-compatibility-clear-v2"
+COMPATIBILITY_VERSION = "20261119-compatibility-chips-v1"
 UMAMI_SCRIPT_VERSION = "20261114-umami-monitoring"
 PAGE_LANGUAGE_VERSION = "20261015-shared-page-language-v3"
 # Footer Web installer link: the public installer (launch 2026-10-29) on the

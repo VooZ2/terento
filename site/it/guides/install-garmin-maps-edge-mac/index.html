@@ -2,7 +2,7 @@
 <html lang="it" data-language="it" data-page="edge-guide">
   <head>
     <script defer src="/site-shell.js?v=20261105-copy-command-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20261118-apple-badge-v1">
+    <link rel="stylesheet" href="/styles.css?v=20261119-site-refresh-v1">
     <script defer src="/reading-state.js?v=20260902-reading-state"></script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -135,7 +135,7 @@
     </header>
     <main id="main-content" class="guide-main">
       <article class="guide-article guide-v2">
-        <header class="guide-intro">
+        <header class="guide-intro page-hero">
           <div class="shell">
             <nav class="guide-v2-switch" aria-label="Scegli il tuo Garmin"><a class="guide-v2-switch-link" href="/it/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="edge-guide-switch">Orologio Garmin</a><a class="guide-v2-switch-link" href="/it/guides/install-garmin-maps-edge-mac/" aria-current="page" data-umami-event="guide-link-click" data-umami-event-location="edge-guide-switch">Garmin Edge</a></nav>
             <h1>Installa mappe gratuite sul tuo Garmin Edge da Mac</h1>
@@ -147,14 +147,13 @@
         <div class="shell guide-content">
           <section class="guide-v2-section" id="before-you-start" aria-labelledby="before-you-start-title">
             <h2 id="before-you-start-title">Cosa ti serve</h2>
-            <ul class="guide-checklist"><li>Mac Apple Silicon con macOS 13 o versioni successive</li><li>Garmin Edge recente con supporto alle mappe</li><li>Cavo USB che supporti il trasferimento dati</li></ul>
-            <p>Dopo il collegamento, Terento controlla l’Edge e ti dice se può installare le mappe. La pagina <a href="/it/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="edge-guide-preflight">Compatibilità</a> elenca i modelli con installazioni riuscite; un modello assente non è per forza non supportato.</p>
+            <div class="card card--quiet guide-needs"><ul class="guide-checklist"><li>Mac Apple Silicon con macOS 13 o versioni successive</li><li>Garmin Edge recente con supporto alle mappe</li><li>Cavo USB che supporti il trasferimento dati</li></ul>
+            <p>Dopo il collegamento, Terento controlla l’Edge e ti dice se può installare le mappe. La pagina <a href="/it/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="edge-guide-preflight">Compatibilità</a> elenca i modelli con installazioni riuscite; un modello assente non è per forza non supportato.</p></div>
           </section>
 
           <section class="guide-v2-section" id="steps" aria-labelledby="steps-title">
             <h2 id="steps-title">Installa una mappa sul tuo Edge</h2>
-            <ol class="guide-timeline"><li class="guide-step guide-v2-step-text">
-              <div class="guide-step-marker" aria-hidden="true">1</div>
+            <ol class="guide-timeline steps"><li class="guide-step guide-v2-step-text">
               <div class="guide-step-content">
                 <div class="guide-step-copy">
                   <h3>Scarica e apri Terento</h3>
@@ -163,7 +162,6 @@
 
               </div>
             </li><li class="guide-step guide-v2-step-text">
-              <div class="guide-step-marker" aria-hidden="true">2</div>
               <div class="guide-step-content">
                 <div class="guide-step-copy">
                   <h3>Collega l’Edge</h3>
@@ -172,7 +170,6 @@
 
               </div>
             </li><li class="guide-step">
-              <div class="guide-step-marker" aria-hidden="true">3</div>
               <div class="guide-step-content">
                 <div class="guide-step-copy">
                   <h3>Scegli una mappa</h3>
@@ -188,7 +185,6 @@
         </figure>
               </div>
             </li><li class="guide-step">
-              <div class="guide-step-marker" aria-hidden="true">4</div>
               <div class="guide-step-content">
                 <div class="guide-step-copy">
                   <h3>Installa</h3>
@@ -208,7 +204,7 @@
 
           <section class="guide-v2-section" id="show-map" aria-labelledby="show-map-title">
             <h2 id="show-map-title">Mostra la mappa sul tuo Edge</h2>
-            <p>Scollega l’Edge, apri le impostazioni delle mappe e verifica che la nuova mappa sia attiva. Se non è nell’elenco, riavvia l’Edge. Se più mappe coprono la stessa zona, disattiva quelle che non vuoi vedere.</p>
+            <div class="callout callout--info"><svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><!-- @license lucide-static v0.460.0 - ISC --><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg><div>Scollega l’Edge, apri le impostazioni delle mappe e verifica che la nuova mappa sia attiva. Se non è nell’elenco, riavvia l’Edge. Se più mappe coprono la stessa zona, disattiva quelle che non vuoi vedere.</div></div>
           </section>
 
           <section class="guide-v2-section" id="troubleshooting" aria-labelledby="troubleshooting-title">
@@ -238,6 +234,7 @@
             <h2 id="older-edge-title">Modelli Edge meno recenti</h2>
             <p>I modelli meno recenti, come Edge 1030 Plus e precedenti, di solito compaiono sul Mac come disco USB. Su questi puoi copiare tu stesso un file di mappa .img compatibile nella cartella Garmin del disco, senza Terento. Terento non è pensato per questi modelli.</p>
           </section>
+          <div class="cta-band guide-cta-band"><div class="cta-band__copy"><p class="cta-band__title">Installa la tua prima mappa</p></div><div class="cta-band__actions"><a class="download-action" href="/it/download/" data-umami-event="download-cta-click" data-umami-event-location="edge-guide-bottom">Scarica</a></div></div>
         </div>
       </article>
     </main>

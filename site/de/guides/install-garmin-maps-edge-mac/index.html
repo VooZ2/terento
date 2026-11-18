@@ -2,7 +2,7 @@
 <html lang="de" data-language="de" data-page="edge-guide">
   <head>
     <script defer src="/site-shell.js?v=20261105-copy-command-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20261118-apple-badge-v1">
+    <link rel="stylesheet" href="/styles.css?v=20261119-site-refresh-v1">
     <script defer src="/reading-state.js?v=20260902-reading-state"></script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -135,7 +135,7 @@
     </header>
     <main id="main-content" class="guide-main">
       <article class="guide-article guide-v2">
-        <header class="guide-intro">
+        <header class="guide-intro page-hero">
           <div class="shell">
             <nav class="guide-v2-switch" aria-label="Wähle dein Garmin"><a class="guide-v2-switch-link" href="/de/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="edge-guide-switch">Garmin-Uhr</a><a class="guide-v2-switch-link" href="/de/guides/install-garmin-maps-edge-mac/" aria-current="page" data-umami-event="guide-link-click" data-umami-event-location="edge-guide-switch">Garmin Edge</a></nav>
             <h1>Kostenlose Karten vom Mac auf deinen Garmin Edge installieren</h1>
@@ -147,14 +147,13 @@
         <div class="shell guide-content">
           <section class="guide-v2-section" id="before-you-start" aria-labelledby="before-you-start-title">
             <h2 id="before-you-start-title">Das brauchst du</h2>
-            <ul class="guide-checklist"><li>Mac mit Apple Silicon und macOS 13 oder neuer</li><li>Neuerer Garmin Edge mit Kartenunterstützung</li><li>USB-Kabel mit Datenübertragung</li></ul>
-            <p>Nach dem Verbinden prüft Terento den Edge und sagt dir, ob es Karten installieren kann. Unter <a href="/de/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="edge-guide-preflight">Kompatibilität</a> stehen die Modelle mit erfolgreichen Installationen; fehlt ein Modell, heißt das nicht unbedingt, dass es nicht unterstützt wird.</p>
+            <div class="card card--quiet guide-needs"><ul class="guide-checklist"><li>Mac mit Apple Silicon und macOS 13 oder neuer</li><li>Neuerer Garmin Edge mit Kartenunterstützung</li><li>USB-Kabel mit Datenübertragung</li></ul>
+            <p>Nach dem Verbinden prüft Terento den Edge und sagt dir, ob es Karten installieren kann. Unter <a href="/de/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="edge-guide-preflight">Kompatibilität</a> stehen die Modelle mit erfolgreichen Installationen; fehlt ein Modell, heißt das nicht unbedingt, dass es nicht unterstützt wird.</p></div>
           </section>
 
           <section class="guide-v2-section" id="steps" aria-labelledby="steps-title">
             <h2 id="steps-title">Eine Karte auf deinem Edge installieren</h2>
-            <ol class="guide-timeline"><li class="guide-step guide-v2-step-text">
-              <div class="guide-step-marker" aria-hidden="true">1</div>
+            <ol class="guide-timeline steps"><li class="guide-step guide-v2-step-text">
               <div class="guide-step-content">
                 <div class="guide-step-copy">
                   <h3>Terento laden und öffnen</h3>
@@ -163,7 +162,6 @@
 
               </div>
             </li><li class="guide-step guide-v2-step-text">
-              <div class="guide-step-marker" aria-hidden="true">2</div>
               <div class="guide-step-content">
                 <div class="guide-step-copy">
                   <h3>Edge verbinden</h3>
@@ -172,7 +170,6 @@
 
               </div>
             </li><li class="guide-step">
-              <div class="guide-step-marker" aria-hidden="true">3</div>
               <div class="guide-step-content">
                 <div class="guide-step-copy">
                   <h3>Karte wählen</h3>
@@ -188,7 +185,6 @@
         </figure>
               </div>
             </li><li class="guide-step">
-              <div class="guide-step-marker" aria-hidden="true">4</div>
               <div class="guide-step-content">
                 <div class="guide-step-copy">
                   <h3>Installieren</h3>
@@ -208,7 +204,7 @@
 
           <section class="guide-v2-section" id="show-map" aria-labelledby="show-map-title">
             <h2 id="show-map-title">Die Karte auf dem Edge anzeigen</h2>
-            <p>Trenne den Edge, öffne seine Karteneinstellungen und prüfe, ob die neue Karte aktiviert ist. Fehlt sie in der Liste, starte den Edge neu. Decken mehrere Karten dasselbe Gebiet ab, schalte die aus, die du nicht sehen möchtest.</p>
+            <div class="callout callout--info"><svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><!-- @license lucide-static v0.460.0 - ISC --><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg><div>Trenne den Edge, öffne seine Karteneinstellungen und prüfe, ob die neue Karte aktiviert ist. Fehlt sie in der Liste, starte den Edge neu. Decken mehrere Karten dasselbe Gebiet ab, schalte die aus, die du nicht sehen möchtest.</div></div>
           </section>
 
           <section class="guide-v2-section" id="troubleshooting" aria-labelledby="troubleshooting-title">
@@ -238,6 +234,7 @@
             <h2 id="older-edge-title">Ältere Edge-Modelle</h2>
             <p>Ältere Modelle wie der Edge 1030 Plus und frühere erscheinen am Mac meist als USB-Laufwerk. Dort kannst du eine kompatible .img-Kartendatei selbst in den Garmin-Ordner auf dem Laufwerk kopieren, ohne Terento. Terento ist nicht für diese Modelle gedacht.</p>
           </section>
+          <div class="cta-band guide-cta-band"><div class="cta-band__copy"><p class="cta-band__title">Installiere deine erste Karte</p></div><div class="cta-band__actions"><a class="download-action" href="/de/download/" data-umami-event="download-cta-click" data-umami-event-location="edge-guide-bottom">Herunterladen</a></div></div>
         </div>
       </article>
     </main>

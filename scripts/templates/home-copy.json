@@ -57,7 +57,12 @@
     "app_body": "Install catalog maps or your own .img map, see what is on your Garmin and update maps when newer releases come out.",
     "app_requirements": "macOS 13 or later on Apple Silicon.",
     "browser_title": "Web installer",
-    "faq_title": "Questions and answers"
+    "faq_title": "Questions and answers",
+    "safety_title": "Safe for your Garmin",
+    "safety_body": "Terento keeps at least 1 GB free on your Garmin and checks every map with a SHA-256 checksum before it counts as installed.",
+    "send_to_computer": "Send this link to your computer",
+    "send_to_computer_subject": "Terento: free maps for your Garmin",
+    "trust_label": "Terento in numbers"
   },
   "de": {
     "hero_download": "Für Mac herunterladen",
@@ -117,7 +122,12 @@
     "app_body": "Installiere Katalogkarten oder deine eigene .img-Karte, sieh, was auf deinem Garmin ist, und aktualisiere Karten, wenn neuere Ausgaben erscheinen.",
     "app_requirements": "macOS 13 oder neuer auf Apple Silicon.",
     "browser_title": "Web-Installer",
-    "faq_title": "Fragen und Antworten"
+    "faq_title": "Fragen und Antworten",
+    "safety_title": "Sicher für deinen Garmin",
+    "safety_body": "Terento lässt auf deinem Garmin mindestens 1 GB frei und prüft jede Karte mit einer SHA-256-Prüfsumme, bevor sie als installiert gilt.",
+    "send_to_computer": "Link an deinen Computer senden",
+    "send_to_computer_subject": "Terento: kostenlose Karten für deinen Garmin",
+    "trust_label": "Terento in Zahlen"
   },
   "fr": {
     "hero_download": "Télécharger pour Mac",
@@ -177,7 +187,12 @@
     "app_body": "Installez les cartes du catalogue ou votre propre carte .img, voyez ce qui se trouve sur votre Garmin et mettez à jour les cartes quand de nouvelles éditions paraissent.",
     "app_requirements": "macOS 13 ou version ultérieure sur Apple Silicon.",
     "browser_title": "Installateur web",
-    "faq_title": "Questions et réponses"
+    "faq_title": "Questions et réponses",
+    "safety_title": "Sans risque pour votre Garmin",
+    "safety_body": "Terento laisse au moins 1 Go libre sur votre Garmin et vérifie chaque carte avec une somme de contrôle SHA-256 avant de la considérer comme installée.",
+    "send_to_computer": "Envoyer le lien vers votre ordinateur",
+    "send_to_computer_subject": "Terento : cartes gratuites pour votre Garmin",
+    "trust_label": "Terento en chiffres"
   },
   "pl": {
     "hero_download": "Pobierz na Maca",
@@ -237,7 +252,12 @@
     "app_body": "Instaluj mapy z katalogu lub własną mapę .img, sprawdzaj, co jest na Garminie, i aktualizuj mapy, gdy pojawią się nowsze wydania.",
     "app_requirements": "macOS 13 lub nowszy na Apple Silicon.",
     "browser_title": "Instalator w przeglądarce",
-    "faq_title": "Pytania i odpowiedzi"
+    "faq_title": "Pytania i odpowiedzi",
+    "safety_title": "Bezpiecznie dla Twojego Garmina",
+    "safety_body": "Terento zostawia na Garminie co najmniej 1 GB wolnego miejsca i sprawdza każdą mapę sumą kontrolną SHA-256, zanim uzna ją za zainstalowaną.",
+    "send_to_computer": "Wyślij link na swój komputer",
+    "send_to_computer_subject": "Terento: darmowe mapy na Twojego Garmina",
+    "trust_label": "Terento w liczbach"
   },
   "cs": {
     "hero_download": "Stáhnout pro Mac",
@@ -297,7 +317,12 @@
     "app_body": "Instalujte mapy z katalogu nebo vlastní mapu .img, podívejte se, co je ve vašem Garminu, a aktualizujte mapy, když vyjdou novější vydání.",
     "app_requirements": "macOS 13 nebo novější na Apple Silicon.",
     "browser_title": "Webový instalátor",
-    "faq_title": "Otázky a odpovědi"
+    "faq_title": "Otázky a odpovědi",
+    "safety_title": "Bezpečné pro váš Garmin",
+    "safety_body": "Terento nechává v Garminu alespoň 1 GB volného místa a každou mapu ověří kontrolním součtem SHA-256, než ji označí za nainstalovanou.",
+    "send_to_computer": "Poslat odkaz do počítače",
+    "send_to_computer_subject": "Terento: mapy zdarma pro váš Garmin",
+    "trust_label": "Terento v číslech"
   },
   "it": {
     "hero_download": "Scarica per Mac",
@@ -357,6 +382,11 @@
     "app_body": "Installa le mappe del catalogo o la tua mappa .img, vedi cosa c’è sul tuo Garmin e aggiorna le mappe quando escono nuove edizioni.",
     "app_requirements": "macOS 13 o successivo su Apple Silicon.",
     "browser_title": "Installer web",
-    "faq_title": "Domande e risposte"
+    "faq_title": "Domande e risposte",
+    "safety_title": "Sicuro per il tuo Garmin",
+    "safety_body": "Terento lascia almeno 1 GB libero sul tuo Garmin e controlla ogni mappa con un checksum SHA-256 prima di considerarla installata.",
+    "send_to_computer": "Invia il link al tuo computer",
+    "send_to_computer_subject": "Terento: mappe gratuite per il tuo Garmin",
+    "trust_label": "Terento in numeri"
   }
 }

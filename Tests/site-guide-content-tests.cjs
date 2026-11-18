@@ -92,7 +92,7 @@ for (const locale of locales) {
   assert.equal((source.match(/<li class="guide-step[" ]/g) || []).length, 4, locale + ": four ordered steps");
   assert.match(source, /<nav class="guide-v2-switch"[^>]*>[\s\S]*?aria-current="page"[^>]*data-umami-event="guide-link-click"/, locale + ": watch/Edge switch marks the current guide");
   assert.doesNotMatch(source, /HowTo|aria-hidden="true">→/, locale + ": no HowTo schema or arrow glyphs");
-  assert.match(source, /<ol class="guide-timeline">/);
+  assert.match(source, /<ol class="guide-timeline steps">/);
   assert.match(source, /<ol class="guide-substeps">/);
   assert.doesNotMatch(source, /class="guide-step-note"/);
   assert.equal([...source.matchAll(/<li><h4>[^<]+<\/h4><p>[^<]+<\/p><\/li>/g)].length, 2, locale + ": two install choices");
@@ -114,7 +114,10 @@ for (const locale of locales) {
   assert.equal(downloadButtons.length, 1, locale + ": one rendered download button");
   for (const button of downloadButtons) assert.equal(button[1].trim(), downloadLabels[locale], locale + ": download button label");
   assert.match(source, /<p class="guide-hero-action"><a class="download-action"[^>]*data-umami-event-location="guide-hero"/, locale + ": download CTA in the guide intro");
-  assert.doesNotMatch(source, /data-umami-event-location="guide-bottom"|guide-bottom-title/);
+  // Site refresh (owner spec 2026-11-18): one closing .cta-band; its title is a <p>, never a heading.
+  assert.equal((source.match(/data-umami-event-location="guide-bottom"/g) || []).length, 1, locale + ": one closing call to action");
+  assert.match(source, /<div class="cta-band guide-cta-band"><div class="cta-band__copy"><p class="cta-band__title">/, locale + ": closing band title is a paragraph");
+  assert.doesNotMatch(source, /guide-bottom-title/);
   assert.match(source, /data-umami-event="compatibility-link-click" data-umami-event-location="guide-preflight"/);
   assert.doesNotMatch(source, /guide-support-actions/);
   assert.doesNotMatch(source, /[?&]utm_/i);
@@ -444,7 +447,7 @@ for (const locale of locales) {
   for (const [, anchor, body] of sections) {
     assert.match(body, new RegExp(`<h3 id="${anchor}-title">[^<]+</h3>`), `${locale}: #${anchor} heading`);
     assert.match(body, /<p>[^<]+/, `${locale}: #${anchor} explanation`);
-    const steps = body.match(/<ol class="troubleshooting-steps">([\s\S]*?)<\/ol>/)?.[1] || "";
+    const steps = body.match(/<ol class="troubleshooting-steps steps steps--compact">([\s\S]*?)<\/ol>/)?.[1] || "";
     assert.ok((steps.match(/<li>/g) || []).length >= 2, `${locale}: #${anchor} short steps`);
   }
   for (const [, target] of source.matchAll(/href="#([^"]+)"/g)) {

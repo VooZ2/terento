@@ -2,7 +2,7 @@
 <html lang="fr" data-language="fr" data-page="edge-guide">
   <head>
     <script defer src="/site-shell.js?v=20261105-copy-command-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20261118-apple-badge-v1">
+    <link rel="stylesheet" href="/styles.css?v=20261119-site-refresh-v1">
     <script defer src="/reading-state.js?v=20260902-reading-state"></script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -135,7 +135,7 @@
     </header>
     <main id="main-content" class="guide-main">
       <article class="guide-article guide-v2">
-        <header class="guide-intro">
+        <header class="guide-intro page-hero">
           <div class="shell">
             <nav class="guide-v2-switch" aria-label="Choisissez votre Garmin"><a class="guide-v2-switch-link" href="/fr/guides/install-garmin-maps-mac/" data-umami-event="guide-link-click" data-umami-event-location="edge-guide-switch">Montre Garmin</a><a class="guide-v2-switch-link" href="/fr/guides/install-garmin-maps-edge-mac/" aria-current="page" data-umami-event="guide-link-click" data-umami-event-location="edge-guide-switch">Garmin Edge</a></nav>
             <h1>Installer des cartes gratuites sur votre Garmin Edge depuis un Mac</h1>
@@ -147,14 +147,13 @@
         <div class="shell guide-content">
           <section class="guide-v2-section" id="before-you-start" aria-labelledby="before-you-start-title">
             <h2 id="before-you-start-title">Ce qu’il vous faut</h2>
-            <ul class="guide-checklist"><li>Mac Apple Silicon avec macOS 13 ou version ultérieure</li><li>Garmin Edge récent prenant en charge les cartes</li><li>Câble USB permettant le transfert de données</li></ul>
-            <p>Après la connexion, Terento vérifie l’Edge et vous indique s’il peut installer des cartes. La page <a href="/fr/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="edge-guide-preflight">Compatibilité</a> liste les modèles avec des installations réussies ; un modèle absent n’est pas forcément incompatible.</p>
+            <div class="card card--quiet guide-needs"><ul class="guide-checklist"><li>Mac Apple Silicon avec macOS 13 ou version ultérieure</li><li>Garmin Edge récent prenant en charge les cartes</li><li>Câble USB permettant le transfert de données</li></ul>
+            <p>Après la connexion, Terento vérifie l’Edge et vous indique s’il peut installer des cartes. La page <a href="/fr/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="edge-guide-preflight">Compatibilité</a> liste les modèles avec des installations réussies ; un modèle absent n’est pas forcément incompatible.</p></div>
           </section>
 
           <section class="guide-v2-section" id="steps" aria-labelledby="steps-title">
             <h2 id="steps-title">Installer une carte sur votre Edge</h2>
-            <ol class="guide-timeline"><li class="guide-step guide-v2-step-text">
-              <div class="guide-step-marker" aria-hidden="true">1</div>
+            <ol class="guide-timeline steps"><li class="guide-step guide-v2-step-text">
               <div class="guide-step-content">
                 <div class="guide-step-copy">
                   <h3>Télécharger et ouvrir Terento</h3>
@@ -163,7 +162,6 @@
 
               </div>
             </li><li class="guide-step guide-v2-step-text">
-              <div class="guide-step-marker" aria-hidden="true">2</div>
               <div class="guide-step-content">
                 <div class="guide-step-copy">
                   <h3>Connecter l’Edge</h3>
@@ -172,7 +170,6 @@
 
               </div>
             </li><li class="guide-step">
-              <div class="guide-step-marker" aria-hidden="true">3</div>
               <div class="guide-step-content">
                 <div class="guide-step-copy">
                   <h3>Choisir une carte</h3>
@@ -188,7 +185,6 @@
         </figure>
               </div>
             </li><li class="guide-step">
-              <div class="guide-step-marker" aria-hidden="true">4</div>
               <div class="guide-step-content">
                 <div class="guide-step-copy">
                   <h3>Installer</h3>
@@ -208,7 +204,7 @@
 
           <section class="guide-v2-section" id="show-map" aria-labelledby="show-map-title">
             <h2 id="show-map-title">Afficher la carte sur votre Edge</h2>
-            <p>Déconnectez l’Edge, ouvrez ses réglages de carte et vérifiez que la nouvelle carte est activée. Si elle n’est pas listée, redémarrez l’Edge. Si plusieurs cartes couvrent la même zone, désactivez celles que vous ne voulez pas voir.</p>
+            <div class="callout callout--info"><svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><!-- @license lucide-static v0.460.0 - ISC --><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg><div>Déconnectez l’Edge, ouvrez ses réglages de carte et vérifiez que la nouvelle carte est activée. Si elle n’est pas listée, redémarrez l’Edge. Si plusieurs cartes couvrent la même zone, désactivez celles que vous ne voulez pas voir.</div></div>
           </section>
 
           <section class="guide-v2-section" id="troubleshooting" aria-labelledby="troubleshooting-title">
@@ -238,6 +234,7 @@
             <h2 id="older-edge-title">Anciens modèles Edge</h2>
             <p>Les modèles plus anciens, comme l’Edge 1030 Plus et les précédents, apparaissent généralement sur un Mac comme un disque USB. Sur ceux-ci, vous pouvez copier vous-même un fichier de carte .img compatible dans le dossier Garmin du disque, sans Terento. Terento n’est pas conçu pour ces modèles.</p>
           </section>
+          <div class="cta-band guide-cta-band"><div class="cta-band__copy"><p class="cta-band__title">Installez votre première carte</p></div><div class="cta-band__actions"><a class="download-action" href="/fr/download/" data-umami-event="download-cta-click" data-umami-event-location="edge-guide-bottom">Télécharger</a></div></div>
         </div>
       </article>
     </main>

@@ -14,7 +14,7 @@ for (const language of ["en", "de", "fr", "pl", "cs", "it"]) {
   const prefix = language === "en" ? "" : `${language}/`;
   const page = read(`site/${prefix}compatibility/index.html`);
   assert.match(page, /id="compatibility-snapshot"/, `${language}: snapshot is checked in`);
-  assert.match(page, /class="watch-card"/, `${language}: cards are server-rendered`);
+  assert.match(page, /class="watch-card card card--media" data-device-type="(?:watch|edge)"/, `${language}: cards are server-rendered`);
   assert.match(page, /id="successful-install-filter"/, `${language}: successful-install filter`);
   assert.equal((page.match(/id="compatibility-clear"/g) || []).length, 1);
   assert.equal((page.match(/id="compatibility-snapshot"/g) || []).length, 1);
@@ -73,7 +73,7 @@ async function checkSnapshotFirstAndRefresh() {
   const context = {
     TerentoCompatibilityData: data,
     TerentoCompatibilityLocale: locales.getLocale("en"),
-    document: { querySelector: node },
+    document: { querySelector: node, querySelectorAll: () => [] },
     window: { location: { hostname: "terento.app" }, setInterval() {} },
     console: { error() {} }, Intl, Date,
     fetch: async () => {

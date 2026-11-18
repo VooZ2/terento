@@ -6,7 +6,9 @@ from __future__ import annotations
 import html
 import json
 import re
+import runpy
 from string import Template
+from urllib.parse import quote
 from pathlib import Path
 
 
@@ -39,6 +41,11 @@ EDGE_IMAGE = ROOT / "site/assets/home/edge-front.webp"
 EMAIL_URL = "mailto:hello@terento.app?subject=Terento%20installation%20issue"
 EMAIL_URL_HTML = EMAIL_URL.replace("@", "&#64;")
 HOME_COPY = json.loads((ROOT / "scripts/templates/home-copy.json").read_text())
+COMPATIBILITY = runpy.run_path(str(ROOT / "scripts/build-compatibility-pages.py"))
+COMPONENTS = runpy.run_path(str(ROOT / "scripts/site_components.py"))
+SITE_URL = "https://terento.app"
+# Map cards: two wide, then three narrow (12-column grid).
+PROVIDER_CARD_COLUMNS = {"freizeitkarte": "col-6", "opentopomap": "col-6"}
 
 PROVIDER_CARD_COPY = {
     "en": {
@@ -595,10 +602,11 @@ def provider_cards_markup(locale: str, copy: dict[str, str]) -> str:
         if provider_id == "osmapa":
             type_attributes = " hidden"
         thumb = CARD_THUMBNAILS.get(provider_id)
-        thumb_markup = f'''<img class="home-card-map" src="/assets/home/maps-{thumb}.webp?v={ASSET_VERSION}" width="640" height="400" alt="{html.escape(copy["card_map_alt"].replace("{name}", provider["name"]))}" loading="lazy" decoding="async">
+        thumb_markup = f'''<div class="card-media"><img src="/assets/home/maps-{thumb}.webp?v={ASSET_VERSION}" width="640" height="400" alt="{html.escape(copy["card_map_alt"].replace("{name}", provider["name"]))}" loading="lazy" decoding="async"></div>
               ''' if thumb else ""
+        columns = PROVIDER_CARD_COLUMNS.get(provider_id, "col-4")
         cards.append(
-            f'''<article class="provider-card" data-provider-card="{catalog_provider_id}"{type_attributes}>
+            f'''<article class="provider-card card card--media {columns}" data-provider-card="{catalog_provider_id}"{type_attributes}>
               {thumb_markup}<div class="provider-card-header">
                 <h3>{provider["name"]}</h3>
                 <p class="provider-count" data-provider-count data-count-template="{provider["count_template"]}"{count_hidden}>{count_markup}</p>
@@ -627,10 +635,10 @@ def app_store_badge(locale: str, css_class: str, campaign: str, location: str) -
 def normalize_home(source: str, path: Path, locale: str) -> str:
     copy = HOME_COPY[locale]
     provider_cards = provider_cards_markup(locale, copy)
-    provider_section = f'''<section class="provider-section section" id="providers" aria-labelledby="providers-title">
+    provider_section = f'''<section class="block block--muted home-providers" id="providers" aria-labelledby="providers-title">
         <div class="shell">
-          <div class="section-heading provider-intro"><h2 id="providers-title">{copy["provider_title"]}</h2><p class="provider-copy">{copy["provider_copy"]}</p></div>
-          <div class="provider-cards" id="provider-cards" data-provider-cards role="region" tabindex="0" aria-label="{copy["provider_list_label"]}">
+          <div class="section-head"><h2 id="providers-title">{copy["provider_title"]}</h2><p class="provider-copy">{copy["provider_copy"]}</p></div>
+          <div class="grid home-provider-grid" id="provider-cards" data-provider-cards>
             {provider_cards}
           </div>
           <p class="provider-compare"><a class="text-link" href="{"/map-styles/" if locale == "en" else f"/{locale}/map-styles/"}" data-umami-event="maps-link-click" data-umami-event-location="home-providers">{PROVIDER_CARD_COPY[locale]["compare_styles"]}</a></p>
@@ -645,6 +653,17 @@ def normalize_home(source: str, path: Path, locale: str) -> str:
     values["hero_map_alt"] = html.escape(copy["hero_map_alt"].replace("{name}", HERO_MAP_STYLES[0][1]))
     values["hero_switch_buttons"] = map_switch(copy["hero_map_alt"], 0, "home-hero")
     values["app_store_hero"] = app_store_badge(locale, "home-app-store", "site-home", "home-hero")
+    prefix = "" if locale == "en" else f"/{locale}"
+    send_body = f"{SITE_URL}{prefix}/"
+    values["send_to_computer_href"] = html.escape(
+        "mailto:?subject=" + quote(copy["send_to_computer_subject"]) + "&body=" + quote(send_body, safe="")
+    )
+    values["safety_icon"] = COMPONENTS["icon"]("shield-check", "card-icon")
+    values["trust_strip_section"] = (
+        '<div class="home-trust"><div class="shell">'
+        + COMPATIBILITY["home_trust_strip"](COMPATIBILITY["load_snapshot"](), locale, copy["trust_label"])
+        + "</div></div>"
+    )
     values["edge_guide_href"] = "/guides/install-garmin-maps-edge-mac/" if locale == "en" else f"/{locale}/guides/install-garmin-maps-edge-mac/"
     # Freizeitkarte first on the Edge so the two devices open on different maps.
     values["edge_visual"] = (

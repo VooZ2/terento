@@ -13,6 +13,7 @@ from __future__ import annotations
 import html
 import json
 import re
+import runpy
 from pathlib import Path
 
 
@@ -30,7 +31,7 @@ IMAGE_VERSION = "20260912-app-screens-v2"
 READING_STATE_VERSION = "20260902-reading-state"
 UMAMI_SCRIPT_VERSION = "20261114-umami-monitoring"
 SHELL_VERSION = "20260905-in-page-language-v1"
-STYLE_VERSION = "20261118-apple-badge-v1"
+STYLE_VERSION = "20261119-site-refresh-v1"
 LANGUAGE_VERSION = "20260905-language-selector-full-name-v1"
 SOCIAL_IMAGE = "/assets/social/terento-og.png"
 EMAIL_ADDRESS = "hello@terento.app"
@@ -247,7 +248,7 @@ def render_troubleshooting(locale: str) -> str:
             items.append(f'''<section class="troubleshooting-item" id="{item["anchor"]}" aria-labelledby="{item["anchor"]}-title">
               <h3 id="{item["anchor"]}-title">{esc(item["title"])}</h3>
               <p>{troubleshooting_text(item["body"])}</p>
-              <ol class="troubleshooting-steps">{steps}</ol>
+              <ol class="troubleshooting-steps steps steps--compact">{steps}</ol>
             </section>''')
         groups.append(f'''<section class="troubleshooting" id="{group["id"]}" aria-labelledby="{group["id"]}-title">
             <div class="guide-section-heading"><h2 id="{group["id"]}-title">{esc(group["title"])}</h2></div>
@@ -291,7 +292,7 @@ def render_troubleshooting(locale: str) -> str:
     <header class="site-header"></header>
     <main id="main-content" class="guide-main">
       <article class="guide-article">
-        <header class="guide-intro">
+        <header class="guide-intro page-hero">
           <div class="shell">
             <h1>{esc(copy["h1"])}</h1>
             <p class="guide-lede">{esc(copy["intro"])}</p>
@@ -303,14 +304,13 @@ def render_troubleshooting(locale: str) -> str:
           <section class="guide-preflight" id="garmin-edge" aria-labelledby="garmin-edge-title">
             <div class="guide-section-heading"><h2 id="garmin-edge-title">{esc(edge["title"])}</h2></div>
             <div class="guide-preflight-copy">
-              <p>{esc(edge["body"])}</p>
-              <a class="text-link" href="{localized_path(locale, EDGE_SLUG)}" data-umami-event="guide-link-click" data-umami-event-location="troubleshooting-edge">{esc(edge["link"])}</a>
+              {COMPONENTS["callout"](f'<p>{esc(edge["body"])}</p><a class="text-link" href="{localized_path(locale, EDGE_SLUG)}" data-umami-event="guide-link-click" data-umami-event-location="troubleshooting-edge">{esc(edge["link"])}</a>')}
             </div>
           </section>
 
           {groups_markup}
 
-          <p class="troubleshooting-guide-link">{esc(copy["guide_eyebrow"])} <a class="text-link" href="{localized_path(locale, GUIDE_SLUG)}" data-umami-event="guide-link-click" data-umami-event-location="troubleshooting-bottom">{esc(copy["guide_link"])}</a></p>
+          {COMPONENTS["cta_band"](esc(copy["guide_eyebrow"]), "", f'<a class="text-link" href="{localized_path(locale, GUIDE_SLUG)}" data-umami-event="guide-link-click" data-umami-event-location="troubleshooting-bottom">{esc(copy["guide_link"])}</a>', "troubleshooting-guide-link")}
         </div>
       </article>
     </main>
@@ -319,6 +319,17 @@ def render_troubleshooting(locale: str) -> str:
 </html>
 '''
 
+
+COMPONENTS = runpy.run_path(str(ROOT / "scripts/site_components.py"))
+# Closing .cta-band title on the install guides (a <p>, never a heading).
+GUIDE_CTA_TITLE = {
+    "en": "Install your first map",
+    "de": "Installiere deine erste Karte",
+    "fr": "Installez votre première carte",
+    "pl": "Zainstaluj pierwszą mapę",
+    "cs": "Nainstalujte svou první mapu",
+    "it": "Installa la tua prima mappa",
+}
 
 GUIDE_LINK_RE = re.compile(r"\[([^\]]+)\]\(([a-z0-9/#-]+)\)")
 # Switch labels between the two Mac app guides (real links, not tabs).
@@ -441,7 +452,6 @@ def render_guide(page: str, locale: str) -> str:
         help_link = f'<p>{troubleshooting_step_link(locale, step["help_anchor"])}</p>' if step.get("help_anchor") else ""
         visual = image_markup(**step["image"]) if step.get("image") else ""
         steps.append(f'''<li class="guide-step{"" if visual else " guide-v2-step-text"}">
-              <div class="guide-step-marker" aria-hidden="true">{index}</div>
               <div class="guide-step-content">
                 <div class="guide-step-copy">
                   <h3>{esc(step["title"])}</h3>
@@ -456,7 +466,7 @@ def render_guide(page: str, locale: str) -> str:
         show = f'''
           <section class="guide-v2-section" id="show-map" aria-labelledby="show-map-title">
             <h2 id="show-map-title">{esc(copy["show_title"])}</h2>
-            <p>{esc(copy["show_body"])}</p>{email}
+            {COMPONENTS["callout"](esc(copy["show_body"]))}{email}
           </section>
 '''
     help_items = "".join(
@@ -479,6 +489,11 @@ def render_guide(page: str, locale: str) -> str:
             <p>{guide_text(locale, item["body"], f"{page}-content")}</p>
           </section>'''
         for item in copy.get("more", ())
+    )
+    cta_band = COMPONENTS["cta_band"](
+        esc(GUIDE_CTA_TITLE[locale]), "",
+        f'<a class="download-action" href="{localized_path(locale, cta_route)}" data-umami-event="{cta_event}" data-umami-event-location="{page}-bottom">{esc(copy["cta"])}</a>',
+        "guide-cta-band",
     )
     needs_note = f'\n            <p>{guide_text(locale, copy["needs_note"], f"{page}-preflight")}</p>' if copy.get("needs_note") else ""
     other = f'\n            <p class="guide-v2-other">{guide_text(locale, copy["other"], f"{page}-other")}</p>' if copy.get("other") else ""
@@ -512,7 +527,7 @@ def render_guide(page: str, locale: str) -> str:
     <header class="site-header"></header>
     <main id="main-content" class="guide-main">
       <article class="guide-article guide-v2">
-        <header class="guide-intro">
+        <header class="guide-intro page-hero">
           <div class="shell">
             {guide_switch(page, locale) if guide["switch"] else ""}
             <h1>{esc(copy["h1"])}</h1>
@@ -524,12 +539,12 @@ def render_guide(page: str, locale: str) -> str:
         <div class="shell guide-content">
           <section class="guide-v2-section" id="before-you-start" aria-labelledby="before-you-start-title">
             <h2 id="before-you-start-title">{esc(copy["needs_title"])}</h2>
-            <ul class="guide-checklist">{"".join(f"<li>{esc(need)}</li>" for need in copy["needs"])}</ul>{needs_note}
+            <div class="card card--quiet guide-needs"><ul class="guide-checklist">{"".join(f"<li>{esc(need)}</li>" for need in copy["needs"])}</ul>{needs_note}</div>
           </section>
 
           <section class="guide-v2-section" id="steps" aria-labelledby="steps-title">
             <h2 id="steps-title">{esc(copy["steps_title"])}</h2>
-            <ol class="guide-timeline">{"".join(steps)}</ol>
+            <ol class="guide-timeline steps">{"".join(steps)}</ol>
           </section>
 {show}
           <section class="guide-v2-section" id="troubleshooting" aria-labelledby="troubleshooting-title">
@@ -538,6 +553,7 @@ def render_guide(page: str, locale: str) -> str:
             </div>{more_link}
           </section>
 {more}
+          {cta_band}
         </div>
       </article>
     </main>
