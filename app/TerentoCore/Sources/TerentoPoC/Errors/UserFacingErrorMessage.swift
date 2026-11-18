@@ -33,7 +33,9 @@ enum MTPConnectionConflictDiagnostics {
             namePrefixes: []
         ),
         // Garmin Express keeps this service running, and holding the device,
-        // after its window is closed.
+        // after its window is closed. Whoever has Garmin Express installed
+        // has it running all the time, so the finding says "is running",
+        // never "is open": there may be no window to see.
         Candidate(
             exactBundleIdentifiers: ["com.garmin.renu.service"],
             exactNames: [],
@@ -211,7 +213,7 @@ enum UserFacingErrorMessage {
         case .failed:
             return ConnectIssueMessage(
                 outcome: .failed,
-                title: "Your device stopped responding",
+                title: "Your device isn't responding",
                 reason: "The device stopped answering while Terento was checking it.",
                 finding: "Your device didn't answer for about 90 seconds",
                 steps: [
@@ -280,7 +282,7 @@ enum UserFacingErrorMessage {
     private static func busyFinding(_ conflicts: [String]) -> String {
         conflicts.isEmpty
             ? "Only one app at a time can use the device"
-            : "\(joinedNames(conflicts)) \(conflicts.count == 1 ? "is" : "are") open"
+            : "\(joinedNames(conflicts)) \(conflicts.count == 1 ? "is" : "are") running"
     }
 
     /// The live message while detection keeps polling. Only BUSY reads the
@@ -355,7 +357,7 @@ enum UserFacingErrorMessage {
             title: "Your device didn't get ready",
             reason: "The connection didn't become ready within 2 minutes.",
             finding: named
-                ? "\(joinedNames(detectedConflicts)) \(detectedConflicts.count == 1 ? "is" : "are") open and may be using the device"
+                ? "\(joinedNames(detectedConflicts)) \(detectedConflicts.count == 1 ? "is" : "are") running and may be using the device"
                 : "Your Garmin is plugged in to this Mac",
             steps: named
                 ? [ConnectStep(systemImage: "xmark.app", text: "Quit \(joinedNames(detectedConflicts))"),

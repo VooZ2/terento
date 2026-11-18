@@ -163,10 +163,14 @@ struct DeviceDetectionPolicy: Sendable {
     static let retryInterval: TimeInterval = 1.2
     static let busyRetryInterval: TimeInterval = 2.0
     static let enumerationSettle: TimeInterval = 0.75
-    /// A Garmin that has just appeared on USB is read at once; the settle is
-    /// spent only when that first read does not connect. `false` restores the
-    /// earlier settle-before-read order.
-    static let readsImmediatelyOnAppearance = true
+    /// Whether a Garmin that has just appeared on USB is read at once, with
+    /// the settle spent only when that first read does not connect. Off: the
+    /// app settles before the first read, as every release so far. The settle
+    /// was added after a real-device test in which a reconnect did not work
+    /// without it, and on most models a failed session open makes the native
+    /// library reset the USB link. Turn this on only after real-device checks
+    /// on more than one model (plug, replug, eject and replug).
+    static let readsImmediatelyOnAppearanceByDefault = false
     /// Repeated session-open failures are treated as a device held elsewhere.
     static let busyAfterAttempts = 2
     /// A Garmin that stays invisible to file transfer this long is shown a USB-mode hint.
@@ -197,14 +201,22 @@ struct DeviceDetectionPolicy: Sendable {
     private var usbPresentSince: TimeInterval?
     private var lastUSBSeen: TimeInterval?
     private var needsSettle = false
+    let readsImmediatelyOnAppearance: Bool
     /// The read in flight is the immediate one made when the Garmin appeared.
     private(set) var isImmediateFirstRead = false
+    /// One immediate read per plug-in: after it, a brief USB drop (for example
+    /// a link reset after a failed open) settles before the next read.
+    private var immediateReadUsed = false
     private var consecutiveNotEnumerated = 0
     private var consecutiveBusy = 0
     private var pendingOutcomes: [DeviceConnectOutcome] = []
 
-    init(now: TimeInterval) {
+    init(
+        now: TimeInterval,
+        readsImmediatelyOnAppearance: Bool = DeviceDetectionPolicy.readsImmediatelyOnAppearanceByDefault
+    ) {
         waitingSince = now
+        self.readsImmediatelyOnAppearance = readsImmediatelyOnAppearance
     }
 
     var connectionClockIsRunning: Bool { connectionDeadline != nil }
@@ -239,6 +251,7 @@ struct DeviceDetectionPolicy: Sendable {
             connectionDeadline = nil
             usbPresentSince = nil
             needsSettle = true
+            immediateReadUsed = false
             consecutiveBusy = 0
             consecutiveNotEnumerated = 0
             if now - waitingSince >= Self.connectionWindow {
@@ -269,9 +282,10 @@ struct DeviceDetectionPolicy: Sendable {
         if let expired = expiredOutcome(now: now) { return .fail(expired) }
         if needsSettle {
             needsSettle = false
-            guard Self.readsImmediatelyOnAppearance else {
+            guard readsImmediatelyOnAppearance, !immediateReadUsed else {
                 return .settleThenRead(Self.enumerationSettle)
             }
+            immediateReadUsed = true
             isImmediateFirstRead = true
         }
         return .read

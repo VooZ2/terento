@@ -699,9 +699,12 @@ map is touched, by the same sampled read-back as fresh installation against the
 validated local artifact. A sampled mismatch, identity change or read failure
 blocks the update as a full mismatch does and is never retried as another check.
 Apps newer than 1.2.1 repeat the post-write sampled read-back once, as the same
-check in a new USB session, only when a sample could not be read
-(`terento_map_verify` -9); a failure after that repeat reports `retryCount` 1 in
-the existing failure context. No API change is needed for it.
+check in a new USB session, when a sample could not be read
+(`terento_map_verify` -9). That repeat and the earlier repeat after a metadata
+lookup that did not find the exact object share one count: at most one repeat
+per written map. A failure after a repeat reports `retryCount` 1 in the
+existing failure context; a repeat that passes is not reported. No API change
+is needed for it.
 The residual limitation is the one of installation and removal: same-name,
 same-size content that differs only outside the sampled regions is not detected.
 The exact rules are in `app/TerentoCore/README.md` (Safety and verification).

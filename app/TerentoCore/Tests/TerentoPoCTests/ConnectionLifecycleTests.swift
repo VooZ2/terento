@@ -183,12 +183,11 @@ private func testClockStartsOnlyWhenGarminAppears() throws {
     _ = policy.usbObserved(count: 0, now: 500)
     try require(policy.takeNewOutcomes() == [.timeoutNoUSB], "the long absent wait was reported before the device appeared")
     let first = policy.usbObserved(count: 1, now: 500)
-    try require(first == .read, "a newly present Garmin is read at once")
-    try require(policy.isImmediateFirstRead, "the read made on appearance is the immediate first read")
+    try require(first == .settleThenRead(DeviceDetectionPolicy.enumerationSettle), "a newly present Garmin settles before libmtp")
+    try require(!policy.isImmediateFirstRead, "the default order has no immediate first read")
     try require(policy.connectionDeadline == 620, "the 2-minute clock starts when the Garmin appears")
     try require(policy.phase == .connecting, "a present Garmin enters the connecting phase")
     try require(policy.usbObserved(count: 1, now: 501) == .read, "later attempts read without another settle")
-    try require(!policy.isImmediateFirstRead, "only the read made on appearance is the immediate one")
     _ = policy.snapshotFailed(.notYetEnumerated, now: 502)
     try require(policy.phase == .connecting, "one not-yet-enumerated attempt is an ordinary retry")
     try require(policy.usbObserved(count: 1, now: 619) == .read, "the clock has not expired yet")
@@ -202,7 +201,7 @@ private func testUnplugStopsClock() throws {
     try require(policy.connectionClockIsRunning, "clock runs with a Garmin present")
     _ = policy.usbObserved(count: 0, now: 50)
     try require(!policy.connectionClockIsRunning && policy.phase == .waitingForWatch, "unplug returns to calm waiting without a clock")
-    try require(policy.usbObserved(count: 1, now: 300) == .read, "a replugged Garmin is read at once")
+    try require(policy.usbObserved(count: 1, now: 300) == .settleThenRead(DeviceDetectionPolicy.enumerationSettle), "replug settles again")
     try require(policy.connectionDeadline == 420, "replug starts a fresh 2-minute clock")
 }
 
@@ -213,7 +212,7 @@ private func testBriefUSBDropKeepsConnecting() throws {
     try require(policy.usbObserved(count: 0, now: 15) == .wait(DeviceDetectionPolicy.presencePollInterval), "a brief USB drop keeps polling")
     try require(policy.phase == .connecting, "a device re-enumerating for a few seconds stays in the connecting state")
     try require(policy.connectionClockIsRunning, "the connection clock keeps running through a brief drop")
-    try require(policy.usbObserved(count: 1, now: 18) == .read, "the returning device is read at once")
+    try require(policy.usbObserved(count: 1, now: 18) == .settleThenRead(DeviceDetectionPolicy.enumerationSettle), "the returning device settles before reading")
     _ = policy.usbObserved(count: 0, now: 19)
     try require(policy.phase == .connecting, "repeated brief drops within the grace window stay calm")
     _ = policy.usbObserved(count: 0, now: 40)
@@ -228,7 +227,7 @@ private func testMultipleDevicesShownImmediately() throws {
     try require(policy.takeNewOutcomes() == [.multipleDevices], "multiple devices is reported once")
     _ = policy.usbObserved(count: 2, now: 2)
     try require(policy.takeNewOutcomes().isEmpty, "multiple devices is not reported twice")
-    try require(policy.usbObserved(count: 1, now: 3) == .read, "one Garmin remaining continues automatically")
+    try require(policy.usbObserved(count: 1, now: 3) == .settleThenRead(DeviceDetectionPolicy.enumerationSettle), "one Garmin remaining continues automatically")
     try require(policy.phase == .connecting, "attention clears when one Garmin remains")
     _ = policy.snapshotFailed(.multipleDevices, now: 4)
     try require(policy.phase == .needsAttention(.multipleDevices), "native multiple-device result is shown immediately")
@@ -266,12 +265,27 @@ private func testStoppedRespondingFailsImmediately() throws {
     try require(policy.takeNewOutcomes() == [.failed], "a stalled read is reported as failed")
 }
 
+private func testImmediateFirstReadIsOffByDefault() throws {
+    try require(!DeviceDetectionPolicy.readsImmediatelyOnAppearanceByDefault,
+                "the settle-before-read order stays the default until real-device checks allow the immediate read")
+    var policy = DeviceDetectionPolicy(now: 0)
+    try require(!policy.readsImmediatelyOnAppearance, "a policy made without the option settles first")
+    _ = policy.usbObserved(count: 0, now: 0)
+    try require(policy.usbObserved(count: 1, now: 5) == .settleThenRead(DeviceDetectionPolicy.enumerationSettle),
+                "an appearing Garmin settles before the first read")
+    try require(policy.snapshotFailed(.notYetEnumerated, now: 6) == .wait(DeviceDetectionPolicy.retryInterval),
+                "the read after the settle is a counted attempt with the ordinary retry interval")
+}
+
 private func testImmediateFirstReadSettlesOnlyAfterFailure() throws {
-    try require(DeviceDetectionPolicy.readsImmediatelyOnAppearance, "a Garmin that appears is read before any settle")
+    func immediatePolicy() -> DeviceDetectionPolicy {
+        DeviceDetectionPolicy(now: 0, readsImmediatelyOnAppearance: true)
+    }
     for failure in [DeviceDetectionErrorClass.notYetEnumerated, .busy, .transient] {
-        var policy = DeviceDetectionPolicy(now: 0)
+        var policy = immediatePolicy()
         _ = policy.usbObserved(count: 0, now: 0)
         try require(policy.usbObserved(count: 1, now: 5) == .read, "the first read follows the appearance at once")
+        try require(policy.isImmediateFirstRead, "the read made on appearance is the immediate first read")
         try require(policy.snapshotFailed(failure, now: 5.1) == .wait(DeviceDetectionPolicy.enumerationSettle),
                     "a failed immediate read is followed by the enumeration settle (\(failure))")
         try require(policy.phase == .connecting && policy.takeNewOutcomes().isEmpty,
@@ -281,8 +295,28 @@ private func testImmediateFirstReadSettlesOnlyAfterFailure() throws {
         try require(!policy.isImmediateFirstRead, "later reads are ordinary attempts")
     }
 
+    // One immediate read per plug-in: a brief drop after it (a link reset
+    // following a failed open) settles before the next read, so a device that
+    // re-enumerates after every failed open is not read at once in a loop.
+    var reset = immediatePolicy()
+    _ = reset.usbObserved(count: 0, now: 0)
+    try require(reset.usbObserved(count: 1, now: 5) == .read, "immediate read on plug-in")
+    _ = reset.snapshotFailed(.busy, now: 5.1)
+    try require(reset.usbObserved(count: 0, now: 6) == .wait(DeviceDetectionPolicy.presencePollInterval), "brief drop keeps polling")
+    try require(reset.usbObserved(count: 1, now: 7) == .settleThenRead(DeviceDetectionPolicy.enumerationSettle),
+                "the Garmin returning from a brief drop settles first")
+    try require(!reset.isImmediateFirstRead, "no second immediate read for the same plug-in")
+    _ = reset.usbObserved(count: 0, now: 8)
+    try require(reset.usbObserved(count: 1, now: 9) == .settleThenRead(DeviceDetectionPolicy.enumerationSettle),
+                "every further brief drop settles first as well")
+    _ = reset.usbObserved(count: 0, now: 10)
+    _ = reset.usbObserved(count: 0, now: 40)
+    try require(reset.phase == .waitingForWatch, "a Garmin gone longer than the grace window was unplugged")
+    try require(reset.usbObserved(count: 1, now: 41) == .read && reset.isImmediateFirstRead,
+                "a new plug-in gets its one immediate read")
+
     // The immediate read does not count toward "busy" or the USB-mode hint.
-    var busy = DeviceDetectionPolicy(now: 0)
+    var busy = immediatePolicy()
     _ = busy.usbObserved(count: 0, now: 0)
     _ = busy.usbObserved(count: 1, now: 1)
     _ = busy.snapshotFailed(.busy, now: 1.1)
@@ -294,11 +328,11 @@ private func testImmediateFirstReadSettlesOnlyAfterFailure() throws {
     try require(busy.phase == .needsAttention(.busy), "two counted open failures are shown as busy")
 
     // A stalled or multiple-device immediate read keeps its existing meaning.
-    var stalled = DeviceDetectionPolicy(now: 0)
+    var stalled = immediatePolicy()
     _ = stalled.usbObserved(count: 0, now: 0)
     _ = stalled.usbObserved(count: 1, now: 1)
     try require(stalled.snapshotFailed(.stoppedResponding, now: 91) == .fail(.failed), "a stalled immediate read still stops detection")
-    var multiple = DeviceDetectionPolicy(now: 0)
+    var multiple = immediatePolicy()
     _ = multiple.usbObserved(count: 0, now: 0)
     _ = multiple.usbObserved(count: 1, now: 1)
     try require(multiple.snapshotFailed(.multipleDevices, now: 1.1) == .wait(DeviceDetectionPolicy.attentionPollInterval),
@@ -306,7 +340,7 @@ private func testImmediateFirstReadSettlesOnlyAfterFailure() throws {
     try require(multiple.phase == .needsAttention(.multipleDevices), "multiple devices are shown after an immediate read")
 
     // A Garmin already present when detection starts was never a settle case.
-    var present = DeviceDetectionPolicy(now: 0)
+    var present = immediatePolicy()
     try require(present.usbObserved(count: 1, now: 0) == .read && !present.isImmediateFirstRead,
                 "a Garmin present from the start is an ordinary counted read")
     try require(present.snapshotFailed(.notYetEnumerated, now: 0.1) == .wait(DeviceDetectionPolicy.retryInterval),
@@ -411,7 +445,8 @@ struct ConnectionLifecycleTests {
             ("busy is shown after a confirming retry", testBusyNeedsConfirmationThenShows),
             ("persistently invisible Garmin gets the USB-mode hint", testNotMTPModeHintAfterRepeatedInvisibility),
             ("stalled read stops detection", testStoppedRespondingFailsImmediately),
-            ("an appearing Garmin is read at once and settles only after a failed read", testImmediateFirstReadSettlesOnlyAfterFailure),
+            ("an appearing Garmin settles before the first read by default", testImmediateFirstReadIsOffByDefault),
+            ("the optional immediate first read settles only after a failed read, once per plug-in", testImmediateFirstReadSettlesOnlyAfterFailure),
             ("connected outcome is reported once", testConnectedReportedOnce)
         ]
 

@@ -233,7 +233,7 @@ struct MapRegionRecommendation: Sendable {
     /// not only the provider whose region id happens to be an ISO code.
     /// - A catalog row with country codes must be a `country` row for exactly
     ///   that one country; subregions and multi-country maps never match.
-    /// - A row without country codes (Freizeitkarte, most OpenTopoMap rows)
+    /// - A row without country codes (as several providers publish them)
     ///   matches only when its displayed name is the country's own name, so
     ///   "Germany North" or "Alps" never match.
     static func isWholeCountryMap(

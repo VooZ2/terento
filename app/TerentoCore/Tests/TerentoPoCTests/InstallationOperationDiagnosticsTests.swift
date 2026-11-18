@@ -398,52 +398,51 @@ private actor DelayedAuthorizationResponse {
 
     /// The one automatic second attempt after a sample read failure (-9).
     static func testSampledReadBackRetryPolicy() throws {
+        typealias Policy = SampledReadBackRetryPolicy
         let readFailure = MTPMapInstallationTransport.verifyError(
             result: -9, message: "The sampled map could not be read.")
         let mismatch = MTPMapInstallationTransport.verifyError(
             result: -11, message: "A sampled map region did not match the validated source")
         let sessionNotOpened = MTPMapInstallationTransport.verifyError(
             result: -8, message: "The Garmin device session could not be opened.")
+        func next(_ error: Error, worker: Bool = false, made: Int = 0, remaining: TimeInterval = 600) -> Policy.Repeat? {
+            Policy.nextRepeat(after: error, isWorker: worker, repeatsMade: made, remainingVerificationTime: remaining)
+        }
         check(readFailure.failureContext?.isSampledReadBackReadFailure == true
-              && SampledReadBackRetryPolicy.shouldRetry(readFailure, isWorker: false, retriesMade: 0),
+              && next(readFailure) == .sampleRead(timeout: 115),
               "a sample that could not be read is repeated once by the parent")
-        check(!SampledReadBackRetryPolicy.shouldRetry(readFailure, isWorker: true, retriesMade: 0),
-              "a worker never repeats the sampled read-back itself")
-        check(!SampledReadBackRetryPolicy.shouldRetry(readFailure, isWorker: false, retriesMade: 1)
-              && SampledReadBackRetryPolicy.maximumRetries == 1,
-              "a second sample read failure is final")
-        check(!SampledReadBackRetryPolicy.shouldRetry(mismatch, isWorker: false, retriesMade: 0)
-              && mismatch.failureContext?.isSampledReadBackReadFailure == false,
+        check(next(readFailure, worker: true) == nil && next(InstallationTransportError.remoteFileMissing, worker: true) == nil,
+              "a worker never repeats the read-back itself")
+        check(next(readFailure, made: 1) == nil && next(InstallationTransportError.remoteFileMissing, made: 1) == nil
+              && Policy.maximumRetries == 1,
+              "after one repeat of either kind every failure is final")
+        check(next(mismatch) == nil && mismatch.failureContext?.isSampledReadBackReadFailure == false,
               "a sampled mismatch is never repeated")
-        check(!SampledReadBackRetryPolicy.shouldRetry(sessionNotOpened, isWorker: false, retriesMade: 0),
-              "an unopened read-back session is not repeated by the sample retry")
+        check(next(sessionNotOpened) == nil, "an unopened read-back session is not repeated")
         let otherBoundary = InstallationTransportError.contextual(
             failure: .operationFailed, message: "write", createdItemID: nil,
             context: InstallationFailureContext(
                 boundary: .write, classificationSource: .native, devicePresence: .unknown,
                 operation: .write, executionMode: .inProcess, resultKind: .nativeError,
                 nativeCodeNamespace: .terentoMapWrite, nativeResultCode: -9))
-        check(!SampledReadBackRetryPolicy.shouldRetry(otherBoundary, isWorker: false, retriesMade: 0)
-              && !SampledReadBackRetryPolicy.shouldRetry(
-                InstallationTransportError.deviceDisconnected("gone", createdItemID: nil),
-                isWorker: false, retriesMade: 0)
-              && !SampledReadBackRetryPolicy.shouldRetry(
-                InstallationTransportError.operationFailed("other", createdItemID: nil),
-                isWorker: false, retriesMade: 0)
-              && !SampledReadBackRetryPolicy.shouldRetry(
-                InstallationTransportError.remoteFileMissing, isWorker: false, retriesMade: 0),
-              "only the read-back result -9 qualifies; a write code, a disconnect or a plain failure does not")
-        check(SampledReadBackRetryPolicy.delay == 5 && SampledReadBackRetryPolicy.totalBudget == 120
-              && SampledReadBackRetryPolicy.retryTimeout(remainingVerificationTime: 600) == 115
-              && SampledReadBackRetryPolicy.retryTimeout(remainingVerificationTime: 60) == 55
-              && SampledReadBackRetryPolicy.retryTimeout(remainingVerificationTime: 5.5) == nil,
+        check(next(otherBoundary) == nil
+              && next(InstallationTransportError.deviceDisconnected("gone", createdItemID: nil)) == nil
+              && next(InstallationTransportError.operationFailed("other", createdItemID: nil)) == nil
+              && next(InstallationTransportError.liveIdentityMismatch) == nil,
+              "only the read-back result -9 and a metadata lookup miss qualify")
+        check(next(InstallationTransportError.remoteFileMissing) == .metadataLookup
+              && next(InstallationTransportError.objectIdentityMismatch) == .metadataLookup
+              && Policy.Repeat.metadataLookup.delay == 1,
+              "a completed metadata lookup that missed the exact object is repeated after 1 s")
+        check(Policy.delay == 5 && Policy.totalBudget == 120
+              && Policy.retryTimeout(remainingVerificationTime: 600) == 115
+              && Policy.retryTimeout(remainingVerificationTime: 60) == 55
+              && Policy.retryTimeout(remainingVerificationTime: 5.5) == nil
+              && next(readFailure, remaining: 5.5) == nil,
               "the wait and the second attempt stay within two minutes and within the verification budget")
-        let afterRetry = SampledReadBackRetryPolicy.failureAfterRetry(readFailure, retriesMade: 1)
-            as? InstallationTransportError
-        let unchanged = SampledReadBackRetryPolicy.failureAfterRetry(readFailure, retriesMade: 0)
-            as? InstallationTransportError
-        let mismatchAfterRetry = SampledReadBackRetryPolicy.failureAfterRetry(mismatch, retriesMade: 1)
-            as? InstallationTransportError
+        let afterRetry = Policy.failureAfterRetry(readFailure, retriesMade: 1) as? InstallationTransportError
+        let unchanged = Policy.failureAfterRetry(readFailure, retriesMade: 0) as? InstallationTransportError
+        let mismatchAfterRetry = Policy.failureAfterRetry(mismatch, retriesMade: 1) as? InstallationTransportError
         check(afterRetry?.failureContext?.retryCount == 1
               && afterRetry?.failureContext?.nativeResultCode == -9
               && afterRetry?.failureContext?.nativeCodeNamespace == .terentoMapVerify
@@ -452,10 +451,110 @@ private actor DelayedAuthorizationResponse {
               && mismatchAfterRetry?.failureContext?.nativeResultCode == -11
               && mismatchAfterRetry?.failureContext?.retryCount == 1,
               "a failure after the second attempt keeps its own result and records the retry")
-        check((SampledReadBackRetryPolicy.failureAfterRetry(
+        check((Policy.failureAfterRetry(
                 InstallationTransportError.remoteFileMissing, retriesMade: 1) as? InstallationTransportError)
               == .remoteFileMissing,
               "a failure without a context is reported unchanged after the second attempt")
+
+        // The loop itself, with a scripted device and a manual clock.
+        final class Script {
+            var outcomes: [Result<String, InstallationTransportError>]
+            var clock: TimeInterval = 1_000
+            var sleeps: [TimeInterval] = []
+            var budgets: [TimeInterval] = []
+            var events: [String] = []
+            /// Seconds one attempt takes on the manual clock.
+            var attemptDuration: TimeInterval = 2
+            init(_ outcomes: [Result<String, InstallationTransportError>]) { self.outcomes = outcomes }
+            var sessions: Int { budgets.count }
+            func run(worker: Bool = false) -> Result<String, Error> {
+                Result {
+                    try SampledReadBackRetryPolicy.run(
+                        isWorker: worker,
+                        now: { self.clock },
+                        sleep: { self.sleeps.append($0); self.clock += $0 },
+                        trace: { event, _ in self.events.append(event) }
+                    ) { remaining in
+                        self.budgets.append(remaining)
+                        self.clock += self.attemptDuration
+                        return try self.outcomes.removeFirst().get()
+                    }
+                }
+            }
+        }
+        func failure(_ result: Result<String, Error>) -> InstallationTransportError? {
+            if case .failure(let error) = result { return error as? InstallationTransportError }
+            return nil
+        }
+        func value(_ result: Result<String, Error>) -> String? { try? result.get() }
+
+        let firstTry = Script([.success("ok")])
+        check(value(firstTry.run()) == "ok" && firstTry.sessions == 1 && firstTry.sleeps.isEmpty
+              && firstTry.budgets == [600] && !firstTry.events.contains("readback_repeat_succeeded"),
+              "a read-back that passes uses one session, no wait and the whole verification budget")
+
+        let recovered = Script([.failure(readFailure), .success("ok")])
+        check(value(recovered.run()) == "ok" && recovered.sessions == 2 && recovered.sleeps == [5]
+              && recovered.budgets == [600, 115]
+              && recovered.events == ["readback_attempt", "readback_failed", "readback_retry",
+                                      "readback_attempt", "readback_repeat_succeeded"],
+              "a sample read failure waits 5 s, repeats once within 120 s and records a repeat that passed")
+
+        let twice = Script([.failure(readFailure), .failure(readFailure), .success("never")])
+        let twiceFailure = failure(twice.run())
+        check(twice.sessions == 2 && twice.sleeps == [5] && twice.outcomes.count == 1
+              && twiceFailure?.failureContext?.nativeResultCode == -9
+              && twiceFailure?.failureContext?.retryCount == 1,
+              "a second sample read failure is final after two sessions and reports one retry")
+
+        let thenMismatch = Script([.failure(readFailure), .failure(mismatch)])
+        let thenMismatchFailure = failure(thenMismatch.run())
+        check(thenMismatch.sessions == 2 && thenMismatchFailure?.failureContext?.nativeResultCode == -11
+              && thenMismatchFailure?.failureContext?.retryCount == 1,
+              "a mismatch found by the repeat blocks as a mismatch")
+
+        let mismatchFirst = Script([.failure(mismatch), .success("never")])
+        check(failure(mismatchFirst.run())?.failureContext?.nativeResultCode == -11
+              && mismatchFirst.sessions == 1 && mismatchFirst.sleeps.isEmpty
+              && failure(Script([.failure(mismatch)]).run())?.failureContext?.retryCount == nil,
+              "a mismatch is never repeated")
+
+        let unopened = Script([.failure(sessionNotOpened), .success("never")])
+        check(failure(unopened.run())?.failureContext?.nativeResultCode == -8 && unopened.sessions == 1,
+              "an unopened session is never repeated")
+
+        let lookupThenRead = Script([.failure(.remoteFileMissing), .failure(readFailure), .success("never")])
+        let lookupThenReadFailure = failure(lookupThenRead.run())
+        check(lookupThenRead.sessions == 2 && lookupThenRead.sleeps == [1]
+              && lookupThenReadFailure?.failureContext?.nativeResultCode == -9
+              && lookupThenReadFailure?.failureContext?.retryCount == 1,
+              "a metadata repeat followed by a sample read failure ends after two sessions, not three")
+
+        let readThenLookup = Script([.failure(readFailure), .failure(.remoteFileMissing), .success("never")])
+        check(failure(readThenLookup.run()) == .remoteFileMissing && readThenLookup.sessions == 2
+              && readThenLookup.sleeps == [5],
+              "a sample repeat followed by a metadata miss ends after two sessions, not three")
+
+        let lookupRecovered = Script([.failure(.objectIdentityMismatch), .success("ok")])
+        check(value(lookupRecovered.run()) == "ok" && lookupRecovered.sessions == 2 && lookupRecovered.sleeps == [1]
+              && lookupRecovered.budgets == [600, 597],
+              "the metadata repeat keeps the original verification budget")
+
+        let worker = Script([.failure(readFailure), .success("never")])
+        let workerFailure = failure(worker.run(worker: true))
+        check(worker.sessions == 1 && worker.sleeps.isEmpty && workerFailure == readFailure,
+              "inside the worker a sample read failure is returned unchanged and never repeated")
+
+        let late = Script([.failure(readFailure), .success("never")])
+        late.attemptDuration = 596
+        check(failure(late.run()) == readFailure && late.sessions == 1 && late.sleeps.isEmpty,
+              "no repeat starts when the verification budget cannot hold the wait and an attempt")
+
+        let slowRepeat = Script([.failure(readFailure), .failure(readFailure)])
+        slowRepeat.attemptDuration = 100
+        _ = slowRepeat.run()
+        check(slowRepeat.budgets == [600, 115] && slowRepeat.clock == 1_000 + 100 + 5 + 100,
+              "the repeat is told its own bound: the wait and the repeat end within 120 s of the failure")
 
         final class Recorder: @unchecked Sendable { var values: [UInt64] = [] }
         let recorder = Recorder()
@@ -471,11 +570,10 @@ private actor DelayedAuthorizationResponse {
                 .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
                 .appendingPathComponent("Sources/TerentoPoC/Installation/MTPMapInstallationTransport.swift"),
             encoding: .utf8)
-        check(transportSource.contains("SampledReadBackRetryPolicy.shouldRetry(")
-              && transportSource.contains("error, isWorker: isWorker, retriesMade: readFailureRetriesMade")
-              && transportSource.contains("SampledReadBackRetryPolicy.failureAfterRetry(error, retriesMade: readFailureRetriesMade)")
-              && transportSource.contains("verificationDeadline = now + delay + retryTimeout"),
-              "the read-back transport applies the bounded single retry")
+        check(transportSource.contains("return try SampledReadBackRetryPolicy.run(")
+              && !transportSource.contains("readFailureRetriesMade")
+              && !transportSource.contains("metadataRetriesMade"),
+              "the read-back transport has no repeat count of its own")
     }
 
     @MainActor static func testEngineContourPreflightAttribution() async throws {

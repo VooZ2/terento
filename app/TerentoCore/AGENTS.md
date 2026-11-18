@@ -140,13 +140,18 @@ the behavior:
   filename, a size or an unverified copy.
 - The new map in an Update is verified with the fresh-install sampled
   read-back (`SampledReadBackPlan`) before the old map is touched.
-- The post-write sampled read-back is repeated at most once, by the parent
-  only, in a new worker and USB session, and only for the exact "sample could
-  not be read" result (`terento_map_verify` -9): 5-second wait, 120-second
-  bound for the wait plus the repeat (`SampledReadBackRetryPolicy`). It is the
-  same sampled check of the same regions against the same validated artifact.
-  Never repeat a mismatch, never switch the method, and never add a write,
-  delete or reset to the repeat.
+- The post-write sampled read-back is repeated at most once in total, by the
+  parent only, in a new worker and USB session: after the exact "sample could
+  not be read" result (`terento_map_verify` -9; 5-second wait, 120-second
+  bound for the wait plus the repeat) or after a completed metadata lookup
+  that did not find the exact object (1-second wait). The two reasons share
+  one count (`SampledReadBackRetryPolicy`), so a read-back never uses more
+  than two USB sessions. It is the same sampled check of the same regions
+  against the same validated artifact. Never repeat a mismatch, never switch
+  the method, and never add a write, a delete or a reset of its own to the
+  repeat. Opening the repeat's session is the ordinary native open, which may
+  reset the USB link on models other than USB product `51b8`; do not describe
+  the repeat as free of resets.
 - The residual limit (a same-name, same-size map that differs only outside the
   compared regions) is documented and accepted; do not widen it.
 - Changes here need the native fake-libmtp runners

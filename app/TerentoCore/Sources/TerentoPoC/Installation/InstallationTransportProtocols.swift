@@ -209,24 +209,83 @@ extension InstallationFailureContext {
 /// sampled read-back once, in a new worker process and so a new USB session.
 /// The method, the planned regions and the validated local artifact do not
 /// change; a mismatch, a changed identity or a second failure blocks exactly
-/// as before. No write, delete, reset or other device mutation is part of it.
+/// as before. The repeat only reads: it sends no write and no delete. Opening
+/// its session is the ordinary native open, which may reset the USB link on
+/// some models exactly as every other session open does.
+///
+/// The earlier single repeat after a completed metadata lookup that did not
+/// find the exact object shares the same count: a read-back makes at most ONE
+/// repeat in total, so at most two USB sessions per written map.
 enum SampledReadBackRetryPolicy {
     /// Wait before the second attempt, so the device can settle.
     static let delay: TimeInterval = 5
     /// Upper bound for the wait plus the second attempt.
     static let totalBudget: TimeInterval = 120
-    /// At most this many second attempts per written map.
+    /// At most this many repeats per written map, whatever their reason.
     static let maximumRetries = 1
+    /// Wait before repeating a metadata lookup that did not find the object.
+    static let metadataLookupDelay: TimeInterval = 1
+    /// Upper bound of the whole read-back, as before the repeat existed.
+    static let verificationBudget: TimeInterval = 600
 
-    /// Only the parent process retries, only once, and only the exact
-    /// "sample could not be read" result. A worker never retries, and a
-    /// mismatch (-11) or an unopened session (-8) is never retried here.
-    static func shouldRetry(_ error: Error, isWorker: Bool, retriesMade: Int) -> Bool {
-        guard !isWorker, retriesMade < maximumRetries,
-              case let InstallationTransportError.contextual(_, _, _, context) = error else {
+    enum Repeat: Equatable, Sendable {
+        /// A completed metadata lookup did not find the exact written object.
+        case metadataLookup
+        /// A sample could not be read; `timeout` bounds the attempt after the wait.
+        case sampleRead(timeout: TimeInterval)
+
+        var delay: TimeInterval {
+            switch self {
+            case .metadataLookup: return SampledReadBackRetryPolicy.metadataLookupDelay
+            case .sampleRead: return SampledReadBackRetryPolicy.delay
+            }
+        }
+
+        var traceReason: String {
+            switch self {
+            case .metadataLookup: return "metadata_lookup"
+            case .sampleRead: return "sample_read_failed"
+            }
+        }
+    }
+
+    /// A completed lookup that did not find the exact object, or found another.
+    static func isMetadataLookupMiss(_ error: Error) -> Bool {
+        guard let error = error as? InstallationTransportError else { return false }
+        switch error {
+        case .remoteFileMissing, .objectIdentityMismatch:
+            return true
+        case .contextual, .deviceDisconnected, .operationFailed, .targetAlreadyExists,
+             .unsupportedDevice, .liveIdentityMismatch:
+            return false
+        }
+    }
+
+    /// The exact "sample could not be read" result of the read-back.
+    static func isSampleReadFailure(_ error: Error) -> Bool {
+        guard case let InstallationTransportError.contextual(_, _, _, context) = error else {
             return false
         }
         return context.isSampledReadBackReadFailure
+    }
+
+    /// The repeat to make after `error`, or nil when the failure is final.
+    /// Only the parent process repeats, and only once in total. A worker
+    /// never repeats, and a mismatch (-11), an unopened session (-8), a
+    /// disconnect or any other failure is never repeated.
+    static func nextRepeat(
+        after error: Error,
+        isWorker: Bool,
+        repeatsMade: Int,
+        remainingVerificationTime: TimeInterval
+    ) -> Repeat? {
+        guard !isWorker, repeatsMade < maximumRetries else { return nil }
+        if isMetadataLookupMiss(error) { return .metadataLookup }
+        if isSampleReadFailure(error),
+           let timeout = retryTimeout(remainingVerificationTime: remainingVerificationTime) {
+            return .sampleRead(timeout: timeout)
+        }
+        return nil
     }
 
     /// Seconds the second attempt may take after the wait, or nil when the
@@ -247,6 +306,75 @@ enum SampledReadBackRetryPolicy {
             failure: failure, message: message, createdItemID: createdItemID,
             context: context.retried(UInt8(clamping: retriesMade))
         )
+    }
+
+    /// The whole read-back loop: the first attempt and at most one repeat.
+    /// `attempt` performs one complete read-back in its own USB session and
+    /// receives the seconds it may take. The clock, the wait and the trace are
+    /// supplied by the caller, so the loop itself performs no device I/O.
+    static func run<Value>(
+        isWorker: Bool,
+        now: () -> TimeInterval,
+        sleep: (TimeInterval) -> Void,
+        trace: (_ event: String, _ details: String) -> Void,
+        attempt: (_ remainingTime: TimeInterval) throws -> Value
+    ) throws -> Value {
+        var deadline = now() + verificationBudget
+        var repeatsMade = 0
+        var madeRepeat: Repeat?
+        var attemptNumber = 0
+        var delay: TimeInterval = 0
+        while true {
+            attemptNumber += 1
+            trace("readback_attempt", "worker=\(isWorker) attempt=\(attemptNumber) delay=\(delay)")
+            if delay > 0 { sleep(delay) }
+
+            let remaining = deadline - now()
+            guard remaining > 0 else {
+                throw InstallationTransportError.operationFailed(
+                    "Map verification exceeded its total time budget.", createdItemID: nil)
+            }
+            do {
+                let result = try attempt(remaining)
+                if let madeRepeat {
+                    // Local record that the repeat was what completed the check.
+                    trace("readback_repeat_succeeded", "reason=\(madeRepeat.traceReason) attempt=\(attemptNumber)")
+                }
+                return result
+            } catch {
+                trace("readback_failed", "worker=\(isWorker) attempt=\(attemptNumber) error=\(traceName(of: error))")
+                let failedAt = now()
+                guard let next = nextRepeat(
+                    after: error, isWorker: isWorker, repeatsMade: repeatsMade,
+                    remainingVerificationTime: deadline - failedAt
+                ) else {
+                    throw failureAfterRetry(error, retriesMade: repeatsMade)
+                }
+                repeatsMade += 1
+                madeRepeat = next
+                delay = next.delay
+                if case .sampleRead(let timeout) = next {
+                    // From here the wait and the repeat share one bound.
+                    deadline = failedAt + delay + timeout
+                }
+                trace("readback_retry", "reason=\(next.traceReason) delay=\(delay)")
+            }
+        }
+    }
+
+    static func traceName(of error: Error) -> String {
+        guard let error = error as? InstallationTransportError else { return "other" }
+        switch error {
+        case .contextual:
+            return error.isConfirmedDeviceDisconnected ? "deviceDisconnected" : "operationFailed"
+        case .deviceDisconnected: return "deviceDisconnected"
+        case .operationFailed: return "operationFailed"
+        case .remoteFileMissing: return "remoteFileMissing"
+        case .objectIdentityMismatch: return "objectIdentityMismatch"
+        case .targetAlreadyExists: return "targetAlreadyExists"
+        case .unsupportedDevice: return "unsupportedDevice"
+        case .liveIdentityMismatch: return "liveIdentityMismatch"
+        }
     }
 }
 

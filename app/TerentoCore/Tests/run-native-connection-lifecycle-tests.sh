@@ -74,10 +74,11 @@ if ! grep -Fq 'detectionPolicy.usbObserved(count: usbCount' "$device_engine" \
 fi
 
 device_policy="$project_root/Sources/TerentoPoC/DeviceEngine/DeviceStateManager.swift"
-if ! grep -Fq 'static let readsImmediatelyOnAppearance = true' "$device_policy" \
+if ! grep -Fq 'static let readsImmediatelyOnAppearanceByDefault = false' "$device_policy" \
     || ! grep -Fq 'return .wait(Self.enumerationSettle)' "$device_policy" \
-    || ! grep -Fq 'let isImmediateFirstRead = detectionPolicy.isImmediateFirstRead' "$device_engine"; then
-    print -u2 "FAIL: an appearing Garmin is not read at once with the settle kept for a failed first read"
+    || ! grep -Fq 'let isImmediateFirstRead = detectionPolicy.isImmediateFirstRead' "$device_engine" \
+    || grep -Fq 'readsImmediatelyOnAppearance: true' "$device_engine"; then
+    print -u2 "FAIL: the immediate first read is not off by default with the settle-first order kept"
     exit 1
 fi
 
@@ -107,6 +108,6 @@ if ! grep -Fq 'startReplugWatch()' "$device_engine" \
 fi
 
 print "PASS: reconnect waits for USB presence before reopening MTP"
-print "PASS: an appearing Garmin is read at once; the settle follows only a failed first read"
+print "PASS: the immediate first read is off by default; the settle-first order is unchanged"
 print "PASS: USB change notifications only wake the presence poll, which stays as the fallback"
 print "PASS: a failed check restarts discovery after a physical replug"

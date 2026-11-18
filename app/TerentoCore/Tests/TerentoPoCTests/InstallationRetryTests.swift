@@ -117,15 +117,20 @@ struct InstallationRetryTests {
         let package = MapPackage(id: "bbbike-asia-china", providerId: "bbbike", regionId: "ASIA-CHINA-BBBIKE-LATIN1",
             name: "China", version: MapVersion(year: 2026, month: 5)!, sizeBytes: 100, sourceURL: nil,
             releaseDate: nil, identifier: nil)
+        // The store accepts a terminal event only for a download whose start
+        // it holds, as the acquisition observer records it in the app.
         func start() -> MapStatisticsEvent {
-            MapStatisticsEvent(operationId: UUID(), package: package, eventType: .downloadStarted, outcome: .unknown,
-                acquisitionId: UUID(), acquisitionPurpose: .install, componentKind: .main)
+            let event = MapStatisticsEvent(operationId: UUID(), package: package, eventType: .downloadStarted,
+                outcome: .unknown, acquisitionId: UUID(), acquisitionPurpose: .install, componentKind: .main)
+            stats.record(event)
+            return event
         }
         func terminals(_ acquisition: MapStatisticsEvent) -> [MapStatisticsEventType] {
             var seen = Set<UUID>()
             return (uploader.events + store.pendingEvents())
                 .filter { $0.acquisitionId == acquisition.acquisitionId && seen.insert($0.id).inserted }
                 .map(\.eventType)
+                .filter { $0 != .downloadStarted }
         }
 
         let cancelled = start()

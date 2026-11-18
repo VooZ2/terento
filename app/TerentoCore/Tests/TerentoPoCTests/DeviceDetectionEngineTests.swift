@@ -211,7 +211,7 @@ struct DeviceDetectionEngineTests {
         engine.setPresenceMonitoringEnabled(false)
         engine.readDevice()
         check(await waitUntil(3) { engine.state == .failed }, "a bounded read deadline ends detection")
-        check(engine.connectFailure?.title == "Your device stopped responding"
+        check(engine.connectFailure?.title == "Your device isn't responding"
                 && engine.connectFailure?.steps.first?.text == "Unplug the device and wait 5 seconds"
                 && engine.userErrorMessage == engine.connectFailure?.text,
               "a stalled device shows the unplug-and-replug recovery message")

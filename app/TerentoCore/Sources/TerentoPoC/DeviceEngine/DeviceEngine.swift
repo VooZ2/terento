@@ -952,8 +952,12 @@ enum DeviceDetectionErrorClassifier {
 final class GarminUSBChangeNotifier: @unchecked Sendable {
     static let shared: GarminUSBChangeNotifier? = GarminUSBChangeNotifier()
     static let garminVendorID = 0x091E
+    /// Lives as long as the process. The notification callback receives a
+    /// pointer to it, so it must never be released, even when registration
+    /// fails halfway.
+    private static let processSignal = USBChangeSignal()
 
-    let signal = USBChangeSignal()
+    var signal: USBChangeSignal { Self.processSignal }
     private let port: IONotificationPortRef
     private let queue = DispatchQueue(label: "app.terento.usb-change-notifications")
     private var iterators: [io_iterator_t] = []
@@ -962,7 +966,7 @@ final class GarminUSBChangeNotifier: @unchecked Sendable {
         guard let port = IONotificationPortCreate(kIOMainPortDefault) else { return nil }
         self.port = port
         IONotificationPortSetDispatchQueue(port, queue)
-        let context = Unmanaged.passUnretained(signal).toOpaque()
+        let context = Unmanaged.passUnretained(Self.processSignal).toOpaque()
         for notificationType in [kIOFirstMatchNotification, kIOTerminatedNotification] {
             var iterator: io_iterator_t = 0
             let result = IOServiceAddMatchingNotification(
@@ -976,7 +980,14 @@ final class GarminUSBChangeNotifier: @unchecked Sendable {
                 context,
                 &iterator
             )
-            guard result == KERN_SUCCESS else { return nil }
+            guard result == KERN_SUCCESS else {
+                // All or nothing: remove what was registered, so no
+                // notification outlives this failed set-up.
+                for registered in iterators { IOObjectRelease(registered) }
+                iterators.removeAll()
+                IONotificationPortDestroy(port)
+                return nil
+            }
             // Draining the iterator arms the notification.
             _ = Self.drain(iterator)
             iterators.append(iterator)

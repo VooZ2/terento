@@ -51,20 +51,30 @@ macOS device-matching notifications (`GarminUSBChangeNotifier`, Garmin vendor
 USB probe runs sooner; the 0.5 s presence poll stays as the fallback, and is the
 only path when registration fails or a test transport is used. The notifier
 lives in the app process, opens no device and installs no background service.
-A Garmin that has just appeared is read at once. If that first read does not
-connect (not yet enumerated, session not opened, transient), it is not counted
-as an attempt, shows nothing, and the 0.75 s enumeration settle follows before
-the ordinary retries; a stalled read or more than one Garmin keeps its existing
-meaning. `DeviceDetectionPolicy.readsImmediatelyOnAppearance = false` restores
-the settle-before-read order. Both changes need a real-device check on each
-release candidate (plug, replug, replug during detection, Garmin Express
-running) before release.
+A Garmin that appears still settles 0.75 s before its first read, as in every
+release so far; with a notification that read starts no earlier after the
+appearance than before. The notifications need a real-device check on each
+release candidate (plug, replug, replug during detection, eject and replug,
+Garmin Express running) before release.
+
+Reading an appearing Garmin at once, with the settle spent only after a failed
+first read, exists in `DeviceDetectionPolicy` but is off
+(`readsImmediatelyOnAppearanceByDefault = false`), and `DeviceEngine` does not
+turn it on. The settle was added after a real-device test in which a reconnect
+did not work without it. A failed session open makes the native library reset
+the USB link on every model except USB product `51b8`, and a read that stalls
+ends detection only after the 90-second snapshot bound, so the gain of under a
+second does not justify it untested. When on, the option makes one immediate
+read per plug-in: a failed one (not yet enumerated, session not opened,
+transient) is not counted as an attempt and shows nothing, and after it every
+return from a brief USB drop settles first. Turn it on only after real-device
+checks on more than one model, including a model other than `51b8`.
 
 The Connect page says why the watch is not connected and what to do
 (`Errors/UserFacingErrorMessage.swift`). Every problem follows the calm pattern
 of the waiting page: an outline status icon, a title of one heading line, one
 short sentence saying what is wrong, then one light box. The box leads with
-what Terento found (for example "Android File Transfer is open"), lists the
+what Terento found (for example "Android File Transfer is running"), lists the
 steps as icon bullets, links the cause's section of the troubleshooting guide
 and ends with a note on what Terento does meanwhile. The illustration has two
 sizes that depend only on the window height: larger without a help box,
@@ -78,7 +88,7 @@ showing up?" box (data cable, directly into the Mac rather than a USB hub,
 another port, unlock, restart, quit Garmin Express). A final failure is titled
 by its cause ("Your device didn't get ready", "Your device lost connection" when
 the watch left USB just before the window ended, "Your device may be in use",
-"Not ready for file transfer" or "Your device stopped responding"); its last
+"Not ready for file transfer" or "Your device isn't responding"); its last
 step is to reconnect the watch or click Try again, and its note says Terento
 checks again only then. USB Mode is named as in the guide ("If your watch has
 USB Mode (usually under Settings › System), choose MTP"). A busy watch, and a
@@ -388,14 +398,28 @@ read (`terento_map_verify` -9), the parent waits 5 seconds and runs the same
 sampled read-back once more in a new bounded worker, and therefore a new USB
 session (`SampledReadBackRetryPolicy`). The wait and the second attempt share a
 120-second bound inside the 600-second verification limit. The method, the
-planned regions and the validated local artifact are unchanged; nothing is
-written, deleted or reset in between. A match on the second attempt is the
-normal verified result. A mismatch (-11), an unopened session (-8), a changed
-identity or a second read failure ends the verification exactly as before, and
-the reported failure context then carries `retryCount` 1. Workers never repeat
-a check themselves, and no other USB failure is repeated. This applies to fresh
-installation and to the new map of an Update, which share the read-back.
-Real-device confirmation of the repeat is required before release.
+planned regions and the validated local artifact are unchanged, and the repeat
+sends no write and no delete. Its session is opened by the ordinary native
+open, which re-checks the device and the exact object and, on every model
+except USB product `51b8`, may reset the USB link when the first open attempt
+fails, as any other session open does; the repeat adds no reset of its own.
+A match on the second attempt is the normal verified result. A mismatch (-11),
+an unopened session (-8), a changed identity or a second read failure ends the
+verification exactly as before. Workers never repeat a check themselves, and no
+other USB failure is repeated.
+
+A read-back makes at most one repeat in total, so at most two USB sessions per
+written map. The earlier single repeat after a completed metadata lookup that
+did not find the exact object (1-second wait) shares that count with the -9
+repeat: after either one, every failure is final. A failure after a repeat
+carries `retryCount` 1 in the existing failure context. A repeat that passes is
+written to the local finishing trace (`readback_repeat_succeeded` with its
+reason) and is not reported to the server: counting successful repeats there
+needs a backend-first decision. `SampledReadBackRetryPolicy.run` is the whole
+loop with an injected clock and wait, and is tested with a scripted device.
+This applies to fresh installation and to the new map of an Update, which share
+the read-back. Real-device confirmation of the repeat is required before
+release.
 
 The detection snapshot and the map scan's snapshot, inventory and map-header
 reads also run in that bounded worker, so a stalled watch can no longer hold the

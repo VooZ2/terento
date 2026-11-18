@@ -51,7 +51,7 @@ struct UserFacingErrorMessageTests {
             SyntheticError(message: "No Garmin MTP device detected"), detectedConflicts: ["OpenMTP"]
         ) == "No Garmin device was found. Connect it and try again.", "absent device does not blame an app")
         let namedTimeout = UserFacingErrorMessage.connectionTimeout(garminUSBPresent: true, detectedConflicts: ["MacDroid"])
-        expect(namedTimeout.finding == "MacDroid is open and may be using the device"
+        expect(namedTimeout.finding == "MacDroid is running and may be using the device"
             && namedTimeout.steps.first?.text == "Quit MacDroid",
                "USB-present connection timeout names the detected app first")
         expect(namedTimeout.steps.last?.text == "Unplug for 5 seconds, then reconnect or click Try again",
@@ -107,12 +107,12 @@ struct UserFacingErrorMessageTests {
     static func testBusyNamesTheDetectedApp() {
         let named = UserFacingErrorMessage.detectionFailure(.busy, garminUSBPresent: true,
                                                             detectedConflicts: ["Android File Transfer"])
-        expect(named.finding == "Android File Transfer is open"
+        expect(named.finding == "Android File Transfer is running"
             && named.steps.first?.text == "Quit Android File Transfer" && !named.text.contains("Garmin Express"),
                "BUSY names the app the scan detected instead of Garmin Express")
         let both = UserFacingErrorMessage.detectionFailure(.busy, garminUSBPresent: true,
                                                            detectedConflicts: ["OpenMTP", "Garmin Express"])
-        expect(both.finding == "OpenMTP and Garmin Express are open" && both.steps.first?.text == "Quit OpenMTP and Garmin Express",
+        expect(both.finding == "OpenMTP and Garmin Express are running" && both.steps.first?.text == "Quit OpenMTP and Garmin Express",
                "BUSY names every detected app")
         let unnamed = UserFacingErrorMessage.detectionFailure(.busy, garminUSBPresent: true, detectedConflicts: [])
         expect(unnamed.steps.first?.text == "Quit Garmin Express and other apps that connect to your device",
@@ -120,7 +120,7 @@ struct UserFacingErrorMessageTests {
         expect(named.steps.last?.text == "Unplug the device and connect it again, or click Try again",
                "BUSY keeps the replug step")
         let liveNamed = UserFacingErrorMessage.detectionAttention(.busy, detectedConflicts: ["Android File Transfer"])!
-        expect(liveNamed.finding == "Android File Transfer is open"
+        expect(liveNamed.finding == "Android File Transfer is running"
             && liveNamed.steps.map(\.text) == ["Quit Android File Transfer"] && !liveNamed.text.contains("Garmin Express"),
                "the live BUSY state names the detected app")
         let liveUnnamed = UserFacingErrorMessage.detectionAttention(.busy, detectedConflicts: [])!
@@ -186,7 +186,7 @@ struct UserFacingErrorMessageTests {
                    "\(outcome) stores the same text as its structured message")
         }
         let stalled = UserFacingErrorMessage.detectionFailure(.failed, garminUSBPresent: true, detectedConflicts: [])
-        expect(stalled.title == "Your device stopped responding"
+        expect(stalled.title == "Your device isn't responding"
             && stalled.steps.first?.text == "Unplug the device and wait 5 seconds",
                "a stalled read is named and gives the replug recovery step")
         expect(UserFacingErrorMessage.detectionFailure(.timeoutNoUSB, garminUSBPresent: true, detectedConflicts: []).title
