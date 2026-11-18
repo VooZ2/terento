@@ -14,7 +14,7 @@
     "step_3_body": "Your maps are installed and ready to use on your Garmin.",
     "install_shot_alt": "Terento showing third-party map providers and regions on macOS",
     "manage_title": "Manage maps",
-    "manage_body": "See what's installed, update maps when newer releases are available, and remove third-party maps managed by Terento. Original Garmin maps remain protected.",
+    "manage_body": "See what is on your Garmin, update maps when a newer version is out, or remove them. Your original Garmin maps stay untouched.",
     "manage_shot_alt": "Terento showing installed third-party maps grouped by provider",
     "browser_body": "Connect your Garmin with a USB cable, choose maps and install them straight from Chrome, Microsoft Edge, Opera or Brave. Update or remove them later the same way.",
     "browser_limits": "Works on a Mac and, still in testing, on Linux. Not on Windows, phones or tablets yet.",
@@ -59,10 +59,13 @@
     "browser_title": "Web installer",
     "faq_title": "Questions and answers",
     "safety_title": "Safe for your Garmin",
-    "safety_body": "Terento keeps at least 1 GB free on your Garmin and checks every map with a SHA-256 checksum before it counts as installed.",
+    "safety_body": "Terento always leaves at least 1 GB free on your Garmin and checks each map after copying. The check uses a SHA-256 checksum.",
     "send_to_computer": "Send this link to your computer",
     "send_to_computer_subject": "Terento: free maps for your Garmin",
-    "trust_label": "Terento in numbers"
+    "trust_label": "Terento in numbers",
+    "manage_link": "Read the Mac guide",
+    "safety_link": "See the source code",
+    "hero_browser_note": "Mac and Linux only, not Windows or phones."
   },
   "de": {
     "hero_download": "Für Mac herunterladen",
@@ -79,7 +82,7 @@
     "step_3_body": "Deine Karten sind installiert und auf deinem Garmin einsatzbereit.",
     "install_shot_alt": "Terento zeigt Drittanbieter-Kartenanbieter und Regionen auf macOS",
     "manage_title": "Karten verwalten",
-    "manage_body": "Sieh, was installiert ist, aktualisiere Karten, wenn neuere Versionen verfügbar sind, und entferne von Terento verwaltete Drittanbieter-Karten. Originale Garmin-Karten bleiben geschützt.",
+    "manage_body": "Sieh, was auf deinem Garmin ist, aktualisiere Karten, sobald eine neuere Version da ist, oder entferne sie. Die Original-Garmin-Karten bleiben unberührt.",
     "manage_shot_alt": "Terento zeigt installierte Drittanbieter-Karten nach Anbieter gruppiert",
     "browser_body": "Verbinde deine Garmin-Uhr per USB-Kabel, wähle Karten und installiere sie direkt aus Chrome, Microsoft Edge, Opera oder Brave. Später aktualisierst oder entfernst du sie genauso.",
     "browser_limits": "Funktioniert auf dem Mac und, noch im Test, unter Linux. Noch nicht unter Windows, auf Smartphones oder Tablets.",
@@ -124,10 +127,13 @@
     "browser_title": "Web-Installer",
     "faq_title": "Fragen und Antworten",
     "safety_title": "Sicher für deinen Garmin",
-    "safety_body": "Terento lässt auf deinem Garmin mindestens 1 GB frei und prüft jede Karte mit einer SHA-256-Prüfsumme, bevor sie als installiert gilt.",
+    "safety_body": "Terento lässt auf deinem Garmin immer mindestens 1 GB frei und prüft jede Karte nach dem Kopieren. Die Prüfung nutzt eine SHA-256-Prüfsumme.",
     "send_to_computer": "Link an deinen Computer senden",
     "send_to_computer_subject": "Terento: kostenlose Karten für deinen Garmin",
-    "trust_label": "Terento in Zahlen"
+    "trust_label": "Terento in Zahlen",
+    "manage_link": "Zur Mac-Anleitung",
+    "safety_link": "Zum Quellcode",
+    "hero_browser_note": "Nur Mac und Linux, nicht Windows oder Smartphones."
   },
   "fr": {
     "hero_download": "Télécharger pour Mac",
@@ -144,7 +150,7 @@
     "step_3_body": "Vos cartes sont installées et prêtes à être utilisées sur votre Garmin.",
     "install_shot_alt": "Terento affiche les fournisseurs et les régions de cartes tierces sur macOS",
     "manage_title": "Gérer les cartes",
-    "manage_body": "Consultez les cartes installées, mettez-les à jour lorsqu’une version plus récente est disponible et supprimez les cartes tierces gérées par Terento. Les cartes Garmin d’origine restent protégées.",
+    "manage_body": "Voyez ce qui se trouve sur votre Garmin, mettez à jour les cartes quand une nouvelle version sort, ou supprimez-les. Les cartes Garmin d’origine ne sont jamais touchées.",
     "manage_shot_alt": "Terento affiche les cartes tierces installées, regroupées par fournisseur",
     "browser_body": "Branchez votre Garmin avec un câble USB, choisissez des cartes et installez-les directement depuis Chrome, Microsoft Edge, Opera ou Brave. Mettez-les à jour ou supprimez-les plus tard de la même façon.",
     "browser_limits": "Fonctionne sur Mac et, encore en test, sous Linux. Pas encore sous Windows, ni sur téléphone ou tablette.",
@@ -189,10 +195,13 @@
     "browser_title": "Installateur web",
     "faq_title": "Questions et réponses",
     "safety_title": "Sans risque pour votre Garmin",
-    "safety_body": "Terento laisse au moins 1 Go libre sur votre Garmin et vérifie chaque carte avec une somme de contrôle SHA-256 avant de la considérer comme installée.",
+    "safety_body": "Terento laisse toujours au moins 1 Go libre sur votre Garmin et vérifie chaque carte après la copie. La vérification utilise une somme de contrôle SHA-256.",
     "send_to_computer": "Envoyer le lien vers votre ordinateur",
     "send_to_computer_subject": "Terento : cartes gratuites pour votre Garmin",
-    "trust_label": "Terento en chiffres"
+    "trust_label": "Terento en chiffres",
+    "manage_link": "Lire le guide Mac",
+    "safety_link": "Voir le code source",
+    "hero_browser_note": "Mac et Linux uniquement, pas Windows ni les téléphones."
   },
   "pl": {
     "hero_download": "Pobierz na Maca",
@@ -209,7 +218,7 @@
     "step_3_body": "Twoje mapy są zainstalowane i gotowe do użycia na Twoim Garminie.",
     "install_shot_alt": "Terento pokazuje dostawców i regiony map innych firm na macOS",
     "manage_title": "Zarządzaj mapami",
-    "manage_body": "Sprawdź, co jest zainstalowane, aktualizuj mapy, gdy dostępne są nowsze wydania, i usuwaj mapy innych firm zarządzane przez Terento. Oryginalne mapy Garmin pozostają chronione.",
+    "manage_body": "Zobacz, co jest na Twoim Garminie, aktualizuj mapy, gdy pojawi się nowsza wersja, albo je usuń. Oryginalne mapy Garmina pozostają nietknięte.",
     "manage_shot_alt": "Terento pokazuje zainstalowane mapy innych firm pogrupowane według dostawcy",
     "browser_body": "Podłącz zegarek Garmin kablem USB, wybierz mapy i zainstaluj je prosto z Chrome, Microsoft Edge, Opery lub Brave. Później tak samo je zaktualizujesz lub usuniesz.",
     "browser_limits": "Działa na Macu oraz, jeszcze w fazie testów, na Linuksie. Jeszcze nie na Windowsie, telefonach ani tabletach.",
@@ -254,10 +263,13 @@
     "browser_title": "Instalator w przeglądarce",
     "faq_title": "Pytania i odpowiedzi",
     "safety_title": "Bezpiecznie dla Twojego Garmina",
-    "safety_body": "Terento zostawia na Garminie co najmniej 1 GB wolnego miejsca i sprawdza każdą mapę sumą kontrolną SHA-256, zanim uzna ją za zainstalowaną.",
+    "safety_body": "Terento zawsze zostawia na Garminie co najmniej 1 GB wolnego miejsca i sprawdza każdą mapę po skopiowaniu. Do sprawdzenia służy suma kontrolna SHA-256.",
     "send_to_computer": "Wyślij link na swój komputer",
     "send_to_computer_subject": "Terento: darmowe mapy na Twojego Garmina",
-    "trust_label": "Terento w liczbach"
+    "trust_label": "Terento w liczbach",
+    "manage_link": "Przeczytaj poradnik dla Maca",
+    "safety_link": "Zobacz kod źródłowy",
+    "hero_browser_note": "Tylko Mac i Linux, nie Windows ani telefony."
   },
   "cs": {
     "hero_download": "Stáhnout pro Mac",
@@ -274,7 +286,7 @@
     "step_3_body": "Vaše mapy jsou nainstalované a připravené k použití ve vašem Garminu.",
     "install_shot_alt": "Terento zobrazuje poskytovatele a oblasti map třetích stran v macOS",
     "manage_title": "Spravovat mapy",
-    "manage_body": "Prohlédněte si nainstalované mapy, aktualizujte je, když je k dispozici novější vydání, a odstraňte mapy třetích stran spravované aplikací Terento. Původní mapy Garmin zůstávají chráněné.",
+    "manage_body": "Podívejte se, co máte v Garminu, aktualizujte mapy, když vyjde novější verze, nebo je odstraňte. Původních map Garminu se Terento nedotkne.",
     "manage_shot_alt": "Terento zobrazuje nainstalované mapy třetích stran seskupené podle poskytovatele",
     "browser_body": "Připojte hodinky Garmin kabelem USB, vyberte mapy a nainstalujte je přímo z Chrome, Microsoft Edge, Opery nebo Brave. Později je stejně aktualizujete nebo odeberete.",
     "browser_limits": "Funguje na Macu a, zatím ve zkušebním provozu, na Linuxu. Zatím ne ve Windows, na telefonech ani tabletech.",
@@ -319,10 +331,13 @@
     "browser_title": "Webový instalátor",
     "faq_title": "Otázky a odpovědi",
     "safety_title": "Bezpečné pro váš Garmin",
-    "safety_body": "Terento nechává v Garminu alespoň 1 GB volného místa a každou mapu ověří kontrolním součtem SHA-256, než ji označí za nainstalovanou.",
+    "safety_body": "Terento v Garminu vždy nechá aspoň 1 GB volného místa a každou mapu po zkopírování zkontroluje. Kontrola používá kontrolní součet SHA-256.",
     "send_to_computer": "Poslat odkaz do počítače",
     "send_to_computer_subject": "Terento: mapy zdarma pro váš Garmin",
-    "trust_label": "Terento v číslech"
+    "trust_label": "Terento v číslech",
+    "manage_link": "Přečíst návod pro Mac",
+    "safety_link": "Zobrazit zdrojový kód",
+    "hero_browser_note": "Jen Mac a Linux, ne Windows ani telefony."
   },
   "it": {
     "hero_download": "Scarica per Mac",
@@ -339,7 +354,7 @@
     "step_3_body": "Le tue mappe sono installate e pronte per essere usate sul tuo Garmin.",
     "install_shot_alt": "Terento mostra provider e regioni di mappe di terze parti su macOS",
     "manage_title": "Gestisci le mappe",
-    "manage_body": "Visualizza le mappe installate, aggiornatele quando è disponibile una versione più recente e rimuovi le mappe di terze parti gestite da Terento. Le mappe Garmin originali restano protette.",
+    "manage_body": "Vedi cosa c’è sul tuo Garmin, aggiorna le mappe quando esce una nuova versione o rimuovile. Le mappe Garmin originali restano intatte.",
     "manage_shot_alt": "Terento mostra le mappe di terze parti installate raggruppate per provider",
     "browser_body": "Collega il tuo Garmin con un cavo USB, scegli le mappe e installale direttamente da Chrome, Microsoft Edge, Opera o Brave. In seguito le aggiorni o le rimuovi allo stesso modo.",
     "browser_limits": "Funziona su Mac e, ancora in fase di test, su Linux. Non ancora su Windows, telefoni o tablet.",
@@ -384,9 +399,12 @@
     "browser_title": "Installer web",
     "faq_title": "Domande e risposte",
     "safety_title": "Sicuro per il tuo Garmin",
-    "safety_body": "Terento lascia almeno 1 GB libero sul tuo Garmin e controlla ogni mappa con un checksum SHA-256 prima di considerarla installata.",
+    "safety_body": "Terento lascia sempre almeno 1 GB libero sul tuo Garmin e controlla ogni mappa dopo la copia. Il controllo usa un checksum SHA-256.",
     "send_to_computer": "Invia il link al tuo computer",
     "send_to_computer_subject": "Terento: mappe gratuite per il tuo Garmin",
-    "trust_label": "Terento in numeri"
+    "trust_label": "Terento in numeri",
+    "manage_link": "Leggi la guida per Mac",
+    "safety_link": "Vedi il codice sorgente",
+    "hero_browser_note": "Solo Mac e Linux, non Windows né telefoni."
   }
 }

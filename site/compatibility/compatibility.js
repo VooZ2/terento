@@ -63,7 +63,7 @@
     if (!value) return "";
     const date = new Date(value);
     if (Number.isNaN(date.valueOf())) return "";
-    return new Intl.DateTimeFormat(locale.dateLocale, { dateStyle: "medium" }).format(date);
+    return new Intl.DateTimeFormat(locale.dateLocale, { dateStyle: "long" }).format(date);
   };
 
   const sourceCount = (value) => {
@@ -124,10 +124,10 @@
 
   function createCard(row) {
     const modelName = publicModelName(row.model);
-    const variantLabel = row.variants[0] || exactVariantLabel(row) || locale.card.smartwatch;
+    const variantLabel = row.variants[0] || exactVariantLabel(row) || (deviceType(row) === "edge" ? locale.card.bikeComputer : locale.card.smartwatch);
     const latestInstallation = formatDate(row.lastSuccess);
     const latestInstallationMarkup = latestInstallation
-      ? `<p class="watch-card-meta">${escapeHtml(locale.card.latest)} ${escapeHtml(latestInstallation)}</p>`
+      ? ` · ${escapeHtml(locale.card.latest)} ${escapeHtml(latestInstallation)}`
       : "";
     const installLabel = locale.successfulInstallLabel(row.successful);
     const sources = [["app", row.appSuccessful], ["web", row.webSuccessful]]
@@ -141,7 +141,7 @@
       .filter(Boolean)
       .join(", ");
     const imageUrl = row.imageUrl || FALLBACK_IMAGE_URL;
-    return `<article class="watch-card card card--media" data-device-type="${deviceType(row)}" aria-label="${escapeHtml(accessibleName)}"><div class="watch-card-image"><img data-remote-src="${escapeHtml(imageUrl)}" src="${escapeHtml(imageUrl)}" alt="" loading="lazy"></div><div class="watch-card-body"><div class="watch-card-heading"><p class="watch-family">${escapeHtml(row.familyName || "Garmin")}</p><div class="watch-card-model-row"><h3>${escapeHtml(modelName)} <span class="watch-variant">${escapeHtml(variantLabel)}</span></h3></div></div><p class="watch-install-count">${escapeHtml(installLabel)}</p>${sourcesMarkup}${latestInstallationMarkup}</div></article>`;
+    return `<article class="watch-card card card--media" data-device-type="${deviceType(row)}" aria-label="${escapeHtml(accessibleName)}"><div class="watch-card-image"><img data-remote-src="${escapeHtml(imageUrl)}" src="${escapeHtml(imageUrl)}" alt="" loading="lazy"></div><div class="watch-card-body"><h3>${escapeHtml(modelName)} <span class="watch-variant">${escapeHtml(variantLabel)}</span></h3><p class="watch-install-count">${escapeHtml(installLabel)}</p>${sourcesMarkup}<p class="watch-card-meta"><span class="watch-family">${escapeHtml(row.familyName || "Garmin")}</span>${latestInstallationMarkup}</p></div></article>`;
   }
 
   function matchesSuccessfulRange(row) {

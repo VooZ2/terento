@@ -44,19 +44,27 @@ Disconnect every Garmin device except the watch you want to use: Terento works w
 
 ### Garmin watch not recognized: USB mode (MTP)
 
-If Terento says the watch isn’t ready for file transfer, set the watch’s USB Mode to MTP, if your model has this setting. MTP (Media Transfer Protocol) is how most current Garmin watches share files over USB, the same way Android phones do. macOS has no built-in MTP support, so the watch doesn’t show up as a drive; Terento uses MTP itself, so you don’t need Android File Transfer or OpenMTP.
+If Terento says the watch isn’t ready for file transfer, set the watch’s USB Mode to MTP, if your model has this setting.
 
 1. On the watch, open USB Mode, usually under Settings › System. Not every model has it.
 2. Choose MTP.
 3. Disconnect the watch and connect it again.
 
+More details
+
+MTP (Media Transfer Protocol) is how most current Garmin watches share files over USB, the same way Android phones do. macOS has no built-in MTP support, so the watch doesn’t show up as a drive; Terento uses MTP itself, so you don’t need Android File Transfer or OpenMTP.
+
 ### Garmin watch detected but not ready
 
-If Terento finds the watch but the connection doesn’t become ready within 2 minutes, unplug the watch and connect it again. Occasional connection stalls are a known limit of the current version.
+If Terento finds the watch but the connection doesn’t become ready within 2 minutes, unplug the watch and connect it again.
 
 1. Quit other apps that may be using the watch. See [Garmin Express or another app is using the watch](https://terento.app/guides/troubleshooting/#garmin-busy).
 2. Try another USB port or cable.
 3. If it keeps happening, restart the watch and connect it again.
+
+More details
+
+Occasional connection stalls are a known limit of the current version.
 
 ### Garmin watch stopped responding
 
@@ -69,11 +77,15 @@ Unplug the watch, wait a few seconds and connect it again: the connection was lo
 
 ### Map installation not available for this Garmin model
 
-Terento installs maps only on Garmin watches with map support that are enabled in Terento. You can still connect this watch and browse the maps.
+Terento installs maps only on Garmin watches with map support that are enabled in Terento.
 
 1. Check that your watch model supports maps.
 2. Terento checks its current list each time you connect. If your model is enabled later, connect the watch again.
 3. Tell us your exact model so we can review it. See [How to report a problem](https://terento.app/guides/troubleshooting/#send-report).
+
+More details
+
+You can still connect this watch and browse the maps.
 
 ### Terento couldn’t check your Garmin watch
 
@@ -85,10 +97,14 @@ Check that your Mac is online, then connect the watch again: Terento needs an in
 
 ### Garmin map list won’t load or Terento needs an update
 
-If Terento can’t load the current map list, check your internet connection and try again in a few minutes. Maps already on your watch are not affected.
+If Terento can’t load the current map list, check your internet connection and try again in a few minutes.
 
 1. If this version of Terento is too old for the current map list and Terento says a newer version is available, install the update.
 2. While Terento shows an older saved map list, installing and updating catalog maps stays unavailable until the current list can be checked.
+
+More details
+
+Maps already on your watch are not affected.
 
 ## Map downloads and free space
 
@@ -118,20 +134,28 @@ Choose a smaller region or remove a map you no longer need: Terento checks the w
 
 ### Map installation failed: leftover map on the watch
 
-Remove the leftover map in “Manage maps”, then install it again. If an installation stops after copying started, part of the map can stay on the watch, and Terento doesn’t remove it automatically.
+Remove the leftover map in “Manage maps”, then install it again.
 
 1. Connect the watch again and wait until Terento is ready.
 2. Open “Manage maps” and check the list.
 3. If the map from the failed installation is listed, remove it, then install it again.
 4. If it fails again, [send a report](https://terento.app/guides/troubleshooting/#send-report).
 
+More details
+
+If an installation stops after copying started, part of the map can stay on the watch, and Terento doesn’t remove it automatically.
+
 ### Map update or removal takes a long time
 
-This is expected in the current version: updating or removing a map can stay at a high percentage for a while before it finishes. Keep the watch connected and your Mac awake.
+This is expected in the current version: updating or removing a map can stay at a high percentage for a while before it finishes.
 
 1. Don’t unplug the watch while Terento is working.
 2. Wait until Terento says it is done.
 3. If Terento reports a failure, connect the watch again and check “Manage maps” before you try again.
+
+More details
+
+Keep the watch connected and your Mac awake.
 
 ## Getting help
 

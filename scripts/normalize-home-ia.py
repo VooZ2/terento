@@ -635,7 +635,7 @@ def app_store_badge(locale: str, css_class: str, campaign: str, location: str) -
 def normalize_home(source: str, path: Path, locale: str) -> str:
     copy = HOME_COPY[locale]
     provider_cards = provider_cards_markup(locale, copy)
-    provider_section = f'''<section class="block block--muted home-providers" id="providers" aria-labelledby="providers-title">
+    provider_section = f'''<section class="block home-providers" id="providers" aria-labelledby="providers-title">
         <div class="shell">
           <div class="section-head"><h2 id="providers-title">{copy["provider_title"]}</h2><p class="provider-copy">{copy["provider_copy"]}</p></div>
           <div class="grid home-provider-grid" id="provider-cards" data-provider-cards>
@@ -653,6 +653,11 @@ def normalize_home(source: str, path: Path, locale: str) -> str:
     values["hero_map_alt"] = html.escape(copy["hero_map_alt"].replace("{name}", HERO_MAP_STYLES[0][1]))
     values["hero_switch_buttons"] = map_switch(copy["hero_map_alt"], 0, "home-hero")
     values["app_store_hero"] = app_store_badge(locale, "home-app-store", "site-home", "home-hero")
+    values["hero_download_button"] = COMPONENTS["store_download"](
+        copy["download_href"], html.escape(copy["hero_download"]), "hero-download-action",
+        'data-umami-event="download-cta-click" data-umami-event-location="home-hero"')
+    values["manage_icon"] = COMPONENTS["icon"]("layers", "card-icon")
+    values["manage_href"] = "/guides/install-garmin-maps-mac/" if locale == "en" else f"/{locale}/guides/install-garmin-maps-mac/"
     prefix = "" if locale == "en" else f"/{locale}"
     send_body = f"{SITE_URL}{prefix}/"
     values["send_to_computer_href"] = html.escape(
@@ -665,12 +670,11 @@ def normalize_home(source: str, path: Path, locale: str) -> str:
         + "</div></div>"
     )
     values["edge_guide_href"] = "/guides/install-garmin-maps-edge-mac/" if locale == "en" else f"/{locale}/guides/install-garmin-maps-edge-mac/"
-    # Freizeitkarte first on the Edge so the two devices open on different maps.
+    # A small static Edge picture (no second map switch: the hero keeps the only one).
     values["edge_visual"] = (
-        f'<figure class="home-device home-edge-figure" data-map-switch><div class="home-edge-screen">'
-        f'<img class="home-edge-map" data-map-image src="/assets/home/edge-freizeitkarte.webp?v={ASSET_VERSION}" width="520" height="520" alt="{html.escape(copy["edge_map_alt"].replace("{name}", HERO_MAP_STYLES[1][1]))}" loading="lazy" decoding="async">'
+        f'<div class="home-edge-screen">'
+        f'<img class="home-edge-map" src="/assets/home/edge-freizeitkarte.webp?v={ASSET_VERSION}" width="520" height="520" alt="{html.escape(copy["edge_map_alt"].replace("{name}", HERO_MAP_STYLES[1][1]))}" loading="lazy" decoding="async">'
         f'<img class="home-edge-body" src="/assets/home/edge-front.webp?v={ASSET_VERSION}" width="800" height="1200" alt="" loading="lazy" decoding="async"></div>'
-        f'<figcaption><span class="home-switch" role="group" aria-label="{html.escape(copy["edge_switch_label"])}">{map_switch(copy["edge_map_alt"], 1, "home-edge")}</span></figcaption></figure>'
         if EDGE_IMAGE.exists() else ""
     )
     values.update({f"faq_question_{i}": question for i, question in enumerate(copy["faq_questions"])})

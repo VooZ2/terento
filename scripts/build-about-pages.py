@@ -5,16 +5,22 @@ from __future__ import annotations
 
 import html
 import json
+import re
 import runpy
+import textwrap
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA = runpy.run_path(str(ROOT / "scripts/page_schema.py"))
+COMPONENTS = runpy.run_path(str(ROOT / "scripts/site_components.py"))
+DOWNLOAD_COPY = json.loads((ROOT / "scripts/templates/download-copy.json").read_text(encoding="utf-8"))
+LINKEDIN_URL = "https://www.linkedin.com/in/gediminasc/"
+REDDIT_URL = "https://www.reddit.com/user/MrDonas/"
 BASE_URL = "https://terento.app"
 ABOUT_SLUG = "about/"
 SHELL_VERSION = "20260905-in-page-language-v1"
-STYLE_VERSION = "20261119-site-refresh-v1"
+STYLE_VERSION = "20261119-site-refresh-v2"
 UMAMI_SCRIPT_VERSION = "20261114-umami-monitoring"
 SOCIAL_IMAGE = "/assets/social/terento-og.png"
 EMAIL_ADDRESS = "hello@terento.app"
@@ -46,7 +52,7 @@ COPY = {
         "title": "About Terento: Free, Open-Source Garmin Maps",
         "description": "Why a Garmin hiker built Terento: a free, open-source way to get free maps onto Garmin watches and Edge bike computers. No account, no fees.",
         "skip": "Skip to content",
-        "h1": "A free map app, made by one Garmin hiker",
+        "h1": "Hi, I’m Gediminas",
         "lede": "Terento puts free community maps on Garmin watches and Edge bike computers. It’s a free, open-source Mac app, plus a web installer that runs in your browser.",
         "download": "Download",
         "story_heading": "Why I made it",
@@ -90,7 +96,7 @@ COPY = {
         "title": "Über Terento: kostenlose Open-Source-Garmin-Karten",
         "description": "Warum ein Garmin-Wanderer Terento gebaut hat: ein kostenloser, offener Weg, freie Karten auf Garmin-Uhren und Edge-Radcomputer zu bringen. Ohne Konto.",
         "skip": "Zum Inhalt springen",
-        "h1": "Eine kostenlose Karten-App, gebaut von einem Garmin-Wanderer",
+        "h1": "Hallo, ich bin Gediminas",
         "lede": "Terento bringt kostenlose Community-Karten auf Garmin-Uhren und Edge-Radcomputer. Es ist eine kostenlose Open-Source-Mac-App und dazu ein Web-Installer, der im Browser läuft.",
         "download": "Download",
         "story_heading": "Warum ich es gebaut habe",
@@ -134,7 +140,7 @@ COPY = {
         "title": "À propos de Terento : cartes Garmin gratuites et libres",
         "description": "Pourquoi un randonneur Garmin a créé Terento : un moyen gratuit et open source d’installer des cartes libres sur montres et compteurs Edge Garmin.",
         "skip": "Aller au contenu",
-        "h1": "Une appli de cartes gratuite, faite par un randonneur Garmin",
+        "h1": "Bonjour, je suis Gediminas",
         "lede": "Terento installe des cartes communautaires gratuites sur les montres Garmin et les compteurs vélo Edge. C’est une application Mac gratuite et open source, avec un installateur web qui fonctionne dans votre navigateur.",
         "download": "Télécharger",
         "story_heading": "Pourquoi je l’ai créé",
@@ -178,7 +184,7 @@ COPY = {
         "title": "O Terento: darmowe mapy open source na Garmina",
         "description": "Dlaczego turysta z Garminem stworzył Terento: darmowy, otwarty sposób na wgranie darmowych map na zegarki Garmin i liczniki rowerowe Edge. Bez konta.",
         "skip": "Przejdź do treści",
-        "h1": "Darmowa aplikacja do map, stworzona przez turystę z Garminem",
+        "h1": "Cześć, jestem Gediminas",
         "lede": "Terento wgrywa darmowe mapy społeczności na zegarki Garmin i liczniki rowerowe Edge. To bezpłatna aplikacja open source na Maca oraz instalator webowy działający w przeglądarce.",
         "download": "Pobierz",
         "story_heading": "Dlaczego to zrobiłem",
@@ -222,7 +228,7 @@ COPY = {
         "title": "O Terento: bezplatné open-source mapy pro Garmin",
         "description": "Proč turista s Garminem vytvořil Terento: bezplatný a otevřený způsob, jak dostat mapy zdarma do hodinek Garmin a cyklopočítačů Edge. Bez účtu.",
         "skip": "Přejít k obsahu",
-        "h1": "Bezplatná aplikace na mapy od jednoho turisty s Garminem",
+        "h1": "Ahoj, jsem Gediminas",
         "lede": "Terento nahrává bezplatné komunitní mapy do hodinek Garmin a cyklopočítačů Edge. Je to bezplatná open-source aplikace pro Mac a k tomu webový instalátor, který běží v prohlížeči.",
         "download": "Stáhnout",
         "story_heading": "Proč jsem ho vytvořil",
@@ -266,7 +272,7 @@ COPY = {
         "title": "Informazioni su Terento: mappe Garmin gratuite e libere",
         "description": "Perché un escursionista con Garmin ha creato Terento: un modo gratuito e open source per mettere mappe libere su orologi Garmin e ciclocomputer Edge.",
         "skip": "Vai al contenuto",
-        "h1": "Un’app di mappe gratuita, fatta da un escursionista con Garmin",
+        "h1": "Ciao, sono Gediminas",
         "lede": "Terento installa mappe gratuite della community su orologi Garmin e ciclocomputer Edge. È un’app Mac gratuita e open source, più un installer web che funziona nel browser.",
         "download": "Scarica",
         "story_heading": "Perché l’ho creato",
@@ -364,6 +370,31 @@ def mention_item(locale: str, copy: dict[str, object], mention: dict[str, str]) 
     return esc(copy["mention_item"]).replace("{source}", source).replace("{title}", title)
 
 
+def story_paragraphs(copy: dict[str, object]) -> list[str]:
+    """The story as short first-person paragraphs: who I am and hiking, the problem before
+    a trip, why I built it, why it is free and open source. Same sentences, no new facts."""
+    sentences = re.split(r"(?<=[.!?])\s+", " ".join(copy["story"]).strip())
+    if len(sentences) != 5:
+        raise ValueError("About story must have five sentences")
+    return [" ".join(sentences[:2]), *sentences[2:]]
+
+
+def about_json_ld(locale: str) -> str:
+    """The shared web-page graph plus the person who made Terento, linked as its founder.
+    sameAs only lists the profiles linked on the page; no e-mail address."""
+    graph = SCHEMA["page_graph"](locale, ABOUT_SLUG, "AboutPage")
+    person_id = f"{BASE_URL}/{ABOUT_SLUG}#person"
+    person = {"@type": "Person", "@id": person_id, "name": "Gediminas",
+              "url": f"{BASE_URL}{localized_path(locale, ABOUT_SLUG)}", "sameAs": [LINKEDIN_URL, REDDIT_URL]}
+    organization = graph["@graph"][0]
+    organization["founder"] = {"@id": person_id}
+    graph["@graph"].insert(1, person)
+    page = next(node for node in graph["@graph"] if node.get("@type") == "AboutPage")
+    page["mainEntity"] = {"@id": person_id}
+    payload = json.dumps(graph, ensure_ascii=False, indent=2).replace("</", "<\\/")
+    return f'    <script type="application/ld+json">\n{textwrap.indent(payload, "      ")}\n    </script>'
+
+
 def render(locale: str, copy: dict[str, object]) -> str:
     canonical = f"{BASE_URL}{localized_path(locale, ABOUT_SLUG)}"
     meta_locale = META_LOCALES[locale]
@@ -376,15 +407,15 @@ def render(locale: str, copy: dict[str, object]) -> str:
         "compatibility": f'<a class="text-link" href="{localized_path(locale, "compatibility/")}" data-umami-event="compatibility-link-click" data-umami-event-location="about-main">{esc(copy["compatibility"])}</a>',
         "maps": f'<a class="text-link" href="{localized_path(locale, "map-styles/")}" data-umami-event="maps-link-click" data-umami-event-location="about-main">{esc(copy["maps"])}</a>',
     }
-    story = "\n".join(f'            <p>{esc(paragraph)}</p>' for paragraph in copy["story"])
+    story = "\n".join(f'            <p>{esc(paragraph)}</p>' for paragraph in story_paragraphs(copy))
     is_items = "\n".join(f'              <li>{with_links(item, links)}</li>' for item in copy["is_items"])
     isnt_items = "\n".join(f'              <li>{isnt_item(item, links)}</li>' for item in copy["isnt_items"])
     mentions = "\n".join(f'            <li>{mention_item(locale, copy, mention)}</li>' for mention in MENTIONS)
-    social = f'''          <div class="about-socials" aria-labelledby="about-social-title">
+    social = f'''          <div class="card about-socials" aria-labelledby="about-social-title">
             <h3 class="about-social-label" id="about-social-title">{esc(copy["social_label"])}</h3>
             <div class="about-social-links">
-              <a class="about-social-link" href="https://www.linkedin.com/in/gediminasc/" target="_blank" rel="noopener noreferrer" data-umami-event="social-link-click" data-umami-event-location="about-story" data-umami-event-channel="linkedin" data-umami-event-destination="linkedin.com"><img src="/assets/social/linkedin.svg" alt="" width="16" height="16"><span>{esc(copy["linkedin"])}</span></a>
-              <a class="about-social-link" href="https://www.reddit.com/user/MrDonas/" target="_blank" rel="noopener noreferrer" data-umami-event="social-link-click" data-umami-event-location="about-story" data-umami-event-channel="reddit" data-umami-event-destination="reddit.com"><img src="/assets/social/reddit.svg" alt="" width="16" height="16"><span>{esc(copy["reddit"])}</span></a>
+              <a class="about-social-link" href="{LINKEDIN_URL}" target="_blank" rel="noopener noreferrer" data-umami-event="social-link-click" data-umami-event-location="about-story" data-umami-event-channel="linkedin" data-umami-event-destination="linkedin.com"><img src="/assets/social/linkedin.svg" alt="" width="16" height="16"><span>{esc(copy["linkedin"])}</span></a>
+              <a class="about-social-link" href="{REDDIT_URL}" target="_blank" rel="noopener noreferrer" data-umami-event="social-link-click" data-umami-event-location="about-story" data-umami-event-channel="reddit" data-umami-event-destination="reddit.com"><img src="/assets/social/reddit.svg" alt="" width="16" height="16"><span>{esc(copy["reddit"])}</span></a>
               <a class="about-social-link about-email-link" href="{EMAIL_HREF}" data-umami-event="support-link-click" data-umami-event-location="about-story" data-umami-event-channel="email"><img src="/assets/social/email.svg" alt="" width="16" height="16"><span>{esc(copy["email"])}</span></a>
             </div>
             <div class="about-donate">
@@ -421,7 +452,7 @@ def render(locale: str, copy: dict[str, object]) -> str:
     <meta name="twitter:description" content="{esc(copy["description"])}">
     <meta name="twitter:image" content="{BASE_URL}{SOCIAL_IMAGE}">
     <title>{esc(copy["title"])}</title>
-{SCHEMA["json_ld_block"](locale, ABOUT_SLUG, "AboutPage")}
+{about_json_ld(locale)}
 
 
     <link rel="icon" href="/favicon.ico?v=20260820-4" sizes="any">
@@ -434,43 +465,39 @@ def render(locale: str, copy: dict[str, object]) -> str:
   <body class="about-page">
     <a class="skip-link" href="#main-content">{esc(copy["skip"])}</a>
     <header class="site-header"></header>
-    <main id="main-content">
-      <section class="about-intro" aria-labelledby="about-title">
-        <div class="shell about-intro-text">
-            <h1 id="about-title">{esc(copy["h1"])}</h1>
-            <p class="about-intro-copy">{esc(copy["lede"])}</p>
-            <div class="hero-actions"><a class="download-action" href="{localized_path(locale, 'download/')}" data-umami-event="download-cta-click" data-umami-event-location="about-intro">{esc(copy["download"])}</a></div>
-          </div>
-      </section>
-      <section class="about-story" aria-labelledby="about-story-title">
-        <div class="shell about-story-inner">
-          <h2 id="about-story-title">{esc(copy["story_heading"])}</h2>
-          <div class="about-story-copy">
+    <main id="main-content" class="about-v3">
+      <section class="block about-hero" aria-labelledby="about-title">
+        <div class="shell grid">
+          <div class="card about-story-card">
+            <div class="about-title-row">{COMPONENTS["icon"]("mountain", "about-title-icon")}<h1 id="about-title">{esc(copy["h1"])}</h1></div>
+            <h2 id="about-story-title">{esc(copy["story_heading"])}</h2>
+            <div class="about-story-copy">
 {story}
+            </div>
           </div>
 {social}
         </div>
       </section>
-      <section class="about-main" aria-labelledby="about-principle-title">
-        <div class="shell about-grid">
-          <div class="section-heading about-slogan"><h2 id="about-principle-title">{esc(copy["main_heading"])}</h2></div>
-          <div class="about-list">
-            <section class="about-item about-item--group" aria-labelledby="about-is-title"><h3 id="about-is-title">{esc(copy["is_title"])}</h3><ul class="about-bullet-list">
+      <section class="block about-main" aria-labelledby="about-principle-title">
+        <div class="shell">
+          <div class="section-head"><h2 id="about-principle-title">{esc(copy["main_heading"])}</h2></div>
+          <div class="grid about-list">
+            <section class="card col-6 about-item about-item--group" aria-labelledby="about-is-title"><h3 id="about-is-title">{esc(copy["is_title"])}</h3><ul class="about-bullet-list">
 {is_items}
             </ul></section>
-            <section class="about-item about-item--group" aria-labelledby="about-isnt-title"><h3 id="about-isnt-title">{esc(copy["isnt_title"])}</h3><ul class="about-bullet-list">
+            <section class="card col-6 about-item about-item--group" aria-labelledby="about-isnt-title"><h3 id="about-isnt-title">{esc(copy["isnt_title"])}</h3><ul class="about-bullet-list">
 {isnt_items}
             </ul></section>
           </div>
         </div>
       </section>
-      <section class="about-v2-mentions" aria-labelledby="about-mentions-title">
+      <section class="block about-v2-mentions" aria-labelledby="about-mentions-title">
         <div class="shell">
-          <h2 id="about-mentions-title">{esc(copy["mentions_heading"])}</h2>
-          <p>{esc(copy["mentions_intro"])}</p>
+          <div class="section-head"><h2 id="about-mentions-title">{esc(copy["mentions_heading"])}</h2><p>{esc(copy["mentions_intro"])}</p></div>
           <ul class="about-bullet-list">
 {mentions}
           </ul>
+          <p class="about-download-link"><a class="text-link" href="{localized_path(locale, 'download/')}" data-umami-event="download-cta-click" data-umami-event-location="about-bottom">{esc(DOWNLOAD_COPY[locale]["h1"])}</a></p>
         </div>
       </section>
     </main>

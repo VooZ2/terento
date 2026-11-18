@@ -31,7 +31,7 @@ IMAGE_VERSION = "20260912-app-screens-v2"
 READING_STATE_VERSION = "20260902-reading-state"
 UMAMI_SCRIPT_VERSION = "20261114-umami-monitoring"
 SHELL_VERSION = "20260905-in-page-language-v1"
-STYLE_VERSION = "20261119-site-refresh-v1"
+STYLE_VERSION = "20261119-site-refresh-v2"
 LANGUAGE_VERSION = "20260905-language-selector-full-name-v1"
 SOCIAL_IMAGE = "/assets/social/terento-og.png"
 EMAIL_ADDRESS = "hello@terento.app"
@@ -236,6 +236,19 @@ def troubleshooting_json_ld(locale: str, copy: dict[str, object]) -> str:
     return json.dumps({"@context": "https://schema.org", "@graph": graph}, ensure_ascii=False, indent=2)
 
 
+TROUBLESHOOTING_MORE = {
+    "en": "More details", "de": "Mehr Details", "fr": "Plus de détails",
+    "pl": "Więcej szczegółów", "cs": "Více podrobností", "it": "Più dettagli",
+}
+SENTENCE_BREAK = re.compile(r"(?<=[.!?])\s+(?=[A-ZÀ-ÝĀ-ŽА-Я„“\"(])")
+
+
+def split_answer(body: str) -> tuple[str, str]:
+    """Split a troubleshooting body into its first sentence (the answer) and the rest."""
+    parts = SENTENCE_BREAK.split(body.strip(), maxsplit=1)
+    return (parts[0], parts[1]) if len(parts) == 2 else (parts[0], "")
+
+
 def render_troubleshooting(locale: str) -> str:
     """Render the troubleshooting page; metadata and shell are filled by later passes."""
     copy = troubleshooting_copy(locale)
@@ -245,10 +258,15 @@ def render_troubleshooting(locale: str) -> str:
         items = []
         for item in group["items"]:
             steps = "".join(f"<li>{troubleshooting_text(step)}</li>" for step in item["steps"])
+            # One-line answer first, then the numbered steps, then the longer explanation
+            # in <details> (still in the HTML for crawlers and search).
+            answer, more = split_answer(item["body"])
+            details = (f'<details class="troubleshooting-more"><summary>{esc(TROUBLESHOOTING_MORE[locale])}</summary>'
+                       f'<p>{troubleshooting_text(more)}</p></details>') if more else ""
             items.append(f'''<section class="troubleshooting-item" id="{item["anchor"]}" aria-labelledby="{item["anchor"]}-title">
               <h3 id="{item["anchor"]}-title">{esc(item["title"])}</h3>
-              <p>{troubleshooting_text(item["body"])}</p>
-              <ol class="troubleshooting-steps steps steps--compact">{steps}</ol>
+              <p class="troubleshooting-answer">{troubleshooting_text(answer)}</p>
+              <ol class="troubleshooting-steps steps steps--compact">{steps}</ol>{details}
             </section>''')
         groups.append(f'''<section class="troubleshooting" id="{group["id"]}" aria-labelledby="{group["id"]}-title">
             <div class="guide-section-heading"><h2 id="{group["id"]}-title">{esc(group["title"])}</h2></div>
@@ -257,12 +275,14 @@ def render_troubleshooting(locale: str) -> str:
     groups_markup = "\n          ".join(groups)
     # Not a troubleshooting-item: the app's 15 anchors stay the only topics.
     edge = copy["edge"]
-    # A short index of every topic: the page is long and readers look for one symptom.
-    toc = "".join(
-        f'<div class="troubleshooting-toc-group"><p class="troubleshooting-toc-title">{esc(group["title"])}</p><ul>'
+    # Symptom picker: one card per H2 section, with its problems as direct links.
+    picker_cards = [f'<div class="card troubleshooting-pick"><p class="troubleshooting-pick-title"><a href="#garmin-edge">{esc(edge["title"])}</a></p></div>']
+    picker_cards += [
+        f'<div class="card troubleshooting-pick"><p class="troubleshooting-pick-title"><a href="#{group["id"]}">{esc(group["title"])}</a></p><ul>'
         + "".join(f'<li><a href="#{item["anchor"]}">{esc(item["title"])}</a></li>' for item in group["items"])
         + "</ul></div>"
-        for group in copy["groups"])
+        for group in copy["groups"]]
+    toc = "".join(picker_cards)
     return f'''<!doctype html>
 <html lang="{locale}" data-language="{locale}" data-page="troubleshooting">
   <head>
@@ -296,9 +316,10 @@ def render_troubleshooting(locale: str) -> str:
           <div class="shell">
             <h1>{esc(copy["h1"])}</h1>
             <p class="guide-lede">{esc(copy["intro"])}</p>
-            <nav class="troubleshooting-toc" aria-label="{esc(copy["toc_label"])}">{toc}</nav>
           </div>
         </header>
+
+        <nav class="troubleshooting-toc troubleshooting-picker shell" aria-label="{esc(copy["toc_label"])}">{toc}</nav>
 
         <div class="shell guide-content">
           <section class="guide-preflight" id="garmin-edge" aria-labelledby="garmin-edge-title">
@@ -539,7 +560,7 @@ def render_guide(page: str, locale: str) -> str:
         <div class="shell guide-content">
           <section class="guide-v2-section" id="before-you-start" aria-labelledby="before-you-start-title">
             <h2 id="before-you-start-title">{esc(copy["needs_title"])}</h2>
-            <div class="card card--quiet guide-needs"><ul class="guide-checklist">{"".join(f"<li>{esc(need)}</li>" for need in copy["needs"])}</ul>{needs_note}</div>
+            <div class="card guide-needs"><ul class="guide-checklist">{"".join(f"<li>{esc(need)}</li>" for need in copy["needs"])}</ul>{needs_note}</div>
           </section>
 
           <section class="guide-v2-section" id="steps" aria-labelledby="steps-title">

@@ -193,7 +193,7 @@ download_files = [
 for path in home_files:
     html = path.read_text(encoding="utf-8")
     assert html.count('class="block home-how"') == 1, f"{path}: expected the how-it-works section"
-    assert html.count('home-bento-manage') == 1, f"{path}: expected the manage maps section"
+    assert html.count('aria-labelledby="manage-title"') == 1, f"{path}: expected the manage maps section"
     assert html.count('data-umami-event="guide-link-click" data-umami-event-location="home-edge"') == 1, f"{path}: expected the Garmin Edge guide link"
     assert 'class="scope-section"' not in html, f"{path}: Beta scope section must be removed"
     assert html.count('data-provider-card=') == 5, f"{path}: expected one card per provider"

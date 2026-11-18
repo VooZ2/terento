@@ -44,19 +44,27 @@ Odpojte všechna zařízení Garmin kromě hodinek, které chcete použít: Tere
 
 ### Hodinky Garmin nejsou rozpoznány: režim USB (MTP)
 
-Pokud Terento hlásí, že hodinky nejsou připravené na přenos souborů, nastavte režim USB hodinek na MTP, pokud ho váš model má. MTP (Media Transfer Protocol) je způsob, jakým většina současných hodinek Garmin sdílí soubory přes USB, stejně jako telefony s Androidem. macOS MTP nativně nepodporuje, proto se hodinky nezobrazí jako disk; Terento MTP používá samo, takže nepotřebujete Android File Transfer ani OpenMTP.
+Pokud Terento hlásí, že hodinky nejsou připravené na přenos souborů, nastavte režim USB hodinek na MTP, pokud ho váš model má.
 
 1. V hodinkách otevřete režim USB, obvykle v Nastavení › Systém. Ne každý model ho má.
 2. Zvolte MTP.
 3. Hodinky odpojte a znovu připojte.
 
+Více podrobností
+
+MTP (Media Transfer Protocol) je způsob, jakým většina současných hodinek Garmin sdílí soubory přes USB, stejně jako telefony s Androidem. macOS MTP nativně nepodporuje, proto se hodinky nezobrazí jako disk; Terento MTP používá samo, takže nepotřebujete Android File Transfer ani OpenMTP.
+
 ### Hodinky Garmin jsou rozpoznané, ale nejsou připravené
 
-Pokud Terento hodinky najde, ale připojení není připravené do 2 minut, hodinky odpojte a znovu připojte. Občasné zaseknutí připojení je známé omezení aktuální verze.
+Pokud Terento hodinky najde, ale připojení není připravené do 2 minut, hodinky odpojte a znovu připojte.
 
 1. Ukončete další aplikace, které mohou hodinky používat. Viz [Hodinky používá Garmin Express nebo jiná aplikace](https://terento.app/cs/guides/troubleshooting/#garmin-busy).
 2. Zkuste jiný USB port nebo jiný kabel.
 3. Pokud se to opakuje, restartujte hodinky a znovu je připojte.
+
+Více podrobností
+
+Občasné zaseknutí připojení je známé omezení aktuální verze.
 
 ### Hodinky Garmin přestaly reagovat
 
@@ -69,11 +77,15 @@ Hodinky odpojte, počkejte několik sekund a znovu je připojte: připojení se 
 
 ### Instalace map není pro tento model Garmin dostupná
 
-Terento instaluje mapy jen do hodinek Garmin s podporou map, které jsou v Terento povolené. Hodinky přesto můžete připojit a procházet mapy.
+Terento instaluje mapy jen do hodinek Garmin s podporou map, které jsou v Terento povolené.
 
 1. Ověřte, že váš model hodinek podporuje mapy.
 2. Terento při každém připojení kontroluje svůj aktuální seznam. Pokud bude váš model povolen později, připojte hodinky znovu.
 3. Napište nám přesný model, abychom ho mohli posoudit. Viz [Jak nahlásit potíž s Terento](https://terento.app/cs/guides/troubleshooting/#send-report).
+
+Více podrobností
+
+Hodinky přesto můžete připojit a procházet mapy.
 
 ### Terento nemohlo zkontrolovat hodinky Garmin
 
@@ -85,10 +97,14 @@ Zkontrolujte, že je Mac připojený k internetu, a hodinky znovu připojte: Ter
 
 ### Seznam map Garmin se nenačte nebo Terento potřebuje aktualizaci
 
-Pokud Terento nemůže načíst aktuální seznam map, zkontrolujte připojení k internetu a zkuste to za několik minut znovu. Mapy, které už jsou v hodinkách, to neovlivní.
+Pokud Terento nemůže načíst aktuální seznam map, zkontrolujte připojení k internetu a zkuste to za několik minut znovu.
 
 1. Pokud je tato verze Terento pro aktuální seznam map příliš stará a Terento hlásí novější verzi, nainstalujte aktualizaci.
 2. Dokud Terento zobrazuje starší uložený seznam map, instalace a aktualizace map z katalogu zůstávají nedostupné, dokud nelze ověřit aktuální seznam.
+
+Více podrobností
+
+Mapy, které už jsou v hodinkách, to neovlivní.
 
 ## Stahování map a volné místo
 
@@ -118,20 +134,28 @@ Vyberte menší oblast nebo odstraňte mapu, kterou už nepotřebujete: Terento 
 
 ### Instalace mapy selhala: v hodinkách zůstal zbytek mapy
 
-Odstraňte zbylou mapu v „Manage maps“ a pak ji nainstalujte znovu. Pokud se instalace zastaví po zahájení kopírování, může v hodinkách zůstat část mapy a Terento ji automaticky neodstraní.
+Odstraňte zbylou mapu v „Manage maps“ a pak ji nainstalujte znovu.
 
 1. Připojte hodinky znovu a počkejte, až bude Terento připravené.
 2. Otevřete „Manage maps“ a zkontrolujte seznam.
 3. Pokud je v seznamu mapa z nezdařené instalace, odstraňte ji a pak ji nainstalujte znovu.
 4. Pokud to znovu selže, [pošlete zprávu](https://terento.app/cs/guides/troubleshooting/#send-report).
 
+Více podrobností
+
+Pokud se instalace zastaví po zahájení kopírování, může v hodinkách zůstat část mapy a Terento ji automaticky neodstraní.
+
 ### Aktualizace nebo odstranění mapy trvá dlouho
 
-V aktuální verzi je to očekávané: při aktualizaci nebo odstranění mapy může ukazatel chvíli zůstat na vysokém procentu, než se akce dokončí. Nechte hodinky připojené a Mac nespící.
+V aktuální verzi je to očekávané: při aktualizaci nebo odstranění mapy může ukazatel chvíli zůstat na vysokém procentu, než se akce dokončí.
 
 1. Neodpojujte hodinky, zatímco Terento pracuje.
 2. Počkejte, až Terento oznámí dokončení.
 3. Pokud Terento ohlásí chybu, připojte hodinky znovu a před dalším pokusem zkontrolujte „Manage maps“.
+
+Více podrobností
+
+Nechte hodinky připojené a Mac nespící.
 
 ## Získání pomoci
 

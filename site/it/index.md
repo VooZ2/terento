@@ -7,7 +7,9 @@ canonical: https://terento.app/it/
 
 Terento installa mappe gratuite dai progetti OpenStreetMap su orologi Garmin e ciclocomputer Edge. Con l’app per Mac o direttamente dal browser del computer. Gratis, e l’app per Mac è open source.
 
-[Scarica per Mac](https://terento.app/it/download/) [Scarica su Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-home&mt=8) [Installa dal browser](https://terento.app/it/install/)
+[Scarica per Mac](https://terento.app/it/download/) [Scarica su Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-home&mt=8)
+
+[Installa dal browser](https://terento.app/it/install/) Solo Mac e Linux, non Windows né telefoni.
 
 Non sai se il tuo modello è compatibile? [Verifica la compatibilità](https://terento.app/it/compatibility/)
 
@@ -18,40 +20,6 @@ Orologio Garmin con la mappa OpenTopoMap del lago Königssee, nelle Alpi bavares
 - **47** modelli con installazioni riuscite
 - **463** installazioni riuscite
 - **18 novembre 2026** Ultima installazione riuscita
-
-## Come funziona
-
-1. Collega
-
-Terento riconosce il tuo Garmin e mostra quando è pronto.
-
-2. Installa
-
-Scegli le mappe dal catalogo oppure aggiungi la tua mappa .img compatibile.
-
-3. Fatto
-
-Le tue mappe sono installate e pronte per essere usate sul tuo Garmin.
-
-Terento mostra provider e regioni di mappe di terze parti su macOS
-
-Terento mostra le mappe di terze parti installate raggruppate per provider
-
-## Gestisci le mappe
-
-Visualizza le mappe installate, aggiornatele quando è disponibile una versione più recente e rimuovi le mappe di terze parti gestite da Terento. Le mappe Garmin originali restano protette.
-
-Ciclocomputer Garmin Edge con la mappa Freizeitkarte della salita di Sa Calobra, nella Serra de Tramuntana a Maiorca
-
-## Anche in bici
-
-I ciclocomputer Garmin Edge più recenti con supporto mappe, come Edge 540, 840 e 1050, usano le stesse mappe. Collega, scegli una regione, installa.
-
-[Leggi la guida per Garmin Edge](https://terento.app/it/guides/install-garmin-maps-edge-mac/)
-
-### Sicuro per il tuo Garmin
-
-Terento lascia almeno 1 GB libero sul tuo Garmin e controlla ogni mappa con un checksum SHA-256 prima di considerarla installata.
 
 ## Scegli la mappa adatta al percorso
 
@@ -100,6 +68,42 @@ Per esplorare i sentieri minori a piedi.
 Alcune etichette della mappa sono in francese.
 
 [Confronta gli stili dal vivo](https://terento.app/it/map-styles/)
+
+## Come funziona
+
+1. Collega
+
+Terento riconosce il tuo Garmin e mostra quando è pronto.
+
+2. Installa
+
+Scegli le mappe dal catalogo oppure aggiungi la tua mappa .img compatibile.
+
+3. Fatto
+
+Le tue mappe sono installate e pronte per essere usate sul tuo Garmin.
+
+Terento mostra provider e regioni di mappe di terze parti su macOS
+
+## Gestisci le mappe
+
+Vedi cosa c’è sul tuo Garmin, aggiorna le mappe quando esce una nuova versione o rimuovile. Le mappe Garmin originali restano intatte.
+
+[Leggi la guida per Mac](https://terento.app/it/guides/install-garmin-maps-mac/)
+
+### Sicuro per il tuo Garmin
+
+Terento lascia sempre almeno 1 GB libero sul tuo Garmin e controlla ogni mappa dopo la copia. Il controllo usa un checksum SHA-256.
+
+[Vedi il codice sorgente](https://github.com/VooZ2/terento)
+
+Ciclocomputer Garmin Edge con la mappa Freizeitkarte della salita di Sa Calobra, nella Serra de Tramuntana a Maiorca
+
+## Anche in bici
+
+I ciclocomputer Garmin Edge più recenti con supporto mappe, come Edge 540, 840 e 1050, usano le stesse mappe. Collega, scegli una regione, installa.
+
+[Leggi la guida per Garmin Edge](https://terento.app/it/guides/install-garmin-maps-edge-mac/)
 
 ## Con l’app per Mac o dal browser
 

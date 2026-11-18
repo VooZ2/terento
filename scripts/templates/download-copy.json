@@ -31,7 +31,7 @@
       ],
       [
         "Pick a map",
-        "Choose a map and a region, then install it."
+        "Choose a map and a region and install it. Then turn the map on in your Garmin’s map settings (restart the Garmin if the map isn’t listed)."
       ]
     ],
     "guides_text": "Step by step: the {watch} and the {edge}.",
@@ -70,7 +70,7 @@
       ],
       [
         "Karte wählen",
-        "Wähle eine Karte und eine Region und installiere sie."
+        "Wähle eine Karte und eine Region und installiere sie. Schalte die Karte dann in den Karteneinstellungen deines Garmin ein (fehlt sie in der Liste, starte das Gerät neu)."
       ]
     ],
     "guides_text": "Schritt für Schritt: {watch} und {edge}.",
@@ -109,7 +109,7 @@
       ],
       [
         "Choisissez une carte",
-        "Choisissez une carte et une région, puis installez-la."
+        "Choisissez une carte et une région, puis installez-la. Activez ensuite la carte dans les réglages de carte de votre Garmin (redémarrez-le si elle n’est pas listée)."
       ]
     ],
     "guides_text": "Pas à pas : le {watch} et le {edge}.",
@@ -148,7 +148,7 @@
       ],
       [
         "Wybierz mapę",
-        "Wybierz mapę i region, a potem ją zainstaluj."
+        "Wybierz mapę i region, a potem ją zainstaluj. Następnie włącz mapę w ustawieniach map Garmina (jeśli nie ma jej na liście, uruchom urządzenie ponownie)."
       ]
     ],
     "guides_text": "Krok po kroku: {watch} i {edge}.",
@@ -187,7 +187,7 @@
       ],
       [
         "Vyberte mapu",
-        "Vyberte mapu a region a nainstalujte ji."
+        "Vyberte mapu a region a nainstalujte ji. Pak mapu zapněte v nastavení map v Garminu (pokud v seznamu není, Garmin restartujte)."
       ]
     ],
     "guides_text": "Krok za krokem: {watch} a {edge}.",
@@ -226,7 +226,7 @@
       ],
       [
         "Scegli una mappa",
-        "Scegli una mappa e una regione, poi installala."
+        "Scegli una mappa e una regione, poi installala. Quindi attiva la mappa nelle impostazioni mappe del Garmin (se non è elencata, riavvia il dispositivo)."
       ]
     ],
     "guides_text": "Passo dopo passo: la {watch} e la {edge}.",

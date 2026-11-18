@@ -446,20 +446,22 @@ for (const locale of locales) {
   }
   for (const [, anchor, body] of sections) {
     assert.match(body, new RegExp(`<h3 id="${anchor}-title">[^<]+</h3>`), `${locale}: #${anchor} heading`);
-    assert.match(body, /<p>[^<]+/, `${locale}: #${anchor} explanation`);
+    assert.match(body, /<p class="troubleshooting-answer">[^<]+/, `${locale}: #${anchor} one-line answer first`);
     const steps = body.match(/<ol class="troubleshooting-steps steps steps--compact">([\s\S]*?)<\/ol>/)?.[1] || "";
     assert.ok((steps.match(/<li>/g) || []).length >= 2, `${locale}: #${anchor} short steps`);
   }
   for (const [, target] of source.matchAll(/href="#([^"]+)"/g)) {
-    assert.ok(target === "main-content" || troubleshootingAnchors.includes(target), `${locale}: in-page link #${target}`);
+    // The symptom picker also links the H2 sections (Garmin Edge and the topic groups).
+    const sectionTarget = new RegExp(`<section class="(?:troubleshooting|guide-preflight)" id="${target}"`).test(source);
+    assert.ok(target === "main-content" || troubleshootingAnchors.includes(target) || sectionTarget, `${locale}: in-page link #${target}`);
   }
   const main = visibleText(source.match(/<main\b[\s\S]*?<\/main>/)[0]);
   assert.doesNotMatch(main, /\bIMG\b|\.img|\/GARMIN|object (?:handle|ID)|libmtp|manifest/i, `${locale}: outcome language without device internals`);
   const outsideMtpSections = visibleText(source.match(/<main\b[\s\S]*?<\/main>/)[0].replace(/<section class="troubleshooting-item" id="(?:usb-mode|garmin-busy)"[\s\S]*?<\/section>/g, "")
     // The topic index repeats the section titles, including the USB-mode one.
-    .replace(/<nav class="troubleshooting-toc"[\s\S]*?<\/nav>/, ""));
+    .replace(/<nav class="troubleshooting-toc[^"]*"[\s\S]*?<\/nav>/, ""));
   assert.doesNotMatch(outsideMtpSections, /\bMTP\b/, `${locale}: MTP only in the USB-mode and app-conflict sections`);
-  assert.equal((source.match(/<nav class="troubleshooting-toc"[\s\S]*?<\/nav>/)?.[0].match(/<a href="#/g) || []).length, troubleshootingAnchors.length, `${locale}: topic index links every topic`);
+  assert.equal((source.match(/<nav class="troubleshooting-toc[^"]*"[\s\S]*?<\/nav>/)?.[0].match(/<li><a href="#/g) || []).length, troubleshootingAnchors.length, `${locale}: symptom picker links every topic`);
   assert.doesNotMatch(source, /Send report to Terento|TR-[A-Z0-9]{6}|TODO/i, `${locale}: no unreleased support-report claims`);
   assert.doesNotMatch(main, /\bresum|min left|Request support|automatic(?:ally)? reconnect/i, `${locale}: no unreleased resume, estimate or reconnect claims`);
   assert.match(main, /Report issue/, `${locale}: current GitHub report flow`);

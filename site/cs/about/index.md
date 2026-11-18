@@ -3,17 +3,17 @@ title: "O Terento: bezplatné open-source mapy pro Garmin"
 canonical: https://terento.app/cs/about/
 ---
 
-# Bezplatná aplikace na mapy od jednoho turisty s Garminem
-
-Terento nahrává bezplatné komunitní mapy do hodinek Garmin a cyklopočítačů Edge. Je to bezplatná open-source aplikace pro Mac a k tomu webový instalátor, který běží v prohlížeči.
-
-[Stáhnout](https://terento.app/cs/download/)
+# Ahoj, jsem Gediminas
 
 ## Proč jsem ho vytvořil
 
-Jmenuji se Gediminas. Používám Garmin a rád chodím po horách. Před cestou chci mít v hodinkách mapy míst, kam jedu, a dostat je tam stálo víc úsilí, než by mělo.
+Jmenuji se Gediminas. Používám Garmin a rád chodím po horách.
 
-Vytvořil jsem Terento, abych to usnadnil sobě i všem ostatním s Garminem. Je zdarma a s otevřeným kódem, protože chci, aby pomáhalo komunitě.
+Před cestou chci mít v hodinkách mapy míst, kam jedu, a dostat je tam stálo víc úsilí, než by mělo.
+
+Vytvořil jsem Terento, abych to usnadnil sobě i všem ostatním s Garminem.
+
+Je zdarma a s otevřeným kódem, protože chci, aby pomáhalo komunitě.
 
 ### Napište mi
 
@@ -60,3 +60,5 @@ Děkuji webům a recenzentům, kteří Terento vyzkoušeli, představili nebo do
 - HikingGuy: [Garmin Fenix 9 Pro Review](https://hikingguy.com/gear/garmin-fenix-9-pro-review/)
 
 - HikingGuy (video): [Garmin Fenix: 17 Tips I Wish I Knew Sooner](https://www.youtube.com/watch?v=szqwPHHWiTM)
+
+[Stáhnout Terento pro Mac](https://terento.app/cs/download/)

@@ -116,7 +116,7 @@ def add_compatibility_link(locale: str) -> None:
     path = path_for(locale, "compatibility/index.html")
     source = path.read_text(encoding="utf-8")
     hero_count = 1
-    if 'class="compatibility-hero-copy"' not in source:
+    if 'compatibility-hero-copy"' not in source:
         source, hero_count = re.subn(
             r'(<section class="compatibility-hero"[^>]*>\s*<div class="shell compatibility-hero-inner">)([\s\S]*?)(</div>\s*</section>)',
             r'\1<div class="compatibility-hero-copy">\2</div>\3',

@@ -9,7 +9,7 @@ Un’app gratuita e open source che installa mappe gratuite su smartwatch Garmin
 
 [Scarica per Mac](https://github.com/VooZ2/terento/releases/download/v1.2.1-build48/Terento-1.2.1-macOS-arm64.dmg) [Scarica su Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-download&mt=8)
 
-Ultima versione **v1.2.1**, pubblicata il 14 novembre 2026. [Novità](https://github.com/VooZ2/terento/releases/tag/v1.2.1-build48)
+Ultima versione **v1.2.1**, pubblicata il 14 novembre 2026. macOS 13 o successivo su Apple Silicon. [Novità](https://github.com/VooZ2/terento/releases/tag/v1.2.1-build48)
 
 Niente Mac con Apple Silicon? [Usa l’installer web](https://terento.app/it/install/) in Chrome, Microsoft Edge, Opera o Brave su Mac. Linux è ancora in fase di test: vedi la [guida per Linux](https://terento.app/it/guides/install-garmin-maps-linux/).
 
@@ -35,6 +35,6 @@ Usa un cavo USB dati e sblocca lo smartwatch o l’Edge.
 
 3. Scegli una mappa
 
-Scegli una mappa e una regione, poi installala.
+Scegli una mappa e una regione, poi installala. Quindi attiva la mappa nelle impostazioni mappe del Garmin (se non è elencata, riavvia il dispositivo).
 
 Passo dopo passo: la [guida per smartwatch Garmin](https://terento.app/it/guides/install-garmin-maps-mac/) e la [guida per Garmin Edge](https://terento.app/it/guides/install-garmin-maps-edge-mac/).

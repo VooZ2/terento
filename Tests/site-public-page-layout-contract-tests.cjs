@@ -8,7 +8,7 @@ const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "u
 const styles = read("site/styles.css");
 const shellSource = read("site/site-shell.js");
 const languageSource = read("site/language.js");
-const styleVersion = "20261119-site-refresh-v1";
+const styleVersion = "20261119-site-refresh-v2";
 const mobileLanguageNames = { en: "English", de: "Deutsch", fr: "Français", pl: "Polski", cs: "Čeština", it: "Italiano" };
 
 const cssBlock = (selector) => {
@@ -77,7 +77,9 @@ for (const [name, digest] of Object.entries(appStoreArtwork)) {
 }
 assert.deepEqual(Object.fromEntries(Object.entries(appStoreBadge.badges).map(([locale, badge]) => [locale, badge.artwork])), { en: "en", de: "de", fr: "fr", pl: "en", cs: "en", it: "it" });
 assert.match(cssBlock(".app-store-badge img"), /height:\s*40px/, "App Store badge keeps Apple's 40px minimum height");
-assert.match(cssBlock(".download-v2-actions .download-v2-primary"), /min-height:\s*40px/, "Download button has the badge height");
+assert.match(cssBlock(".download-action--store"), /\bheight:\s*40px/, "Download button has the badge height");
+assert.match(cssBlock(".download-action--store"), /border-radius:\s*10px/, "Download button keeps the 10px control radius");
+assert.match(cssBlock(".store-actions"), /gap:\s*12px/, "Button and badge sit 12px apart");
 assert.doesNotMatch(styles, /\.app-store-badge[^{]*\{[^}]*(transform|filter|animation|transition|opacity|rotate|scale)/, "App Store badge is never modified, angled or animated");
 const manifest = JSON.parse(read("site/updates/macos-arm64.json"));
 const locales = Object.fromEntries(["en", "de", "fr", "pl", "cs", "it"].map((locale) => [locale, {
@@ -96,7 +98,7 @@ for (const [locale, contract] of Object.entries(locales)) {
   assert.doesNotMatch(main, /class="eyebrow"|→|·/, `${locale} Download has no eyebrow labels, arrows or middle dots`);
   // One primary action: the DMG. The Mac App Store listing is Apple's official badge with the site-download campaign.
   assert.equal((main.match(/class="download-action[ "]/g) || []).length, 1, `${locale} has one primary download action`);
-  assert.match(main, new RegExp(`<a class="download-action download-v2-primary" href="${manifest.downloadURL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
+  assert.match(main, new RegExp(`<a class="download-action download-action--store download-v2-primary" href="${manifest.downloadURL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
   const badge = appStoreBadge.badges[locale];
   const badgeLang = badge.artwork === locale ? "" : ` lang="${badge.artwork}"`;
   assert.ok(main.includes(`<a class="app-store-badge download-v2-store-link" href="https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&amp;ct=site-download&amp;mt=8" data-umami-event="app-store-click" data-umami-event-location="download-page"><img src="/assets/app-store/download-on-the-mac-app-store-${badge.artwork}.svg?v=${appStoreBadge.asset_version}" width="156" height="40" alt="${badge.alt}"${badgeLang}></a></div><p class="download-release">`), `${locale} App Store badge follows the Download button`);
@@ -122,8 +124,8 @@ for (const [locale, contract] of Object.entries(locales)) {
 for (const locale of Object.keys(locales)) {
   const prefix = locale === "en" ? "" : `${locale}/`;
   const html = read(`site/${prefix}compatibility/index.html`);
-  assert.equal((html.match(/class="compatibility-hero-copy"/g) || []).length, 1, `${locale} must use one constrained hero copy wrapper`);
-  assert.match(html, /<div class="shell compatibility-hero-inner"><div class="compatibility-hero-copy">/);
+  assert.equal((html.match(/ compatibility-hero-copy"/g) || []).length, 1, `${locale} must use one constrained hero copy wrapper`);
+  assert.match(html, /<div class="shell bento-hero compatibility-hero-inner"><div class="bento-hero-copy compatibility-hero-copy">/);
 }
 
 for (const locale of Object.keys(locales)) {
@@ -180,18 +182,26 @@ for (const locale of Object.keys(locales)) {
   const prefix = locale === "en" ? "" : `${locale}/`;
   const html = read(`site/${prefix}about/index.html`);
   assert.match(html, new RegExp(`/styles\\.css\\?v=${styleVersion}`));
-  assert.equal((html.match(/class="about-story"/g) || []).length, 1, `${locale} must have one personal story section`);
-  assert.equal((html.match(/class="about-socials"/g) || []).length, 1, `${locale} must have one social links group`);
-  assert.equal((html.match(/class="about-item about-item--group"/g) || []).length, 2, `${locale} must have one Does and one Doesn't group`);
+  // Personal About page (owner 2026-11-19): one calm story card, then contact and donation as one card.
+  assert.equal((html.match(/class="card about-story-card"/g) || []).length, 1, `${locale} must have one personal story card`);
+  assert.equal((html.match(/class="card about-socials"/g) || []).length, 1, `${locale} must have one social links and donation card`);
+  assert.equal((html.match(/class="card col-6 about-item about-item--group"/g) || []).length, 2, `${locale} must have one Does and one Doesn't card`);
   assert.doesNotMatch(html, /class="compatibility-hero about-hero"/);
   assert.equal((html.match(/<h1\b/g) || []).length, 1, `${locale} must have one primary About heading`);
-  assert.match(html, /<section class="about-intro" aria-labelledby="about-title">[\s\S]*<h1 id="about-title">/);
-  assert.doesNotMatch(html.match(/<main[\s\S]*?<\/main>/)[0], /class="eyebrow"/, `${locale} About uses plain headings without eyebrow labels`);
+  assert.match(html, /<section class="block about-hero" aria-labelledby="about-title">[\s\S]*<h1 id="about-title">/);
+  assert.doesNotMatch(html.match(/<main[\s\S]*?<\/main>/)[0], /class="eyebrow"|about-intro-copy|data-umami-event-location="about-intro"/, `${locale} no product sentence or Download button at the top`);
+  assert.doesNotMatch(html.match(/<div class="card about-story-card">[\s\S]*?<\/div>\s*<\/div>/)[0], /<img\b/, `${locale} About story is text only (no photo or avatar)`);
   const storyCopy = html.match(/<div class="about-story-copy">[\s\S]*?<\/div>/)?.[0];
   assert.ok(storyCopy, `${locale} must have a story copy block`);
-  assert.equal((storyCopy.match(/<p>/g) || []).length, 2, `${locale} must keep the maker story concise`);
-  assert.ok(html.indexOf('class="about-intro"') < html.indexOf('class="about-story"'), `${locale} maker note follows the intro`);
-  assert.ok(html.indexOf('class="about-story"') < html.indexOf('class="about-main"'));
+  assert.equal((storyCopy.match(/<p>/g) || []).length, 4, `${locale} story in short first-person paragraphs`);
+  assert.ok(html.indexOf('about-story-card') < html.indexOf('about-socials'), `${locale} contact card follows the story`);
+  assert.ok(html.indexOf('about-socials') < html.indexOf('class="block about-main"'));
+  assert.match(html, new RegExp(`<p class="about-download-link"><a class="text-link" href="/${prefix}download/" data-umami-event="download-cta-click" data-umami-event-location="about-bottom">`), `${locale} one small Download link at the end`);
+  const schema = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
+  const person = schema["@graph"].find(node => node["@type"] === "Person");
+  assert.deepEqual(person.sameAs, ["https://www.linkedin.com/in/gediminasc/", "https://www.reddit.com/user/MrDonas/"], `${locale} Person sameAs lists only the profiles on the page`);
+  assert.equal(person.email, undefined, `${locale} no e-mail in schema`);
+  assert.deepEqual(schema["@graph"].find(node => node["@type"] === "Organization").founder, { "@id": person["@id"] });
   // Code and map credits live in the footer and on Map styles, not in a separate About section (2026-11-16).
   const aboutMain = html.match(/<main[\s\S]*?<\/main>/)[0];
   assert.doesNotMatch(html, /about-v2-open|about-open-title/, `${locale} About no longer repeats the code and map credits`);
@@ -200,10 +210,10 @@ for (const locale of Object.keys(locales)) {
   const mapStyles = read(`site/${prefix}map-styles/index.html`);
   assert.equal((mapStyles.match(/© [^<]*OpenStreetMap[^<]* \(ODbL\)/g) || []).length, 5, `${locale} Map styles keeps the © OpenStreetMap (ODbL) credit for every map project`);
   for (const project of ["OpenTopoMap", "Freizeitkarte", "MapRando", "BBBike", "OSMapaPL"]) assert.match(mapStyles, new RegExp(project), `${locale} Map styles credits ${project}`);
-  const mentions = aboutMain.match(/<section class="about-v2-mentions" aria-labelledby="about-mentions-title">[\s\S]*?<\/section>/)?.[0];
+  const mentions = aboutMain.match(/<section class="block about-v2-mentions" aria-labelledby="about-mentions-title">[\s\S]*?<\/section>/)?.[0];
   assert.ok(mentions, `${locale} About lists who wrote about Terento`);
-  assert.ok(aboutMain.indexOf('class="about-main"') < aboutMain.indexOf('class="about-v2-mentions"'), `${locale} mentions close the page`);
-  assert.match(mentions, /<h2 id="about-mentions-title">[^<]+<\/h2>\s*<p>[^<]+<\/p>\s*<ul class="about-bullet-list">/);
+  assert.ok(aboutMain.indexOf('class="block about-main"') < aboutMain.indexOf('class="block about-v2-mentions"'), `${locale} mentions close the page`);
+  assert.match(mentions, /<h2 id="about-mentions-title">[^<]+<\/h2><p>[^<]+<\/p><\/div>\s*<ul class="about-bullet-list">/);
   const mentionLinks = [...mentions.matchAll(/<li>([^<]+)<a class="text-link" href="([^"]+)"([^>]*)>([^<]+)<\/a><\/li>/g)];
   assert.deepEqual(mentionLinks.map(match => match[2]), [
     "https://the5krunner.com/2026/09/22/garmin-mac-custom-maps-terento/",
@@ -224,12 +234,10 @@ for (const locale of Object.keys(locales)) {
   }
   assert.doesNotMatch(html, /vibe coding|software developer|Softwareentwickler|développeur logiciel|programistą|vývojář|sviluppatore software/i);
   const main = html.match(/<main[\s\S]*?<\/main>/)[0];
-  assert.equal((main.match(/class="download-action"/g) || []).length, 1);
-  assert.ok(main.indexOf('class="download-action"') < main.indexOf('class="about-main"'), `${locale} Download belongs with the product intro`);
-  assert.match(main, new RegExp(`href="/${prefix}download/" data-umami-event="download-cta-click" data-umami-event-location="about-intro"`));
+  assert.equal((main.match(/class="download-action/g) || []).length, 0, `${locale} About has no Download button, only the closing text link`);
+  assert.ok(main.indexOf('about-download-link') > main.indexOf('about-v2-mentions'), `${locale} the Download link closes the page`);
   assert.match(main, new RegExp(`href="/${prefix}compatibility/"`));
   assert.match(main, /\.img/);
-  assert.match(html, /class="[^"]*about-slogan/);
   assert.equal((html.match(/class="about-bullet-list"/g) || []).length, 3, `${locale} must use lists for Does, Doesn't and mentions`);
   assert.match(html, /href="https:\/\/www\.linkedin\.com\/in\/gediminasc\/"[^>]+data-umami-event="social-link-click"[^>]+data-umami-event-location="about-story"[^>]+data-umami-event-channel="linkedin"[^>]+data-umami-event-destination="linkedin\.com"/);
   assert.match(html, /href="https:\/\/www\.reddit\.com\/user\/MrDonas\/"[^>]+data-umami-event="social-link-click"[^>]+data-umami-event-location="about-story"[^>]+data-umami-event-channel="reddit"[^>]+data-umami-event-destination="reddit\.com"/);

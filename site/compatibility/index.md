@@ -5,7 +5,7 @@ canonical: https://terento.app/compatibility/
 
 # Garmin watch and Edge compatibility
 
-Terento works with Garmin watches and newer Garmin Edge bike computers with map support. Below are the exact models where people have already installed a map with Terento. The list grows as more installs are shared.
+Terento works with Garmin watches and Edge bike computers that can show maps (the Edge 130 and 130 Plus can’t). Below are the exact models where people have already installed a map with Terento. The list grows as more installs are shared.
 
 Not seeing your model? That doesn’t mean it won’t work. It may be that no one has shared a successful install from it yet.
 
@@ -21,17 +21,13 @@ The current version includes every map provider in the catalog. This product inf
 
 47 models
 
-fēnix
-
 ### fēnix 8 47 mm, AMOLED
 
 65 successful installs
 
 App 64 Web 1
 
-Latest successful install November 15, 2026
-
-Forerunner
+fēnix · Latest successful install November 15, 2026
 
 ### Forerunner 970 AMOLED
 
@@ -39,9 +35,7 @@ Forerunner
 
 App 59 Web 1
 
-Latest successful install November 18, 2026
-
-Forerunner
+Forerunner · Latest successful install November 18, 2026
 
 ### Forerunner 965 Historical
 
@@ -49,9 +43,7 @@ Forerunner
 
 App 29 Web 3
 
-Latest successful install November 1, 2026
-
-fēnix
+Forerunner · Latest successful install November 1, 2026
 
 ### fēnix 9 Pro 51 mm, AMOLED
 
@@ -59,9 +51,7 @@ fēnix
 
 App 26
 
-Latest successful install November 16, 2026
-
-epix
+fēnix · Latest successful install November 16, 2026
 
 ### epix Pro (Gen 2) 51 mm, AMOLED
 
@@ -69,9 +59,7 @@ epix
 
 App 21 Web 1
 
-Latest successful install November 16, 2026
-
-fēnix
+epix · Latest successful install November 16, 2026
 
 ### fēnix 7X Pro Solar, Historical
 
@@ -79,9 +67,7 @@ fēnix
 
 App 17 Web 5
 
-Latest successful install November 17, 2026
-
-fēnix
+fēnix · Latest successful install November 17, 2026
 
 ### fēnix 8 47 mm, MIP, Solar
 
@@ -89,9 +75,7 @@ fēnix
 
 App 17
 
-Latest successful install November 9, 2026
-
-fēnix
+fēnix · Latest successful install November 9, 2026
 
 ### fēnix 9 Pro 47 mm, AMOLED
 
@@ -99,9 +83,7 @@ fēnix
 
 App 14 Web 2
 
-Latest successful install November 16, 2026
-
-Forerunner
+fēnix · Latest successful install November 16, 2026
 
 ### Forerunner 955 Solar, Historical
 
@@ -109,9 +91,7 @@ Forerunner
 
 App 15
 
-Latest successful install November 16, 2026
-
-fēnix
+Forerunner · Latest successful install November 16, 2026
 
 ### fēnix 9 Pro 51 mm, AMOLED, inReach
 
@@ -119,9 +99,7 @@ fēnix
 
 App 15
 
-Latest successful install October 31, 2026
-
-fēnix
+fēnix · Latest successful install October 31, 2026
 
 ### fēnix 7 Pro Solar, Historical
 
@@ -129,9 +107,7 @@ fēnix
 
 App 14
 
-Latest successful install October 30, 2026
-
-fēnix
+fēnix · Latest successful install October 30, 2026
 
 ### fēnix 7 47 mm, Solar
 
@@ -139,9 +115,7 @@ fēnix
 
 App 12 Web 1
 
-Latest successful install November 14, 2026
-
-fēnix
+fēnix · Latest successful install November 14, 2026
 
 ### fēnix 8 51 mm, AMOLED
 
@@ -149,9 +123,7 @@ fēnix
 
 App 13
 
-Latest successful install November 12, 2026
-
-fēnix
+fēnix · Latest successful install November 12, 2026
 
 ### fēnix 8 Pro 51 mm, AMOLED, inReach
 
@@ -159,9 +131,7 @@ fēnix
 
 App 11
 
-Latest successful install November 16, 2026
-
-epix
+fēnix · Latest successful install November 16, 2026
 
 ### epix Pro (Gen 2) 47 mm, AMOLED
 
@@ -169,19 +139,15 @@ epix
 
 App 6 Web 4
 
-Latest successful install November 3, 2026
+epix · Latest successful install November 3, 2026
 
-Edge
-
-### Edge 1050 Smartwatch
+### Edge 1050 Bike computer
 
 8 successful installs
 
 App 8
 
-Latest successful install November 18, 2026
-
-epix
+Edge · Latest successful install November 18, 2026
 
 ### epix (Gen 2) 47 mm
 
@@ -189,9 +155,7 @@ epix
 
 App 4 Web 4
 
-Latest successful install November 17, 2026
-
-fēnix
+epix · Latest successful install November 17, 2026
 
 ### fēnix 7X 51 mm, Solar
 
@@ -199,9 +163,7 @@ fēnix
 
 App 8
 
-Latest successful install November 1, 2026
-
-fēnix
+fēnix · Latest successful install November 1, 2026
 
 ### fēnix 8 43 mm, AMOLED
 
@@ -209,9 +171,7 @@ fēnix
 
 App 8
 
-Latest successful install November 7, 2026
-
-fēnix
+fēnix · Latest successful install November 7, 2026
 
 ### fēnix 9 Pro 47 mm, AMOLED, inReach
 
@@ -219,9 +179,7 @@ fēnix
 
 App 8
 
-Latest successful install November 13, 2026
-
-Enduro
+fēnix · Latest successful install November 13, 2026
 
 ### Enduro 3 MIP, Solar
 
@@ -229,9 +187,7 @@ Enduro
 
 App 6
 
-Latest successful install November 17, 2026
-
-fēnix
+Enduro · Latest successful install November 17, 2026
 
 ### fēnix 6 Pro 47 mm, MIP, Historical
 
@@ -239,9 +195,7 @@ fēnix
 
 App 3 Web 3
 
-Latest successful install October 26, 2026
-
-fēnix
+fēnix · Latest successful install October 26, 2026
 
 ### fēnix 8 Pro 47 mm, AMOLED, inReach
 
@@ -249,19 +203,15 @@ fēnix
 
 App 6
 
-Latest successful install November 11, 2026
+fēnix · Latest successful install November 11, 2026
 
-Edge
-
-### Edge 540 Smartwatch
+### Edge 540 Bike computer
 
 5 successful installs
 
 App 4 Web 1
 
-Latest successful install November 17, 2026
-
-Enduro
+Edge · Latest successful install November 17, 2026
 
 ### Enduro 4 MIP, Solar
 
@@ -269,9 +219,7 @@ Enduro
 
 App 4
 
-Latest successful install November 17, 2026
-
-fēnix
+Enduro · Latest successful install November 17, 2026
 
 ### fēnix 7S Pro Solar, Historical
 
@@ -279,9 +227,7 @@ fēnix
 
 App 4
 
-Latest successful install October 2, 2026
-
-fēnix
+fēnix · Latest successful install October 2, 2026
 
 ### fēnix 9 47 mm, AMOLED
 
@@ -289,9 +235,7 @@ fēnix
 
 App 4
 
-Latest successful install September 23, 2026
-
-fēnix
+fēnix · Latest successful install September 23, 2026
 
 ### fēnix 5 Plus Historical
 
@@ -299,9 +243,7 @@ fēnix
 
 App 3
 
-Latest successful install October 29, 2026
-
-fēnix
+fēnix · Latest successful install October 29, 2026
 
 ### fēnix 6X Pro 51 mm, MIP, Historical
 
@@ -309,9 +251,7 @@ fēnix
 
 App 3
 
-Latest successful install November 14, 2026
-
-fēnix
+fēnix · Latest successful install November 14, 2026
 
 ### fēnix 9 Pro 51 mm, MIP, Solar, inReach
 
@@ -319,9 +259,7 @@ fēnix
 
 App 3
 
-Latest successful install October 7, 2026
-
-fēnix
+fēnix · Latest successful install October 7, 2026
 
 ### fēnix 9 Pro 47 mm, MIP, Solar
 
@@ -329,9 +267,7 @@ fēnix
 
 App 3
 
-Latest successful install October 16, 2026
-
-Approach
+fēnix · Latest successful install October 16, 2026
 
 ### Approach S72 47 mm, AMOLED
 
@@ -339,9 +275,7 @@ Approach
 
 App 2
 
-Latest successful install November 15, 2026
-
-Descent
+Approach · Latest successful install November 15, 2026
 
 ### Descent Mk3i 51 mm, AMOLED
 
@@ -349,29 +283,23 @@ Descent
 
 App 2
 
-Latest successful install October 14, 2026
+Descent · Latest successful install October 14, 2026
 
-Edge
-
-### Edge 1040 Smartwatch
+### Edge 1040 Bike computer
 
 2 successful installs
 
 App 2
 
-Latest successful install November 14, 2026
+Edge · Latest successful install November 14, 2026
 
-Edge
-
-### Edge 840 Smartwatch
+### Edge 840 Bike computer
 
 2 successful installs
 
 App 2
 
-Latest successful install November 17, 2026
-
-Enduro
+Edge · Latest successful install November 17, 2026
 
 ### Enduro 2 Historical
 
@@ -379,9 +307,7 @@ Enduro
 
 App 2
 
-Latest successful install October 13, 2026
-
-fēnix
+Enduro · Latest successful install October 13, 2026
 
 ### fēnix 6X 51 mm
 
@@ -389,9 +315,7 @@ fēnix
 
 App 2
 
-Latest successful install October 20, 2026
-
-fēnix
+fēnix · Latest successful install October 20, 2026
 
 ### fēnix 9 Pro 51 mm, MIP, Solar
 
@@ -399,9 +323,7 @@ fēnix
 
 App 2
 
-Latest successful install October 19, 2026
-
-fēnix
+fēnix · Latest successful install October 19, 2026
 
 ### fēnix 9 43 mm, AMOLED
 
@@ -409,9 +331,7 @@ fēnix
 
 App 2
 
-Latest successful install October 29, 2026
-
-Venu
+fēnix · Latest successful install October 29, 2026
 
 ### Venu X1 AMOLED
 
@@ -419,19 +339,15 @@ Venu
 
 App 2
 
-Latest successful install October 29, 2026
+Venu · Latest successful install October 29, 2026
 
-Edge
-
-### Edge 850 Smartwatch
+### Edge 850 Bike computer
 
 1 successful install
 
 App 1
 
-Latest successful install November 17, 2026
-
-fēnix
+Edge · Latest successful install November 17, 2026
 
 ### fēnix 8 51 mm, MIP, Solar
 
@@ -439,9 +355,7 @@ fēnix
 
 Web 1
 
-Latest successful install October 18, 2026
-
-fēnix
+fēnix · Latest successful install October 18, 2026
 
 ### fēnix 9 Pro 43 mm, AMOLED
 
@@ -449,9 +363,7 @@ fēnix
 
 App 1
 
-Latest successful install October 12, 2026
-
-fēnix
+fēnix · Latest successful install October 12, 2026
 
 ### fēnix 9 Pro 47 mm, MIP, Solar, inReach
 
@@ -459,9 +371,7 @@ fēnix
 
 App 1
 
-Latest successful install September 27, 2026
-
-fēnix
+fēnix · Latest successful install September 27, 2026
 
 ### fēnix E 47 mm, AMOLED
 
@@ -469,9 +379,7 @@ fēnix
 
 App 1
 
-Latest successful install November 17, 2026
-
-quatix
+fēnix · Latest successful install November 17, 2026
 
 ### quatix 7 Historical
 
@@ -479,9 +387,7 @@ quatix
 
 App 1
 
-Latest successful install October 17, 2026
-
-tactix
+quatix · Latest successful install October 17, 2026
 
 ### tactix Delta Solar, Historical
 
@@ -489,7 +395,7 @@ tactix
 
 App 1
 
-Latest successful install October 7, 2026
+tactix · Latest successful install October 7, 2026
 
 ## Don’t see your Garmin here?
 

@@ -5,7 +5,7 @@ canonical: https://terento.app/fr/compatibility/
 
 # Compatibilité des montres et compteurs Edge Garmin
 
-Terento fonctionne avec les montres Garmin et les compteurs vélo Garmin Edge récents compatibles cartes. Voici les modèles exacts sur lesquels quelqu’un a déjà installé une carte avec Terento. La liste s’allonge à chaque installation partagée.
+Terento fonctionne avec les montres Garmin et les compteurs vélo Edge qui peuvent afficher des cartes (les Edge 130 et 130 Plus ne le peuvent pas). Voici les modèles exacts sur lesquels quelqu’un a déjà installé une carte avec Terento. La liste s’allonge à chaque installation partagée.
 
 L’absence de votre modèle ne veut pas dire qu’il ne fonctionne pas. Personne n’a peut-être encore partagé d’installation réussie avec ce modèle.
 
@@ -21,17 +21,13 @@ La version actuelle comprend tous les fournisseurs de cartes du catalogue. Cette
 
 47 modèles
 
-fēnix
-
 ### fēnix 8 47 mm, AMOLED
 
 65 installations réussies
 
 App 64 Web 1
 
-Dernière installation réussie 15 novembre 2026
-
-Forerunner
+fēnix · Dernière installation réussie 15 novembre 2026
 
 ### Forerunner 970 AMOLED
 
@@ -39,9 +35,7 @@ Forerunner
 
 App 59 Web 1
 
-Dernière installation réussie 18 novembre 2026
-
-Forerunner
+Forerunner · Dernière installation réussie 18 novembre 2026
 
 ### Forerunner 965 Historical
 
@@ -49,9 +43,7 @@ Forerunner
 
 App 29 Web 3
 
-Dernière installation réussie 1 novembre 2026
-
-fēnix
+Forerunner · Dernière installation réussie 1 novembre 2026
 
 ### fēnix 9 Pro 51 mm, AMOLED
 
@@ -59,9 +51,7 @@ fēnix
 
 App 26
 
-Dernière installation réussie 16 novembre 2026
-
-epix
+fēnix · Dernière installation réussie 16 novembre 2026
 
 ### epix Pro (Gen 2) 51 mm, AMOLED
 
@@ -69,9 +59,7 @@ epix
 
 App 21 Web 1
 
-Dernière installation réussie 16 novembre 2026
-
-fēnix
+epix · Dernière installation réussie 16 novembre 2026
 
 ### fēnix 7X Pro Solar, Historical
 
@@ -79,9 +67,7 @@ fēnix
 
 App 17 Web 5
 
-Dernière installation réussie 17 novembre 2026
-
-fēnix
+fēnix · Dernière installation réussie 17 novembre 2026
 
 ### fēnix 8 47 mm, MIP, Solar
 
@@ -89,9 +75,7 @@ fēnix
 
 App 17
 
-Dernière installation réussie 9 novembre 2026
-
-fēnix
+fēnix · Dernière installation réussie 9 novembre 2026
 
 ### fēnix 9 Pro 47 mm, AMOLED
 
@@ -99,9 +83,7 @@ fēnix
 
 App 14 Web 2
 
-Dernière installation réussie 16 novembre 2026
-
-Forerunner
+fēnix · Dernière installation réussie 16 novembre 2026
 
 ### Forerunner 955 Solar, Historical
 
@@ -109,9 +91,7 @@ Forerunner
 
 App 15
 
-Dernière installation réussie 16 novembre 2026
-
-fēnix
+Forerunner · Dernière installation réussie 16 novembre 2026
 
 ### fēnix 9 Pro 51 mm, AMOLED, inReach
 
@@ -119,9 +99,7 @@ fēnix
 
 App 15
 
-Dernière installation réussie 31 octobre 2026
-
-fēnix
+fēnix · Dernière installation réussie 31 octobre 2026
 
 ### fēnix 7 Pro Solar, Historical
 
@@ -129,9 +107,7 @@ fēnix
 
 App 14
 
-Dernière installation réussie 30 octobre 2026
-
-fēnix
+fēnix · Dernière installation réussie 30 octobre 2026
 
 ### fēnix 7 47 mm, Solar
 
@@ -139,9 +115,7 @@ fēnix
 
 App 12 Web 1
 
-Dernière installation réussie 14 novembre 2026
-
-fēnix
+fēnix · Dernière installation réussie 14 novembre 2026
 
 ### fēnix 8 51 mm, AMOLED
 
@@ -149,9 +123,7 @@ fēnix
 
 App 13
 
-Dernière installation réussie 12 novembre 2026
-
-fēnix
+fēnix · Dernière installation réussie 12 novembre 2026
 
 ### fēnix 8 Pro 51 mm, AMOLED, inReach
 
@@ -159,9 +131,7 @@ fēnix
 
 App 11
 
-Dernière installation réussie 16 novembre 2026
-
-epix
+fēnix · Dernière installation réussie 16 novembre 2026
 
 ### epix Pro (Gen 2) 47 mm, AMOLED
 
@@ -169,19 +139,15 @@ epix
 
 App 6 Web 4
 
-Dernière installation réussie 3 novembre 2026
+epix · Dernière installation réussie 3 novembre 2026
 
-Edge
-
-### Edge 1050 Smartwatch
+### Edge 1050 Compteur vélo
 
 8 installations réussies
 
 App 8
 
-Dernière installation réussie 18 novembre 2026
-
-epix
+Edge · Dernière installation réussie 18 novembre 2026
 
 ### epix (Gen 2) 47 mm
 
@@ -189,9 +155,7 @@ epix
 
 App 4 Web 4
 
-Dernière installation réussie 17 novembre 2026
-
-fēnix
+epix · Dernière installation réussie 17 novembre 2026
 
 ### fēnix 7X 51 mm, Solar
 
@@ -199,9 +163,7 @@ fēnix
 
 App 8
 
-Dernière installation réussie 1 novembre 2026
-
-fēnix
+fēnix · Dernière installation réussie 1 novembre 2026
 
 ### fēnix 8 43 mm, AMOLED
 
@@ -209,9 +171,7 @@ fēnix
 
 App 8
 
-Dernière installation réussie 7 novembre 2026
-
-fēnix
+fēnix · Dernière installation réussie 7 novembre 2026
 
 ### fēnix 9 Pro 47 mm, AMOLED, inReach
 
@@ -219,9 +179,7 @@ fēnix
 
 App 8
 
-Dernière installation réussie 13 novembre 2026
-
-Enduro
+fēnix · Dernière installation réussie 13 novembre 2026
 
 ### Enduro 3 MIP, Solar
 
@@ -229,9 +187,7 @@ Enduro
 
 App 6
 
-Dernière installation réussie 17 novembre 2026
-
-fēnix
+Enduro · Dernière installation réussie 17 novembre 2026
 
 ### fēnix 6 Pro 47 mm, MIP, Historical
 
@@ -239,9 +195,7 @@ fēnix
 
 App 3 Web 3
 
-Dernière installation réussie 26 octobre 2026
-
-fēnix
+fēnix · Dernière installation réussie 26 octobre 2026
 
 ### fēnix 8 Pro 47 mm, AMOLED, inReach
 
@@ -249,19 +203,15 @@ fēnix
 
 App 6
 
-Dernière installation réussie 11 novembre 2026
+fēnix · Dernière installation réussie 11 novembre 2026
 
-Edge
-
-### Edge 540 Smartwatch
+### Edge 540 Compteur vélo
 
 5 installations réussies
 
 App 4 Web 1
 
-Dernière installation réussie 17 novembre 2026
-
-Enduro
+Edge · Dernière installation réussie 17 novembre 2026
 
 ### Enduro 4 MIP, Solar
 
@@ -269,9 +219,7 @@ Enduro
 
 App 4
 
-Dernière installation réussie 17 novembre 2026
-
-fēnix
+Enduro · Dernière installation réussie 17 novembre 2026
 
 ### fēnix 7S Pro Solar, Historical
 
@@ -279,9 +227,7 @@ fēnix
 
 App 4
 
-Dernière installation réussie 2 octobre 2026
-
-fēnix
+fēnix · Dernière installation réussie 2 octobre 2026
 
 ### fēnix 9 47 mm, AMOLED
 
@@ -289,9 +235,7 @@ fēnix
 
 App 4
 
-Dernière installation réussie 23 septembre 2026
-
-fēnix
+fēnix · Dernière installation réussie 23 septembre 2026
 
 ### fēnix 5 Plus Historical
 
@@ -299,9 +243,7 @@ fēnix
 
 App 3
 
-Dernière installation réussie 29 octobre 2026
-
-fēnix
+fēnix · Dernière installation réussie 29 octobre 2026
 
 ### fēnix 6X Pro 51 mm, MIP, Historical
 
@@ -309,9 +251,7 @@ fēnix
 
 App 3
 
-Dernière installation réussie 14 novembre 2026
-
-fēnix
+fēnix · Dernière installation réussie 14 novembre 2026
 
 ### fēnix 9 Pro 51 mm, MIP, Solar, inReach
 
@@ -319,9 +259,7 @@ fēnix
 
 App 3
 
-Dernière installation réussie 7 octobre 2026
-
-fēnix
+fēnix · Dernière installation réussie 7 octobre 2026
 
 ### fēnix 9 Pro 47 mm, MIP, Solar
 
@@ -329,9 +267,7 @@ fēnix
 
 App 3
 
-Dernière installation réussie 16 octobre 2026
-
-Approach
+fēnix · Dernière installation réussie 16 octobre 2026
 
 ### Approach S72 47 mm, AMOLED
 
@@ -339,9 +275,7 @@ Approach
 
 App 2
 
-Dernière installation réussie 15 novembre 2026
-
-Descent
+Approach · Dernière installation réussie 15 novembre 2026
 
 ### Descent Mk3i 51 mm, AMOLED
 
@@ -349,29 +283,23 @@ Descent
 
 App 2
 
-Dernière installation réussie 14 octobre 2026
+Descent · Dernière installation réussie 14 octobre 2026
 
-Edge
-
-### Edge 1040 Smartwatch
+### Edge 1040 Compteur vélo
 
 2 installations réussies
 
 App 2
 
-Dernière installation réussie 14 novembre 2026
+Edge · Dernière installation réussie 14 novembre 2026
 
-Edge
-
-### Edge 840 Smartwatch
+### Edge 840 Compteur vélo
 
 2 installations réussies
 
 App 2
 
-Dernière installation réussie 17 novembre 2026
-
-Enduro
+Edge · Dernière installation réussie 17 novembre 2026
 
 ### Enduro 2 Historical
 
@@ -379,9 +307,7 @@ Enduro
 
 App 2
 
-Dernière installation réussie 13 octobre 2026
-
-fēnix
+Enduro · Dernière installation réussie 13 octobre 2026
 
 ### fēnix 6X 51 mm
 
@@ -389,9 +315,7 @@ fēnix
 
 App 2
 
-Dernière installation réussie 20 octobre 2026
-
-fēnix
+fēnix · Dernière installation réussie 20 octobre 2026
 
 ### fēnix 9 Pro 51 mm, MIP, Solar
 
@@ -399,9 +323,7 @@ fēnix
 
 App 2
 
-Dernière installation réussie 19 octobre 2026
-
-fēnix
+fēnix · Dernière installation réussie 19 octobre 2026
 
 ### fēnix 9 43 mm, AMOLED
 
@@ -409,9 +331,7 @@ fēnix
 
 App 2
 
-Dernière installation réussie 29 octobre 2026
-
-Venu
+fēnix · Dernière installation réussie 29 octobre 2026
 
 ### Venu X1 AMOLED
 
@@ -419,19 +339,15 @@ Venu
 
 App 2
 
-Dernière installation réussie 29 octobre 2026
+Venu · Dernière installation réussie 29 octobre 2026
 
-Edge
-
-### Edge 850 Smartwatch
+### Edge 850 Compteur vélo
 
 1 installation réussie
 
 App 1
 
-Dernière installation réussie 17 novembre 2026
-
-fēnix
+Edge · Dernière installation réussie 17 novembre 2026
 
 ### fēnix 8 51 mm, MIP, Solar
 
@@ -439,9 +355,7 @@ fēnix
 
 Web 1
 
-Dernière installation réussie 18 octobre 2026
-
-fēnix
+fēnix · Dernière installation réussie 18 octobre 2026
 
 ### fēnix 9 Pro 43 mm, AMOLED
 
@@ -449,9 +363,7 @@ fēnix
 
 App 1
 
-Dernière installation réussie 12 octobre 2026
-
-fēnix
+fēnix · Dernière installation réussie 12 octobre 2026
 
 ### fēnix 9 Pro 47 mm, MIP, Solar, inReach
 
@@ -459,9 +371,7 @@ fēnix
 
 App 1
 
-Dernière installation réussie 27 septembre 2026
-
-fēnix
+fēnix · Dernière installation réussie 27 septembre 2026
 
 ### fēnix E 47 mm, AMOLED
 
@@ -469,9 +379,7 @@ fēnix
 
 App 1
 
-Dernière installation réussie 17 novembre 2026
-
-quatix
+fēnix · Dernière installation réussie 17 novembre 2026
 
 ### quatix 7 Historical
 
@@ -479,9 +387,7 @@ quatix
 
 App 1
 
-Dernière installation réussie 17 octobre 2026
-
-tactix
+quatix · Dernière installation réussie 17 octobre 2026
 
 ### tactix Delta Solar, Historical
 
@@ -489,7 +395,7 @@ tactix
 
 App 1
 
-Dernière installation réussie 7 octobre 2026
+tactix · Dernière installation réussie 7 octobre 2026
 
 ## Votre Garmin n’apparaît pas ?
 

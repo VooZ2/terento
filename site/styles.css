@@ -597,19 +597,6 @@ h1 {
   padding: var(--internal-page-intro-padding-top) 0 clamp(96px, 12vw, 160px);
 }
 
-.about-main {
-  padding: clamp(72px, 9vw, 120px) 0 clamp(96px, 12vw, 160px);
-}
-
-.about-story {
-  padding: var(--internal-page-intro-padding-top) 0 clamp(72px, 9vw, 120px);
-  border-bottom: 1px solid var(--border);
-}
-
-.about-story-inner {
-  max-width: var(--max-width);
-}
-
 .about-story-copy {
   max-width: 680px;
 }
@@ -625,9 +612,6 @@ h1 {
   margin-top: 18px;
 }
 
-.about-socials {
-  margin-top: 40px;
-}
 
 .about-social-label {
   margin: 0 0 10px;
@@ -685,54 +669,14 @@ h1 {
   background: transparent;
 }
 
-.about-grid {
-  display: grid;
-  grid-template-columns: minmax(220px, .72fr) minmax(0, 1.28fr);
-  gap: clamp(48px, 9vw, 150px);
-  align-items: start;
-}
-
-.about-list {
-  border-top: 1px solid var(--border);
-}
-
-.about-item {
-  padding: 28px 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.about-item h2 {
-  margin-bottom: 12px;
-  font-size: 28px;
-  line-height: 1.12;
-}
-
-.about-item p {
-  max-width: 680px;
-  margin-bottom: 0;
-  color: var(--secondary);
-  font-size: 15px;
-}
-
 .about-item a {
   color: var(--link-text);
   font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  text-decoration: none;
 }
 
 .about-item a:hover {
   color: var(--link-text-hover);
-}
-
-.about-slogan h2 {
-  max-width: 520px;
-  font-size: clamp(44px, 6vw, 82px);
-  line-height: 1.02;
-}
-
-.about-item--group {
-  padding: 28px 0 32px;
 }
 
 .about-bullet-list {
@@ -794,22 +738,6 @@ h1 {
 
 .download-action:active {
   scale: 0.96;
-}
-
-/* Beside Apple's badge the Download button has the badge's 40px height (owner decision 2026-11-18),
-   at every width; ::after keeps a 44px touch target. */
-.home-actions .hero-download-action {
-  position: relative;
-  min-height: 40px;
-  padding: 6px 20px;
-  font-size: 15px;
-}
-
-.home-actions .hero-download-action::after,
-.download-v2-actions .download-v2-primary::after {
-  content: "";
-  position: absolute;
-  inset: -2px 0;
 }
 
 .hero-actions {
@@ -1000,8 +928,7 @@ h1 {
 .download-detail a:not(.text-link) {
   color: var(--link-text);
   font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  text-decoration: none;
 }
 
 .download-info-link {
@@ -1124,8 +1051,7 @@ h1 {
 .legal-item a {
   color: var(--link-text);
   font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  text-decoration: none;
 }
 
 .legal-intro a:hover,
@@ -1838,7 +1764,6 @@ details p {
   .testing-grid,
   .faq-grid,
   .legal-grid,
-  .about-grid,
   .product-showcase-grid,
   .product-showcase--reverse .product-showcase-grid {
     grid-template-columns: 1fr;
@@ -1980,25 +1905,11 @@ details p {
     padding-top: var(--internal-page-intro-padding-top);
   }
 
-  .about-story {
-    padding: var(--internal-page-intro-padding-top) 0 64px;
-  }
-
   .about-story-copy p {
     font-size: 17px;
   }
 
-  .about-socials {
-    margin-top: 32px;
-  }
 
-  .about-slogan h2 {
-    font-size: clamp(44px, 13vw, 64px);
-  }
-
-  .about-item--group {
-    padding: 24px 0 28px;
-  }
 
   .download-actions {
     flex-direction: column;
@@ -2998,8 +2909,7 @@ details p {
 .troubleshooting-item > p a {
   color: var(--link-text);
   font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  text-decoration: none;
 }
 
 /* Troubleshooting guide: anchored sections opened from app help links */
@@ -3022,8 +2932,7 @@ details p {
 .troubleshooting-steps a {
   color: var(--link-text);
   font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  text-decoration: none;
 }
 
 .troubleshooting-more {
@@ -3277,15 +3186,8 @@ details p {
 }
 
 /* About: product purpose precedes the compact maker story. */
-.about-intro { padding: var(--internal-page-intro-padding-top) 0 0; }
-.about-intro h1 { max-width: 900px; margin: 14px 0 24px; font-size: clamp(38px, 5vw, 64px); line-height: 1.08; }
-.about-intro-copy { max-width: 680px; font-size: 18px; color: var(--secondary); }
 .about-beta { max-width: 680px; font-size: 15px; color: var(--secondary); }
 .about-beta a { display: inline; }
-.about-page .about-main { padding: 48px 0 64px; }
-.about-page .about-slogan h2 { font-size: clamp(30px, 3.5vw, 44px); }
-.about-page .about-story { padding: 48px 0 64px; border-top: 1px solid var(--border); }
-.about-story h2 { max-width: 680px; font-size: clamp(28px, 3vw, 40px); margin: 14px 0 24px; }
 
 /* Map styles comparison page ------------------------------------------------ */
 .map-styles-main [hidden] { display: none !important; }
@@ -3634,13 +3536,6 @@ details p {
   margin-top: 32px;
 }
 
-.download-v2-actions .download-v2-primary {
-  position: relative;
-  min-height: 40px;
-  padding: 6px 20px;
-  font-size: 15px;
-}
-
 .download-v2 .download-release {
   margin: 20px 0 0;
   padding-top: 16px;
@@ -3658,8 +3553,6 @@ details p {
 .download-v2-copy p .text-link,
 .download-v2-guides .text-link {
   display: inline;
-  text-decoration: underline;
-  text-underline-offset: 2px;
 }
 
 .download-v2-shot {
@@ -3668,12 +3561,6 @@ details p {
 
 .download-v2 .page-hero {
   padding-top: 0;
-}
-
-.download-v2-needs .card-media img {
-  aspect-ratio: 16 / 9;
-  object-fit: cover;
-  object-position: left top;
 }
 
 .download-v2-info h2 {
@@ -3738,128 +3625,6 @@ details p {
 
   .download-v2-actions .app-store-badge {
     align-self: center;
-  }
-}
-
-/* v2: about (scripts/build-about-pages.py). Maker note first, then what Terento is and isn't, then who wrote about Terento. */
-.about-page .about-intro {
-  padding-bottom: clamp(48px, 6vw, 80px);
-}
-
-.about-page .about-intro h1 {
-  max-width: 820px;
-  margin-top: 0;
-}
-
-.about-page .about-intro-copy {
-  max-width: 62ch;
-}
-
-.about-page .about-story,
-.about-page .about-main,
-.about-v2-mentions {
-  padding: clamp(48px, 6vw, 88px) 0;
-  border-top: 1px solid var(--border);
-  border-bottom: 0;
-}
-
-.about-page .about-story-inner {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 380px);
-  column-gap: clamp(32px, 6vw, 96px);
-  grid-template-rows: auto auto 1fr;
-  align-items: start;
-}
-
-.about-page .about-story h2 {
-  grid-column: 1;
-  margin: 0 0 20px;
-}
-
-.about-page .about-story-copy {
-  grid-column: 1;
-  max-width: 62ch;
-}
-
-.about-page .about-socials {
-  grid-column: 2;
-  grid-row: 1 / -1;
-  margin-top: 0;
-  padding-top: 20px;
-  border-top: 1px solid var(--border);
-}
-
-.about-page .about-social-label {
-  margin: 0 0 12px;
-  color: var(--graphite);
-  font: 600 17px/1.3 var(--font-ui);
-  letter-spacing: normal;
-  text-transform: none;
-}
-
-.about-page .about-donate {
-  display: block;
-  margin-top: 24px;
-  padding-top: 20px;
-  border-top: 1px solid var(--border);
-}
-
-.about-page .about-donate p {
-  margin: 0 0 14px;
-  color: var(--secondary);
-  font-size: 15px;
-  line-height: 1.5;
-}
-
-.about-page .about-item h3 {
-  margin: 0 0 14px;
-  font-size: 24px;
-  line-height: 1.15;
-}
-
-.about-page .about-bullet-list {
-  font-size: 17px;
-}
-
-.about-page .about-list .about-item:last-child strong {
-  color: var(--graphite);
-  font-weight: 600;
-}
-
-.about-page .about-bullet-list .text-link,
-.about-v2-mentions .text-link {
-  display: inline;
-  font-size: inherit;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.about-v2-mentions h2 {
-  margin: 0 0 20px;
-  font-size: clamp(30px, 3.5vw, 44px);
-}
-
-.about-v2-mentions p {
-  max-width: 68ch;
-  margin: 0;
-  color: var(--secondary);
-  font-size: 17px;
-  line-height: 1.55;
-}
-
-.about-v2-mentions p + :is(p, ul) {
-  margin-top: 16px;
-}
-
-@media (max-width: 899px) {
-  .about-page .about-story-inner {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .about-page .about-socials {
-    grid-column: 1;
-    grid-row: auto;
-    margin-top: 32px;
   }
 }
 
@@ -4089,20 +3854,20 @@ details p {
   --type-hero: clamp(40px, 5.2vw, 64px);
   --type-display: clamp(38px, 4.6vw, 52px);
   --type-section: clamp(28px, 3.2vw, 40px);
-  --type-item: clamp(22px, 2.2vw, 30px);
+  --type-item: clamp(20px, 1.8vw, 24px);
   --type-label: 22px;
   --type-lede: clamp(18px, 1.9vw, 21px);
 }
 #main-content h1 { max-width: 20ch; margin-top: 0; margin-bottom: 20px; font-size: var(--type-display); line-height: 1.15; }
 #main-content #hero-title { font-size: var(--type-hero); line-height: 1.094; }
 #main-content h2 { font-size: var(--type-section); line-height: 1.2; }
-#main-content h3 { font-size: var(--type-item); line-height: 1.267; }
+#main-content h3 { font-size: var(--type-item); line-height: 1.25; }
 #main-content :is(.legal-item h2) { font-size: var(--type-item); line-height: 1.267; }
 #main-content :is(.guide-v2-help-item h3, .map-styles-v2-variants h3, .about-social-label) { font: 600 var(--type-label)/28px var(--font-ui); letter-spacing: 0; }
-#main-content :is(.hero-lede, .download-intro, .about-intro-copy, .guide-lede, .legal-summary p) { max-width: 62ch; font-size: var(--type-lede); line-height: 1.5; }
+#main-content :is(.hero-lede, .download-intro, .guide-lede, .legal-summary p) { max-width: 62ch; font-size: var(--type-lede); line-height: 1.5; }
 #main-content :is(.steps p, .provider-copy, .about-bullet-list li, .download-v2-needs li, .guide-step-copy p, .guide-v2-help-item p, .guide-v2-section > p, .guide-v2-more, .guide-preflight-copy p, .troubleshooting-guide-link, .map-styles-v2-map-copy p, .about-story-copy p, .map-styles-v2-map-summary) { font-size: 17px; line-height: 1.55; }
 :root { --section-space: clamp(64px, 8vw, 96px); }
-#main-content > :is(.provider-section, .faq, .about-story, .about-main, .about-v2-mentions) { padding-top: var(--section-space); padding-bottom: var(--section-space); }
+#main-content > :is(.provider-section, .faq) { padding-top: var(--section-space); padding-bottom: var(--section-space); }
 #main-content .compatibility-missing-note { margin-top: 16px; font-size: 17px; line-height: 1.55; }
 @media (max-width: 480px) { .home-switch { flex-wrap: nowrap; max-width: 100%; } .home-switch-button { padding: 8px 9px; font-size: 13px; white-space: nowrap; } }
 main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); line-height: 1.15; }
@@ -4136,14 +3901,24 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
 #main-content :is(.download-v2-needs li, .download-v2-guides) { color: var(--muted-text); line-height: 1.55; }
 #main-content .download-v2-guides .text-link { font-size: inherit; line-height: inherit; }
 
-/* Shared page components (site refresh, 2026-11). One layer for every indexed page:
-   .grid, .card (--media, --link, --quiet), .page-hero, .section-head, .trust-strip,
-   .steps, .callout, .cta-band. Brand tokens only; light and dark come from the tokens. */
+/* Site refresh layer (2026-11, step 0 round 2). Bento: the Off-White canvas carries the page,
+   tiles sit on backgroundSecondary without borders, white surface only where a card needs lift.
+   Brand tokens only; dark mode comes from the tokens. One type step between section H2 and
+   card/step titles (--type-item). */
 :root {
-  --card-radius: 18px;
+  --card-radius: 20px;
   --card-pad: clamp(20px, 2.4vw, 32px);
-  --grid-gap: clamp(16px, 2vw, 24px);
+  --grid-gap: clamp(12px, 1.6vw, 20px);
   --block-space: clamp(56px, 7vw, 96px);
+  --tile: var(--surface-muted);
+  /* Product photos have white backgrounds: they always sit on the light Off-White, in both modes. */
+  --photo-tile: var(--product-photo-surface);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --tile: var(--surface);
+  }
 }
 
 .block {
@@ -4152,15 +3927,6 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
 
 .block + .block {
   padding-top: 0;
-}
-
-.block--muted {
-  background: var(--surface-muted);
-}
-
-.block--muted + .block,
-.block + .block--muted {
-  padding-top: var(--block-space);
 }
 
 .grid {
@@ -4201,8 +3967,12 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
   flex-direction: column;
   min-width: 0;
   padding: var(--card-pad);
-  border: 1px solid var(--border);
+  border: 0;
   border-radius: var(--card-radius);
+  background: var(--tile);
+}
+
+.card--lift {
   background: var(--surface);
 }
 
@@ -4210,18 +3980,17 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
   margin-bottom: 0;
 }
 
-.card h2 {
-  margin: 0 0 12px;
-}
-
-.card h3 {
+#main-content .card :is(h2, h3) {
   margin: 0 0 10px;
+  font-size: var(--type-item);
+  line-height: 1.25;
 }
 
 :where(.card) p {
   margin: 0 0 12px;
   color: var(--muted-text);
   font-size: 17px;
+  line-height: 1.55;
 }
 
 .card .card-action {
@@ -4233,20 +4002,12 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
   min-height: 44px;
 }
 
-.card--quiet {
-  border-color: transparent;
-  background: var(--surface-muted);
-}
-
-/* Media flush with the card edge; the copy keeps the card padding. */
 .card--media {
   overflow: hidden;
 }
 
 .card-media {
   margin: calc(var(--card-pad) * -1) calc(var(--card-pad) * -1) var(--card-pad);
-  border-bottom: 1px solid var(--border);
-  background: var(--surface-muted);
 }
 
 .card-media img {
@@ -4254,31 +4015,67 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
   height: auto;
 }
 
-/* The card's one real link covers the whole card. No nested links, no click handlers. */
-.card--link {
-  transition: border-color 160ms ease-out;
+.card-icon {
+  width: 32px;
+  height: 32px;
+  color: var(--accent-text);
 }
 
-.card--link .card-link::after {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  border-radius: inherit;
+/* One link style on every page (the Home "Check compatibility" link): link colour, 600, no underline;
+   underline only on hover. */
+#main-content a:not([class]) {
+  color: var(--link-text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+#main-content a:not([class]):hover,
+.text-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* The primary Download button beside Apple's badge (site_components.store_download), on the Home hero
+   and the Download page. The badge is never changed; the button matches it: 40px tall, 10px radius,
+   natural width from padding, 12px apart. ::after keeps a 44px touch target. */
+.store-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+.download-action--store {
+  position: relative;
+  gap: 8px;
+  width: auto;
+  height: 40px;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.download-action--store::after {
   content: "";
+  position: absolute;
+  inset: -2px 0;
 }
 
-.card--link:hover {
-  border-color: var(--interactive);
+.download-action-icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
 }
 
-@supports selector(:has(a)) {
-  .card--link .card-link:focus-visible {
-    outline: none;
-  }
-
-  .card--link:has(.card-link:focus-visible) {
-    outline: 3px solid var(--focus-ring);
-    outline-offset: 4px;
+@media (max-width: 560px) {
+  .store-actions {
+    flex-direction: column;
+    align-items: center;
   }
 }
 
@@ -4302,8 +4099,25 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
   align-items: center;
 }
 
+/* Bento hero: a text tile and a media tile side by side. */
+.bento-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: var(--grid-gap);
+  align-items: stretch;
+}
+
+.bento-hero > * {
+  min-width: 0;
+  margin: 0;
+  padding: clamp(24px, 4vw, 56px);
+  border-radius: var(--card-radius);
+  background: var(--tile);
+}
+
 @media (max-width: 899px) {
-  .page-hero-grid {
+  .page-hero-grid,
+  .bento-hero {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -4323,15 +4137,13 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
   font-size: 17px;
 }
 
-/* Static facts (numbers written by the build), never runtime-hydrated on the home page. */
+/* Static facts written by the build (never runtime-hydrated on the Home page). */
 .trust-strip {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), max-content));
   gap: 16px clamp(24px, 5vw, 64px);
   margin: 0;
-  padding: 20px 0;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
+  padding: 0;
   list-style: none;
 }
 
@@ -4356,7 +4168,7 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
   font-variant-numeric: tabular-nums;
 }
 
-/* Numbered steps: a real ordered list; the numbers are drawn from the list counter. */
+/* Numbered steps: a real ordered list; the numbers come from the list counter. */
 .steps {
   display: grid;
   gap: 24px;
@@ -4405,10 +4217,9 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
   gap: 12px;
   margin: 24px 0 0;
   padding: 16px 20px;
-  border: 1px solid var(--border);
-  border-left: 4px solid var(--interactive);
+  border-left: 3px solid var(--interactive);
   border-radius: 12px;
-  background: var(--surface);
+  background: var(--tile);
   color: var(--graphite);
   font-size: 15px;
 }
@@ -4440,7 +4251,7 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
   gap: 16px 32px;
   padding: clamp(24px, 3vw, 40px);
   border-radius: var(--card-radius);
-  background: var(--surface-muted);
+  background: var(--tile);
 }
 
 .cta-band__copy {
@@ -4451,10 +4262,9 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
   margin: 0 0 6px;
   color: var(--graphite);
   font-family: var(--font-brand);
-  font-size: clamp(24px, 2.6vw, 32px);
+  font-size: var(--type-item);
   font-weight: 600;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
+  line-height: 1.25;
 }
 
 .cta-band__copy p:not(.cta-band__title) {
@@ -4472,127 +4282,6 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
 
 .cta-band__actions .text-link {
   min-height: 44px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .card--link {
-    transition: none;
-  }
-}
-
-/* Home bento (scripts/templates/home.html) on the shared components. */
-.home-send-link {
-  margin: 12px 0 0;
-}
-
-.home-send-link .text-link {
-  min-height: 44px;
-}
-
-@media (min-width: 900px) {
-  .home-send-link {
-    display: none;
-  }
-}
-
-.home-trust {
-  padding-bottom: var(--block-space);
-}
-
-.home-how-grid {
-  align-items: center;
-}
-
-.home-how .steps {
-  margin-top: 32px;
-}
-
-.home-how .app-shot {
-  margin: 0;
-}
-
-.home-bento-manage .card-media img {
-  aspect-ratio: 3 / 2;
-  object-fit: cover;
-  object-position: left top;
-}
-
-/* edge-front.webp has a transparent screen, like the watch drawing. */
-.home-edge-screen {
-  position: relative;
-  width: min(280px, 60vw);
-  margin: 0 auto;
-}
-
-.home-edge-body {
-  position: relative;
-  width: 100%;
-  height: auto;
-  pointer-events: none;
-}
-
-.home-edge-map {
-  position: absolute;
-  left: 19.5%;
-  top: 13%;
-  width: 60.6%;
-  height: 69.9%;
-  border-radius: 3%;
-  object-fit: cover;
-  background: var(--product-photo-surface);
-}
-
-.home-edge-figure {
-  margin: 0;
-}
-
-.home-bento-edge {
-  display: grid;
-  grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
-  gap: clamp(24px, 4vw, 48px);
-  align-items: center;
-}
-
-.home-bento-edge .home-edge-copy p:not(.card-action) {
-  font-size: 17px;
-}
-
-.card-icon {
-  width: 32px;
-  height: 32px;
-  margin-bottom: 16px;
-  color: var(--accent-text);
-}
-
-.home-providers .provider-card {
-  padding: var(--card-pad);
-  scroll-snap-align: none;
-}
-
-.home-providers .provider-count {
-  margin-top: 4px;
-}
-
-.home-way .home-way-note {
-  color: var(--muted-text);
-  font-size: 15px;
-}
-
-@media (max-width: 899px) {
-  .home-how-copy {
-    order: 0;
-  }
-}
-
-@media (max-width: 639px) {
-  .home-bento-edge {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .home-bento-edge .home-edge-figure {
-    justify-self: center;
-    width: min(240px, 70vw);
-  }
 }
 
 /* Filter chips: real toggle buttons (aria-pressed); the cards stay in the HTML. */
@@ -4623,9 +4312,213 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
   color: var(--interactive-primary-text);
 }
 
-/* Compatibility (scripts/build-compatibility-pages.py) on the shared components. */
+/* Home (scripts/templates/home.html): hero bento, trust strip, maps, how it works, three
+   feature cards, Mac app or browser, FAQ. */
+.home-hero {
+  padding: clamp(16px, 2.5vw, 32px) 0 clamp(32px, 4vw, 48px);
+}
+
+.home-hero-grid {
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: var(--grid-gap);
+  align-items: stretch;
+}
+
+.home-hero-copy,
+.home-device {
+  min-width: 0;
+  border-radius: var(--card-radius);
+  background: var(--tile);
+}
+
+.home-hero-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  max-width: none;
+  padding: clamp(24px, 4.5vw, 64px);
+}
+
+.home-device {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: clamp(20px, 3vw, 40px) clamp(16px, 3vw, 40px) clamp(16px, 2vw, 24px);
+}
+
+.home-device .home-watch {
+  width: min(100%, 420px);
+}
+
+.home-device figcaption {
+  margin-top: 16px;
+}
+
+.home-switch {
+  border: 0;
+  background: var(--off-white);
+}
+
+.home-switch-button:hover {
+  background: var(--tile);
+}
+
+.home-hero-browser {
+  margin: 16px 0 0;
+  color: var(--muted-text);
+  font-size: 15px;
+}
+
+.home-hero-browser .text-link {
+  display: inline;
+}
+
+.home-hero-note {
+  margin: 8px 0 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.home-send-link {
+  margin: 4px 0 0;
+}
+
+.home-send-link .text-link {
+  min-height: 44px;
+}
+
+@media (min-width: 900px) {
+  .home-send-link {
+    display: none;
+  }
+}
+
+@media (max-width: 899px) {
+  .home-hero-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home-device .home-watch {
+    width: min(100%, 300px);
+  }
+}
+
+.home-trust {
+  padding: 8px 0 0;
+}
+
+.home-providers .provider-card {
+  padding: var(--card-pad);
+  border: 0;
+  border-radius: var(--card-radius);
+  background: var(--tile);
+  scroll-snap-align: none;
+}
+
+.home-providers .provider-count {
+  margin-top: 4px;
+}
+
+.home-how-grid {
+  align-items: center;
+}
+
+.home-how .steps {
+  margin-top: 32px;
+}
+
+.home-how .app-shot {
+  margin: 0;
+}
+
+@media (min-width: 640px) {
+  .home-features .grid > .col-4 {
+    grid-column: span 4;
+  }
+}
+
+.home-feature-visual {
+  display: flex;
+  align-items: flex-end;
+  height: 72px;
+  margin-bottom: 16px;
+}
+
+.home-feature-visual .card-icon {
+  width: 36px;
+  height: 36px;
+}
+
+/* edge-front.webp has a transparent screen, like the watch drawing. */
+.home-edge-screen {
+  position: relative;
+  width: min(280px, 60vw);
+  margin: 0 auto;
+}
+
+.home-edge-body {
+  position: relative;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+}
+
+.home-edge-map {
+  position: absolute;
+  left: 19.5%;
+  top: 13%;
+  width: 60.6%;
+  height: 69.9%;
+  border-radius: 3%;
+  object-fit: cover;
+  background: var(--product-photo-surface);
+}
+
+.home-feature--edge .home-edge-screen {
+  width: 48px;
+  margin: 0;
+}
+
+.home-way .home-way-note {
+  color: var(--muted-text);
+  font-size: 15px;
+}
+
+/* Compatibility (scripts/build-compatibility-pages.py). */
 .compatibility-hero.page-hero {
-  padding-bottom: clamp(32px, 4vw, 48px);
+  padding: clamp(16px, 2.5vw, 32px) 0 clamp(24px, 3vw, 40px);
+}
+
+.compatibility-hero-copy {
+  max-width: none;
+}
+
+#main-content .compatibility-hero h1 {
+  margin: 0 0 16px;
+}
+
+#main-content .compatibility-missing-note {
+  margin-top: 16px;
+  color: var(--muted-text);
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+.compatibility-hero-devices {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: clamp(8px, 3vw, 32px);
+}
+
+.compatibility-hero-devices .home-watch {
+  width: min(58%, 300px);
+  margin: 0;
+}
+
+.compatibility-hero-devices .home-edge-screen {
+  width: min(28%, 150px);
+  margin: 0 0 6%;
 }
 
 .compatibility-chips {
@@ -4634,7 +4527,6 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
 
 .compatibility-summary .trust-strip {
   margin-bottom: 4px;
-  font-size: 15px;
 }
 
 .compatibility-summary .trust-strip-item {
@@ -4645,24 +4537,71 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
   display: none;
 }
 
+.compatibility-directory.section {
+  padding-top: clamp(24px, 3vw, 40px);
+}
+
 .watch-card.card {
   display: block;
   padding: 0;
+  border: 0;
   border-radius: var(--card-radius);
+  background: var(--tile);
+  box-shadow: none;
+}
+
+.watch-card .watch-card-image {
+  aspect-ratio: 4 / 3;
+  padding: 20px;
+  background: var(--photo-tile);
+}
+
+.watch-card .watch-card-body {
+  padding: 16px 20px 20px;
+}
+
+#main-content .watch-card h3 {
+  margin: 0;
+  font: 600 18px/1.25 var(--font-brand);
+  letter-spacing: -0.02em;
+}
+
+.watch-card .watch-variant {
+  display: block;
+  min-height: 0;
+  margin: 2px 0 0;
+  color: var(--muted-text);
+  font: 400 15px/1.4 var(--font-ui);
+  letter-spacing: normal;
+}
+
+.watch-card .watch-install-count {
+  margin: 14px 0 4px;
+  color: var(--graphite);
+  font: 600 22px/1.2 var(--font-brand);
+  letter-spacing: -0.02em;
+}
+
+.watch-card .watch-install-sources {
+  margin: 0 0 6px;
+  color: var(--muted-text);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.watch-card .watch-card-meta {
+  margin: 0;
+  color: var(--muted-text);
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .compatibility-community-cta.card {
   display: grid;
   padding: var(--card-pad);
-  border-color: transparent;
-  background: var(--surface-muted);
 }
 
-.compatibility-directory.section {
-  padding-top: clamp(32px, 4vw, 48px);
-}
-
-/* Install guides and troubleshooting (scripts/build-guide-pages.py) on the shared components. */
+/* Install guides and troubleshooting (scripts/build-guide-pages.py). */
 .guide-v2 .guide-timeline.steps {
   gap: clamp(36px, 5vw, 56px);
 }
@@ -4703,6 +4642,11 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
   max-width: 68ch;
 }
 
+.guide-v2-help-item {
+  padding-top: 0;
+  border-top: 0;
+}
+
 .guide-cta-band {
   margin: clamp(48px, 6vw, 72px) 0 clamp(56px, 8vw, 96px);
 }
@@ -4731,4 +4675,260 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
 
 .guide-preflight-copy .callout {
   margin-top: 0;
+}
+
+/* Troubleshooting: symptom picker, then each problem as answer, steps and details. */
+.troubleshooting-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+  gap: var(--grid-gap);
+  margin-top: clamp(8px, 1.5vw, 16px);
+  padding-top: 0;
+  border-top: 0;
+}
+
+.troubleshooting-pick {
+  padding: 20px 24px;
+}
+
+.troubleshooting-pick-title {
+  margin: 0 0 8px;
+  font: 600 18px/1.3 var(--font-brand);
+}
+
+#main-content .troubleshooting-pick-title a {
+  color: var(--graphite);
+}
+
+.troubleshooting-pick ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+#main-content .troubleshooting-pick li a {
+  display: inline-block;
+  padding: 4px 0;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.troubleshooting-list {
+  display: grid;
+  gap: clamp(32px, 4vw, 48px);
+  border-top: 0;
+}
+
+.troubleshooting-item {
+  max-width: 68ch;
+  padding: 0;
+  border: 0;
+}
+
+#main-content .troubleshooting-item h3 {
+  margin: 0 0 8px;
+}
+
+#main-content .troubleshooting-answer {
+  margin: 0 0 12px;
+  color: var(--graphite);
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+.troubleshooting-more {
+  margin: 8px 0 0;
+}
+
+.troubleshooting-more summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--link-text);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.troubleshooting-more p {
+  margin: 0;
+  color: var(--muted-text);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+/* Download (scripts/normalize-release-pages.py): one action block on the canvas, then two columns. */
+.download-v2 .page-hero {
+  padding-top: 0;
+}
+
+.download-v2-hero {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 440px);
+  padding-bottom: var(--block-space);
+}
+
+.download-v2 .download-release {
+  margin: 16px 0 0;
+  padding-top: 0;
+  border-top: 0;
+  color: var(--muted-text);
+  font-size: 15px;
+}
+
+.download-v2 .download-release strong {
+  color: var(--graphite);
+}
+
+.download-v2-web {
+  margin-top: 8px;
+}
+
+.download-v2-info {
+  row-gap: clamp(40px, 5vw, 56px);
+}
+
+@media (min-width: 640px) {
+  .download-v2-info {
+    column-gap: clamp(32px, 5vw, 72px);
+  }
+}
+
+@media (max-width: 899px) {
+  .download-v2-hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* About (scripts/build-about-pages.py): the person first, then what Terento is and isn't, then mentions. */
+.about-v3 .about-hero {
+  padding-top: clamp(16px, 2.5vw, 32px);
+}
+
+.about-story-card {
+  padding: clamp(28px, 4.5vw, 64px);
+}
+
+.about-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: clamp(24px, 3vw, 32px);
+}
+
+.about-title-icon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--accent-text);
+}
+
+#main-content .about-title-row h1 {
+  margin: 0;
+}
+
+#main-content .about-story-card h2 {
+  margin-bottom: 16px;
+}
+
+.about-story-copy {
+  max-width: 62ch;
+}
+
+#main-content .about-story-copy p {
+  margin: 0;
+  color: var(--graphite);
+  font-size: clamp(18px, 1.7vw, 21px);
+  line-height: 1.55;
+}
+
+#main-content .about-story-copy p + p {
+  margin-top: 16px;
+}
+
+/* "Get in touch" and the donation note: one card directly under the story. */
+.about-socials.card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 16px clamp(24px, 5vw, 64px);
+  align-items: start;
+}
+
+.about-socials.card > h3 {
+  grid-column: 1;
+}
+
+.about-socials .about-social-links {
+  grid-column: 1;
+}
+
+.about-socials .about-donate {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  margin-top: 0;
+}
+
+@media (max-width: 899px) {
+  .about-socials.card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .about-socials .about-donate {
+    grid-column: 1;
+    grid-row: auto;
+    margin-top: 8px;
+  }
+}
+
+.about-social-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.about-social-link {
+  border: 0;
+  background: var(--off-white);
+  font-size: 15px;
+}
+
+
+.about-donate p {
+  margin: 0 0 12px;
+  font-size: 15px;
+}
+
+
+.about-v3 .about-bullet-list {
+  font-size: 17px;
+}
+
+.about-v3 .about-list .about-item:last-child strong {
+  color: var(--graphite);
+  font-weight: 600;
+}
+
+.about-v3 .about-bullet-list .text-link,
+.about-v2-mentions .text-link {
+  display: inline;
+  font-size: inherit;
+}
+
+.about-v2-mentions .about-bullet-list {
+  max-width: 68ch;
+}
+
+.about-download-link {
+  margin: 32px 0 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .download-action--store {
+    transition: none;
+  }
+}
+
+#main-content .about-social-label {
+  margin: 0;
+  color: var(--graphite);
 }

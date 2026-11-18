@@ -3,17 +3,17 @@ title: "À propos de Terento : cartes Garmin gratuites et libres"
 canonical: https://terento.app/fr/about/
 ---
 
-# Une appli de cartes gratuite, faite par un randonneur Garmin
-
-Terento installe des cartes communautaires gratuites sur les montres Garmin et les compteurs vélo Edge. C’est une application Mac gratuite et open source, avec un installateur web qui fonctionne dans votre navigateur.
-
-[Télécharger](https://terento.app/fr/download/)
+# Bonjour, je suis Gediminas
 
 ## Pourquoi je l’ai créé
 
-Je suis Gediminas. J’utilise une Garmin et j’adore randonner en montagne. Avant un voyage, je veux que ma montre ait les cartes de ma destination, et les y mettre demandait plus d’efforts que nécessaire.
+Je suis Gediminas. J’utilise une Garmin et j’adore randonner en montagne.
 
-J’ai créé Terento pour simplifier cela, pour moi et pour tous ceux qui ont une Garmin. Il est gratuit et open source parce que je veux qu’il soit utile à la communauté.
+Avant un voyage, je veux que ma montre ait les cartes de ma destination, et les y mettre demandait plus d’efforts que nécessaire.
+
+J’ai créé Terento pour simplifier cela, pour moi et pour tous ceux qui ont une Garmin.
+
+Il est gratuit et open source parce que je veux qu’il soit utile à la communauté.
 
 ### Me contacter
 
@@ -60,3 +60,5 @@ Merci aux sites et aux testeurs qui ont essayé, présenté ou recommandé Teren
 - HikingGuy : [Garmin Fenix 9 Pro Review](https://hikingguy.com/gear/garmin-fenix-9-pro-review/)
 
 - HikingGuy (vidéo) : [Garmin Fenix: 17 Tips I Wish I Knew Sooner](https://www.youtube.com/watch?v=szqwPHHWiTM)
+
+[Télécharger Terento pour Mac](https://terento.app/fr/download/)

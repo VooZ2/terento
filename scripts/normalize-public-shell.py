@@ -12,11 +12,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SHELL_VERSION = "20261105-copy-command-v1"
 PROVIDER_SCRIPT_VERSION = "20261026-osmapa-v1"
-STYLE_VERSION = "20261119-site-refresh-v1"
+STYLE_VERSION = "20261119-site-refresh-v2"
 IMAGE_VERSION = "20260912-app-screens-v2"
 LANGUAGE_VERSION = "20260926-static-shell-v1"
-COMPATIBILITY_LOCALES_VERSION = "20261106-compatibility-title-v1"
-COMPATIBILITY_VERSION = "20261119-compatibility-chips-v1"
+COMPATIBILITY_LOCALES_VERSION = "20261119-compatibility-labels-v2"
+COMPATIBILITY_VERSION = "20261119-compatibility-cards-v2"
 UMAMI_SCRIPT_VERSION = "20261114-umami-monitoring"
 PAGE_LANGUAGE_VERSION = "20261015-shared-page-language-v3"
 # Footer Web installer link: the public installer (launch 2026-10-29) on the
@@ -119,7 +119,7 @@ def shell(locale: str, route: str, page: str) -> tuple[str, str]:
       <div class="shell footer-grid">
         <div class="footer-identity">
           <a class="brand-lockup footer-brand" href="{root}" data-shell-aria="home" data-shell-root aria-label="{copy["home"]}"{umami_attributes("home-link-click", "footer-brand")}>
-            <img src="/assets/logo-white.svg" alt="" width="32" height="32">
+            <img src="/assets/logo-white.svg" alt="" width="32" height="32" loading="lazy" decoding="async">
             <span>Terento</span>
           </a>
           <p class="footer-tagline" data-shell-copy="tagline">{copy["tagline"]}</p>

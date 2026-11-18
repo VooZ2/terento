@@ -44,19 +44,27 @@ Scollega tutti i dispositivi Garmin tranne l’orologio che vuoi usare: Terento 
 
 ### Orologio Garmin non riconosciuto: modalità USB (MTP)
 
-Se Terento indica che l’orologio non è pronto per il trasferimento dei file, imposta la modalità USB dell’orologio su MTP, se il tuo modello ha questa impostazione. MTP (Media Transfer Protocol) è il modo in cui la maggior parte degli orologi Garmin attuali condivide i file via USB, come i telefoni Android. macOS non supporta MTP in modo nativo, quindi l’orologio non appare come disco; Terento usa MTP da solo, quindi non ti servono Android File Transfer né OpenMTP.
+Se Terento indica che l’orologio non è pronto per il trasferimento dei file, imposta la modalità USB dell’orologio su MTP, se il tuo modello ha questa impostazione.
 
 1. Sull’orologio apri Modalità USB, di solito in Impostazioni › Sistema. Non tutti i modelli la hanno.
 2. Scegli MTP.
 3. Scollega l’orologio e ricollegalo.
 
+Più dettagli
+
+MTP (Media Transfer Protocol) è il modo in cui la maggior parte degli orologi Garmin attuali condivide i file via USB, come i telefoni Android. macOS non supporta MTP in modo nativo, quindi l’orologio non appare come disco; Terento usa MTP da solo, quindi non ti servono Android File Transfer né OpenMTP.
+
 ### Orologio Garmin rilevato ma non pronto
 
-Se Terento trova l’orologio ma la connessione non è pronta entro 2 minuti, scollega l’orologio e ricollegalo. I blocchi occasionali della connessione sono un limite noto della versione attuale.
+Se Terento trova l’orologio ma la connessione non è pronta entro 2 minuti, scollega l’orologio e ricollegalo.
 
 1. Chiudi le altre app che potrebbero usare l’orologio. Vedi [Garmin Express o un’altra app sta usando l’orologio](https://terento.app/it/guides/troubleshooting/#garmin-busy).
 2. Prova un’altra porta USB o un altro cavo.
 3. Se continua a succedere, riavvia l’orologio e ricollegalo.
+
+Più dettagli
+
+I blocchi occasionali della connessione sono un limite noto della versione attuale.
 
 ### L’orologio Garmin non risponde più
 
@@ -69,11 +77,15 @@ Scollega l’orologio, attendi qualche secondo e ricollegalo: la connessione si 
 
 ### Installazione mappe non disponibile per questo modello Garmin
 
-Terento installa mappe solo sugli smartwatch Garmin con supporto alle mappe abilitati in Terento. Puoi comunque collegare l’orologio e sfogliare le mappe.
+Terento installa mappe solo sugli smartwatch Garmin con supporto alle mappe abilitati in Terento.
 
 1. Verifica che il tuo modello di orologio supporti le mappe.
 2. Terento controlla il suo elenco aggiornato a ogni collegamento. Se il tuo modello viene abilitato in seguito, ricollega l’orologio.
 3. Indicaci il modello esatto così possiamo valutarlo. Vedi [Come segnalare un problema con Terento](https://terento.app/it/guides/troubleshooting/#send-report).
+
+Più dettagli
+
+Puoi comunque collegare l’orologio e sfogliare le mappe.
 
 ### Terento non è riuscito a controllare l’orologio Garmin
 
@@ -85,10 +97,14 @@ Verifica che il Mac sia connesso a Internet e ricollega l’orologio: Terento ha
 
 ### L’elenco delle mappe Garmin non si carica o Terento va aggiornato
 
-Se Terento non riesce a caricare l’elenco attuale delle mappe, controlla la connessione Internet e riprova tra qualche minuto. Le mappe già presenti sull’orologio non sono interessate.
+Se Terento non riesce a caricare l’elenco attuale delle mappe, controlla la connessione Internet e riprova tra qualche minuto.
 
 1. Se questa versione di Terento è troppo vecchia per l’elenco attuale e Terento segnala una versione più recente, installa l’aggiornamento.
 2. Finché Terento mostra un elenco salvato meno recente, l’installazione e l’aggiornamento delle mappe del catalogo restano non disponibili fino a quando non è possibile verificare l’elenco attuale.
+
+Più dettagli
+
+Le mappe già presenti sull’orologio non sono interessate.
 
 ## Download delle mappe e spazio libero
 
@@ -118,20 +134,28 @@ Scegli una regione più piccola o rimuovi una mappa che non ti serve più: Teren
 
 ### Installazione della mappa non riuscita: mappa rimasta sull’orologio
 
-Rimuovi la mappa rimasta in “Manage maps” e poi installala di nuovo. Se un’installazione si interrompe dopo l’inizio della copia, parte della mappa può restare sull’orologio e Terento non la rimuove automaticamente.
+Rimuovi la mappa rimasta in “Manage maps” e poi installala di nuovo.
 
 1. Ricollega l’orologio e attendi che Terento sia pronto.
 2. Apri “Manage maps” e controlla l’elenco.
 3. Se la mappa dell’installazione non riuscita è nell’elenco, rimuovila e poi installala di nuovo.
 4. Se non riesce di nuovo, [invia un rapporto](https://terento.app/it/guides/troubleshooting/#send-report).
 
+Più dettagli
+
+Se un’installazione si interrompe dopo l’inizio della copia, parte della mappa può restare sull’orologio e Terento non la rimuove automaticamente.
+
 ### Aggiornamento o rimozione della mappa molto lenti
 
-Nella versione attuale è previsto: durante l’aggiornamento o la rimozione di una mappa l’avanzamento può restare per un po’ su una percentuale alta prima di terminare. Lascia l’orologio collegato e il Mac attivo.
+Nella versione attuale è previsto: durante l’aggiornamento o la rimozione di una mappa l’avanzamento può restare per un po’ su una percentuale alta prima di terminare.
 
 1. Non scollegare l’orologio mentre Terento è al lavoro.
 2. Attendi che Terento segnali che ha finito.
 3. Se Terento segnala un errore, ricollega l’orologio e controlla “Manage maps” prima di riprovare.
+
+Più dettagli
+
+Lascia l’orologio collegato e il Mac attivo.
 
 ## Ottenere assistenza
 

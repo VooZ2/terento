@@ -1,0 +1,176 @@
+{
+  "site/index.html": {
+    "h2": [
+      "Pick the map that fits the trip",
+      "How it works",
+      "Manage maps",
+      "On the bike, too",
+      "Use the Mac app or your browser",
+      "Questions and answers",
+      "Install",
+      "Help",
+      "Project"
+    ],
+    "events_removed": [
+      "map-style-switch @ home-edge"
+    ]
+  },
+  "site/about/index.html": {
+    "h1": "Hi, I’m Gediminas",
+    "jsonld_types": [
+      "AboutPage",
+      "BreadcrumbList",
+      "ListItem",
+      "Organization",
+      "Person"
+    ],
+    "events_removed": [
+      "download-cta-click @ about-intro"
+    ]
+  },
+  "site/de/index.html": {
+    "h2": [
+      "Wähle die Karte, die zur Tour passt",
+      "So funktioniert es",
+      "Karten verwalten",
+      "Auch auf dem Rad",
+      "Mit der Mac-App oder im Browser",
+      "Fragen und Antworten",
+      "Installieren",
+      "Hilfe",
+      "Projekt"
+    ],
+    "events_removed": [
+      "map-style-switch @ home-edge"
+    ]
+  },
+  "site/de/about/index.html": {
+    "h1": "Hallo, ich bin Gediminas",
+    "jsonld_types": [
+      "AboutPage",
+      "BreadcrumbList",
+      "ListItem",
+      "Organization",
+      "Person"
+    ],
+    "events_removed": [
+      "download-cta-click @ about-intro"
+    ]
+  },
+  "site/fr/index.html": {
+    "h2": [
+      "Choisissez la carte adaptée à votre sortie",
+      "Comment ça marche",
+      "Gérer les cartes",
+      "À vélo aussi",
+      "Avec l’app Mac ou depuis votre navigateur",
+      "Questions et réponses",
+      "Installer",
+      "Aide",
+      "Projet"
+    ],
+    "events_removed": [
+      "map-style-switch @ home-edge"
+    ]
+  },
+  "site/fr/about/index.html": {
+    "h1": "Bonjour, je suis Gediminas",
+    "jsonld_types": [
+      "AboutPage",
+      "BreadcrumbList",
+      "ListItem",
+      "Organization",
+      "Person"
+    ],
+    "events_removed": [
+      "download-cta-click @ about-intro"
+    ]
+  },
+  "site/pl/index.html": {
+    "h2": [
+      "Wybierz mapę pasującą do wyprawy",
+      "Jak to działa",
+      "Zarządzaj mapami",
+      "Także na rowerze",
+      "W aplikacji na Maca lub w przeglądarce",
+      "Pytania i odpowiedzi",
+      "Instalacja",
+      "Pomoc",
+      "Projekt"
+    ],
+    "events_removed": [
+      "map-style-switch @ home-edge"
+    ]
+  },
+  "site/pl/about/index.html": {
+    "h1": "Cześć, jestem Gediminas",
+    "jsonld_types": [
+      "AboutPage",
+      "BreadcrumbList",
+      "ListItem",
+      "Organization",
+      "Person"
+    ],
+    "events_removed": [
+      "download-cta-click @ about-intro"
+    ]
+  },
+  "site/cs/index.html": {
+    "h2": [
+      "Vyberte mapu, která sedí k výletu",
+      "Jak to funguje",
+      "Spravovat mapy",
+      "I na kole",
+      "V aplikaci pro Mac nebo v prohlížeči",
+      "Otázky a odpovědi",
+      "Instalace",
+      "Nápověda",
+      "Projekt"
+    ],
+    "events_removed": [
+      "map-style-switch @ home-edge"
+    ]
+  },
+  "site/cs/about/index.html": {
+    "h1": "Ahoj, jsem Gediminas",
+    "jsonld_types": [
+      "AboutPage",
+      "BreadcrumbList",
+      "ListItem",
+      "Organization",
+      "Person"
+    ],
+    "events_removed": [
+      "download-cta-click @ about-intro"
+    ]
+  },
+  "site/it/index.html": {
+    "h2": [
+      "Scegli la mappa adatta al percorso",
+      "Come funziona",
+      "Gestisci le mappe",
+      "Anche in bici",
+      "Con l’app per Mac o dal browser",
+      "Domande e risposte",
+      "Installa",
+      "Aiuto",
+      "Progetto"
+    ],
+    "events_removed": [
+      "map-style-switch @ home-edge"
+    ]
+  },
+  "site/it/about/index.html": {
+    "h1": "Ciao, sono Gediminas",
+    "jsonld_types": [
+      "AboutPage",
+      "BreadcrumbList",
+      "ListItem",
+      "Organization",
+      "Person"
+    ],
+    "events_removed": [
+      "download-cta-click @ about-intro"
+    ]
+  }
+}

@@ -2,7 +2,7 @@
 <html lang="de" data-language="de" data-page="about">
   <head>
     <script defer src="/site-shell.js?v=20261105-copy-command-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20261119-site-refresh-v1">
+    <link rel="stylesheet" href="/styles.css?v=20261119-site-refresh-v2">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
@@ -47,6 +47,19 @@
             "logo": "https://terento.app/assets/logo-sky.svg",
             "sameAs": [
               "https://github.com/VooZ2/terento"
+            ],
+            "founder": {
+              "@id": "https://terento.app/about/#person"
+            }
+          },
+          {
+            "@type": "Person",
+            "@id": "https://terento.app/about/#person",
+            "name": "Gediminas",
+            "url": "https://terento.app/de/about/",
+            "sameAs": [
+              "https://www.linkedin.com/in/gediminasc/",
+              "https://www.reddit.com/user/MrDonas/"
             ]
           },
           {
@@ -64,6 +77,9 @@
             },
             "breadcrumb": {
               "@id": "https://terento.app/de/about/#breadcrumb"
+            },
+            "mainEntity": {
+              "@id": "https://terento.app/about/#person"
             }
           },
           {
@@ -126,22 +142,20 @@
         </div>
       </div>
     </header>
-    <main id="main-content">
-      <section class="about-intro" aria-labelledby="about-title">
-        <div class="shell about-intro-text">
-            <h1 id="about-title">Eine kostenlose Karten-App, gebaut von einem Garmin-Wanderer</h1>
-            <p class="about-intro-copy">Terento bringt kostenlose Community-Karten auf Garmin-Uhren und Edge-Radcomputer. Es ist eine kostenlose Open-Source-Mac-App und dazu ein Web-Installer, der im Browser läuft.</p>
-            <div class="hero-actions"><a class="download-action" href="/de/download/" data-umami-event="download-cta-click" data-umami-event-location="about-intro">Download</a></div>
+    <main id="main-content" class="about-v3">
+      <section class="block about-hero" aria-labelledby="about-title">
+        <div class="shell grid">
+          <div class="card about-story-card">
+            <div class="about-title-row"><svg class="about-title-icon" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><!-- @license lucide-static v0.460.0 - ISC --><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></svg><h1 id="about-title">Hallo, ich bin Gediminas</h1></div>
+            <h2 id="about-story-title">Warum ich es gebaut habe</h2>
+            <div class="about-story-copy">
+            <p>Ich bin Gediminas. Ich nutze eine Garmin und wandere gern in den Bergen.</p>
+            <p>Vor einer Reise möchte ich Karten für mein Ziel auf der Uhr haben, und sie dorthin zu bekommen, war aufwendiger als nötig.</p>
+            <p>Ich habe Terento gebaut, um das einfacher zu machen, für mich und für alle anderen mit einer Garmin.</p>
+            <p>Es ist kostenlos und quelloffen, weil ich möchte, dass es der Community hilft.</p>
+            </div>
           </div>
-      </section>
-      <section class="about-story" aria-labelledby="about-story-title">
-        <div class="shell about-story-inner">
-          <h2 id="about-story-title">Warum ich es gebaut habe</h2>
-          <div class="about-story-copy">
-            <p>Ich bin Gediminas. Ich nutze eine Garmin und wandere gern in den Bergen. Vor einer Reise möchte ich Karten für mein Ziel auf der Uhr haben, und sie dorthin zu bekommen, war aufwendiger als nötig.</p>
-            <p>Ich habe Terento gebaut, um das einfacher zu machen, für mich und für alle anderen mit einer Garmin. Es ist kostenlos und quelloffen, weil ich möchte, dass es der Community hilft.</p>
-          </div>
-          <div class="about-socials" aria-labelledby="about-social-title">
+          <div class="card about-socials" aria-labelledby="about-social-title">
             <h3 class="about-social-label" id="about-social-title">Schreib mir</h3>
             <div class="about-social-links">
               <a class="about-social-link" href="https://www.linkedin.com/in/gediminasc/" target="_blank" rel="noopener noreferrer" data-umami-event="social-link-click" data-umami-event-location="about-story" data-umami-event-channel="linkedin" data-umami-event-destination="linkedin.com"><img src="/assets/social/linkedin.svg" alt="" width="16" height="16"><span>LinkedIn</span></a>
@@ -155,18 +169,18 @@
           </div>
         </div>
       </section>
-      <section class="about-main" aria-labelledby="about-principle-title">
-        <div class="shell about-grid">
-          <div class="section-heading about-slogan"><h2 id="about-principle-title">Was Terento ist und was nicht</h2></div>
-          <div class="about-list">
-            <section class="about-item about-item--group" aria-labelledby="about-is-title"><h3 id="about-is-title">Was es ist</h3><ul class="about-bullet-list">
+      <section class="block about-main" aria-labelledby="about-principle-title">
+        <div class="shell">
+          <div class="section-head"><h2 id="about-principle-title">Was Terento ist und was nicht</h2></div>
+          <div class="grid about-list">
+            <section class="card col-6 about-item about-item--group" aria-labelledby="about-is-title"><h3 id="about-is-title">Was es ist</h3><ul class="about-bullet-list">
               <li>Eine kostenlose Mac-App für Macs mit Apple Silicon und macOS 13 oder neuer.</li>
               <li>Ein <a class="text-link" href="/de/install/" data-umami-event="web-installer-link-click" data-umami-event-location="about-main">Web-Installer</a> für Chrome, Microsoft Edge, Opera oder Brave auf dem Mac; Linux wird noch getestet.</li>
               <li>Ein Weg, kostenlose Karten auf Garmin-Uhren und neueren Edge-Radcomputern mit Kartenunterstützung zu installieren, zu aktualisieren und zu entfernen.</li>
               <li>Auch für deine eigene kompatible Karte (.img). Eigene Karten werden nicht automatisch aktualisiert.</li>
               <li>Kostenlos nutzbar, ohne Konto.</li>
             </ul></section>
-            <section class="about-item about-item--group" aria-labelledby="about-isnt-title"><h3 id="about-isnt-title">Was es nicht ist</h3><ul class="about-bullet-list">
+            <section class="card col-6 about-item about-item--group" aria-labelledby="about-isnt-title"><h3 id="about-isnt-title">Was es nicht ist</h3><ul class="about-bullet-list">
               <li><strong>Ein Garmin-Produkt.</strong> Garmin hat Terento weder entwickelt noch empfohlen oder zertifiziert.</li>
               <li><strong>Ein Kartenhersteller.</strong> Die Karten stammen von Community-Projekten, die auf der Seite <a class="text-link" href="/de/map-styles/" data-umami-event="maps-link-click" data-umami-event-location="about-main">Karten</a> genannt sind.</li>
               <li><strong>Eine Navigations-App.</strong> Du navigierst wie gewohnt auf deiner Garmin.</li>
@@ -177,15 +191,15 @@
           </div>
         </div>
       </section>
-      <section class="about-v2-mentions" aria-labelledby="about-mentions-title">
+      <section class="block about-v2-mentions" aria-labelledby="about-mentions-title">
         <div class="shell">
-          <h2 id="about-mentions-title">Vorgestellt auf</h2>
-          <p>Danke an die Websites und Tester, die Terento ausprobiert, vorgestellt oder empfohlen haben.</p>
+          <div class="section-head"><h2 id="about-mentions-title">Vorgestellt auf</h2><p>Danke an die Websites und Tester, die Terento ausprobiert, vorgestellt oder empfohlen haben.</p></div>
           <ul class="about-bullet-list">
             <li>the5krunner (Indie Spotlight): <a class="text-link" href="https://the5krunner.com/2026/09/22/garmin-mac-custom-maps-terento/" lang="en">Terento Makes Installing Custom Maps on Garmin Watches Effortless for Mac Users</a></li>
             <li>HikingGuy: <a class="text-link" href="https://hikingguy.com/gear/garmin-fenix-9-pro-review/" lang="en">Garmin Fenix 9 Pro Review</a></li>
             <li>HikingGuy (Video): <a class="text-link" href="https://www.youtube.com/watch?v=szqwPHHWiTM" lang="en">Garmin Fenix: 17 Tips I Wish I Knew Sooner</a></li>
           </ul>
+          <p class="about-download-link"><a class="text-link" href="/de/download/" data-umami-event="download-cta-click" data-umami-event-location="about-bottom">Terento für Mac herunterladen</a></p>
         </div>
       </section>
     </main>
@@ -193,7 +207,7 @@
       <div class="shell footer-grid">
         <div class="footer-identity">
           <a class="brand-lockup footer-brand" href="/de/" data-shell-aria="home" data-shell-root aria-label="Terento Startseite" data-umami-event="home-link-click" data-umami-event-location="footer-brand">
-            <img src="/assets/logo-white.svg" alt="" width="32" height="32">
+            <img src="/assets/logo-white.svg" alt="" width="32" height="32" loading="lazy" decoding="async">
             <span>Terento</span>
           </a>
           <p class="footer-tagline" data-shell-copy="tagline">Kostenlose Karten für deine Garmin-Uhr oder deinen Edge.</p>

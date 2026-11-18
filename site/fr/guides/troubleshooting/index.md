@@ -44,19 +44,27 @@ Déconnectez tous les appareils Garmin sauf la montre que vous voulez utiliser :
 
 ### Montre Garmin non reconnue : mode USB (MTP)
 
-Si Terento indique que la montre n’est pas prête pour le transfert de fichiers, réglez le mode USB de la montre sur MTP, si votre modèle propose ce réglage. Le MTP (Media Transfer Protocol) est la façon dont la plupart des montres Garmin actuelles partagent leurs fichiers en USB, comme les téléphones Android. macOS ne gère pas le MTP nativement, la montre n’apparaît donc pas comme un disque ; Terento utilise lui-même le MTP, vous n’avez donc besoin ni d’Android File Transfer ni d’OpenMTP.
+Si Terento indique que la montre n’est pas prête pour le transfert de fichiers, réglez le mode USB de la montre sur MTP, si votre modèle propose ce réglage.
 
 1. Sur la montre, ouvrez Mode USB, généralement dans Paramètres › Système. Tous les modèles ne l’ont pas.
 2. Choisissez MTP.
 3. Déconnectez la montre et reconnectez-la.
 
+Plus de détails
+
+Le MTP (Media Transfer Protocol) est la façon dont la plupart des montres Garmin actuelles partagent leurs fichiers en USB, comme les téléphones Android. macOS ne gère pas le MTP nativement, la montre n’apparaît donc pas comme un disque ; Terento utilise lui-même le MTP, vous n’avez donc besoin ni d’Android File Transfer ni d’OpenMTP.
+
 ### Montre Garmin détectée mais pas prête
 
-Si Terento trouve la montre mais que la connexion n’est pas prête dans les 2 minutes, débranchez la montre et reconnectez-la. Les blocages occasionnels de connexion sont une limite connue de la version actuelle.
+Si Terento trouve la montre mais que la connexion n’est pas prête dans les 2 minutes, débranchez la montre et reconnectez-la.
 
 1. Quittez les autres apps susceptibles d’utiliser la montre. Voir [Garmin Express ou une autre app utilise la montre](https://terento.app/fr/guides/troubleshooting/#garmin-busy).
 2. Essayez un autre port USB ou un autre câble.
 3. Si le problème persiste, redémarrez la montre et reconnectez-la.
+
+Plus de détails
+
+Les blocages occasionnels de connexion sont une limite connue de la version actuelle.
 
 ### La montre Garmin ne répond plus
 
@@ -69,11 +77,15 @@ Débranchez la montre, attendez quelques secondes et reconnectez-la : la connexi
 
 ### Installation de cartes indisponible pour ce modèle Garmin
 
-Terento installe des cartes uniquement sur les montres Garmin prenant en charge les cartes et activées dans Terento. Vous pouvez tout de même connecter la montre et parcourir les cartes.
+Terento installe des cartes uniquement sur les montres Garmin prenant en charge les cartes et activées dans Terento.
 
 1. Vérifiez que votre modèle de montre prend en charge les cartes.
 2. Terento consulte sa liste actuelle à chaque connexion. Si votre modèle est activé plus tard, reconnectez la montre.
 3. Indiquez-nous votre modèle exact pour que nous puissions l’examiner. Voir [Signaler un problème avec Terento](https://terento.app/fr/guides/troubleshooting/#send-report).
+
+Plus de détails
+
+Vous pouvez tout de même connecter la montre et parcourir les cartes.
 
 ### Terento n’a pas pu vérifier votre montre Garmin
 
@@ -85,10 +97,14 @@ Vérifiez que votre Mac est connecté à Internet, puis reconnectez la montre : 
 
 ### La liste des cartes Garmin ne se charge pas ou Terento doit être mis à jour
 
-Si Terento ne peut pas charger la liste actuelle des cartes, vérifiez votre connexion Internet et réessayez dans quelques minutes. Les cartes déjà présentes sur votre montre ne sont pas concernées.
+Si Terento ne peut pas charger la liste actuelle des cartes, vérifiez votre connexion Internet et réessayez dans quelques minutes.
 
 1. Si cette version de Terento est trop ancienne pour la liste actuelle et que Terento indique qu’une version plus récente est disponible, installez la mise à jour.
 2. Tant que Terento affiche une ancienne liste enregistrée, l’installation et la mise à jour des cartes du catalogue restent indisponibles jusqu’à ce que la liste actuelle puisse être vérifiée.
+
+Plus de détails
+
+Les cartes déjà présentes sur votre montre ne sont pas concernées.
 
 ## Téléchargement des cartes et espace libre
 
@@ -118,20 +134,28 @@ Choisissez une région plus petite ou supprimez une carte dont vous n’avez plu
 
 ### Échec de l’installation de la carte : carte restante sur la montre
 
-Supprimez la carte restante dans « Manage maps », puis réinstallez-la. Si une installation s’arrête après le début de la copie, une partie de la carte peut rester sur la montre, et Terento ne la supprime pas automatiquement.
+Supprimez la carte restante dans « Manage maps », puis réinstallez-la.
 
 1. Reconnectez la montre et attendez que Terento soit prêt.
 2. Ouvrez « Manage maps » et vérifiez la liste.
 3. Si la carte de l’installation échouée y figure, supprimez-la, puis réinstallez-la.
 4. Si cela échoue encore, [envoyez un rapport](https://terento.app/fr/guides/troubleshooting/#send-report).
 
+Plus de détails
+
+Si une installation s’arrête après le début de la copie, une partie de la carte peut rester sur la montre, et Terento ne la supprime pas automatiquement.
+
 ### La mise à jour ou la suppression d’une carte prend du temps
 
-C’est attendu dans la version actuelle : la mise à jour ou la suppression d’une carte peut rester un moment à un pourcentage élevé avant de se terminer. Gardez la montre connectée et votre Mac éveillé.
+C’est attendu dans la version actuelle : la mise à jour ou la suppression d’une carte peut rester un moment à un pourcentage élevé avant de se terminer.
 
 1. Ne débranchez pas la montre pendant que Terento travaille.
 2. Attendez que Terento indique que c’est terminé.
 3. Si Terento signale un échec, reconnectez la montre et vérifiez « Manage maps » avant de réessayer.
+
+Plus de détails
+
+Gardez la montre connectée et votre Mac éveillé.
 
 ## Obtenir de l’aide
 

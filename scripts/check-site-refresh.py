@@ -11,7 +11,8 @@ Usage:
 
 Without paths it checks every site/**/index.html present on either side.
 --expect points to a JSON file {"<path>": {"<field>": <expected after value>}}
-for intended changes (for example a copy fix that changes an H2).
+for intended changes (for example a copy fix that changes an H2). The extra
+field "events_removed" lists Umami "event @ location" pairs a page may drop.
 Exit code 1 when an SEO field or an Umami event changed unexpectedly, or when
 a FAQPage does not match its visible questions. Word counts are informational.
 """
@@ -196,8 +197,11 @@ def main(argv: list[str] | None = None) -> int:
         removed = sorted(set(before["events"]) - set(after["events"]))
         added = sorted(set(after["events"]) - set(before["events"]))
         new_names = {event.split(" @ ")[0] for event in added} - {event.split(" @ ")[0] for event in before["events"]}
-        if removed:
-            problems.append(f"umami events removed: {removed}")
+        allowed_removed = set(expected.get(path, {}).get("events_removed", []))
+        if set(removed) & allowed_removed:
+            notes.append(f"umami events removed as expected: {sorted(set(removed) & allowed_removed)}")
+        if set(removed) - allowed_removed:
+            problems.append(f"umami events removed: {sorted(set(removed) - allowed_removed)}")
         if new_names - {"send-to-computer-click"}:
             problems.append(f"new umami event names: {sorted(new_names)}")
         if added:
