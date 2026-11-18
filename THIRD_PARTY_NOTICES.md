@@ -333,3 +333,20 @@ original solid `circle-check` SVG from the same pinned Font Awesome Free 7.3.1
 revision, under CC BY 4.0. The unchanged SVG, with its attribution comment, is
 `app/Terento/Assets.xcassets/CircleCheck.imageset/circle-check.svg`; the app
 only tints it. No Font Awesome font, CSS or runtime is bundled.
+
+## Apple "Download on the Mac App Store" badge
+
+- Files: `site/assets/app-store/download-on-the-mac-app-store-{en,de,fr,it}.svg`,
+  Apple's black badge artwork, byte-for-byte as served by Apple's App Store
+  marketing tools (https://toolbox.marketingtools.apple.com/app-store) on
+  2026-11-18. Never redraw, edit, recolor, angle or animate it; replace a file
+  only with a newer download from Apple.
+- Terms: Apple's App Store Marketing Guidelines,
+  https://developer.apple.com/app-store/marketing/guidelines/. The artwork is
+  Apple's property; it is not covered by this repository's GPL licence.
+- Use on the public website: one badge per page (Home and Download), at least
+  40 px tall with clear space of a quarter of its height, linked to the Mac
+  App Store listing. Apple provides no Polish or Czech Mac App Store badge, so
+  those locales show the English artwork. Locale mapping, alt text and the
+  campaign link live in `scripts/templates/app-store-badge.json`.
+- Mac App Store is a service mark of Apple Inc.

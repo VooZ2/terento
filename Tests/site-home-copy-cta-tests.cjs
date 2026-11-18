@@ -104,6 +104,7 @@ const locales = new Map([
   }],
 ]);
 
+const appStoreBadge = JSON.parse(fs.readFileSync(path.join(root, "scripts", "templates", "app-store-badge.json"), "utf8"));
 const pageFor = (locale) => fs.readFileSync(locales.get(locale).file, "utf8");
 const classTokens = (classValue) => new Set(classValue.trim().split(/\s+/));
 const anchorFor = (page, className) => {
@@ -117,7 +118,7 @@ const anchorFor = (page, className) => {
 
 for (const [locale, expected] of locales) {
   const page = pageFor(locale);
-  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20261118-app-store-v1">/, `${locale}: Home stylesheet cache bust`);
+  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20261118-apple-badge-v1">/, `${locale}: Home stylesheet cache bust`);
   assert.match(page, /<script defer src="\/home-features\.js\?v=20261105-home-map-switch-v4"><\/script>/, `${locale}: Home feature script cache bust`);
   assert.match(page, /installing-maps-1600\.png\?v=20260912-app-screens-v2/, `${locale}: installation screenshot cache bust`);
   const heroDevice = page.match(/<figure class="home-device" data-map-switch>[\s\S]*?<\/figure>/)?.[0];
@@ -167,11 +168,15 @@ for (const [locale, expected] of locales) {
   assert.ok(edge, `${locale}: Garmin Edge section`);
   assert.match(edge, /Edge 540, 840/);
   assert.match(edge, new RegExp(`href="${locale === "en" ? "" : `/${locale}`}/guides/install-garmin-maps-edge-mac/" data-umami-event="guide-link-click" data-umami-event-location="home-edge"`));
-  // Mac App Store listing is live (2026-11-18): one secondary hero link, after the primary Download button.
+  // Mac App Store listing: Apple's official badge, once, after the primary Download button, with the site-home campaign.
   const heroActions = page.match(/<div class="home-actions">[\s\S]*?<\/div>/)?.[0];
   assert.ok(heroActions, `${locale}: hero actions`);
-  assert.equal((page.match(/class="home-app-store"/g) || []).length, 1, `${locale}: one App Store link`);
-  assert.match(heroActions, /class="download-action hero-download-action"[\s\S]*<a class="home-app-store" href="https:\/\/apps\.apple\.com\/app\/terento-gps-watch-maps\/id6828556832" data-umami-event="app-store-click" data-umami-event-location="home-hero">Mac App Store<\/a>/, `${locale}: App Store link follows Download and keeps its Umami event`);
+  assert.equal((page.match(/class="app-store-badge /g) || []).length, 1, `${locale}: one App Store badge`);
+  const badge = appStoreBadge.badges[locale];
+  const badgeLang = badge.artwork === locale ? "" : ` lang="${badge.artwork}"`;
+  const badgeMarkup = `<a class="app-store-badge home-app-store" href="https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&amp;ct=site-home&amp;mt=8" data-umami-event="app-store-click" data-umami-event-location="home-hero"><img src="/assets/app-store/download-on-the-mac-app-store-${badge.artwork}.svg?v=${appStoreBadge.asset_version}" width="156" height="40" alt="${badge.alt}"${badgeLang}></a>`;
+  assert.ok(heroActions.includes(badgeMarkup), `${locale}: App Store badge keeps its Umami event and campaign link`);
+  assert.ok(heroActions.indexOf('class="download-action hero-download-action"') < heroActions.indexOf(badgeMarkup), `${locale}: App Store badge follows Download`);
   const providerSection = page.match(/<section class="provider-section section"[\s\S]*?<\/section>/)?.[0];
   assert.ok(providerSection, `${locale}: missing provider cards section`);
   assert.match(providerSection, new RegExp(`<h2 id="providers-title">${expected.providerTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/h2>`));
@@ -266,8 +271,10 @@ assert.match(styles, /summary:not\(\.language-trigger\)::after\s*\{[^}]*border-r
 assert.match(styles, /\.text-link:hover\s*\{[^}]*color: var\(--link-text-hover\)/s);
 const heroAction = styles.match(/\.hero-download-action\s*\{([^}]*)\}/s);
 assert.ok(heroAction, "missing Hero Download CTA sizing block");
-assert.match(heroAction[1], /min-height:\s*52px/);
-assert.match(heroAction[1], /padding:\s*12px 22px/);
+// Same 40px height as Apple's badge beside it; the pseudo-element keeps a 44px touch target.
+assert.match(heroAction[1], /min-height:\s*40px/);
+assert.match(heroAction[1], /padding:\s*6px 20px/);
+assert.match(styles, /\.home-actions \.hero-download-action::after,\s*\.download-v2-actions \.download-v2-primary::after\s*\{[^}]*inset:\s*-2px 0/s);
 assert.match(heroAction[1], /font-size:\s*15px/);
 const heroActions = styles.match(/\.hero-actions\s*\{([^}]*)\}/s);
 assert.ok(heroActions, "missing Hero action stack block");

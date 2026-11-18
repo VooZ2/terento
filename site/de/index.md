@@ -7,7 +7,7 @@ canonical: https://terento.app/de/
 
 Terento bringt kostenlose Karten aus OpenStreetMap-Projekten auf Garmin-Uhren und Edge-Fahrradcomputer. Mit der Mac-App oder direkt im Desktop-Browser. Kostenlos, und die Mac-App ist Open Source.
 
-[Für Mac herunterladen](https://terento.app/de/download/) [Mac App Store](https://apps.apple.com/app/terento-gps-watch-maps/id6828556832) [Direkt aus dem Browser installieren](https://terento.app/de/install/)
+[Für Mac herunterladen](https://terento.app/de/download/) [Laden im Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-home&mt=8) [Direkt aus dem Browser installieren](https://terento.app/de/install/)
 
 Unsicher bei deinem Modell? [Kompatibilität prüfen](https://terento.app/de/compatibility/)
 

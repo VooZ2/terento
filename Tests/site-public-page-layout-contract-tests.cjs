@@ -1,13 +1,14 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const crypto = require("node:crypto");
 
 const root = path.resolve(__dirname, "..");
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "utf8");
 const styles = read("site/styles.css");
 const shellSource = read("site/site-shell.js");
 const languageSource = read("site/language.js");
-const styleVersion = "20261118-app-store-v1";
+const styleVersion = "20261118-apple-badge-v1";
 const mobileLanguageNames = { en: "English", de: "Deutsch", fr: "Français", pl: "Polski", cs: "Čeština", it: "Italiano" };
 
 const cssBlock = (selector) => {
@@ -61,6 +62,23 @@ assert.match(cssBlock(".provider-count"), /font-variant-numeric:\s*tabular-nums/
 assert.match(cssBlock(".provider-addon-count"), /font-variant-numeric:\s*tabular-nums/);
 
 const downloadCopy = JSON.parse(read("scripts/templates/download-copy.json"));
+// Apple's official badge: unmodified artwork per locale (English where Apple has no localized Mac App Store badge).
+const appStoreBadge = JSON.parse(read("scripts/templates/app-store-badge.json"));
+const appStoreArtwork = {
+  en: "15111cd04380b58d95307dcb07f0b6b06304dbc7504c57fd9cdbf0a2f78e3a92",
+  de: "9847a40d54aed58c0a19ef87f262e9dde56da82960c1f09ada58a6ffb56dc33e",
+  fr: "28c046d4b469e9a56547486fe9edb2a646279e45c361d80eb7c3cb0c34754976",
+  it: "9d7bfb44ace53629ae11ab7412bbb9f7aaee82e7e7588c7ec2aea23f02bbd228",
+};
+assert.deepEqual(fs.readdirSync(path.join(root, "site/assets/app-store")).sort(), Object.keys(appStoreArtwork).sort().map((name) => `download-on-the-mac-app-store-${name}.svg`));
+for (const [name, digest] of Object.entries(appStoreArtwork)) {
+  const artwork = fs.readFileSync(path.join(root, `site/assets/app-store/download-on-the-mac-app-store-${name}.svg`));
+  assert.equal(crypto.createHash("sha256").update(artwork).digest("hex"), digest, `${name} App Store badge is Apple's unmodified file`);
+}
+assert.deepEqual(Object.fromEntries(Object.entries(appStoreBadge.badges).map(([locale, badge]) => [locale, badge.artwork])), { en: "en", de: "de", fr: "fr", pl: "en", cs: "en", it: "it" });
+assert.match(cssBlock(".app-store-badge img"), /height:\s*40px/, "App Store badge keeps Apple's 40px minimum height");
+assert.match(cssBlock(".download-v2-actions .download-v2-primary"), /min-height:\s*40px/, "Download button has the badge height");
+assert.doesNotMatch(styles, /\.app-store-badge[^{]*\{[^}]*(transform|filter|animation|transition|opacity|rotate|scale)/, "App Store badge is never modified, angled or animated");
 const manifest = JSON.parse(read("site/updates/macos-arm64.json"));
 const locales = Object.fromEntries(["en", "de", "fr", "pl", "cs", "it"].map((locale) => [locale, {
   file: `site/${locale === "en" ? "" : `${locale}/`}download/index.html`,
@@ -76,12 +94,15 @@ for (const [locale, contract] of Object.entries(locales)) {
   assert.match(main, /<main id="main-content" class="download-main download-v2">/);
   assert.equal((main.match(/<h1>/g) || []).length, 1);
   assert.doesNotMatch(main, /class="eyebrow"|→|·/, `${locale} Download has no eyebrow labels, arrows or middle dots`);
-  // One primary action: the DMG. The Mac App Store listing is a secondary link with a note on how that version differs.
+  // One primary action: the DMG. The Mac App Store listing is Apple's official badge with the site-download campaign.
   assert.equal((main.match(/class="download-action[ "]/g) || []).length, 1, `${locale} has one primary download action`);
   assert.match(main, new RegExp(`<a class="download-action download-v2-primary" href="${manifest.downloadURL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
-  assert.match(main, new RegExp(`<a class="download-v2-store download-v2-store-link" href="https://apps\\.apple\\.com/app/terento-gps-watch-maps/id6828556832" data-umami-event="app-store-click" data-umami-event-location="download-page">${copy.store_label}</a></div><p class="download-v2-store-note">${copy.store_note}</p>`), `${locale} App Store link and its note`);
+  const badge = appStoreBadge.badges[locale];
+  const badgeLang = badge.artwork === locale ? "" : ` lang="${badge.artwork}"`;
+  assert.ok(main.includes(`<a class="app-store-badge download-v2-store-link" href="https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&amp;ct=site-download&amp;mt=8" data-umami-event="app-store-click" data-umami-event-location="download-page"><img src="/assets/app-store/download-on-the-mac-app-store-${badge.artwork}.svg?v=${appStoreBadge.asset_version}" width="156" height="40" alt="${badge.alt}"${badgeLang}></a></div><p class="download-release">`), `${locale} App Store badge follows the Download button`);
   assert.equal((main.match(/apps\.apple\.com/g) || []).length, 1, `${locale} links the App Store once`);
-  assert.doesNotMatch(main, /download-v2-store-status|Coming soon/, `${locale} has no "coming soon" App Store status`);
+  assert.equal((html.match(/class="app-store-badge /g) || []).length, 1, `${locale} shows one App Store badge`);
+  assert.doesNotMatch(main, /download-v2-store-note|download-v2-store-status|Coming soon/, `${locale} has no App Store note or "coming soon" status`);
   assert.ok(main.indexOf("download-v2-actions") < main.indexOf("download-v2-shot"));
   for (const need of copy.needs) assert.ok(main.includes(need.replace(/’/g, "’")), `${locale} lists requirement: ${need}`);
   assert.equal((main.match(/<h2 /g) || []).length, 2, `${locale} has one requirements and one after-download heading`);

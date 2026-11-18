@@ -57,7 +57,6 @@
     "app_body": "Install catalog maps or your own .img map, see what is on your Garmin and update maps when newer releases come out.",
     "app_requirements": "macOS 13 or later on Apple Silicon.",
     "browser_title": "Web installer",
-    "app_store_label": "Mac App Store",
     "faq_title": "Questions and answers"
   },
   "de": {
@@ -118,7 +117,6 @@
     "app_body": "Installiere Katalogkarten oder deine eigene .img-Karte, sieh, was auf deinem Garmin ist, und aktualisiere Karten, wenn neuere Ausgaben erscheinen.",
     "app_requirements": "macOS 13 oder neuer auf Apple Silicon.",
     "browser_title": "Web-Installer",
-    "app_store_label": "Mac App Store",
     "faq_title": "Fragen und Antworten"
   },
   "fr": {
@@ -179,7 +177,6 @@
     "app_body": "Installez les cartes du catalogue ou votre propre carte .img, voyez ce qui se trouve sur votre Garmin et mettez à jour les cartes quand de nouvelles éditions paraissent.",
     "app_requirements": "macOS 13 ou version ultérieure sur Apple Silicon.",
     "browser_title": "Installateur web",
-    "app_store_label": "Mac App Store",
     "faq_title": "Questions et réponses"
   },
   "pl": {
@@ -240,7 +237,6 @@
     "app_body": "Instaluj mapy z katalogu lub własną mapę .img, sprawdzaj, co jest na Garminie, i aktualizuj mapy, gdy pojawią się nowsze wydania.",
     "app_requirements": "macOS 13 lub nowszy na Apple Silicon.",
     "browser_title": "Instalator w przeglądarce",
-    "app_store_label": "Mac App Store",
     "faq_title": "Pytania i odpowiedzi"
   },
   "cs": {
@@ -301,7 +297,6 @@
     "app_body": "Instalujte mapy z katalogu nebo vlastní mapu .img, podívejte se, co je ve vašem Garminu, a aktualizujte mapy, když vyjdou novější vydání.",
     "app_requirements": "macOS 13 nebo novější na Apple Silicon.",
     "browser_title": "Webový instalátor",
-    "app_store_label": "Mac App Store",
     "faq_title": "Otázky a odpovědi"
   },
   "it": {
@@ -362,7 +357,6 @@
     "app_body": "Installa le mappe del catalogo o la tua mappa .img, vedi cosa c’è sul tuo Garmin e aggiorna le mappe quando escono nuove edizioni.",
     "app_requirements": "macOS 13 o successivo su Apple Silicon.",
     "browser_title": "Installer web",
-    "app_store_label": "Mac App Store",
     "faq_title": "Domande e risposte"
   }
 }
