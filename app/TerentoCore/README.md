@@ -413,8 +413,8 @@ written map. The earlier single repeat after a completed metadata lookup that
 did not find the exact object (1-second wait) shares that count with the -9
 repeat: after either one, every failure is final. A failure after a repeat
 carries `retryCount` 1 in the existing failure context. A repeat that passes is
-written to the local finishing trace (`readback_repeat_succeeded` with its
-reason) and is not reported to the server: counting successful repeats there
+written to the local finishing trace (`readback_repeat_succeeded` after the
+`readback_failed` line that names the reason) and is not reported to the server: counting successful repeats there
 needs a backend-first decision. `SampledReadBackRetryPolicy.run` is the whole
 loop with an injected clock and wait, and is tested with a scripted device.
 This applies to fresh installation and to the new map of an Update, which share

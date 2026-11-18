@@ -240,13 +240,6 @@ enum SampledReadBackRetryPolicy {
             case .sampleRead: return SampledReadBackRetryPolicy.delay
             }
         }
-
-        var traceReason: String {
-            switch self {
-            case .metadataLookup: return "metadata_lookup"
-            case .sampleRead: return "sample_read_failed"
-            }
-        }
     }
 
     /// A completed lookup that did not find the exact object, or found another.
@@ -321,7 +314,6 @@ enum SampledReadBackRetryPolicy {
     ) throws -> Value {
         var deadline = now() + verificationBudget
         var repeatsMade = 0
-        var madeRepeat: Repeat?
         var attemptNumber = 0
         var delay: TimeInterval = 0
         while true {
@@ -336,9 +328,12 @@ enum SampledReadBackRetryPolicy {
             }
             do {
                 let result = try attempt(remaining)
-                if let madeRepeat {
+                if repeatsMade > 0 {
                     // Local record that the repeat was what completed the check.
-                    trace("readback_repeat_succeeded", "reason=\(madeRepeat.traceReason) attempt=\(attemptNumber)")
+                    // The reason is the error of the preceding readback_failed
+                    // line; the finishing trace keeps only allow-listed events
+                    // and values (FinishingTrace.safeLine).
+                    trace("readback_repeat_succeeded", "attempt=\(attemptNumber)")
                 }
                 return result
             } catch {
@@ -351,13 +346,12 @@ enum SampledReadBackRetryPolicy {
                     throw failureAfterRetry(error, retriesMade: repeatsMade)
                 }
                 repeatsMade += 1
-                madeRepeat = next
                 delay = next.delay
                 if case .sampleRead(let timeout) = next {
                     // From here the wait and the repeat share one bound.
                     deadline = failedAt + delay + timeout
                 }
-                trace("readback_retry", "reason=\(next.traceReason) delay=\(delay)")
+                trace("readback_retry", "attempt=\(attemptNumber) delay=\(delay)")
             }
         }
     }

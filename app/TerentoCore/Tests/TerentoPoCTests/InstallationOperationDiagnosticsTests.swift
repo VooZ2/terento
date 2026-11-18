@@ -463,6 +463,8 @@ private actor DelayedAuthorizationResponse {
             var sleeps: [TimeInterval] = []
             var budgets: [TimeInterval] = []
             var events: [String] = []
+            /// Every trace line as the finishing trace would receive it.
+            var lines: [String] = []
             /// Seconds one attempt takes on the manual clock.
             var attemptDuration: TimeInterval = 2
             init(_ outcomes: [Result<String, InstallationTransportError>]) { self.outcomes = outcomes }
@@ -473,7 +475,10 @@ private actor DelayedAuthorizationResponse {
                         isWorker: worker,
                         now: { self.clock },
                         sleep: { self.sleeps.append($0); self.clock += $0 },
-                        trace: { event, _ in self.events.append(event) }
+                        trace: { event, details in
+                            self.events.append(event)
+                            self.lines.append("FINISH_TRACE swift event=\(event) \(details)")
+                        }
                     ) { remaining in
                         self.budgets.append(remaining)
                         self.clock += self.attemptDuration
@@ -499,6 +504,11 @@ private actor DelayedAuthorizationResponse {
               && recovered.events == ["readback_attempt", "readback_failed", "readback_retry",
                                       "readback_attempt", "readback_repeat_succeeded"],
               "a sample read failure waits 5 s, repeats once within 120 s and records a repeat that passed")
+        check(recovered.lines.count == 5
+              && recovered.lines.allSatisfy { FinishingTrace.safeLine($0) == $0 }
+              && recovered.lines[2] == "FINISH_TRACE swift event=readback_retry attempt=1 delay=5.0"
+              && recovered.lines[4] == "FINISH_TRACE swift event=readback_repeat_succeeded attempt=2",
+              "the finishing trace keeps every line of a repeated read-back, including the repeat that passed")
 
         let twice = Script([.failure(readFailure), .failure(readFailure), .success("never")])
         let twiceFailure = failure(twice.run())
