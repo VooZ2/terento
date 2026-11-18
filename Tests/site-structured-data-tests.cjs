@@ -7,6 +7,10 @@ const baseUrl = "https://terento.app";
 const repositoryUrl = "https://github.com/VooZ2/terento";
 const organizationId = `${baseUrl}/#organization`;
 const softwareId = `${baseUrl}/#software`;
+// The Mac App Store listing of the same app: clean address, no campaign parameters.
+const appStoreUrl = "https://apps.apple.com/app/terento-gps-watch-maps/id6828556832";
+const appStoreBadge = JSON.parse(fs.readFileSync(path.join(root, "scripts", "templates", "app-store-badge.json"), "utf8"));
+assert(appStoreUrl.endsWith(`/${appStoreBadge.listing_url.split("/").pop()}`), "structured data and the visible badge name the same App Store listing");
 const locales = ["en", "de", "fr", "pl", "cs", "it"];
 const localePath = (locale, suffix = "") => (locale === "en" ? `/${suffix}` : `/${locale}/${suffix}`);
 const homeFile = (locale) => locale === "en"
@@ -73,6 +77,9 @@ function assertApplication(app, locale, url, file) {
   assert(app.description, `${file}: application description`);
   assert.equal(app.softwareVersion, release.releaseLabel, `${file}: current software version`);
   assert.equal(app.downloadUrl, release.downloadURL, `${file}: current download URL`);
+  assert.equal(app.installUrl, appStoreUrl, `${file}: Mac App Store install URL`);
+  assert.deepEqual(app.sameAs, [appStoreUrl], `${file}: the store listing is the same application`);
+  assert(!/[?&](pt|ct|mt)=/.test(JSON.stringify(app)), `${file}: no campaign parameters in JSON-LD`);
   assert.equal(app.releaseNotes, release.releaseNotesURL, `${file}: current release notes URL`);
   assert.deepEqual(app.offers, { "@type": "Offer", price: "0", priceCurrency: "EUR" }, `${file}: free offer`);
   assert.equal(app.inLanguage, locale, `${file}: application language`);

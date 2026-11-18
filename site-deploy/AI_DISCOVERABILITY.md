@@ -102,7 +102,10 @@ not require adding these files as HTML pages or submitting duplicate notificatio
 `scripts/normalize-structured-data.py` synchronizes Home/Download application
 facts with published release metadata and visible FAQ content. Organization,
 WebSite and SoftwareApplication share canonical identities; price zero reflects
-the free product. No invented reviews/ratings are allowed. Guide and
+the free product. `downloadUrl` is the direct DMG download; `installUrl` and
+`sameAs` name the Mac App Store listing of the same app, without campaign
+parameters (the listing id comes from `scripts/templates/app-store-badge.json`).
+No invented reviews/ratings are allowed. Guide and
 Troubleshooting breadcrumbs are generated in `scripts/build-guide-pages.py` for
 all six locales. The Troubleshooting guide (`/guides/troubleshooting/`) keeps
 the same 15 section ids in every locale because the app links to them; its copy
