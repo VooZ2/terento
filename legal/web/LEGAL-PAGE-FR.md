@@ -26,7 +26,7 @@ Terento ne crée pas ces cartes, ne change pas leurs licences, n’héberge pas 
 
 ## Noms et indépendance
 
-Garmin et ses noms de produits sont des marques de Garmin Ltd. Apple, Mac, macOS et Apple Silicon sont des marques d’Apple Inc. Google et Chrome sont des marques de Google LLC. Microsoft et Edge sont des marques de Microsoft Corporation. Opera est une marque d’Opera Norway AS. Brave est une marque de Brave Software, Inc. Leur utilisation est descriptive. Terento n’est affilié à aucune de ces sociétés et n’est ni approuvé ni certifié par elles.
+Garmin et ses noms de produits sont des marques de Garmin Ltd. Apple, Mac, macOS, Apple Silicon, App Store et Mac App Store sont des marques d’Apple Inc. Google et Chrome sont des marques de Google LLC. Microsoft et Edge sont des marques de Microsoft Corporation. Opera est une marque d’Opera Norway AS. Brave est une marque de Brave Software, Inc. Leur utilisation est descriptive. Terento n’est affilié à aucune de ces sociétés et n’est ni approuvé ni certifié par elles.
 
 ## Garantie et vos droits
 

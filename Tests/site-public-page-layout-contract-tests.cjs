@@ -7,7 +7,7 @@ const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "u
 const styles = read("site/styles.css");
 const shellSource = read("site/site-shell.js");
 const languageSource = read("site/language.js");
-const styleVersion = "20261117-map-place-v1";
+const styleVersion = "20261118-app-store-v1";
 const mobileLanguageNames = { en: "English", de: "Deutsch", fr: "Français", pl: "Polski", cs: "Čeština", it: "Italiano" };
 
 const cssBlock = (selector) => {
@@ -76,10 +76,12 @@ for (const [locale, contract] of Object.entries(locales)) {
   assert.match(main, /<main id="main-content" class="download-main download-v2">/);
   assert.equal((main.match(/<h1>/g) || []).length, 1);
   assert.doesNotMatch(main, /class="eyebrow"|→|·/, `${locale} Download has no eyebrow labels, arrows or middle dots`);
-  // One primary action: the DMG. The Mac App Store row is plain text until APP_STORE_URL is set.
+  // One primary action: the DMG. The Mac App Store listing is a secondary link with a note on how that version differs.
   assert.equal((main.match(/class="download-action[ "]/g) || []).length, 1, `${locale} has one primary download action`);
   assert.match(main, new RegExp(`<a class="download-action download-v2-primary" href="${manifest.downloadURL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
-  assert.match(main, new RegExp(`<p class="download-v2-store">${copy.store_label} <span class="download-v2-store-status"><svg[^>]*aria-hidden="true"[\\s\\S]*?</svg>${copy.store_status}</span></p>`), `${locale} App Store status has text and icon`);
+  assert.match(main, new RegExp(`<a class="download-v2-store download-v2-store-link" href="https://apps\\.apple\\.com/app/terento-gps-watch-maps/id6828556832" data-umami-event="app-store-click" data-umami-event-location="download-page">${copy.store_label}</a></div><p class="download-v2-store-note">${copy.store_note}</p>`), `${locale} App Store link and its note`);
+  assert.equal((main.match(/apps\.apple\.com/g) || []).length, 1, `${locale} links the App Store once`);
+  assert.doesNotMatch(main, /download-v2-store-status|Coming soon/, `${locale} has no "coming soon" App Store status`);
   assert.ok(main.indexOf("download-v2-actions") < main.indexOf("download-v2-shot"));
   for (const need of copy.needs) assert.ok(main.includes(need.replace(/’/g, "’")), `${locale} lists requirement: ${need}`);
   assert.equal((main.match(/<h2 /g) || []).length, 2, `${locale} has one requirements and one after-download heading`);

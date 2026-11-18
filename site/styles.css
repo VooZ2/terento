@@ -4002,24 +4002,6 @@ details p {
   font-weight: 600;
 }
 
-.download-v2-store-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 10px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  color: var(--muted-text);
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.download-v2-store-icon {
-  width: 14px;
-  height: 14px;
-  flex: 0 0 auto;
-}
-
 .download-v2-store-link {
   min-height: 44px;
   color: var(--link-text);
@@ -4030,6 +4012,13 @@ details p {
   padding-top: 16px;
   border-top: 1px solid var(--border);
   font-size: 15px;
+}
+
+.download-v2-store-note {
+  max-width: 60ch;
+  margin: 16px 0 0;
+  color: var(--muted-text);
+  font-size: 14px;
 }
 
 .download-v2-web {

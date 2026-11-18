@@ -117,7 +117,7 @@ const anchorFor = (page, className) => {
 
 for (const [locale, expected] of locales) {
   const page = pageFor(locale);
-  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20261117-map-place-v1">/, `${locale}: Home stylesheet cache bust`);
+  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20261118-app-store-v1">/, `${locale}: Home stylesheet cache bust`);
   assert.match(page, /<script defer src="\/home-features\.js\?v=20261105-home-map-switch-v4"><\/script>/, `${locale}: Home feature script cache bust`);
   assert.match(page, /installing-maps-1600\.png\?v=20260912-app-screens-v2/, `${locale}: installation screenshot cache bust`);
   const heroDevice = page.match(/<figure class="home-device" data-map-switch>[\s\S]*?<\/figure>/)?.[0];
@@ -167,7 +167,11 @@ for (const [locale, expected] of locales) {
   assert.ok(edge, `${locale}: Garmin Edge section`);
   assert.match(edge, /Edge 540, 840/);
   assert.match(edge, new RegExp(`href="${locale === "en" ? "" : `/${locale}`}/guides/install-garmin-maps-edge-mac/" data-umami-event="guide-link-click" data-umami-event-location="home-edge"`));
-  assert.doesNotMatch(page, /class="home-app-store"/, `${locale}: App Store button waits for the approved listing`);
+  // Mac App Store listing is live (2026-11-18): one secondary hero link, after the primary Download button.
+  const heroActions = page.match(/<div class="home-actions">[\s\S]*?<\/div>/)?.[0];
+  assert.ok(heroActions, `${locale}: hero actions`);
+  assert.equal((page.match(/class="home-app-store"/g) || []).length, 1, `${locale}: one App Store link`);
+  assert.match(heroActions, /class="download-action hero-download-action"[\s\S]*<a class="home-app-store" href="https:\/\/apps\.apple\.com\/app\/terento-gps-watch-maps\/id6828556832" data-umami-event="app-store-click" data-umami-event-location="home-hero">Mac App Store<\/a>/, `${locale}: App Store link follows Download and keeps its Umami event`);
   const providerSection = page.match(/<section class="provider-section section"[\s\S]*?<\/section>/)?.[0];
   assert.ok(providerSection, `${locale}: missing provider cards section`);
   assert.match(providerSection, new RegExp(`<h2 id="providers-title">${expected.providerTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/h2>`));

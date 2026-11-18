@@ -26,7 +26,7 @@ Terento does not create or relicense these maps, host a map library or mirror pr
 
 ## Names and independence
 
-Garmin and its product names are trademarks of Garmin Ltd. Apple, Mac, macOS and Apple Silicon are trademarks of Apple Inc. Google and Chrome are trademarks of Google LLC. Microsoft and Edge are trademarks of Microsoft Corporation. Opera is a trademark of Opera Norway AS. Brave is a trademark of Brave Software, Inc. They are used descriptively. Terento is not affiliated with, endorsed or certified by any of these companies.
+Garmin and its product names are trademarks of Garmin Ltd. Apple, Mac, macOS, Apple Silicon, App Store and Mac App Store are trademarks of Apple Inc. Google and Chrome are trademarks of Google LLC. Microsoft and Edge are trademarks of Microsoft Corporation. Opera is a trademark of Opera Norway AS. Brave is a trademark of Brave Software, Inc. They are used descriptively. Terento is not affiliated with, endorsed or certified by any of these companies.
 
 ## Warranty and your rights
 
