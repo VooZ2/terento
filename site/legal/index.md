@@ -31,7 +31,7 @@ Terento does not create or relicense these maps, host a map library or mirror pr
 
 ## Names and independence
 
-Garmin and its product names are trademarks of Garmin Ltd. Apple, Mac, macOS and Apple Silicon are trademarks of Apple Inc. Google and Chrome are trademarks of Google LLC. Microsoft and Edge are trademarks of Microsoft Corporation. Opera is a trademark of Opera Norway AS. Brave is a trademark of Brave Software, Inc. They are used descriptively. Terento is not affiliated with, endorsed or certified by any of these companies.
+Garmin and its product names are trademarks of Garmin Ltd. Apple, Mac, macOS, Apple Silicon, App Store and Mac App Store are trademarks of Apple Inc. Google and Chrome are trademarks of Google LLC. Microsoft and Edge are trademarks of Microsoft Corporation. Opera is a trademark of Opera Norway AS. Brave is a trademark of Brave Software, Inc. They are used descriptively. Terento is not affiliated with, endorsed or certified by any of these companies.
 
 ## Warranty and your rights
 
@@ -73,7 +73,7 @@ Terento erstellt oder lizenziert diese Karten nicht neu, betreibt keine Kartenbi
 
 ## Namen und Unabhängigkeit
 
-Garmin und seine Produktnamen sind Marken von Garmin Ltd. Apple, Mac, macOS und Apple Silicon sind Marken von Apple Inc. Google und Chrome sind Marken von Google LLC. Microsoft und Edge sind Marken der Microsoft Corporation. Opera ist eine Marke von Opera Norway AS. Brave ist eine Marke von Brave Software, Inc. Die Namen werden beschreibend verwendet. Terento ist mit keinem dieser Unternehmen verbunden und wird von ihnen weder unterstützt noch zertifiziert.
+Garmin und seine Produktnamen sind Marken von Garmin Ltd. Apple, Mac, macOS, Apple Silicon, App Store und Mac App Store sind Marken von Apple Inc. Google und Chrome sind Marken von Google LLC. Microsoft und Edge sind Marken der Microsoft Corporation. Opera ist eine Marke von Opera Norway AS. Brave ist eine Marke von Brave Software, Inc. Die Namen werden beschreibend verwendet. Terento ist mit keinem dieser Unternehmen verbunden und wird von ihnen weder unterstützt noch zertifiziert.
 
 ## Gewährleistung und deine Rechte
 
@@ -115,7 +115,7 @@ Terento ne crée pas ces cartes, ne change pas leurs licences, n’héberge pas 
 
 ## Noms et indépendance
 
-Garmin et ses noms de produits sont des marques de Garmin Ltd. Apple, Mac, macOS et Apple Silicon sont des marques d’Apple Inc. Google et Chrome sont des marques de Google LLC. Microsoft et Edge sont des marques de Microsoft Corporation. Opera est une marque d’Opera Norway AS. Brave est une marque de Brave Software, Inc. Leur utilisation est descriptive. Terento n’est affilié à aucune de ces sociétés et n’est ni approuvé ni certifié par elles.
+Garmin et ses noms de produits sont des marques de Garmin Ltd. Apple, Mac, macOS, Apple Silicon, App Store et Mac App Store sont des marques d’Apple Inc. Google et Chrome sont des marques de Google LLC. Microsoft et Edge sont des marques de Microsoft Corporation. Opera est une marque d’Opera Norway AS. Brave est une marque de Brave Software, Inc. Leur utilisation est descriptive. Terento n’est affilié à aucune de ces sociétés et n’est ni approuvé ni certifié par elles.
 
 ## Garantie et vos droits
 
@@ -157,7 +157,7 @@ Terento nie tworzy tych map, nie zmienia ich licencji, nie prowadzi biblioteki m
 
 ## Nazwy i niezależność
 
-Garmin i nazwy jego produktów są znakami Garmin Ltd. Apple, Mac, macOS i Apple Silicon są znakami Apple Inc. Google i Chrome są znakami Google LLC. Microsoft i Edge są znakami Microsoft Corporation. Opera jest znakiem Opera Norway AS. Brave jest znakiem Brave Software, Inc. Używamy ich opisowo. Terento nie jest powiązane z tymi firmami ani przez nie zatwierdzone lub certyfikowane.
+Garmin i nazwy jego produktów są znakami Garmin Ltd. Apple, Mac, macOS, Apple Silicon, App Store i Mac App Store są znakami Apple Inc. Google i Chrome są znakami Google LLC. Microsoft i Edge są znakami Microsoft Corporation. Opera jest znakiem Opera Norway AS. Brave jest znakiem Brave Software, Inc. Używamy ich opisowo. Terento nie jest powiązane z tymi firmami ani przez nie zatwierdzone lub certyfikowane.
 
 ## Gwarancja i Twoje prawa
 
@@ -199,7 +199,7 @@ Terento tyto mapy nevytváří, nemění jejich licence, neprovozuje knihovnu ma
 
 ## Názvy a nezávislost
 
-Garmin a názvy jeho produktů jsou ochranné známky Garmin Ltd. Apple, Mac, macOS a Apple Silicon jsou ochranné známky Apple Inc. Google a Chrome jsou ochranné známky Google LLC. Microsoft a Edge jsou ochranné známky Microsoft Corporation. Opera je ochranná známka Opera Norway AS. Brave je ochranná známka Brave Software, Inc. Používají se popisně. Terento není s těmito společnostmi spojeno ani jimi podporováno nebo certifikováno.
+Garmin a názvy jeho produktů jsou ochranné známky Garmin Ltd. Apple, Mac, macOS, Apple Silicon, App Store a Mac App Store jsou ochranné známky Apple Inc. Google a Chrome jsou ochranné známky Google LLC. Microsoft a Edge jsou ochranné známky Microsoft Corporation. Opera je ochranná známka Opera Norway AS. Brave je ochranná známka Brave Software, Inc. Používají se popisně. Terento není s těmito společnostmi spojeno ani jimi podporováno nebo certifikováno.
 
 ## Záruka a vaše práva
 
@@ -241,7 +241,7 @@ Terento non crea queste mappe, non ne cambia la licenza, non gestisce una librer
 
 ## Nomi e indipendenza
 
-Garmin e i nomi dei suoi prodotti sono marchi di Garmin Ltd. Apple, Mac, macOS e Apple Silicon sono marchi di Apple Inc. Google e Chrome sono marchi di Google LLC. Microsoft ed Edge sono marchi di Microsoft Corporation. Opera è un marchio di Opera Norway AS. Brave è un marchio di Brave Software, Inc. Sono usati a scopo descrittivo. Terento non è affiliato, approvato o certificato da nessuna di queste società.
+Garmin e i nomi dei suoi prodotti sono marchi di Garmin Ltd. Apple, Mac, macOS, Apple Silicon, App Store e Mac App Store sono marchi di Apple Inc. Google e Chrome sono marchi di Google LLC. Microsoft ed Edge sono marchi di Microsoft Corporation. Opera è un marchio di Opera Norway AS. Brave è un marchio di Brave Software, Inc. Sono usati a scopo descrittivo. Terento non è affiliato, approvato o certificato da nessuna di queste società.
 
 ## Garanzia e diritti dell’utente
 

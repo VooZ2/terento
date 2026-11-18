@@ -7,9 +7,9 @@ canonical: https://terento.app/fr/download/
 
 Une app gratuite et open source qui installe des cartes gratuites sur les montres Garmin et les compteurs vélo Edge compatibles avec les cartes.
 
-[Télécharger pour Mac](https://github.com/VooZ2/terento/releases/download/v1.2.1-build48/Terento-1.2.1-macOS-arm64.dmg)
+[Télécharger pour Mac](https://github.com/VooZ2/terento/releases/download/v1.2.1-build48/Terento-1.2.1-macOS-arm64.dmg) [Mac App Store](https://apps.apple.com/app/terento-gps-watch-maps/id6828556832)
 
-Mac App Store Bientôt disponible
+Dans la version du Mac App Store, les nouvelles versions arrivent par l’App Store après l’examen d’Apple, et les diagnostics ne sont partagés que si vous l’acceptez. Les Garmin Edge et vos propres cartes .img ne sont pour l’instant testés que dans l’app téléchargée.
 
 Dernière version **v1.2.1**, publiée le 14 novembre 2026. [Nouveautés](https://github.com/VooZ2/terento/releases/tag/v1.2.1-build48)
 
