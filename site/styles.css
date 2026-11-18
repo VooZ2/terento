@@ -4072,10 +4072,18 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
   height: 18px;
 }
 
+@media (min-width: 561px) {
+  .store-actions {
+    flex-wrap: nowrap;
+  }
+}
+
+/* Stacked: the badge link is 44px around a 40px image, so a 10px row gap reads as 12px. */
 @media (max-width: 560px) {
   .store-actions {
     flex-direction: column;
     align-items: center;
+    gap: 10px;
   }
 }
 
@@ -4336,7 +4344,7 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
   flex-direction: column;
   justify-content: center;
   max-width: none;
-  padding: clamp(24px, 4.5vw, 64px);
+  padding: clamp(24px, 3.5vw, 64px);
 }
 
 .home-device {
@@ -4794,6 +4802,12 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
   }
 }
 
+@media (max-width: 1099px) {
+  .download-v2-hero {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 360px);
+  }
+}
+
 @media (max-width: 899px) {
   .download-v2-hero {
     grid-template-columns: minmax(0, 1fr);
@@ -4827,10 +4841,6 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
   margin: 0;
 }
 
-#main-content .about-story-card h2 {
-  margin-bottom: 16px;
-}
-
 .about-story-copy {
   max-width: 62ch;
 }
@@ -4846,7 +4856,7 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
   margin-top: 16px;
 }
 
-/* "Get in touch" and the donation note: one card directly under the story. */
+/* The contact line, links and the donation note: one card directly under the story. */
 .about-socials.card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
@@ -4854,7 +4864,7 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
   align-items: start;
 }
 
-.about-socials.card > h3 {
+.about-socials .about-social-label {
   grid-column: 1;
 }
 

@@ -26,6 +26,13 @@
     ],
     "events_removed": [
       "download-cta-click @ about-intro"
+    ],
+    "h2": [
+      "What Terento is, and what it isn’t",
+      "Featured on",
+      "Install",
+      "Help",
+      "Project"
     ]
   },
   "site/de/index.html": {
@@ -55,6 +62,13 @@
     ],
     "events_removed": [
       "download-cta-click @ about-intro"
+    ],
+    "h2": [
+      "Was Terento ist und was nicht",
+      "Vorgestellt auf",
+      "Installieren",
+      "Hilfe",
+      "Projekt"
     ]
   },
   "site/fr/index.html": {
@@ -84,6 +98,13 @@
     ],
     "events_removed": [
       "download-cta-click @ about-intro"
+    ],
+    "h2": [
+      "Ce qu’est Terento, et ce qu’il n’est pas",
+      "Présenté sur",
+      "Installer",
+      "Aide",
+      "Projet"
     ]
   },
   "site/pl/index.html": {
@@ -113,6 +134,13 @@
     ],
     "events_removed": [
       "download-cta-click @ about-intro"
+    ],
+    "h2": [
+      "Czym Terento jest, a czym nie jest",
+      "Pisali o Terento",
+      "Instalacja",
+      "Pomoc",
+      "Projekt"
     ]
   },
   "site/cs/index.html": {
@@ -142,6 +170,13 @@
     ],
     "events_removed": [
       "download-cta-click @ about-intro"
+    ],
+    "h2": [
+      "Co Terento je a co není",
+      "Psali o Terento",
+      "Instalace",
+      "Nápověda",
+      "Projekt"
     ]
   },
   "site/it/index.html": {
@@ -171,6 +206,13 @@
     ],
     "events_removed": [
       "download-cta-click @ about-intro"
+    ],
+    "h2": [
+      "Cos’è Terento, e cosa non è",
+      "In evidenza su",
+      "Installa",
+      "Aiuto",
+      "Progetto"
     ]
   }
 }

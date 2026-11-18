@@ -193,7 +193,10 @@ for (const locale of Object.keys(locales)) {
   assert.doesNotMatch(html.match(/<div class="card about-story-card">[\s\S]*?<\/div>\s*<\/div>/)[0], /<img\b/, `${locale} About story is text only (no photo or avatar)`);
   const storyCopy = html.match(/<div class="about-story-copy">[\s\S]*?<\/div>/)?.[0];
   assert.ok(storyCopy, `${locale} must have a story copy block`);
-  assert.equal((storyCopy.match(/<p>/g) || []).length, 4, `${locale} story in short first-person paragraphs`);
+  assert.equal((storyCopy.match(/<p>/g) || []).length, 3, `${locale} owner-approved story in three short paragraphs`);
+  assert.match(storyCopy, /Garmin fēnix/, `${locale} fēnix keeps its macron`);
+  assert.doesNotMatch(html.match(/<div class="card about-story-card">[\s\S]*?<\/div>\s*<\/div>/)[0], /<h2\b/, `${locale} the story sits directly under the H1`);
+  assert.match(html, /<div class="card about-socials">\s*<p class="about-social-label">[^<]+<\/p>/, `${locale} the contact line opens the contact card`);
   assert.ok(html.indexOf('about-story-card') < html.indexOf('about-socials'), `${locale} contact card follows the story`);
   assert.ok(html.indexOf('about-socials') < html.indexOf('class="block about-main"'));
   assert.match(html, new RegExp(`<p class="about-download-link"><a class="text-link" href="/${prefix}download/" data-umami-event="download-cta-click" data-umami-event-location="about-bottom">`), `${locale} one small Download link at the end`);

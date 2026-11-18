@@ -5,17 +5,13 @@ canonical: https://terento.app/cs/about/
 
 # Ahoj, jsem Gediminas
 
-## Proč jsem ho vytvořil
+Používám hodinky Garmin fēnix. Na dovolené rád plánuji túry, abych poznal zemi, hlavně v evropských horách. Před každou cestou jsem chtěl mít mapy v hodinkách. Na Macu to znamenalo připojit hodinky, hledat, jak přidat mapy, najít je, stáhnout a zkopírovat do hodinek.
 
-Jmenuji se Gediminas. Používám Garmin a rád chodím po horách.
+Terento jsem vytvořil, aby to bylo jednoduché: připojit, nainstalovat, hotovo.
 
-Před cestou chci mít v hodinkách mapy míst, kam jedu, a dostat je tam stálo víc úsilí, než by mělo.
+Je zdarma a open source, protože mám svůj Garmin rád a chci pomoct lidem ve stejné situaci.
 
-Vytvořil jsem Terento, abych to usnadnil sobě i všem ostatním s Garminem.
-
-Je zdarma a s otevřeným kódem, protože chci, aby pomáhalo komunitě.
-
-### Napište mi
+Pokud máte otázky nebo zpětnou vazbu, můžete se mi ozvat tady:
 
 [LinkedIn](https://www.linkedin.com/in/gediminasc/) [Reddit](https://www.reddit.com/user/MrDonas/) [E-mail](mailto:hello@terento.app)
 

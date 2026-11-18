@@ -5,17 +5,13 @@ canonical: https://terento.app/it/about/
 
 # Ciao, sono Gediminas
 
-## Perché l’ho creato
+Uso un Garmin fēnix. In vacanza mi piace pianificare escursioni per conoscere un paese, soprattutto sulle montagne d’Europa. Prima di ogni viaggio volevo le mappe sull’orologio. Su un Mac significava collegare l’orologio, cercare come aggiungere le mappe, trovarle, scaricarle e copiarle sull’orologio.
 
-Sono Gediminas. Uso un Garmin e amo le escursioni in montagna.
+Ho creato Terento per rendere tutto semplice: collega, installa, fatto.
 
-Prima di un viaggio voglio l’orologio pronto con le mappe di dove vado, e caricarle richiedeva più impegno del necessario.
+È gratuito e open source perché mi piace il mio Garmin e voglio aiutare chi si trova nella stessa situazione.
 
-Ho creato Terento per rendere tutto più semplice, per me e per chiunque abbia un Garmin.
-
-È gratuito e open source perché voglio che sia utile alla comunità.
-
-### Scrivimi
+Se hai domande o feedback, puoi contattarmi qui:
 
 [LinkedIn](https://www.linkedin.com/in/gediminasc/) [Reddit](https://www.reddit.com/user/MrDonas/) [Email](mailto:hello@terento.app)
 

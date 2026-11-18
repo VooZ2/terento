@@ -5,17 +5,13 @@ canonical: https://terento.app/de/about/
 
 # Hallo, ich bin Gediminas
 
-## Warum ich es gebaut habe
+Ich nutze eine Garmin fēnix. Im Urlaub plane ich gern Wanderungen, um ein Land kennenzulernen, besonders in den Bergen Europas. Vor jeder Reise wollte ich Karten auf meiner Uhr haben. Auf dem Mac hieß das: die Uhr anschließen, suchen, wie man Karten hinzufügt, sie finden, herunterladen und auf die Uhr kopieren.
 
-Ich bin Gediminas. Ich nutze eine Garmin und wandere gern in den Bergen.
+Ich habe Terento gebaut, um das einfach zu machen: verbinden, installieren, fertig.
 
-Vor einer Reise möchte ich Karten für mein Ziel auf der Uhr haben, und sie dorthin zu bekommen, war aufwendiger als nötig.
+Es ist kostenlos und Open Source, weil ich meine Garmin mag und Menschen in derselben Lage helfen möchte.
 
-Ich habe Terento gebaut, um das einfacher zu machen, für mich und für alle anderen mit einer Garmin.
-
-Es ist kostenlos und quelloffen, weil ich möchte, dass es der Community hilft.
-
-### Schreib mir
+Wenn du Fragen oder Feedback hast, erreichst du mich hier:
 
 [LinkedIn](https://www.linkedin.com/in/gediminasc/) [Reddit](https://www.reddit.com/user/MrDonas/) [E-Mail](mailto:hello@terento.app)
 
