@@ -9,7 +9,7 @@ Terento funziona con gli orologi Garmin e i ciclocomputer Garmin Edge più recen
 
 Se il tuo modello non c’è, non significa che non funzioni. Forse nessuno ha ancora condiviso un’installazione riuscita con quel modello.
 
-**47** modelli con installazioni riuscite**463** installazioni riusciteUltima installazione riuscita 18 novembre 2026
+**47** modelli con installazioni riuscite**463** installazioni riuscite**18 novembre 2026** Ultima installazione riuscita
 
 Come funziona questo elenco
 

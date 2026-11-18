@@ -48,3 +48,7 @@ Nie zamykaj listy przez maksymalnie dwie minuty. Jeśli nie pojawi się pozycja 
 ### Przeglądarka nie ma dostępu do USB
 
 Przeglądarka zainstalowana jako pakiet Snap może nie mieć dostępu do USB. Użyj przeglądarki z jej oficjalnego pakietu .deb lub .rpm.
+
+Zainstaluj pierwszą mapę
+
+[Otwórz instalator webowy](https://terento.app/pl/install/)

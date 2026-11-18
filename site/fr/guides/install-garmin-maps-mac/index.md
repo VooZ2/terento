@@ -81,3 +81,7 @@ Sur l’écran d’échec de l’installation, choisissez « Report issue ». Te
 ## Désinstaller Terento
 
 Quittez Terento et placez-le dans la Corbeille depuis Applications. Les cartes déjà sur votre montre y restent. Terento conserve les informations sur les cartes qu’il a installées dans ~/Library/Application Support/Terento : gardez ce dossier si vous comptez réinstaller Terento, pour qu’il puisse encore mettre à jour et supprimer ces cartes. Pour tout supprimer, effacez aussi ce dossier, ~/Library/Caches/Terento, ~/Library/Logs/Terento et ~/Library/Preferences/app.terento.mac.plist.
+
+Installez votre première carte
+
+[Télécharger](https://terento.app/fr/download/)

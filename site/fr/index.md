@@ -11,7 +11,13 @@ Terento installe des cartes gratuites issues de projets OpenStreetMap sur les mo
 
 Vous hésitez pour votre modèle ? [Vérifier la compatibilité](https://terento.app/fr/compatibility/)
 
+[Envoyer le lien vers votre ordinateur](mailto:?subject=Terento%20%3A%20cartes%20gratuites%20pour%20votre%20Garmin&body=https%3A%2F%2Fterento.app%2Ffr%2F)
+
 Montre Garmin affichant la carte OpenTopoMap du lac Königssee, dans les Alpes bavaroises
+
+- **47** modèles avec des installations réussies
+- **463** installations réussies
+- **18 novembre 2026** Dernière installation réussie
 
 ## Comment ça marche
 
@@ -29,11 +35,11 @@ Vos cartes sont installées et prêtes à être utilisées sur votre Garmin.
 
 Terento affiche les fournisseurs et les régions de cartes tierces sur macOS
 
+Terento affiche les cartes tierces installées, regroupées par fournisseur
+
 ## Gérer les cartes
 
 Consultez les cartes installées, mettez-les à jour lorsqu’une version plus récente est disponible et supprimez les cartes tierces gérées par Terento. Les cartes Garmin d’origine restent protégées.
-
-Terento affiche les cartes tierces installées, regroupées par fournisseur
 
 Compteur vélo Garmin Edge affichant la carte Freizeitkarte de la montée de Sa Calobra, dans la Serra de Tramuntana à Majorque
 
@@ -42,6 +48,10 @@ Compteur vélo Garmin Edge affichant la carte Freizeitkarte de la montée de Sa 
 Les compteurs vélo Garmin Edge récents compatibles avec les cartes, comme les Edge 540, 840 et 1050, utilisent les mêmes cartes. Connectez, choisissez une région, installez.
 
 [Lire le guide Garmin Edge](https://terento.app/fr/guides/install-garmin-maps-edge-mac/)
+
+### Sans risque pour votre Garmin
+
+Terento laisse au moins 1 Go libre sur votre Garmin et vérifie chaque carte avec une somme de contrôle SHA-256 avant de la considérer comme installée.
 
 ## Choisissez la carte adaptée à votre sortie
 

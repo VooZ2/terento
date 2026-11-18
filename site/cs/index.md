@@ -11,7 +11,13 @@ Terento nahraje mapy zdarma z projektů OpenStreetMap do hodinek Garmin a cyklop
 
 Nejste si jistí svým modelem? [Ověřit kompatibilitu](https://terento.app/cs/compatibility/)
 
+[Poslat odkaz do počítače](mailto:?subject=Terento%3A%20mapy%20zdarma%20pro%20v%C3%A1%C5%A1%20Garmin&body=https%3A%2F%2Fterento.app%2Fcs%2F)
+
 Hodinky Garmin s mapou OpenTopoMap okolí jezera Königssee v Bavorských Alpách
+
+- **47** modely s úspěšnými instalacemi
+- **463** úspěšných instalací
+- **18. listopadu 2026** Poslední úspěšná instalace
 
 ## Jak to funguje
 
@@ -29,11 +35,11 @@ Vaše mapy jsou nainstalované a připravené k použití ve vašem Garminu.
 
 Terento zobrazuje poskytovatele a oblasti map třetích stran v macOS
 
+Terento zobrazuje nainstalované mapy třetích stran seskupené podle poskytovatele
+
 ## Spravovat mapy
 
 Prohlédněte si nainstalované mapy, aktualizujte je, když je k dispozici novější vydání, a odstraňte mapy třetích stran spravované aplikací Terento. Původní mapy Garmin zůstávají chráněné.
-
-Terento zobrazuje nainstalované mapy třetích stran seskupené podle poskytovatele
 
 Cyklopočítač Garmin Edge s mapou Freizeitkarte stoupání Sa Calobra v pohoří Serra de Tramuntana na Mallorce
 
@@ -42,6 +48,10 @@ Cyklopočítač Garmin Edge s mapou Freizeitkarte stoupání Sa Calobra v pohoř
 Novější cyklopočítače Garmin Edge s podporou map, například Edge 540, 840 a 1050, používají stejné mapy. Připojte, vyberte region, nainstalujte.
 
 [Přečíst návod pro Garmin Edge](https://terento.app/cs/guides/install-garmin-maps-edge-mac/)
+
+### Bezpečné pro váš Garmin
+
+Terento nechává v Garminu alespoň 1 GB volného místa a každou mapu ověří kontrolním součtem SHA-256, než ji označí za nainstalovanou.
 
 ## Vyberte mapu, která sedí k výletu
 

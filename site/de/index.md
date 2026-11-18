@@ -11,7 +11,13 @@ Terento bringt kostenlose Karten aus OpenStreetMap-Projekten auf Garmin-Uhren un
 
 Unsicher bei deinem Modell? [Kompatibilität prüfen](https://terento.app/de/compatibility/)
 
+[Link an deinen Computer senden](mailto:?subject=Terento%3A%20kostenlose%20Karten%20f%C3%BCr%20deinen%20Garmin&body=https%3A%2F%2Fterento.app%2Fde%2F)
+
 Garmin-Uhr mit der OpenTopoMap-Karte vom Königssee in den Berchtesgadener Alpen
+
+- **47** Modelle mit erfolgreichen Installationen
+- **463** erfolgreiche Installationen
+- **18. November 2026** Letzte erfolgreiche Installation
 
 ## So funktioniert es
 
@@ -29,11 +35,11 @@ Deine Karten sind installiert und auf deinem Garmin einsatzbereit.
 
 Terento zeigt Drittanbieter-Kartenanbieter und Regionen auf macOS
 
+Terento zeigt installierte Drittanbieter-Karten nach Anbieter gruppiert
+
 ## Karten verwalten
 
 Sieh, was installiert ist, aktualisiere Karten, wenn neuere Versionen verfügbar sind, und entferne von Terento verwaltete Drittanbieter-Karten. Originale Garmin-Karten bleiben geschützt.
-
-Terento zeigt installierte Drittanbieter-Karten nach Anbieter gruppiert
 
 Garmin Edge Fahrradcomputer mit der Freizeitkarte-Karte des Anstiegs nach Sa Calobra in der Serra de Tramuntana auf Mallorca
 
@@ -42,6 +48,10 @@ Garmin Edge Fahrradcomputer mit der Freizeitkarte-Karte des Anstiegs nach Sa Cal
 Neuere Garmin Edge Fahrradcomputer mit Kartenunterstützung, etwa Edge 540, 840 und 1050, nutzen dieselben Karten. Verbinden, Region wählen, installieren.
 
 [Zur Anleitung für Garmin Edge](https://terento.app/de/guides/install-garmin-maps-edge-mac/)
+
+### Sicher für deinen Garmin
+
+Terento lässt auf deinem Garmin mindestens 1 GB frei und prüft jede Karte mit einer SHA-256-Prüfsumme, bevor sie als installiert gilt.
 
 ## Wähle die Karte, die zur Tour passt
 

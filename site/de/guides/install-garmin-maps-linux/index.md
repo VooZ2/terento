@@ -48,3 +48,7 @@ Lass die Liste bis zu zwei Minuten offen. Wenn kein Eintrag mit „Garmin“ im 
 ### Der Browser hat keinen USB-Zugriff
 
 Ein als Snap-Paket installierter Browser bekommt möglicherweise keinen USB-Zugriff. Verwende den Browser aus seinem offiziellen .deb- oder .rpm-Paket.
+
+Installiere deine erste Karte
+
+[Web-Installer öffnen](https://terento.app/de/install/)

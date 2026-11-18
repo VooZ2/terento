@@ -68,3 +68,7 @@ Les Edge récents, comme les Edge 540, 840 et 1050, échangent des fichiers en U
 ## Anciens modèles Edge
 
 Les modèles plus anciens, comme l’Edge 1030 Plus et les précédents, apparaissent généralement sur un Mac comme un disque USB. Sur ceux-ci, vous pouvez copier vous-même un fichier de carte .img compatible dans le dossier Garmin du disque, sans Terento. Terento n’est pas conçu pour ces modèles.
+
+Installez votre première carte
+
+[Télécharger](https://terento.app/fr/download/)

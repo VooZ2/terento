@@ -81,3 +81,7 @@ Na ekranie nieudanej instalacji wybierz „Report issue”. Terento otwiera GitH
 ## Odinstalowanie Terento
 
 Zamknij Terento i przenieś je z folderu Aplikacje do Kosza. Mapy na zegarku zostają. Terento przechowuje informacje o zainstalowanych mapach w ~/Library/Application Support/Terento: zachowaj ten folder, jeśli możesz ponownie zainstalować Terento, aby nadal mogło aktualizować i usuwać te mapy. Aby usunąć wszystko, usuń też ten folder, ~/Library/Caches/Terento, ~/Library/Logs/Terento i ~/Library/Preferences/app.terento.mac.plist.
+
+Zainstaluj pierwszą mapę
+
+[Pobierz](https://terento.app/pl/download/)

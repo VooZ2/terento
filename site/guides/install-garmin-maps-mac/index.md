@@ -81,3 +81,7 @@ On the failed installation screen, choose “Report issue”. Terento opens GitH
 ## Uninstall Terento
 
 Quit Terento and move it from Applications to the Trash. Maps already on your watch stay there. Terento keeps its records of the maps it installed in ~/Library/Application Support/Terento: keep that folder if you may install Terento again, so it can still update and remove those maps. To remove everything, also delete that folder, ~/Library/Caches/Terento, ~/Library/Logs/Terento and ~/Library/Preferences/app.terento.mac.plist.
+
+Install your first map
+
+[Download](https://terento.app/download/)

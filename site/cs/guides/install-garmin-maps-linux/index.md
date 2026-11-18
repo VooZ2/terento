@@ -48,3 +48,7 @@ Nechte seznam otevřený až dvě minuty. Pokud se neobjeví položka se slovem 
 ### Prohlížeč nemá přístup k USB
 
 Prohlížeč nainstalovaný jako balíček Snap nemusí dostat přístup k USB. Použijte prohlížeč z jeho oficiálního balíčku .deb nebo .rpm.
+
+Nainstalujte svou první mapu
+
+[Otevřít webový instalátor](https://terento.app/cs/install/)

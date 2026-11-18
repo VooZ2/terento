@@ -11,7 +11,13 @@ Terento installa mappe gratuite dai progetti OpenStreetMap su orologi Garmin e c
 
 Non sai se il tuo modello è compatibile? [Verifica la compatibilità](https://terento.app/it/compatibility/)
 
+[Invia il link al tuo computer](mailto:?subject=Terento%3A%20mappe%20gratuite%20per%20il%20tuo%20Garmin&body=https%3A%2F%2Fterento.app%2Fit%2F)
+
 Orologio Garmin con la mappa OpenTopoMap del lago Königssee, nelle Alpi bavaresi
+
+- **47** modelli con installazioni riuscite
+- **463** installazioni riuscite
+- **18 novembre 2026** Ultima installazione riuscita
 
 ## Come funziona
 
@@ -29,11 +35,11 @@ Le tue mappe sono installate e pronte per essere usate sul tuo Garmin.
 
 Terento mostra provider e regioni di mappe di terze parti su macOS
 
+Terento mostra le mappe di terze parti installate raggruppate per provider
+
 ## Gestisci le mappe
 
 Visualizza le mappe installate, aggiornatele quando è disponibile una versione più recente e rimuovi le mappe di terze parti gestite da Terento. Le mappe Garmin originali restano protette.
-
-Terento mostra le mappe di terze parti installate raggruppate per provider
 
 Ciclocomputer Garmin Edge con la mappa Freizeitkarte della salita di Sa Calobra, nella Serra de Tramuntana a Maiorca
 
@@ -42,6 +48,10 @@ Ciclocomputer Garmin Edge con la mappa Freizeitkarte della salita di Sa Calobra,
 I ciclocomputer Garmin Edge più recenti con supporto mappe, come Edge 540, 840 e 1050, usano le stesse mappe. Collega, scegli una regione, installa.
 
 [Leggi la guida per Garmin Edge](https://terento.app/it/guides/install-garmin-maps-edge-mac/)
+
+### Sicuro per il tuo Garmin
+
+Terento lascia almeno 1 GB libero sul tuo Garmin e controlla ogni mappa con un checksum SHA-256 prima di considerarla installata.
 
 ## Scegli la mappa adatta al percorso
 

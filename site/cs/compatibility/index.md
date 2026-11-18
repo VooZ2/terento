@@ -9,7 +9,7 @@ Terento funguje s hodinkami Garmin a novějšími cyklopočítači Garmin Edge s
 
 Pokud zde svůj model nevidíte, neznamená to, že nebude fungovat. Možná z něj zatím nikdo nesdílel úspěšnou instalaci.
 
-**47** modely s úspěšnými instalacemi**463** úspěšných instalacíPoslední úspěšná instalace 18. listopadu 2026
+**47** modely s úspěšnými instalacemi**463** úspěšných instalací**18. listopadu 2026** Poslední úspěšná instalace
 
 Jak tento seznam funguje
 

@@ -9,7 +9,7 @@ Terento działa z zegarkami Garmin i nowszymi licznikami rowerowymi Garmin Edge 
 
 Brak Twojego modelu nie oznacza, że nie zadziała. Być może nikt jeszcze nie udostępnił z niego udanej instalacji.
 
-**47** modele z udanymi instalacjami**463** udane instalacjeOstatnia udana instalacja 18 listopada 2026
+**47** modele z udanymi instalacjami**463** udane instalacje**18 listopada 2026** Ostatnia udana instalacja
 
 Jak działa ta lista
 

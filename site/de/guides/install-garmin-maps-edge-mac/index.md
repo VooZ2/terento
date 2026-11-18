@@ -68,3 +68,7 @@ Neuere Edge-Modelle wie Edge 540, 840 und 1050 übertragen Dateien per USB wie A
 ## Ältere Edge-Modelle
 
 Ältere Modelle wie der Edge 1030 Plus und frühere erscheinen am Mac meist als USB-Laufwerk. Dort kannst du eine kompatible .img-Kartendatei selbst in den Garmin-Ordner auf dem Laufwerk kopieren, ohne Terento. Terento ist nicht für diese Modelle gedacht.
+
+Installiere deine erste Karte
+
+[Herunterladen](https://terento.app/de/download/)

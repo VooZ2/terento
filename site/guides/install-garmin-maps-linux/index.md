@@ -48,3 +48,7 @@ Leave the list open for up to two minutes. If no entry with “Garmin” in its 
 ### The browser has no USB access
 
 A browser installed as a Snap package may not get USB access. Use the browser from its official .deb or .rpm package.
+
+Install your first map
+
+[Open the web installer](https://terento.app/install/)

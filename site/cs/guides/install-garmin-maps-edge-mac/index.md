@@ -68,3 +68,7 @@ Novější modely Edge, například Edge 540, 840 a 1050, přenášejí soubory 
 ## Starší modely Edge
 
 Starší modely, například Edge 1030 Plus a dřívější, se na Macu obvykle zobrazí jako USB disk. U nich můžete kompatibilní mapový soubor .img sami zkopírovat do složky Garmin na disku, bez Terento. Terento není pro tyto modely určené.
+
+Nainstalujte svou první mapu
+
+[Stáhnout](https://terento.app/cs/download/)

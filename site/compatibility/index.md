@@ -9,7 +9,7 @@ Terento works with Garmin watches and newer Garmin Edge bike computers with map 
 
 Not seeing your model? That doesn’t mean it won’t work. It may be that no one has shared a successful install from it yet.
 
-**47** models with successful installs**463** successful installsLatest successful install November 18, 2026
+**47** models with successful installs**463** successful installs**November 18, 2026** Latest successful install
 
 How this list works
 

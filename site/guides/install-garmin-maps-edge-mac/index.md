@@ -68,3 +68,7 @@ Newer Edge models, such as the Edge 540, 840 and 1050, share files over USB the 
 ## Older Edge models
 
 Older models, such as the Edge 1030 Plus and earlier, usually show up on a Mac as a USB drive. On those, you can copy a compatible .img map file into the Garmin folder on the drive yourself, without Terento. Terento is not designed for these models.
+
+Install your first map
+
+[Download](https://terento.app/download/)

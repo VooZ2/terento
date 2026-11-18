@@ -9,7 +9,7 @@ Terento fonctionne avec les montres Garmin et les compteurs vélo Garmin Edge r�
 
 L’absence de votre modèle ne veut pas dire qu’il ne fonctionne pas. Personne n’a peut-être encore partagé d’installation réussie avec ce modèle.
 
-**47** modèles avec des installations réussies**463** installations réussiesDernière installation réussie 18 novembre 2026
+**47** modèles avec des installations réussies**463** installations réussies**18 novembre 2026** Dernière installation réussie
 
 Comment fonctionne cette liste
 

@@ -11,7 +11,13 @@ Terento wgrywa darmowe mapy z projektów OpenStreetMap na zegarki Garmin i liczn
 
 Nie wiesz, czy Twój model działa? [Sprawdź kompatybilność](https://terento.app/pl/compatibility/)
 
+[Wyślij link na swój komputer](mailto:?subject=Terento%3A%20darmowe%20mapy%20na%20Twojego%20Garmina&body=https%3A%2F%2Fterento.app%2Fpl%2F)
+
 Zegarek Garmin z mapą OpenTopoMap okolic jeziora Königssee w Alpach Bawarskich
+
+- **47** modele z udanymi instalacjami
+- **463** udane instalacje
+- **18 listopada 2026** Ostatnia udana instalacja
 
 ## Jak to działa
 
@@ -29,11 +35,11 @@ Twoje mapy są zainstalowane i gotowe do użycia na Twoim Garminie.
 
 Terento pokazuje dostawców i regiony map innych firm na macOS
 
+Terento pokazuje zainstalowane mapy innych firm pogrupowane według dostawcy
+
 ## Zarządzaj mapami
 
 Sprawdź, co jest zainstalowane, aktualizuj mapy, gdy dostępne są nowsze wydania, i usuwaj mapy innych firm zarządzane przez Terento. Oryginalne mapy Garmin pozostają chronione.
-
-Terento pokazuje zainstalowane mapy innych firm pogrupowane według dostawcy
 
 Licznik rowerowy Garmin Edge z mapą Freizeitkarte podjazdu Sa Calobra w górach Serra de Tramuntana na Majorce
 
@@ -42,6 +48,10 @@ Licznik rowerowy Garmin Edge z mapą Freizeitkarte podjazdu Sa Calobra w górach
 Nowsze liczniki rowerowe Garmin Edge z obsługą map, takie jak Edge 540, 840 i 1050, korzystają z tych samych map. Podłącz, wybierz region, zainstaluj.
 
 [Przeczytaj poradnik dla Garmin Edge](https://terento.app/pl/guides/install-garmin-maps-edge-mac/)
+
+### Bezpiecznie dla Twojego Garmina
+
+Terento zostawia na Garminie co najmniej 1 GB wolnego miejsca i sprawdza każdą mapę sumą kontrolną SHA-256, zanim uzna ją za zainstalowaną.
 
 ## Wybierz mapę pasującą do wyprawy
 

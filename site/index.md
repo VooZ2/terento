@@ -11,7 +11,13 @@ Terento puts free maps from OpenStreetMap projects on Garmin watches and Edge bi
 
 Not sure about your model? [Check compatibility](https://terento.app/compatibility/)
 
+[Send this link to your computer](mailto:?subject=Terento%3A%20free%20maps%20for%20your%20Garmin&body=https%3A%2F%2Fterento.app%2F)
+
 Garmin watch showing the OpenTopoMap map of Lake Königssee in the Bavarian Alps
+
+- **47** models with successful installs
+- **463** successful installs
+- **November 18, 2026** Latest successful install
 
 ## How it works
 
@@ -29,11 +35,11 @@ Your maps are installed and ready to use on your Garmin.
 
 Terento showing third-party map providers and regions on macOS
 
+Terento showing installed third-party maps grouped by provider
+
 ## Manage maps
 
 See what's installed, update maps when newer releases are available, and remove third-party maps managed by Terento. Original Garmin maps remain protected.
-
-Terento showing installed third-party maps grouped by provider
 
 Garmin Edge bike computer showing the Freizeitkarte map of the Sa Calobra climb in Mallorca’s Serra de Tramuntana
 
@@ -42,6 +48,10 @@ Garmin Edge bike computer showing the Freizeitkarte map of the Sa Calobra climb 
 Newer Garmin Edge bike computers with map support, such as Edge 540, 840 and 1050, take the same maps. Connect, choose a region, install.
 
 [Read the Garmin Edge guide](https://terento.app/guides/install-garmin-maps-edge-mac/)
+
+### Safe for your Garmin
+
+Terento keeps at least 1 GB free on your Garmin and checks every map with a SHA-256 checksum before it counts as installed.
 
 ## Pick the map that fits the trip
 

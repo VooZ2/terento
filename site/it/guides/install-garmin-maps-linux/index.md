@@ -48,3 +48,7 @@ Lascia l’elenco aperto fino a due minuti. Se non appare una voce con “Garmin
 ### Il browser non ha accesso USB
 
 Un browser installato come pacchetto Snap potrebbe non avere accesso USB. Usa il browser dal suo pacchetto ufficiale .deb o .rpm.
+
+Installa la tua prima mappa
+
+[Apri l’installer web](https://terento.app/it/install/)

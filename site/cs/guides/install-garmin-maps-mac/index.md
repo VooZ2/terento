@@ -81,3 +81,7 @@ Na obrazovce neúspěšné instalace zvolte „Report issue“. Terento otevře 
 ## Odinstalace Terento
 
 Ukončete Terento a přesuňte ho ze složky Aplikace do koše. Mapy v hodinkách zůstanou. Terento si údaje o nainstalovaných mapách ukládá do ~/Library/Application Support/Terento: tuto složku si ponechte, pokud budete Terento instalovat znovu, aby tyto mapy mohlo dál aktualizovat a odstraňovat. Chcete-li odstranit vše, smažte i tuto složku, ~/Library/Caches/Terento, ~/Library/Logs/Terento a ~/Library/Preferences/app.terento.mac.plist.
+
+Nainstalujte svou první mapu
+
+[Stáhnout](https://terento.app/cs/download/)

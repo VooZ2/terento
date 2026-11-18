@@ -48,3 +48,7 @@ Laissez la liste ouverte jusqu’à deux minutes. Si aucune entrée contenant «
 ### Le navigateur n’a pas d’accès USB
 
 Un navigateur installé en paquet Snap peut ne pas obtenir l’accès USB. Utilisez le navigateur issu de son paquet officiel .deb ou .rpm.
+
+Installez votre première carte
+
+[Ouvrir l’installateur web](https://terento.app/fr/install/)
