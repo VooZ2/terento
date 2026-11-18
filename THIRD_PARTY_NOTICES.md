@@ -236,16 +236,15 @@ or Go dependency or source code is incorporated. Reference:
   `scripts/build-compatibility-pages.py` and
   `site/compatibility/compatibility.js`), `x` (Compatibility clear filters) and
   `copy` and `check` (Linux guide command copy, in
-  `scripts/build-guide-pages.py`), `clock` (Download "coming soon" in
-  `scripts/normalize-release-pages.py`) and the Map styles controls (`search`,
+  `scripts/build-guide-pages.py`) and the Map styles controls (`search`,
   `x`, `map-pin`, `square`, `columns-2`, `chevrons-left-right`, `link`,
   `arrow-left-right`, `plus`, `minus`, `info`, `chevron-right`, `star`,
   `circle-minus`, `clock`, in `scripts/build-map-style-pages.py` and
   `site/map-styles/map-styles.js`) and `heart` (footer Support link, in
   `scripts/normalize-public-shell.py`).
 - Each SVG carries the `@license lucide-static v0.460.0 - ISC` comment
-  (except the Download clock and the footer heart, which appear on the
-  Download page whose HTML must carry only the release version).
+  (except the footer heart, which also appears on the Download page whose
+  HTML must carry only the release version).
 
 ### Web installer
 

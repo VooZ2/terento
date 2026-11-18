@@ -15,8 +15,8 @@ LOCALES = ("en", "de", "fr", "pl", "cs", "it")
 PROVIDER_SCRIPT_VERSION = "20261026-osmapa-v1"
 FEATURE_SCRIPT_VERSION = "20261105-home-map-switch-v4"
 ASSET_VERSION = "20261106-home-watch-srcset"
-# Empty until Apple approves the listing; the button renders only once this is set.
-APP_STORE_URL = ""
+# Mac App Store listing (released 2026-11-18), shown beside the Download button in the hero.
+APP_STORE_URL = "https://apps.apple.com/app/terento-gps-watch-maps/id6828556832"
 # Hero watch map styles (Königssee previews), self-hosted in site/assets/home/.
 # Owner decision 2026-11-05: no visible map credit on the hero.
 HERO_MAP_STYLES = (
@@ -630,11 +630,9 @@ def normalize_home(source: str, path: Path, locale: str) -> str:
         )
     values["hero_map_alt"] = html.escape(copy["hero_map_alt"].replace("{name}", HERO_MAP_STYLES[0][1]))
     values["hero_switch_buttons"] = map_switch(copy["hero_map_alt"], 0, "home-hero")
-    app_store = (
-        f'<a class="home-app-store" href="{APP_STORE_URL}" data-umami-event="app-store-click" data-umami-event-location="{{location}}">{html.escape(copy["app_store_label"])}</a>'
-        if APP_STORE_URL else ""
+    values["app_store_hero"] = (
+        f'<a class="home-app-store" href="{APP_STORE_URL}" data-umami-event="app-store-click" data-umami-event-location="home-hero">{html.escape(copy["app_store_label"])}</a>'
     )
-    values["app_store_hero"] = app_store.replace("{location}", "home-hero")
     values["edge_guide_href"] = "/guides/install-garmin-maps-edge-mac/" if locale == "en" else f"/{locale}/guides/install-garmin-maps-edge-mac/"
     # Freizeitkarte first on the Edge so the two devices open on different maps.
     values["edge_visual"] = (
