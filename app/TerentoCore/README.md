@@ -35,7 +35,7 @@ downloads to the Mac, validates the source package and Garmin image, checks
 storage, installs, verifies the transfer, and records local ownership.
 
 Device discovery starts automatically. While no Garmin is on USB, the Device
-page shows a calm "Connect your watch" checklist and polls only the USB device
+page shows a calm "Connect your device" checklist and polls only the USB device
 list; libmtp is not entered and no timeout runs. The 2-minute connection window
 starts when a Garmin USB device appears. More than one Garmin, a watch held by
 another app (repeated session-open failures) and a Garmin that never appears as
@@ -44,6 +44,21 @@ not-yet-enumerated and transient read failures are silent retries. After a
 timeout, a failed check or an unexpected disconnect, unplugging and reconnecting
 the watch restarts discovery. `DeviceConnectOutcome` exposes each episode
 outcome for the first-run funnel; `DeviceEngine` itself sends no telemetry.
+
+Apps newer than 1.2.1 learn about a plugged or unplugged USB device from the
+macOS device-matching notifications (`GarminUSBChangeNotifier`, Garmin vendor
+`0x091E`). A notification only ends the current poll delay early, so the usual
+USB probe runs sooner; the 0.5 s presence poll stays as the fallback, and is the
+only path when registration fails or a test transport is used. The notifier
+lives in the app process, opens no device and installs no background service.
+A Garmin that has just appeared is read at once. If that first read does not
+connect (not yet enumerated, session not opened, transient), it is not counted
+as an attempt, shows nothing, and the 0.75 s enumeration settle follows before
+the ordinary retries; a stalled read or more than one Garmin keeps its existing
+meaning. `DeviceDetectionPolicy.readsImmediatelyOnAppearance = false` restores
+the settle-before-read order. Both changes need a real-device check on each
+release candidate (plug, replug, replug during detection, Garmin Express
+running) before release.
 
 The Connect page says why the watch is not connected and what to do
 (`Errors/UserFacingErrorMessage.swift`). Every problem follows the calm pattern
@@ -61,16 +76,18 @@ Once a whole 2-minute window has passed with nothing on USB (the
 `timeoutNoUSB` signal), the waiting page's checklist becomes the "Still not
 showing up?" box (data cable, directly into the Mac rather than a USB hub,
 another port, unlock, restart, quit Garmin Express). A final failure is titled
-by its cause ("Your watch didn't get ready", "Your watch lost connection" when
-the watch left USB just before the window ended, "Your watch may be in use",
-"Not ready for file transfer" or "Your watch stopped responding"); its last
+by its cause ("Your device didn't get ready", "Your device lost connection" when
+the watch left USB just before the window ended, "Your device may be in use",
+"Not ready for file transfer" or "Your device stopped responding"); its last
 step is to reconnect the watch or click Try again, and its note says Terento
 checks again only then. USB Mode is named as in the guide ("If your watch has
 USB Mode (usually under Settings › System), choose MTP"). A busy watch, and a
 timeout with the watch on USB, name the apps found by the read-only
 running-application scan (Garmin Express, OpenMTP, MacDroid, Android File
 Transfer, Image Capture); a busy watch with none found keeps the Garmin Express
-wording. The messages do not change detection: the policy and its timing, the
+wording. Apps newer than 1.2.1 also name "Garmin Express" when only its
+background service (`com.garmin.renu.service`) is running, matched by that
+exact bundle identifier. The messages do not change detection: the policy and its timing, the
 error classification, the replug watch and the funnel outcomes are independent
 of them, and intermittent USB/MTP stalls remain a known limit. The sidebar
 status shows an icon with its text and colour, including "Needs attention".
@@ -99,8 +116,9 @@ installation was written, and the reported failure code is unchanged. When that
 stop comes before any map or contour of the installation was written (a busy
 session after its retries, the snapshot no longer seeing a Garmin (-2/-3), or a
 confirmed unplug, at the reads before the write), the failure dialog is replaced
-by "Reconnect your watch": unplug the watch, wait 5 seconds and plug it back in,
-with Cancel and no other action. Only a new connection after the unplug can
+by "Reconnect your device": unplug the watch, wait 5 seconds and plug it back in,
+with Cancel and no other action; it names no map, because it is about the
+device. Only a new connection after the unplug can
 continue. The same watch (its local physical key) that is read again and whose
 authorization has resolved starts the normal installation again exactly like Try
 again: a new operation, every identity, authorization, inventory, storage and
@@ -110,7 +128,13 @@ allows installing, 5 minutes without the same watch ready, or Cancel ends with
 the failure dialog (Report issue included); if the watch never left, it shows
 the original failure unchanged, otherwise what happened during the wait. The
 dialog announces its state to VoiceOver, and the update prompt never opens over
-it. The
+it. What the failure dialog shows (map, reason, safety line, help topic and the
+prepared report) is captured when the installation fails. A disconnect resets
+the engine's failure state while that dialog is open or about to open; the
+dialog then keeps the captured failure instead of the generic "Installation
+could not be completed safely.", and Report issue keeps its details. Try again
+and Manage maps still depend on the live state, so they are not offered after
+the disconnect. The
 wait never touches the watch, adds no telemetry, and the first stop stays
 reported as before. A disconnect keeps the downloads kept for Try again. Custom
 imports are not kept across a disconnect and stop as before. Quitting removes retained
@@ -122,7 +146,20 @@ main window; reopening it shares the same engines and lifecycle model.
 Before a download starts, Terento checks that the Mac's temporary and Caches
 volumes have about 2.5 times the download size free. A full disk before or
 during download, copy or extraction is reported as "Your Mac doesn't have
-enough free space (needs X GB)", never as a connection problem. Downloads are
+enough free space (needs X GB)", never as a connection problem. A provider
+ZIP (Freizeitkarte, OpenTopoMap, MapRando) is inspected with one `unzip -Z`
+listing before extraction: besides unsafe paths and symbolic links, an archive
+that declares more uncompressed data than two full map images (2 × 4 GiB − 1
+byte) is refused as an invalid package, one that declares more than the Mac's
+volume has free is refused as not enough Mac space with the needed size, and
+one whose sizes cannot be read is refused. The limit is a declared-size check,
+not proof against a forged directory; the extracted map still passes the
+existing size, identity, version and SHA-256 validation. The storage planner
+keeps 1 GiB free on the device (`StoragePlanner.defaultSafetyReserve`): the
+selected maps must fit with that reserve left. When they do not, the storage
+summary says so in numbers ("Not enough space: the selected maps need X and
+Terento keeps 1.07 GB free on the device, but Y is available. Free up Z or
+select fewer maps."), and VoiceOver reads the same line. Downloads are
 written in the chunks URLSession delivers instead of byte by byte, with the
 same 64 KiB progress cadence, reviewed redirect policy, 30-second inactivity
 bound and BBBike source-proof checks. Download files left in the temporary
@@ -231,6 +268,15 @@ object is resolved and before `DeleteObject`):
   recovery records): the full SHA-256 of the object, as before.
 - External (not Terento-managed) map: always the full SHA-256 of the object
   confirmed by the user; the native external delete refuses any sampled proof.
+- Ownership imported from a Terento ownership file (for example a map
+  installed by the other distribution of the app on this Mac): the import
+  already reads the complete map from the same watch and requires its SHA-256
+  to equal the exported record. The removal proof is computed from exactly
+  those verified bytes and recorded with the recovered entry, so a later Remove
+  or Update of that map uses the sampled check instead of a second full read.
+  A map this copy of Terento neither installed nor imported, and an entry
+  written before proofs existed, have no proof and keep the full read; a proof
+  cannot be created for them without reading the whole map once.
 
 The manifest change is additive: `removalProof` (`format`, `regionLength`,
 `offsets`, `sha256`) is optional per entry. Older entries decode unchanged, are
@@ -335,6 +381,21 @@ it is not a claim of a whole remote-file SHA-256. Sample workers have a
 Only strictly increasing validated progress renews inactivity. Cancellation
 reaps the owned child before releasing its lifecycle lease.
 Connection/inventory and readback failures may still require physical reconnect.
+
+One read-back failure is repeated automatically. When the fresh read-back
+session opens and resolves the exact written map but a planned sample cannot be
+read (`terento_map_verify` -9), the parent waits 5 seconds and runs the same
+sampled read-back once more in a new bounded worker, and therefore a new USB
+session (`SampledReadBackRetryPolicy`). The wait and the second attempt share a
+120-second bound inside the 600-second verification limit. The method, the
+planned regions and the validated local artifact are unchanged; nothing is
+written, deleted or reset in between. A match on the second attempt is the
+normal verified result. A mismatch (-11), an unopened session (-8), a changed
+identity or a second read failure ends the verification exactly as before, and
+the reported failure context then carries `retryCount` 1. Workers never repeat
+a check themselves, and no other USB failure is repeated. This applies to fresh
+installation and to the new map of an Update, which share the read-back.
+Real-device confirmation of the repeat is required before release.
 
 The detection snapshot and the map scan's snapshot, inventory and map-header
 reads also run in that bounded worker, so a stalled watch can no longer hold the
@@ -483,7 +544,13 @@ a download start without a received outcome is not proof of a failed download.
   Terento (first map selection only), the locale recommendation is also
   highlighted with "Recommended for your region" (never selected
   automatically), and "Keep the watch connected and the Mac awake until Terento
-  finishes." appears once a map is selected.
+  finishes." appears once a map is selected. The recommendation is every
+  provider's map of the whole country of the Mac's locale region
+  (`MapRegionRecommendation`), listed first: a catalog row with country codes
+  must be a `country` row for exactly that country, and a row without codes
+  must be named as the country itself, so subregions ("Germany North",
+  "Bavaria") and multi-country maps ("Alps") are never recommended. It uses
+  only the locale region; no location access, and nothing is sent.
 - **Resumed downloads.** A provider download that fails or is cancelled after at
   least 1 MiB is kept for 30 minutes when the server advertised byte ranges with
   a strong validator (non-weak ETag or Last-Modified), sent no content encoding
@@ -610,6 +677,9 @@ evidence broadens the candidate set rather than denying authorization; the
 Maps capability of all remaining candidates determines the result. Unknown
 base models, mixed or unknown candidate capability, and unavailable policy
 remain pending/fail closed. See the [tracked authorization contract](../../contracts/INSTALLATION_AUTHORIZATION.md).
+While the map read that follows every connection is running, Install maps and
+Manage maps are disabled and a small spinner with "Reading your maps…" beside
+them says why.
 After connect the Device page shows the verdict with text and an icon: "Checking…"
 while the policy is resolving (never a connection error), "Ready for maps",
 "Not yet enabled for this model" for PENDING/unknown/ambiguous models (browsing

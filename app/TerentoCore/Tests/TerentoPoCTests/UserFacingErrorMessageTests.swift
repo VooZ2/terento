@@ -29,35 +29,50 @@ struct UserFacingErrorMessageTests {
         ])
         expect(detected == ["Garmin Express"], "only running main apps with actual names are shown; helpers, invented labels and import-only apps excluded")
         expect(MTPConnectionConflictDiagnostics.detectedApplicationNames([
+            MTPRunningApplication(bundleIdentifier: "com.garmin.renu.service", displayName: "Garmin Express Service",
+                                  isUserApplication: false)
+        ]) == ["Garmin Express"]
+            && MTPConnectionConflictDiagnostics.detectedApplicationNames([
+                MTPRunningApplication(bundleIdentifier: "com.garmin.renu.service", displayName: nil, isUserApplication: false),
+                MTPRunningApplication(bundleIdentifier: "com.garmin.renu.client", displayName: "Garmin Express")
+            ]) == ["Garmin Express"],
+               "the Garmin Express background service is reported once, under the app's name")
+        expect(MTPConnectionConflictDiagnostics.detectedApplicationNames([
+            MTPRunningApplication(bundleIdentifier: "com.garmin.renu.service.helper", displayName: "Helper",
+                                  isUserApplication: false),
+            MTPRunningApplication(bundleIdentifier: "com.other.renu.service", displayName: "Garmin Express Service",
+                                  isUserApplication: false)
+        ]).isEmpty, "only the exact service identifier counts; other background processes stay unnamed")
+        expect(MTPConnectionConflictDiagnostics.detectedApplicationNames([
             MTPRunningApplication(bundleIdentifier: "com.apple.Preview", displayName: "Preview"),
             MTPRunningApplication(bundleIdentifier: "com.apple.Photos", displayName: "Photos")
         ]).isEmpty, "a running Preview or Photos is not advice to close it")
         expect(UserFacingErrorMessage.forDevice(
             SyntheticError(message: "No Garmin MTP device detected"), detectedConflicts: ["OpenMTP"]
-        ) == "No Garmin watch was found. Connect it and try again.", "absent device does not blame an app")
+        ) == "No Garmin device was found. Connect it and try again.", "absent device does not blame an app")
         let namedTimeout = UserFacingErrorMessage.connectionTimeout(garminUSBPresent: true, detectedConflicts: ["MacDroid"])
-        expect(namedTimeout.finding == "MacDroid is open and may be using the watch"
+        expect(namedTimeout.finding == "MacDroid is open and may be using the device"
             && namedTimeout.steps.first?.text == "Quit MacDroid",
                "USB-present connection timeout names the detected app first")
         expect(namedTimeout.steps.last?.text == "Unplug for 5 seconds, then reconnect or click Try again",
                "USB-present timeout with a named app keeps the replug step")
         let plainTimeout = UserFacingErrorMessage.connectionTimeout(garminUSBPresent: true, detectedConflicts: [])
-        expect(plainTimeout.title == "Your watch didn't get ready"
+        expect(plainTimeout.title == "Your device didn't get ready"
             && plainTimeout.reason == "The connection didn't become ready within 2 minutes."
             && plainTimeout.finding == "Your Garmin is plugged in to this Mac"
             && plainTimeout.steps.map(\.text).contains("Try another USB port or cable, plugged directly into the Mac")
             && plainTimeout.steps.last?.text == "Unplug for 5 seconds, then reconnect or click Try again",
                "USB-present timeout without conflicts gives concrete next steps and the replug step")
         let absentTimeout = UserFacingErrorMessage.connectionTimeout(garminUSBPresent: false, detectedConflicts: ["MacDroid"])
-        expect(absentTimeout.title == "Your watch lost connection" && !absentTimeout.text.contains("MacDroid"),
-               "a timeout after the watch dropped off USB has its own title and no unrelated conflict")
+        expect(absentTimeout.title == "Your device lost connection" && !absentTimeout.text.contains("MacDroid"),
+               "a timeout after the device dropped off USB has its own title and no unrelated conflict")
         expect(!absentTimeout.text.contains("charge-only"),
-               "a watch that was already detected is not told to swap a charge-only cable")
+               "a device that was already detected is not told to swap a charge-only cable")
         expect(UserFacingErrorMessage.forConnectionTimeout(garminUSBPresent: false, detectedConflicts: [])
             != UserFacingErrorMessage.forConnectionTimeout(garminUSBPresent: true, detectedConflicts: []),
                "USB-absent and USB-present timeouts stay distinguishable")
         expect(UserFacingErrorMessage.forConnectionTimeout(garminUSBPresent: true, detectedConflicts: []) == plainTimeout.text
-            && plainTimeout.text.hasPrefix(plainTimeout.reason + "\n" + plainTimeout.finding + "\n1. Unlock the watch\n2. ")
+            && plainTimeout.text.hasPrefix(plainTimeout.reason + "\n" + plainTimeout.finding + "\n1. Unlock the device\n2. ")
             && plainTimeout.text.hasSuffix("\n" + plainTimeout.note),
                "the plain text is the reason, the finding, the numbered steps and the note")
         expect(!plainTimeout.text.contains("Quit") && !plainTimeout.text.contains("Close"),
@@ -100,9 +115,9 @@ struct UserFacingErrorMessageTests {
         expect(both.finding == "OpenMTP and Garmin Express are open" && both.steps.first?.text == "Quit OpenMTP and Garmin Express",
                "BUSY names every detected app")
         let unnamed = UserFacingErrorMessage.detectionFailure(.busy, garminUSBPresent: true, detectedConflicts: [])
-        expect(unnamed.steps.first?.text == "Quit Garmin Express and other apps that connect to your watch",
+        expect(unnamed.steps.first?.text == "Quit Garmin Express and other apps that connect to your device",
                "BUSY without a detected app keeps the Garmin Express wording")
-        expect(named.steps.last?.text == "Unplug the watch and connect it again, or click Try again",
+        expect(named.steps.last?.text == "Unplug the device and connect it again, or click Try again",
                "BUSY keeps the replug step")
         let liveNamed = UserFacingErrorMessage.detectionAttention(.busy, detectedConflicts: ["Android File Transfer"])!
         expect(liveNamed.finding == "Android File Transfer is open"
@@ -171,13 +186,13 @@ struct UserFacingErrorMessageTests {
                    "\(outcome) stores the same text as its structured message")
         }
         let stalled = UserFacingErrorMessage.detectionFailure(.failed, garminUSBPresent: true, detectedConflicts: [])
-        expect(stalled.title == "Your watch stopped responding"
-            && stalled.steps.first?.text == "Unplug the watch and wait 5 seconds",
+        expect(stalled.title == "Your device stopped responding"
+            && stalled.steps.first?.text == "Unplug the device and wait 5 seconds",
                "a stalled read is named and gives the replug recovery step")
         expect(UserFacingErrorMessage.detectionFailure(.timeoutNoUSB, garminUSBPresent: true, detectedConflicts: []).title
-            == "Your watch isn't showing up", "TIMEOUT_NO_USB never claims the watch was detected")
+            == "Your device isn't showing up", "TIMEOUT_NO_USB never claims the device was detected")
         let busy = UserFacingErrorMessage.detectionFailure(.busy, garminUSBPresent: true, detectedConflicts: [])
-        expect(busy.title == "Your watch may be in use" && busy.reason == "Another app may be using your watch.",
+        expect(busy.title == "Your device may be in use" && busy.reason == "Another app may be using your device.",
                "BUSY is inferred from session-open failures, so it is not stated as fact")
         let live = attentionOutcomes.map { UserFacingErrorMessage.detectionAttention($0, detectedConflicts: [])! }
         expect(live.allSatisfy { !$0.text.contains("Try again") },
@@ -190,7 +205,7 @@ struct UserFacingErrorMessageTests {
                "NOT_MTP_MODE describes the outcome in the guide's words")
         expect(final.steps.contains(UserFacingErrorMessage.usbModeStep)
             && UserFacingErrorMessage.usbModeStep.text
-                == "If your watch has USB Mode (usually under Settings › System), choose MTP"
+                == "If your device has USB Mode (usually under Settings › System), choose MTP"
             && UserFacingErrorMessage.usbModeStep.systemImage == "gearshape",
                "NOT_MTP_MODE names the USB Mode menu path, hedged for models without it")
         let live = UserFacingErrorMessage.detectionAttention(.notMTPMode)!

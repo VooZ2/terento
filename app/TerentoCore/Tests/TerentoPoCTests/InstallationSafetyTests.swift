@@ -86,6 +86,37 @@ struct InstallationSafetyTests {
             "storage sums selected maps and uses conservative temporary space"
         )
 
+        // The reserve itself is unchanged; only the message now shows it.
+        let shortPlan = StoragePlanner().plan(
+            currentFreeSpace: 3 * gigabyte + gigabyte / 2,
+            selectedMapSizes: [3 * gigabyte]
+        )
+        let wholeGigabytes: (UInt64) -> String = { bytes in
+            bytes % gigabyte == 0 ? "\(bytes / gigabyte) GiB" : "\(bytes / (gigabyte / 2)) half GiB"
+        }
+        passed += expect(
+            StoragePlanner.defaultSafetyReserve == gigabyte
+                && !shortPlan.isAllowed
+                && shortPlan.shortfallBytes == gigabyte / 2
+                && shortPlan.insufficientSpaceMessage(formatBytes: wholeGigabytes)
+                    == "Not enough space: the selected maps need 3 GiB and Terento keeps 1 GiB free on the device, "
+                        + "but 7 half GiB is available. Free up 1 half GiB or select fewer maps.",
+            "a storage shortfall is explained with the map size, the reserve, the free space and the missing amount"
+        )
+        passed += expect(
+            multipleMapPlan.shortfallBytes == 0
+                && StoragePlanner().plan(currentFreeSpace: 2 * gigabyte, selectedMapSizes: [gigabyte]).shortfallBytes == 0
+                && StoragePlanner().plan(currentFreeSpace: 2 * gigabyte - 1, selectedMapSizes: [gigabyte]).shortfallBytes == 1
+                && StoragePlanner().plan(currentFreeSpace: 0, selectedMapSizes: [UInt64.max, 5]).shortfallBytes == UInt64.max,
+            "the shortfall is zero when the selection and the reserve fit, exact at the boundary and never overflows"
+        )
+        passed += expect(
+            StoragePlanner(safetyReserve: 0).plan(currentFreeSpace: gigabyte, selectedMapSizes: [2 * gigabyte])
+                .insufficientSpaceMessage(formatBytes: wholeGigabytes)
+                == "Not enough space: the selected maps need 2 GiB, but 1 GiB is available. Free up 1 GiB or select fewer maps.",
+            "a plan without a reserve does not mention one"
+        )
+
         let filenameGenerator = TerentoManagedFilenameGenerator()
         passed += expect(
             try filenameGenerator.filename(
@@ -136,7 +167,7 @@ struct InstallationSafetyTests {
 
         let unknownIdentity = DeviceIdentity(
             manufacturer: "Garmin",
-            model: "unknown watch",
+            model: "unknown device",
             family: "unknown",
             variant: nil,
             usbVendorId: 0x091e,

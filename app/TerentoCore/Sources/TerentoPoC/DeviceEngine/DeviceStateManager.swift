@@ -103,7 +103,7 @@ struct DeviceStateManager: Sendable {
 enum DeviceConnectOutcome: String, CaseIterable, Equatable, Sendable {
     /// A snapshot was read and the watch is ready.
     case connected
-    /// The calm "Connect your watch" state lasted the whole connection window
+    /// The calm "Connect your device" state lasted the whole connection window
     /// without any Garmin on USB. The UI stays calm; this is a funnel signal only.
     case timeoutNoUSB
     /// A Garmin was on USB for the whole connection window without becoming ready.
@@ -163,6 +163,10 @@ struct DeviceDetectionPolicy: Sendable {
     static let retryInterval: TimeInterval = 1.2
     static let busyRetryInterval: TimeInterval = 2.0
     static let enumerationSettle: TimeInterval = 0.75
+    /// A Garmin that has just appeared on USB is read at once; the settle is
+    /// spent only when that first read does not connect. `false` restores the
+    /// earlier settle-before-read order.
+    static let readsImmediatelyOnAppearance = true
     /// Repeated session-open failures are treated as a device held elsewhere.
     static let busyAfterAttempts = 2
     /// A Garmin that stays invisible to file transfer this long is shown a USB-mode hint.
@@ -172,7 +176,7 @@ struct DeviceDetectionPolicy: Sendable {
     static let notMTPModeAfterSeconds: TimeInterval = 45
     /// A watch can briefly drop off USB while it switches into file-transfer
     /// mode. Within this window the calm "connecting" state is kept instead of
-    /// flipping back to "Connect your watch".
+    /// flipping back to "Connect your device".
     static let reconnectGrace: TimeInterval = 10
 
     enum Step: Equatable, Sendable {
@@ -193,6 +197,8 @@ struct DeviceDetectionPolicy: Sendable {
     private var usbPresentSince: TimeInterval?
     private var lastUSBSeen: TimeInterval?
     private var needsSettle = false
+    /// The read in flight is the immediate one made when the Garmin appeared.
+    private(set) var isImmediateFirstRead = false
     private var consecutiveNotEnumerated = 0
     private var consecutiveBusy = 0
     private var pendingOutcomes: [DeviceConnectOutcome] = []
@@ -211,6 +217,7 @@ struct DeviceDetectionPolicy: Sendable {
 
     /// `count` is the number of Garmin USB devices; nil means the probe failed.
     mutating func usbObserved(count: Int?, now: TimeInterval) -> Step {
+        isImmediateFirstRead = false
         guard let count else {
             // An enumeration failure is not evidence either way.
             if let expired = expiredOutcome(now: now) { return .fail(expired) }
@@ -262,12 +269,27 @@ struct DeviceDetectionPolicy: Sendable {
         if let expired = expiredOutcome(now: now) { return .fail(expired) }
         if needsSettle {
             needsSettle = false
-            return .settleThenRead(Self.enumerationSettle)
+            guard Self.readsImmediatelyOnAppearance else {
+                return .settleThenRead(Self.enumerationSettle)
+            }
+            isImmediateFirstRead = true
         }
         return .read
     }
 
     mutating func snapshotFailed(_ failure: DeviceDetectionErrorClass, now: TimeInterval) -> Step {
+        let wasImmediateFirstRead = isImmediateFirstRead
+        isImmediateFirstRead = false
+        if wasImmediateFirstRead {
+            switch failure {
+            case .busy, .notYetEnumerated, .transient:
+                // macOS may still be enumerating the Garmin. This read is not
+                // counted as an attempt: settle once, then read as before.
+                return .wait(Self.enumerationSettle)
+            case .multipleDevices, .stoppedResponding:
+                break
+            }
+        }
         switch failure {
         case .stoppedResponding:
             report(.failed)
@@ -310,6 +332,7 @@ struct DeviceDetectionPolicy: Sendable {
     }
 
     mutating func connected() {
+        isImmediateFirstRead = false
         report(.connected)
     }
 
@@ -326,5 +349,79 @@ struct DeviceDetectionPolicy: Sendable {
     private mutating func report(_ outcome: DeviceConnectOutcome) {
         guard reportedOutcomes.insert(outcome).inserted else { return }
         pendingOutcomes.append(outcome)
+    }
+}
+
+/// Wakes the detection loop when the set of USB devices changes. It carries no
+/// device data and performs no device I/O: a wake-up only makes the loop run
+/// its usual USB probe sooner. The presence poll stays as the fallback, so a
+/// missed or unavailable notification costs only the polling delay.
+final class USBChangeSignal: @unchecked Sendable {
+    private let lock = NSLock()
+    private var generation: UInt64 = 0
+    private var waiters: [UUID: CheckedContinuation<Void, Never>] = [:]
+    private var cancelledWaiters: Set<UUID> = []
+
+    /// Read this before probing USB, then wait for a newer value.
+    var currentGeneration: UInt64 {
+        lock.lock()
+        defer { lock.unlock() }
+        return generation
+    }
+
+    func notify() {
+        for waiter in takeWaitersForNewGeneration() {
+            waiter.resume()
+        }
+    }
+
+    /// Returns when a change newer than `seen` exists or the task is cancelled.
+    func waitForChange(after seen: UInt64) async {
+        let id = UUID()
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                if !register(continuation, id: id, seen: seen) {
+                    continuation.resume()
+                }
+            }
+        } onCancel: {
+            cancelWaiter(id)?.resume()
+        }
+        forgetWaiter(id)
+    }
+
+    private func takeWaitersForNewGeneration() -> [CheckedContinuation<Void, Never>] {
+        lock.lock()
+        defer { lock.unlock() }
+        generation &+= 1
+        let all = Array(waiters.values)
+        waiters.removeAll()
+        return all
+    }
+
+    private func register(
+        _ continuation: CheckedContinuation<Void, Never>,
+        id: UUID,
+        seen: UInt64
+    ) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        guard generation == seen, !cancelledWaiters.contains(id) else { return false }
+        waiters[id] = continuation
+        return true
+    }
+
+    private func cancelWaiter(_ id: UUID) -> CheckedContinuation<Void, Never>? {
+        lock.lock()
+        defer { lock.unlock() }
+        cancelledWaiters.insert(id)
+        return waiters.removeValue(forKey: id)
+    }
+
+    private func forgetWaiter(_ id: UUID) {
+        lock.lock()
+        defer { lock.unlock() }
+        cancelledWaiters.remove(id)
+        waiters.removeValue(forKey: id)
     }
 }

@@ -44,7 +44,8 @@ struct ManagedMapRecoveryTests {
         try testAnotherIdenticalWatchCannotClaimExport()
         try testChangedMapRemainsReadOnly()
         try testMissingDiscriminatorFailsClosed()
-        print("PASS: 4 managed-map recovery tests")
+        try testRecoveryRecordsRemovalProofFromVerifiedRead()
+        print("PASS: 5 managed-map recovery tests")
     }
 
     private static func testSameWatchRecoversAfterCompleteRead() throws {
@@ -72,7 +73,7 @@ struct ManagedMapRecoveryTests {
               result.recoveredEntry.sha256 == sha256(data) else {
             throw Failure("same-watch recovery did not require and record the complete verified IMG")
         }
-        print("PASS: same watch recovers across an MTP handle change after complete IMG verification")
+        print("PASS: same device recovers across an MTP handle change after complete IMG verification")
     }
 
     private static func testAnotherIdenticalWatchCannotClaimExport() throws {
@@ -94,13 +95,13 @@ struct ManagedMapRecoveryTests {
                 liveFiles: [makeLiveFile(size: UInt64(data.count))],
                 reader: reader
             )
-            throw Failure("another identical watch claimed the export")
+            throw Failure("another identical device claimed the export")
         } catch ManagedMapRecoveryError.exportBelongsToAnotherWatch {
             guard reader.reads == 0, store.entries.isEmpty else {
                 throw Failure("wrong-watch recovery touched the map or manifest")
             }
         }
-        print("PASS: same model and map SHA do not let another watch claim ownership")
+        print("PASS: same model and map SHA do not let another device claim ownership")
     }
 
     private static func testChangedMapRemainsReadOnly() throws {
@@ -141,6 +142,60 @@ struct ManagedMapRecoveryTests {
         }
     }
 
+    /// The complete read that proves ownership also yields the sampled
+    /// removal proof, bound to the recorded size and full SHA-256.
+    private static func testRecoveryRecordsRemovalProofFromVerifiedRead() throws {
+        // Larger than 32 regions of 65,535 bytes, so the stratified plan is used.
+        var bytes = [UInt8](repeating: 0, count: 3 * 1024 * 1024)
+        var state: UInt32 = 0x1234_5678
+        for index in bytes.indices {
+            state = state &* 1_664_525 &+ 1_013_904_223
+            bytes[index] = UInt8(truncatingIfNeeded: state >> 24)
+        }
+        let data = Data(bytes)
+        let identity = makeIdentity(serial: "WATCH-A", resolution: .garminUnitID)
+        let document = try makeDocument(data: data, identity: identity)
+        let store = RecoveryManifestStore()
+        let result = try ManagedMapRecoveryCoordinator(
+            manifestStore: store,
+            deviceKeyProvider: { _ in "watch-v2-local-a" }
+        ).recover(
+            document: document,
+            identity: identity,
+            liveFiles: [makeLiveFile(size: UInt64(data.count))],
+            reader: RecoveryReader(data: data)
+        )
+
+        let reference = FileManager.default.temporaryDirectory
+            .appendingPathComponent("terento-recovery-proof-\(UUID().uuidString).img")
+        defer { try? FileManager.default.removeItem(at: reference) }
+        try data.write(to: reference)
+        let expected = ManagedRemovalProof.make(
+            localFileURL: reference, fileSizeBytes: UInt64(data.count), fileSHA256: sha256(data))
+        guard let proof = result.recoveredEntry.removalProof,
+              expected != nil, proof == expected,
+              result.recoveredEntry.boundRemovalProof == proof,
+              proof.offsets.count == ManagedRemovalProof.regionCount,
+              proof.sampledBytes(fileSizeBytes: UInt64(data.count))
+                == UInt64(ManagedRemovalProof.regionCount) * UInt64(ManagedRemovalProof.regionLength),
+              store.entries.first?.removalProof == proof else {
+            throw Failure("recovery did not record the removal proof of the verified complete read")
+        }
+        // The proof is only for the recorded content: other bytes of the same
+        // size cannot produce it, and a changed map never reaches this point.
+        var otherBytes = bytes
+        otherBytes[otherBytes.count / 2] ^= 0xff
+        let other = FileManager.default.temporaryDirectory
+            .appendingPathComponent("terento-recovery-proof-\(UUID().uuidString).img")
+        defer { try? FileManager.default.removeItem(at: other) }
+        try Data(otherBytes).write(to: other)
+        guard ManagedRemovalProof.make(
+            localFileURL: other, fileSizeBytes: UInt64(data.count), fileSHA256: sha256(data)) == nil else {
+            throw Failure("a removal proof was computed for content that differs from the record")
+        }
+        print("PASS: recovery records a removal proof bound to the verified complete read")
+    }
+
     private static func makeDocument(
         data: Data,
         identity: DeviceIdentity
@@ -153,7 +208,7 @@ struct ManagedMapRecoveryTests {
         )
         let encoded = try service.encode(document)
         guard !String(decoding: encoded, as: UTF8.self).contains("WATCH-A") else {
-            throw Failure("raw watch identity leaked into the export")
+            throw Failure("raw device identity leaked into the export")
         }
         return try service.decode(encoded)
     }

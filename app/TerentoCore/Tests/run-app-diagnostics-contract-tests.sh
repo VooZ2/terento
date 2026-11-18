@@ -61,9 +61,9 @@ from pathlib import Path
 import re, sys
 source = Path(sys.argv[1]).read_text()
 debug = re.findall(r"#if DEBUG\n([\s\S]*?)#endif", source)
-assert any('releaseLabel.hasSuffix("-local")' in block and 'Connected watch identity' in block for block in debug)
+assert any('releaseLabel.hasSuffix("-local")' in block and 'Connected device identity' in block for block in debug)
 public = re.sub(r"#if DEBUG\n[\s\S]*?#endif", "", source)
-for field in ['Connected watch identity', 'MTP model:', 'XML model:', 'XML part number:', 'USB VID/PID:', 'API catalog candidate:']:
+for field in ['Connected device identity', 'MTP model:', 'XML model:', 'XML part number:', 'USB VID/PID:', 'API catalog candidate:']:
     assert field not in public, field
 assert 'diagnosticsSection(title: "Sharing")' in public
 print('PASS: connected-watch technical fields are local-build only; public sharing controls remain')

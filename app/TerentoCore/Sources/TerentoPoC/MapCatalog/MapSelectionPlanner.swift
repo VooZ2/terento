@@ -196,6 +196,67 @@ struct MapRegionRecommendation: Sendable {
             MapIdentity.normalizeRegion($0.catalogMap.regionId) == candidate
         }?.catalogMap.regionId
     }
+
+    /// The ISO 3166-1 alpha-2 country of the Mac's locale region, or nil for
+    /// a region that is not a country (for example "419" or "001").
+    static func countryCode(systemRegionCode: String?) -> String? {
+        guard let code = systemRegionCode?
+            .trimmingCharacters(in: .whitespacesAndNewlines).uppercased(),
+              code.count == 2, code.allSatisfy({ $0.isASCII && $0.isLetter }) else {
+            return nil
+        }
+        return code
+    }
+
+    /// Names providers use for a country where the English locale name
+    /// differs. Metadata only: it never changes identity, policy or ownership.
+    private static let countryNameAliases: [String: [String]] = [
+        "BA": ["Bosnia-Herzegovina", "Bosnia and Herzegovina"],
+        "CI": ["Ivory Coast"],
+        "CZ": ["Czech Republic", "Czechia"],
+        "GB": ["Great Britain", "United Kingdom"],
+        "KR": ["South Korea"],
+        "MK": ["Macedonia", "North Macedonia"],
+        "RU": ["Russia"],
+        "TR": ["Turkey", "Türkiye"],
+        "US": ["United States", "USA"]
+    ]
+
+    private static func nameKey(_ value: String) -> String {
+        value.folding(options: [.caseInsensitive, .diacriticInsensitive],
+                      locale: Locale(identifier: "en_US_POSIX"))
+            .filter { $0.isLetter || $0.isNumber }
+    }
+
+    /// True when the package is one provider's map of exactly that whole
+    /// country, so every provider's map of the user's country is recommended,
+    /// not only the provider whose region id happens to be an ISO code.
+    /// - A catalog row with country codes must be a `country` row for exactly
+    ///   that one country; subregions and multi-country maps never match.
+    /// - A row without country codes (Freizeitkarte, most OpenTopoMap rows)
+    ///   matches only when its displayed name is the country's own name, so
+    ///   "Germany North" or "Alps" never match.
+    static func isWholeCountryMap(
+        _ package: MapPackage,
+        displayName: String,
+        countryCode: String
+    ) -> Bool {
+        guard package.sourceKind == .provider else { return false }
+        let country = countryCode.uppercased()
+        let codes = package.countryCodes
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() }
+            .filter { !$0.isEmpty }
+        if !codes.isEmpty {
+            return package.regionKind == .country && codes == [country]
+        }
+        let key = nameKey(displayName)
+        guard !key.isEmpty else { return false }
+        var names = countryNameAliases[country] ?? []
+        if let localized = Locale(identifier: "en_US_POSIX").localizedString(forRegionCode: country) {
+            names.append(localized)
+        }
+        return names.contains { nameKey($0) == key }
+    }
 }
 
 struct MapSelectionPlanner: Sendable {
@@ -211,7 +272,8 @@ struct MapSelectionPlanner: Sendable {
         preflightStatuses: [String: InstallationPreflightStatus],
         recommendedRegionID: String?,
         providerIDs: Set<String>? = nil,
-        preflightReasons: [String: String] = [:]
+        preflightReasons: [String: String] = [:],
+        recommendedCountryCode: String? = nil
     ) -> [MapSelectionItem] {
         var uniqueComparisons: [String: MapComparison] = [:]
         let normalizedProviderIDs = providerIDs.map {
@@ -247,27 +309,33 @@ struct MapSelectionPlanner: Sendable {
                 let package = comparison.catalogMap
                 let identity = acquisitionPolicy.canonicalIdentity(for: package)
                 let availability = acquisitionPolicy.availability(for: package)
+                let displayName = availability == .withheldCrimea
+                    ? "Crimea"
+                    : displayNames[package.id]
+                        ?? MapDisplayNameNormalizer.normalize(
+                            package.name,
+                            providerID: package.providerId
+                        )
+                let matchesRegionID = recommendedRegionID.map {
+                    MapIdentity.normalizeRegion(comparison.catalogMap.regionId)
+                        == MapIdentity.normalizeRegion($0)
+                } ?? false
+                let matchesCountry = recommendedCountryCode.map {
+                    MapRegionRecommendation.isWholeCountryMap(
+                        package, displayName: displayName, countryCode: $0)
+                } ?? false
                 return MapSelectionItem(
                     id: package.id,
                     package: package,
                     comparison: comparison,
-                    displayName: availability == .withheldCrimea
-                        ? "Crimea"
-                        : displayNames[package.id]
-                            ?? MapDisplayNameNormalizer.normalize(
-                                package.name,
-                                providerID: package.providerId
-                            ),
+                    displayName: displayName,
                     installSizeBytes: package.defaultArtifactPlan.installSizeBytes
                         ?? package.installSizeBytes,
                     lifecycleAction: action(for: comparison.status),
                     canonicalRegionIdentity: identity,
                     acquisitionAvailability: availability,
                     preflightStatus: preflightStatuses[comparison.id],
-                    isRecommended: recommendedRegionID.map {
-                        MapIdentity.normalizeRegion(comparison.catalogMap.regionId)
-                            == MapIdentity.normalizeRegion($0)
-                    } ?? false,
+                    isRecommended: matchesRegionID || matchesCountry,
                     preflightReason: preflightReasons[comparison.id]
                 )
             }

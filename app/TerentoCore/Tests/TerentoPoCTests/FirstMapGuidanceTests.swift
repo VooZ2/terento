@@ -21,11 +21,11 @@ struct FirstMapGuidanceTests {
     }
 
     static func testFirstMapSelection() {
-        expect(FirstMapGuidance.isFirstMapSelection(installedMaps: []), "an empty watch is a first map selection")
+        expect(FirstMapGuidance.isFirstMapSelection(installedMaps: []), "an empty device is a first map selection")
         expect(FirstMapGuidance.isFirstMapSelection(installedMaps: [installed(.detectedNotManaged), installed(.unknown)]),
             "maps not installed by Terento still make it the first Terento selection")
         expect(!FirstMapGuidance.isFirstMapSelection(installedMaps: [installed(.detectedNotManaged), installed(.managedByTerento)]),
-            "a watch with a Terento map is no longer a first selection")
+            "a device with a Terento map is no longer a first selection")
     }
 
     static func testDownloadEstimateText() {
@@ -41,7 +41,7 @@ struct FirstMapGuidanceTests {
             "an unknown download size shows no estimate")
         expect(FirstMapGuidance.downloadEstimateText(bytes: 1_000_000, recentBytesPerSecond: .nan)
             == "Download 1 MB · about 1 min", "an invalid speed falls back to the default")
-        expect(FirstMapGuidance.keepConnectedLine == "Keep the watch connected and the Mac awake until Terento finishes.",
+        expect(FirstMapGuidance.keepConnectedLine == "Keep the device connected and the Mac awake until Terento finishes.",
             "the keep-connected line is the approved copy")
     }
 

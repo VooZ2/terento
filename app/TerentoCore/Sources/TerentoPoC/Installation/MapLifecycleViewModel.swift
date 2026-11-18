@@ -209,7 +209,7 @@ final class MapLifecycleViewModel: ObservableObject {
                 action: .transferOwnership,
                 phase: .completed,
                 progress: nil,
-                message: "Ownership file saved. Keep it private and import it only for this watch."
+                message: "Ownership file saved. Keep it private and import it only for this device."
             )
         } catch {
             fail(itemID: itemID, action: .transferOwnership, message: "The ownership file could not be saved.")
@@ -501,7 +501,7 @@ final class MapLifecycleViewModel: ObservableObject {
                     action: .recoverOwnership,
                     phase: .completed,
                     progress: nil,
-                    message: "Terento ownership was recovered for this watch."
+                    message: "Terento ownership was recovered for this device."
                 )
                 mapEngine.refreshCurrentDeviceMaps()
             case .failure(let error):

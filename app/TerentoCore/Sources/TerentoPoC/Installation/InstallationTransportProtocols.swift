@@ -179,6 +179,14 @@ extension InstallationFailureContext {
              protection: protection, writeFailureStep: writeFailureStep, ptpResponseCode: ptpResponseCode)
     }
 
+    /// `terento_mtp_verify_managed_map_samples` -9: the fresh read-back
+    /// session opened and resolved the exact written map, but one planned
+    /// sample could not be read. Nothing was compared, so this is neither a
+    /// match nor a mismatch (-11).
+    var isSampledReadBackReadFailure: Bool {
+        boundary == .readback && nativeCodeNamespace == .terentoMapVerify && nativeResultCode == -9
+    }
+
     /// `terento_mtp_read_snapshot_diagnostic` -5: exactly one Garmin is on
     /// USB, but its file-transfer session could not be opened (usually another
     /// app holds the watch). Detection reports the same code as busy.
@@ -193,6 +201,79 @@ extension InstallationFailureContext {
         nativeCodeNamespace == .terentoSnapshot && (nativeResultCode == -2 || nativeResultCode == -3)
     }
 }
+/// The one automatic second attempt of the post-write sampled read-back.
+///
+/// A sample read that fails (`terento_map_verify` -9) after a complete write
+/// is, in the field, a short-lived USB or device stall: the same device reads
+/// the same map again later. The parent therefore waits and repeats the SAME
+/// sampled read-back once, in a new worker process and so a new USB session.
+/// The method, the planned regions and the validated local artifact do not
+/// change; a mismatch, a changed identity or a second failure blocks exactly
+/// as before. No write, delete, reset or other device mutation is part of it.
+enum SampledReadBackRetryPolicy {
+    /// Wait before the second attempt, so the device can settle.
+    static let delay: TimeInterval = 5
+    /// Upper bound for the wait plus the second attempt.
+    static let totalBudget: TimeInterval = 120
+    /// At most this many second attempts per written map.
+    static let maximumRetries = 1
+
+    /// Only the parent process retries, only once, and only the exact
+    /// "sample could not be read" result. A worker never retries, and a
+    /// mismatch (-11) or an unopened session (-8) is never retried here.
+    static func shouldRetry(_ error: Error, isWorker: Bool, retriesMade: Int) -> Bool {
+        guard !isWorker, retriesMade < maximumRetries,
+              case let InstallationTransportError.contextual(_, _, _, context) = error else {
+            return false
+        }
+        return context.isSampledReadBackReadFailure
+    }
+
+    /// Seconds the second attempt may take after the wait, or nil when the
+    /// overall verification budget cannot hold the wait and a useful attempt.
+    static func retryTimeout(remainingVerificationTime: TimeInterval) -> TimeInterval? {
+        let available = min(totalBudget, remainingVerificationTime) - delay
+        return available >= 1 ? available : nil
+    }
+
+    /// The failure of a second attempt, marked with the retry that was made.
+    /// Other error cases carry no failure context and are returned unchanged.
+    static func failureAfterRetry(_ error: Error, retriesMade: Int) -> Error {
+        guard retriesMade > 0,
+              case let InstallationTransportError.contextual(failure, message, createdItemID, context) = error else {
+            return error
+        }
+        return InstallationTransportError.contextual(
+            failure: failure, message: message, createdItemID: createdItemID,
+            context: context.retried(UInt8(clamping: retriesMade))
+        )
+    }
+}
+
+/// Forwards transfer progress that only ever increases, so a repeated check
+/// never moves a progress bar backwards.
+final class MonotonicTransferProgress: @unchecked Sendable {
+    private let lock = NSLock()
+    private var highest: UInt64 = 0
+    private var reportedAny = false
+    private let forward: @Sendable (TransferProgress) -> Void
+
+    init(_ forward: @escaping @Sendable (TransferProgress) -> Void) {
+        self.forward = forward
+    }
+
+    func report(_ progress: TransferProgress) {
+        lock.lock()
+        let advances = !reportedAny || progress.bytesTransferred > highest
+        if advances {
+            highest = progress.bytesTransferred
+            reportedAny = true
+        }
+        lock.unlock()
+        if advances { forward(progress) }
+    }
+}
+
 struct InstallationProtectionContext: Codable, Equatable, Sendable {
     enum Boundary: String, Codable, Sendable {
         case preWrite = "pre-write"

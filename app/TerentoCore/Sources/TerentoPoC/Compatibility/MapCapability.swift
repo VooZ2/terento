@@ -38,7 +38,7 @@ enum GarminMapSupportStatus: Equatable, Sendable {
         case .supported:
             return "Maps available"
         case .unsupported:
-            return "This watch does not support maps."
+            return "This device does not support maps."
         case .unknown:
             return "Map support unknown"
         }

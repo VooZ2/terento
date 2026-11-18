@@ -33,7 +33,7 @@ struct SupportReportSheet: View {
 
             if controller.allowsCategoryChoice {
                 Picker("What is this about?", selection: $controller.category) {
-                    Text("Connecting the watch").tag(SupportReportCategory.connection)
+                    Text("Connecting the device").tag(SupportReportCategory.connection)
                     Text("Something else").tag(SupportReportCategory.other)
                 }
                 .pickerStyle(.menu)

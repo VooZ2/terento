@@ -52,6 +52,7 @@ private actor DelayedAuthorizationResponse {
         try await testResultsAndPrivacy()
         try await testNativeWriteResultCode()
         try testNativeReadBackResultCode()
+        try testSampledReadBackRetryPolicy()
         try await testPartialBatchAndPreflight()
         try await testEngineContourPreflightAttribution()
         try await testDisconnectAndCancellation()
@@ -321,7 +322,7 @@ private actor DelayedAuthorizationResponse {
         ).failureContext
         check(rejected?.nativeResultCode == -7 && rejected?.writeFailureStep == .objectInfo
               && rejected?.ptpResponseCode == 0x2019,
-              "a send the watch rejected before any data keeps its step and PTP response")
+              "a send the device rejected before any data keeps its step and PTP response")
         failure.step = Int32(TERENTO_WRITE_STEP_OBJECT_DATA)
         failure.ptp_response = 0x02FF
         let data = MTPMapInstallationTransport.writeError(result: -7, message: "", createdItemID: 9, writeFailure: failure).failureContext
@@ -393,6 +394,88 @@ private actor DelayedAuthorizationResponse {
               && decoded.error?.failureContext?.nativeCodeNamespace == .terentoMapVerify
               && decoded.error?.failureContext?.nativeResultCode == -11,
               "the native read-back result survives the worker response round trip unchanged")
+    }
+
+    /// The one automatic second attempt after a sample read failure (-9).
+    static func testSampledReadBackRetryPolicy() throws {
+        let readFailure = MTPMapInstallationTransport.verifyError(
+            result: -9, message: "The sampled map could not be read.")
+        let mismatch = MTPMapInstallationTransport.verifyError(
+            result: -11, message: "A sampled map region did not match the validated source")
+        let sessionNotOpened = MTPMapInstallationTransport.verifyError(
+            result: -8, message: "The Garmin device session could not be opened.")
+        check(readFailure.failureContext?.isSampledReadBackReadFailure == true
+              && SampledReadBackRetryPolicy.shouldRetry(readFailure, isWorker: false, retriesMade: 0),
+              "a sample that could not be read is repeated once by the parent")
+        check(!SampledReadBackRetryPolicy.shouldRetry(readFailure, isWorker: true, retriesMade: 0),
+              "a worker never repeats the sampled read-back itself")
+        check(!SampledReadBackRetryPolicy.shouldRetry(readFailure, isWorker: false, retriesMade: 1)
+              && SampledReadBackRetryPolicy.maximumRetries == 1,
+              "a second sample read failure is final")
+        check(!SampledReadBackRetryPolicy.shouldRetry(mismatch, isWorker: false, retriesMade: 0)
+              && mismatch.failureContext?.isSampledReadBackReadFailure == false,
+              "a sampled mismatch is never repeated")
+        check(!SampledReadBackRetryPolicy.shouldRetry(sessionNotOpened, isWorker: false, retriesMade: 0),
+              "an unopened read-back session is not repeated by the sample retry")
+        let otherBoundary = InstallationTransportError.contextual(
+            failure: .operationFailed, message: "write", createdItemID: nil,
+            context: InstallationFailureContext(
+                boundary: .write, classificationSource: .native, devicePresence: .unknown,
+                operation: .write, executionMode: .inProcess, resultKind: .nativeError,
+                nativeCodeNamespace: .terentoMapWrite, nativeResultCode: -9))
+        check(!SampledReadBackRetryPolicy.shouldRetry(otherBoundary, isWorker: false, retriesMade: 0)
+              && !SampledReadBackRetryPolicy.shouldRetry(
+                InstallationTransportError.deviceDisconnected("gone", createdItemID: nil),
+                isWorker: false, retriesMade: 0)
+              && !SampledReadBackRetryPolicy.shouldRetry(
+                InstallationTransportError.operationFailed("other", createdItemID: nil),
+                isWorker: false, retriesMade: 0)
+              && !SampledReadBackRetryPolicy.shouldRetry(
+                InstallationTransportError.remoteFileMissing, isWorker: false, retriesMade: 0),
+              "only the read-back result -9 qualifies; a write code, a disconnect or a plain failure does not")
+        check(SampledReadBackRetryPolicy.delay == 5 && SampledReadBackRetryPolicy.totalBudget == 120
+              && SampledReadBackRetryPolicy.retryTimeout(remainingVerificationTime: 600) == 115
+              && SampledReadBackRetryPolicy.retryTimeout(remainingVerificationTime: 60) == 55
+              && SampledReadBackRetryPolicy.retryTimeout(remainingVerificationTime: 5.5) == nil,
+              "the wait and the second attempt stay within two minutes and within the verification budget")
+        let afterRetry = SampledReadBackRetryPolicy.failureAfterRetry(readFailure, retriesMade: 1)
+            as? InstallationTransportError
+        let unchanged = SampledReadBackRetryPolicy.failureAfterRetry(readFailure, retriesMade: 0)
+            as? InstallationTransportError
+        let mismatchAfterRetry = SampledReadBackRetryPolicy.failureAfterRetry(mismatch, retriesMade: 1)
+            as? InstallationTransportError
+        check(afterRetry?.failureContext?.retryCount == 1
+              && afterRetry?.failureContext?.nativeResultCode == -9
+              && afterRetry?.failureContext?.nativeCodeNamespace == .terentoMapVerify
+              && afterRetry?.errorDescription == readFailure.errorDescription
+              && unchanged == readFailure
+              && mismatchAfterRetry?.failureContext?.nativeResultCode == -11
+              && mismatchAfterRetry?.failureContext?.retryCount == 1,
+              "a failure after the second attempt keeps its own result and records the retry")
+        check((SampledReadBackRetryPolicy.failureAfterRetry(
+                InstallationTransportError.remoteFileMissing, retriesMade: 1) as? InstallationTransportError)
+              == .remoteFileMissing,
+              "a failure without a context is reported unchanged after the second attempt")
+
+        final class Recorder: @unchecked Sendable { var values: [UInt64] = [] }
+        let recorder = Recorder()
+        let monotonic = MonotonicTransferProgress { recorder.values.append($0.bytesTransferred) }
+        for bytes in [0, 10, 20, 0, 5, 20, 25] as [UInt64] {
+            monotonic.report(TransferProgress(bytesTransferred: bytes, totalBytes: 30))
+        }
+        check(recorder.values == [0, 10, 20, 25],
+              "progress of a repeated read-back never moves backwards")
+
+        let transportSource = try String(
+            contentsOf: URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+                .appendingPathComponent("Sources/TerentoPoC/Installation/MTPMapInstallationTransport.swift"),
+            encoding: .utf8)
+        check(transportSource.contains("SampledReadBackRetryPolicy.shouldRetry(")
+              && transportSource.contains("error, isWorker: isWorker, retriesMade: readFailureRetriesMade")
+              && transportSource.contains("SampledReadBackRetryPolicy.failureAfterRetry(error, retriesMade: readFailureRetriesMade)")
+              && transportSource.contains("verificationDeadline = now + delay + retryTimeout"),
+              "the read-back transport applies the bounded single retry")
     }
 
     @MainActor static func testEngineContourPreflightAttribution() async throws {
@@ -819,9 +902,9 @@ private actor DelayedAuthorizationResponse {
             } catch {
                 let classified = MapEngine.readFailureDiagnostic(error)
                 check(classified?.failure == .preflightMTPReadFailed && classified?.context.isWatchSessionBusy == busy,
-                      "only snapshot -5 is a busy watch session at the install boundary")
+                      "only snapshot -5 is a busy device session at the install boundary")
                 check(MapEngine.watchBusyMessage(classified) == (busy ? UserFacingErrorMessage.installationWatchBusy(afterEarlierWrite: false) : nil),
-                      "a busy watch session gets the busy-watch message; other read failures keep theirs")
+                      "a busy device session gets the busy-watch message; other read failures keep theirs")
                 if busy {
                     check(MapEngine.watchBusyMessage(classified)?.contains("No map was written") == true,
                           "a busy session before any write says no map was written")
@@ -996,7 +1079,7 @@ private actor DelayedAuthorizationResponse {
         engine.setInstallationAuthorization(.approved(record: policy.devices[0], policyVersion: policy.policyVersion))
         engine.beginInstallation(plan: plan())
         check(funnelStore.pendingEvents().map(\.outcome) == ["AUTHORIZATION", "LOCAL_CAPABILITY"],
-              "a missing stable watch identity records INSTALL_BLOCKED=LOCAL_CAPABILITY")
+              "a missing stable device identity records INSTALL_BLOCKED=LOCAL_CAPABILITY")
         let reviewStore = LocalAppFunnelEventStore(rootURL: root.appendingPathComponent("review"))
         let reviewFunnel = AppFunnelTelemetryController(store: reviewStore, uploader: OfflineFunnelUploader(),
             sharingEnabled: { true }, retryDelays: [])

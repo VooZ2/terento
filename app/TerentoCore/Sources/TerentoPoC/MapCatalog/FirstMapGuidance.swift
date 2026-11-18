@@ -6,7 +6,7 @@ import Foundation
 /// selected automatically) and one line asks to keep the watch connected.
 enum FirstMapGuidance {
     static let recommendedLabel = "Recommended for your region"
-    static let keepConnectedLine = "Keep the watch connected and the Mac awake until Terento finishes."
+    static let keepConnectedLine = "Keep the device connected and the Mac awake until Terento finishes."
     /// Used until a download on this Mac has been measured: 1 MB/s is a
     /// deliberately slow connection, so the estimate errs on the long side.
     static let conservativeBytesPerSecond: Double = 1_000_000

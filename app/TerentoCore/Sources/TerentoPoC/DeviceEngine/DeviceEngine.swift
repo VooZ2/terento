@@ -1,5 +1,8 @@
 import Foundation
 import os
+#if canImport(IOKit)
+import IOKit
+#endif
 
 @MainActor
 final class DeviceEngine: ObservableObject {
@@ -12,7 +15,7 @@ final class DeviceEngine: ObservableObject {
     /// The cause-specific Connect message behind `userErrorMessage` after a
     /// detection episode ends without a connection. Presentation only.
     @Published private(set) var connectFailure: ConnectIssueMessage?
-    @Published private(set) var readingMessage = "Connect your Garmin watch to this Mac."
+    @Published private(set) var readingMessage = "Connect your Garmin device to this Mac."
     @Published private(set) var readingAttempt = 0
     @Published private(set) var logLines: [String] = ["Ready for a read-only device check."]
     @Published private(set) var operationAvailabilityRevision = 0
@@ -47,6 +50,10 @@ final class DeviceEngine: ObservableObject {
     private var presenceMonitoringEnabled = true
     private var lastDetectionUSBPresence = false
     private var detectionPolicy = DeviceDetectionPolicy(now: 0)
+    /// Wakes the detection poll when a USB device appears or leaves. Nil for
+    /// test transports and when macOS notifications are unavailable; the poll
+    /// alone then finds the Garmin, as before.
+    private let usbChangeSignal: USBChangeSignal?
 
     init(
         transport: any DeviceSnapshotReader = BoundedDeviceTransport(),
@@ -55,6 +62,9 @@ final class DeviceEngine: ObservableObject {
         installationAuthorizationClient: InstallationAuthorizationClient = InstallationAuthorizationClient()
     ) {
         self.transport = transport
+        self.usbChangeSignal = transport is BoundedDeviceTransport
+            ? GarminUSBChangeNotifier.shared?.signal
+            : nil
         self.operationGate = operationGate
         self.compatibilityStatusClient = compatibilityStatusClient
         self.installationAuthorizationClient = installationAuthorizationClient
@@ -121,7 +131,7 @@ final class DeviceEngine: ObservableObject {
         installationAuthorization = .resolving
         stateManager.deviceDisconnected()
         state = stateManager.state
-        readingMessage = "Device search stopped. Connect your Garmin watch and try again."
+        readingMessage = "Device search stopped. Connect your Garmin device and try again."
         appendLog("Read-only device check cancelled")
     }
 
@@ -234,6 +244,8 @@ final class DeviceEngine: ObservableObject {
         var loggedWaiting = false
 
         while !Task.isCancelled, state == .detecting {
+            // Read before the probe, so a change during the probe is not lost.
+            let seenUSBGeneration = usbChangeSignal?.currentGeneration
             let usbCount: Int?
             if let counter {
                 usbCount = try? await readNativeGarminUSBDeviceCount(transport: counter)
@@ -261,7 +273,11 @@ final class DeviceEngine: ObservableObject {
                     readingAttempt = 0
                     readingMessage = "Waiting for your Garmin…"
                 }
-                guard await Self.pause(seconds) else { return }
+                guard await Self.pause(
+                    seconds,
+                    orUSBChangeOn: usbChangeSignal,
+                    after: seenUSBGeneration
+                ) else { return }
                 continue
             case .fail(let outcome):
                 finishDetectionFailure(outcome)
@@ -279,11 +295,18 @@ final class DeviceEngine: ObservableObject {
                 break
             }
 
-            attempt += 1
-            readingAttempt = attempt
-            readingMessage = attempt == 1
-                ? "Waiting for your Garmin…"
-                : "Still waiting for your Garmin…"
+            // The read made the moment a Garmin appears is not a counted attempt.
+            let isImmediateFirstRead = detectionPolicy.isImmediateFirstRead
+            if isImmediateFirstRead {
+                readingMessage = "Garmin detected. Checking the device…"
+                appendLog("Garmin appeared on USB; reading without an enumeration settle")
+            } else {
+                attempt += 1
+                readingAttempt = attempt
+                readingMessage = attempt == 1
+                    ? "Waiting for your Garmin…"
+                    : "Still waiting for your Garmin…"
+            }
 
             do {
                 let result = try await readNativeSnapshot(transport: transport, presence: false)
@@ -294,7 +317,11 @@ final class DeviceEngine: ObservableObject {
                 guard !Task.isCancelled, state == .detecting else { return }
                 let failure = DeviceDetectionErrorClassifier.classify(error)
                 errorMessage = error.localizedDescription
-                appendLog("Detection attempt \(attempt) did not connect: \(failure)")
+                appendLog(
+                    isImmediateFirstRead
+                        ? "Immediate read did not connect: \(failure); settling before the next read"
+                        : "Detection attempt \(attempt) did not connect: \(failure)"
+                )
                 let next = detectionPolicy.snapshotFailed(failure, now: Self.uptime())
                 publishDetectionProgress()
                 switch next {
@@ -358,8 +385,8 @@ final class DeviceEngine: ObservableObject {
         connectFailure = failure
         userErrorMessage = failure.text
         if outcome == .failed {
-            readingMessage = "The watch stopped responding."
-            appendLog("Connection check stopped: the watch did not respond within the device read bound")
+            readingMessage = "The device stopped responding."
+            appendLog("Connection check stopped: the device did not respond within the device read bound")
         } else {
             readingMessage = "Connection timed out after 2 minutes."
             appendLog("Connection check timed out after 2 minutes (\(outcome.rawValue))")
@@ -456,6 +483,26 @@ final class DeviceEngine: ObservableObject {
         } catch {
             return false
         }
+    }
+
+    /// The presence poll: sleeps `seconds`, or less when a USB change arrives.
+    /// Without a signal this is the plain poll delay.
+    private static func pause(
+        _ seconds: TimeInterval,
+        orUSBChangeOn signal: USBChangeSignal?,
+        after seenGeneration: UInt64?
+    ) async -> Bool {
+        guard let signal, let seenGeneration else {
+            return await pause(seconds)
+        }
+        let nanoseconds = UInt64(max(0, seconds) * 1_000_000_000)
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask { _ = try? await Task.sleep(nanoseconds: nanoseconds) }
+            group.addTask { await signal.waitForChange(after: seenGeneration) }
+            _ = await group.next()
+            group.cancelAll()
+        }
+        return !Task.isCancelled
     }
 
     /// Releases active read/presence work and clears the cached device. The
@@ -895,3 +942,70 @@ enum DeviceDetectionErrorClassifier {
         return .transient
     }
 }
+
+/// Tells the detection poll that a USB device appeared or left, using the
+/// macOS device-matching notifications. It only watches the USB device list:
+/// it opens no device, sends nothing to it and reads only the vendor number
+/// macOS already holds. It lives inside the app process and stops with it.
+/// When registration fails the app keeps the plain presence poll.
+#if canImport(IOKit)
+final class GarminUSBChangeNotifier: @unchecked Sendable {
+    static let shared: GarminUSBChangeNotifier? = GarminUSBChangeNotifier()
+    static let garminVendorID = 0x091E
+
+    let signal = USBChangeSignal()
+    private let port: IONotificationPortRef
+    private let queue = DispatchQueue(label: "app.terento.usb-change-notifications")
+    private var iterators: [io_iterator_t] = []
+
+    private init?() {
+        guard let port = IONotificationPortCreate(kIOMainPortDefault) else { return nil }
+        self.port = port
+        IONotificationPortSetDispatchQueue(port, queue)
+        let context = Unmanaged.passUnretained(signal).toOpaque()
+        for notificationType in [kIOFirstMatchNotification, kIOTerminatedNotification] {
+            var iterator: io_iterator_t = 0
+            let result = IOServiceAddMatchingNotification(
+                port,
+                notificationType,
+                IOServiceMatching("IOUSBHostDevice"),
+                { reference, changed in
+                    guard GarminUSBChangeNotifier.drain(changed), let reference else { return }
+                    Unmanaged<USBChangeSignal>.fromOpaque(reference).takeUnretainedValue().notify()
+                },
+                context,
+                &iterator
+            )
+            guard result == KERN_SUCCESS else { return nil }
+            // Draining the iterator arms the notification.
+            _ = Self.drain(iterator)
+            iterators.append(iterator)
+        }
+    }
+
+    /// Returns whether any listed device is, or may be, a Garmin.
+    fileprivate static func drain(_ iterator: io_iterator_t) -> Bool {
+        var sawGarmin = false
+        while true {
+            let service = IOIteratorNext(iterator)
+            guard service != 0 else { break }
+            if mayBeGarmin(service) { sawGarmin = true }
+            IOObjectRelease(service)
+        }
+        return sawGarmin
+    }
+
+    /// An unreadable vendor number counts as a possible Garmin: the only
+    /// effect of a wake-up is one more USB probe.
+    private static func mayBeGarmin(_ service: io_service_t) -> Bool {
+        let property = IORegistryEntryCreateCFProperty(service, "idVendor" as CFString, nil, 0)
+        guard let vendor = property?.takeRetainedValue() as? NSNumber else { return true }
+        return vendor.intValue == garminVendorID
+    }
+}
+#else
+final class GarminUSBChangeNotifier: Sendable {
+    static let shared: GarminUSBChangeNotifier? = nil
+    let signal = USBChangeSignal()
+}
+#endif

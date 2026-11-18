@@ -148,7 +148,7 @@ struct SupportReportTests {
             operation: .snapshot, namespace: .terentoSnapshot, boundary: .initialSnapshot, category: 2)
         let draft = InstallationIssueReport.mapScanFailure(identity: identity, error: busy,
             errorCategory: DeviceDetectionErrorClassifier.classify(busy).mapScanReportCategory,
-            userMessage: "The watch's installed maps could not be read. Reconnect it and try again.")
+            userMessage: "The device's installed maps could not be read. Reconnect it and try again.")
         let saved = draft.supportReport!
         let report = saved.report
         expect(saved.category == .connection && saved.operationID == nil && report.operation == nil,
@@ -158,7 +158,7 @@ struct SupportReportTests {
             && report.failureContext?.isWatchSessionBusy == true,
             "the report names the failed read, its native code and the detection class")
         expect(report.device?.model != nil && report.device?.firmware == "2244",
-            "the report names the connected watch")
+            "the report names the connected device")
         expect(report.writeStarted == nil && report.objectCreated == nil && report.cleanupAttempted == nil
             && report.transferProgressPercent == nil && report.maps == nil,
             "a read-only scan sends no write, cleanup or map facts")
@@ -169,7 +169,7 @@ struct SupportReportTests {
             errorCategory: "read_failed", userMessage: nil)
         expect(plain.supportReport?.report.errorCodes == ["MAP_SCAN_FAILED"] && plain.supportReport?.report.device == nil
             && plain.supportReport?.report.failureContext == nil,
-            "without native facts or a watch only the scan code is sent")
+            "without native facts or a device only the scan code is sent")
         return SupportReportPayload(category: saved.category, operationID: nil, userMessage: nil, report: report)
     }
 
@@ -182,16 +182,16 @@ struct SupportReportTests {
         }
         let busy = MTPTransport.nativeReadError(message: "Garmin MTP device could not be opened", result: -5,
             operation: .snapshot, namespace: .terentoSnapshot, boundary: .initialSnapshot, category: 2)
-        let message = "The watch's installed maps could not be read. Reconnect it and try again."
+        let message = "The device's installed maps could not be read. Reconnect it and try again."
         expect(MapEngine.mapScanFailureReport(error: URLError(.notConnectedToInternet), identity: identity,
             userMessage: message, deviceScanStarted: false, preservingInstallationResult: false) == nil,
-            "a catalog that could not load saves no watch report")
+            "a catalog that could not load saves no device report")
         expect(MapEngine.mapScanFailureReport(error: busy, identity: identity, userMessage: message,
             deviceScanStarted: true, preservingInstallationResult: true) == nil,
             "a refresh after an install or update keeps that operation's report")
         guard let draft = MapEngine.mapScanFailureReport(error: busy, identity: identity, userMessage: message,
             deviceScanStarted: true, preservingInstallationResult: false) else {
-            fatalError("a failed watch scan of its own saves a report")
+            fatalError("a failed device scan of its own saves a report")
         }
         TerentoDiagnosticLog.saveFailureReport(draft)
         expect(TerentoDiagnosticLog.latestSavedSupportReport() == draft.supportReport,
@@ -269,9 +269,9 @@ struct SupportReportTests {
         expect(nothingSent, "opening the sheet sends nothing")
         controller.userMessage = String(repeating: "y", count: 2100)
         expect(controller.userMessage.count == 2000, "the description field stops at 2000 characters")
-        controller.userMessage = "Watch was on a hub."
+        controller.userMessage = "Device was on a hub."
         await controller.send()
-        expect(controller.isFailed && outbox.load()?.id == base.id && outbox.load()?.userMessage == "Watch was on a hub.",
+        expect(controller.isFailed && outbox.load()?.id == base.id && outbox.load()?.userMessage == "Device was on a hub.",
             "a failed send keeps the report locally and offers Try again")
         await controller.send()
         let sent = await uploader.payloads()

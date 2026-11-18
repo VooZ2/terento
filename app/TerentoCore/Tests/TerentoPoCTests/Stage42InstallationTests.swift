@@ -464,7 +464,7 @@ struct Stage42InstallationTests {
         passed += expect(protection?.protectionReason == .preexistingObjectChanged
             && protection?.affectedFolder == .metrics
             && !String(describing: protection as Any).contains("private-name"),
-            "a changed watch data file reports its Garmin folder, never its filename")
+            "a changed device data file reports its Garmin folder, never its filename")
 
         // The watch rewrote its own log under /GARMIN/Debug during the write: not a violation.
         let debug = DeviceFile(itemID: 710, parentID: 0, storageID: 1, path: "/GARMIN/Debug",
@@ -478,7 +478,7 @@ struct Stage42InstallationTests {
                 sizeBytes: 42, isFolder: false)]
         })
         passed += expect(debugResult.status == .installVerified && debugResult.failure == nil,
-            "a rewritten watch log under /GARMIN/Debug does not stop the install")
+            "a rewritten device log under /GARMIN/Debug does not stop the install")
 
         let addedLog = Harness(beforeFilesTransform: { $0 + [debug, log] })
         let addedResult = addedLog.run(configureReader: { reader in
@@ -969,7 +969,7 @@ struct Stage42InstallationTests {
         let elapsed = Date().timeIntervalSince(started)
         var passed = expect(result.isSuccess && harness.transport.writeCount == 1
             && result.diagnostics.unrelatedFilesProtectionPassed && elapsed < 20,
-            "a 12k-object watch completes protection checks without a fixed 60 s inventory ceiling")
+            "a 12k-object device completes protection checks without a fixed 60 s inventory ceiling")
         passed += expect(MTPFinishingWorker.inventoryTimeout(expectedObjectCount: harness.request.beforeDeviceFiles.count) > 60,
             "the pre-write inventory bound grows with the baseline object count")
         return passed
@@ -1525,7 +1525,7 @@ struct Stage42InstallationTests {
                 && result.failure == .stableWatchIdentityUnavailable
                 && harness.transport.writeCount == 0
                 && harness.manifest.entries.isEmpty,
-            "missing stable watch identity is rechecked before mutation"
+            "missing stable device identity is rechecked before mutation"
         )
     }
 

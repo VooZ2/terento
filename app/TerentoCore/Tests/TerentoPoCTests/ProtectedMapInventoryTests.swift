@@ -129,12 +129,12 @@ struct ProtectedMapInventoryTests {
             guard let after = try? ProtectedMapInventory(files: rows, forcedLocations: before.protectedLocations) else { return false }
             return after.matches(before)
         }
-        check(debugBase.protectedLocations.contains(.init(storageID: 1, path: log.path)), "watch log stays protected")
-        check(matches(base + [debug, file(51, log.path, size: 140)]), "rewritten watch log tolerated")
+        check(debugBase.protectedLocations.contains(.init(storageID: 1, path: log.path)), "device log stays protected")
+        check(matches(base + [debug, file(51, log.path, size: 140)]), "rewritten device log tolerated")
         check(!unchanged(base + [debug, file(51, log.path, size: 140)], from: debugBase), "difference still reports the rewrite")
-        check(!matches(base + [debug]), "watch log removal fails")
-        check(!matches(base + [debug, log, file(52, "/GARMIN/Debug/new.txt")]), "watch log addition fails")
-        check(!matches(base + [debug, file(51, log.path, folder: true)]), "watch log kind change fails")
+        check(!matches(base + [debug]), "device log removal fails")
+        check(!matches(base + [debug, log, file(52, "/GARMIN/Debug/new.txt")]), "device log addition fails")
+        check(!matches(base + [debug, file(51, log.path, folder: true)]), "device log kind change fails")
         check(!matches(base + [file(50, debug.path, size: 7, folder: true), log]), "Debug folder change fails")
         let debugMap = file(53, "/GARMIN/Debug/x.img", size: 100)
         let debugMapBase = try ProtectedMapInventory(files: base + [debug, debugMap])
@@ -142,7 +142,7 @@ struct ProtectedMapInventoryTests {
         let metricsFolder = file(54, "/GARMIN/Metrics", size: 0, folder: true)
         let metricsFile = file(55, "/GARMIN/Metrics/a.fit", size: 100)
         let metricsBase = try ProtectedMapInventory(files: base + [metricsFolder, metricsFile])
-        check(!matches(base + [metricsFolder, file(55, metricsFile.path, size: 140)], from: metricsBase), "other watch folders stay strict")
+        check(!matches(base + [metricsFolder, file(55, metricsFile.path, size: 140)], from: metricsBase), "other device folders stay strict")
         let lowerDebug = file(56, "/GARMIN/debug", size: 0, folder: true)
         let lowerLog = file(57, "/GARMIN/debug/log.txt", size: 100)
         let lowerBase = try ProtectedMapInventory(files: base + [lowerDebug, lowerLog])
@@ -154,7 +154,7 @@ struct ProtectedMapInventoryTests {
                                                  forcedLocations: [replacementOld.location, replacementNew.location])
         let replacedBase = try ProtectedMapInventory(files: base + [debug, log], forcedLocations: [replacementOld.location, replacementNew.location])
         check(replaced.isExactReplacement(of: replacedBase, removing: replacementOld, adding: replacementNew),
-              "update replacement tolerates a rewritten watch log")
+              "update replacement tolerates a rewritten device log")
         print("PASS: \(checks) protected inventory checks")
     }
 }

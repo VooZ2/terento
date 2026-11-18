@@ -47,7 +47,7 @@ struct DiagnosticsView: View {
 
                     #if DEBUG
                     if TerentoTelemetryMetadata.releaseLabel.hasSuffix("-local") {
-                        diagnosticsSection(title: "Connected watch identity") {
+                        diagnosticsSection(title: "Connected device identity") {
                             if let identity = deviceEngine.compatibility?.identity {
                                 Text("MTP model: \(identity.model)")
                                 Text("XML model: \(identity.garminModelDescription ?? "Unavailable")")
@@ -57,10 +57,10 @@ struct DiagnosticsView: View {
                                 Text("Screen: \(identity.screenTechnology ?? "Unknown") · Solar: \(identity.solar == true ? "Yes" : "Unknown") · inReach: \(identity.inReach == true ? "Yes" : "Unknown")")
                                 Text("Screen source: \(identity.screenTechnologySource)")
                                 Text("API catalog candidate: \(identity.catalogDeviceID ?? "Not uniquely identified")")
-                                Text("MTP/XML fields above are original watch metadata. Additional known properties come from the Terento API catalog. The API independently verifies installation assignments. Opening this window does not send a report.")
+                                Text("MTP/XML fields above are original device metadata. Additional known properties come from the Terento API catalog. The API independently verifies installation assignments. Opening this window does not send a report.")
                                     .foregroundStyle(TerentoColors.secondaryText)
                             } else {
-                                Text("Connect your watch to view its model information.")
+                                Text("Connect your device to view its model information.")
                             }
                         }
                         .font(.terentoUI(size: 13, weight: .regular))
@@ -73,7 +73,7 @@ struct DiagnosticsView: View {
                             VStack(alignment: .leading, spacing: 3) {
                                 Text("Send privacy-minimised compatibility diagnostics")
                                     .font(.terentoUI(size: 14, weight: .semibold))
-                                Text("Watch model and variant, firmware, connection details, map and software versions, and the installation result. No Unit ID, serial number, local path, manifest, or map file is included.")
+                                Text("Device model and variant, firmware, connection details, map and software versions, and the installation result. No Unit ID, serial number, local path, manifest, or map file is included.")
                                     .font(.terentoUI(size: 12, weight: .regular))
                                     .foregroundStyle(TerentoColors.secondaryText)
                                     .fixedSize(horizontal: false, vertical: true)
@@ -86,7 +86,7 @@ struct DiagnosticsView: View {
                             VStack(alignment: .leading, spacing: 3) {
                                 Text("Send privacy-minimised map usage diagnostics")
                                     .font(.terentoUI(size: 14, weight: .semibold))
-                                Text("Provider, map, region, event type, outcome, operation ID, timestamp, and app build. These events never include watch identity or local file information.")
+                                Text("Provider, map, region, event type, outcome, operation ID, timestamp, and app build. These events never include device identity or local file information.")
                                     .font(.terentoUI(size: 12, weight: .regular))
                                     .foregroundStyle(TerentoColors.secondaryText)
                                     .fixedSize(horizontal: false, vertical: true)

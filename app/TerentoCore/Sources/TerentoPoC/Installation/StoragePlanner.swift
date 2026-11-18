@@ -20,6 +20,32 @@ struct StoragePlan: Equatable, Sendable {
     }
 }
 
+extension StoragePlan {
+    /// Bytes still missing for the selection: the selected maps plus the
+    /// reserve, minus the free space. 0 when the selection fits.
+    var shortfallBytes: UInt64 {
+        let needed = selectedMapBytes.addingReportingOverflow(safetyReserve)
+        let required = needed.overflow ? UInt64.max : needed.partialValue
+        return required > currentFreeSpace ? required - currentFreeSpace : 0
+    }
+
+    /// The storage shortfall in numbers. It names the reserve, which no other
+    /// text shows: a selection smaller than the free space can still be
+    /// refused because Terento keeps the reserve free on the device.
+    func insufficientSpaceMessage(formatBytes: (UInt64) -> String) -> String {
+        let shortfall = shortfallBytes
+        guard shortfall > 0 else {
+            return "Not enough space available. Remove a map or select fewer maps."
+        }
+        let reserve = safetyReserve > 0
+            ? " and Terento keeps \(formatBytes(safetyReserve)) free on the device"
+            : ""
+        return "Not enough space: the selected maps need \(formatBytes(selectedMapBytes))\(reserve), "
+            + "but \(formatBytes(currentFreeSpace)) is available. "
+            + "Free up \(formatBytes(shortfall)) or select fewer maps."
+    }
+}
+
 struct StoragePlanner: Sendable {
     static let defaultSafetyReserve: UInt64 = 1 * 1024 * 1024 * 1024
 

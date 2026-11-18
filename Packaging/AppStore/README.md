@@ -60,6 +60,15 @@ Catalog, device catalog, installation policy and public compatibility
 requests, map downloads and device images keep working. The catalog without a
 watch is not part of this configuration.
 
+Device photo: through 1.2.1 this configuration showed only Terento's own
+device images and the generic fallback, and never read a `garmin.com` product
+page or `res.garmin.com` (`DeviceAssetResolver.allowsOfficialProductMedia`).
+From the version after 1.2.1 it shows the same reviewed device photo as the
+DMG build, including official product media with its attribution. The App
+Store review notes for that version must no longer say that the app shows no
+manufacturer product photos, and its list of contacted hosts must include the
+device image hosts.
+
 ## Entitlements
 
 App, `Terento-AppStore.entitlements`:

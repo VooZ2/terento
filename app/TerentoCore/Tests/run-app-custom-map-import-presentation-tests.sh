@@ -46,7 +46,7 @@ if ! grep -Fq 'CustomMapImportConfirmationSheet' "$connect_screen" \
     || ! grep -Fq 'title: "Import this map?"' "$connect_screen" \
     || ! grep -Fq 'primaryLabel: "Continue import"' "$connect_screen" \
     || ! grep -Fq 'Terento can verify that this is a Garmin map file, but cannot verify who created it or whether you trust its source.' "$connect_screen" \
-    || ! grep -Fq 'Imported map files are transferred directly from your Mac to your watch. They are not sent to Terento servers.' "$connect_screen" \
+    || ! grep -Fq 'Imported map files are transferred directly from your Mac to your device. They are not sent to Terento servers.' "$connect_screen" \
     || ! grep -Fq '.preferredColorScheme(.light)' "$connect_screen"; then
     print -u2 "FAIL: imported-map confirmation presentation contract is incomplete"
     exit 1

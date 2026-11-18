@@ -161,7 +161,7 @@ enum MapAcquisitionError: LocalizedError, Equatable, Sendable {
         case .customMapNotConfirmed(let message):
             return message
         case .customMapTooLarge(let filename):
-            return "\(filename) is larger than 4 GB, the largest map file a Garmin watch can store. Choose a smaller map."
+            return "\(filename) is larger than 4 GB, the largest map file a Garmin device can store. Choose a smaller map."
         case .insufficientMacStorage(let requiredBytes):
             return MacStorageCheck.userMessage(requiredBytes: requiredBytes)
         }
@@ -1260,7 +1260,14 @@ struct SystemZIPArchiveExtractor: MapPackageArchiveExtractor, Sendable {
         for entry in entries {
             try pathValidator.validate(entry)
         }
-        try rejectSymbolicLinkEntries(archiveURL: archiveURL)
+        // One long listing serves both checks made before anything is extracted.
+        let listing = try zipInfo(["-Z", archiveURL.path])
+        try Self.rejectSymbolicLinkEntries(listing: listing)
+        try Self.rejectOversizedArchive(
+            listing: listing,
+            entryCount: entries.count,
+            availableBytes: MacStorageCheck.availableBytes(at: extractionDirectory)
+        )
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
@@ -1298,9 +1305,72 @@ struct SystemZIPArchiveExtractor: MapPackageArchiveExtractor, Sendable {
 
     /// `unzip -Z` lists one `ls -l` style line per entry; a symbolic link's
     /// mode starts with `l`. Map packages never need links, so any is refused.
-    private func rejectSymbolicLinkEntries(archiveURL: URL) throws {
-        if let link = try zipInfo(["-Z", archiveURL.path]).first(where: { $0.hasPrefix("l") }) {
+    static func rejectSymbolicLinkEntries(listing: [String]) throws {
+        if let link = listing.first(where: { $0.hasPrefix("l") }) {
             throw MapAcquisitionError.unsafeArchivePath(link)
+        }
+    }
+
+    /// The most a provider archive may expand to. A map image is at most
+    /// 4 GiB - 1 byte (one FAT32 file); twice that leaves room for the map,
+    /// a separate contour image and the small files providers add.
+    static let maximumUncompressedBytes: UInt64 = 2 * CustomMapSourceAcquirer.maximumMapFileBytes
+
+    /// The total uncompressed size the archive declares, from the `unzip -Z`
+    /// listing: the sum of its entry lines, or the listing's own total line if
+    /// that is larger. nil when neither an entry line nor the total line can
+    /// be read.
+    ///
+    /// An entry line is `<mode> <version> <system> <uncompressed bytes> ...`,
+    /// for example `-rw-r--r--  3.0 unx  271908864 bx defN 26-May-03 10:00
+    /// gmapsupp.img`; the total line is `2 files, 271909000 bytes
+    /// uncompressed, 245525701 bytes compressed:  9.7%`.
+    static func declaredUncompressedBytes(listing: [String]) -> UInt64? {
+        var total: UInt64 = 0
+        var parsedEntries = 0
+        var listedTotal: UInt64?
+        for line in listing {
+            let fields = line.split(whereSeparator: { $0 == " " || $0 == "\t" })
+            if fields.count >= 5, (fields[1] == "file," || fields[1] == "files,"),
+               fields[3] == "bytes", fields[4].hasPrefix("uncompressed"),
+               let bytes = UInt64(fields[2]) {
+                listedTotal = max(listedTotal ?? 0, bytes)
+                continue
+            }
+            guard fields.count >= 5,
+                  fields[1].contains("."),
+                  fields[1].allSatisfy({ $0.isASCII && ($0.isNumber || $0 == ".") }),
+                  fields[3].allSatisfy({ $0.isASCII && $0.isNumber }),
+                  let bytes = UInt64(fields[3]) else {
+                continue
+            }
+            parsedEntries += 1
+            let sum = total.addingReportingOverflow(bytes)
+            total = sum.overflow ? UInt64.max : sum.partialValue
+        }
+        guard parsedEntries > 0 else { return listedTotal }
+        return max(total, listedTotal ?? 0)
+    }
+
+    /// Refuses, before extraction, an archive that declares more uncompressed
+    /// data than a map package can hold or than the Mac's volume has free. An
+    /// archive whose listing cannot be read is refused as well.
+    static func rejectOversizedArchive(
+        listing: [String],
+        entryCount: Int,
+        availableBytes: UInt64?
+    ) throws {
+        guard entryCount > 0 else { return }
+        guard let declared = declaredUncompressedBytes(listing: listing) else {
+            throw MapAcquisitionError.extractionFailed("The ZIP archive could not be inspected.")
+        }
+        guard declared <= maximumUncompressedBytes else {
+            throw MapAcquisitionError.invalidPackage(
+                "The archive expands to more data than a map package can hold."
+            )
+        }
+        if let availableBytes, declared > availableBytes {
+            throw MapAcquisitionError.insufficientMacStorage(requiredBytes: declared)
         }
     }
 

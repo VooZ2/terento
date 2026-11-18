@@ -342,7 +342,7 @@ private struct PathPrefixReader: DeviceFileReader {
                               ("bad-date", "creation date differs from the filename"), ("bad-title", "header names the other coverage")] {
             let proofBound = try package(.pl, .ogonki, fixture: name)
             check((try? MapSourceValidator().validate(fileURL: copyAsPayload(name), expectedPackage: proofBound)) == nil,
-                  "nothing reaches the watch when the \(label)")
+                  "nothing reaches the device when the \(label)")
         }
     }
 
@@ -403,7 +403,7 @@ private struct PathPrefixReader: DeviceFileReader {
         let foreign = file("other.img", 102)
         let foreignPrefix = Array(header("Topo Poland").prefix(0x800)) + [1] + Array("00000005MDR".utf8)
             + Array(repeating: 0, count: 4096 - 0x80C)
-        check(passes([], []), "an empty watch passes the final boundary")
+        check(passes([], []), "an empty device passes the final boundary")
         check(passes([file("D1234567A.img", 103)], []), "Garmin-owned images are outside the OSMapaPL content check")
         let light = try bytes("pl-light")
         let otherCoverage = try bytes("plext-ogonki")
@@ -467,7 +467,7 @@ private struct PathPrefixReader: DeviceFileReader {
         }
 
         let empty = scan([])
-        allowed(plOgonki, empty, "nothing of the style on the watch allows the install")
+        allowed(plOgonki, empty, "nothing of the style on the device allows the install")
         let ownSame = scan(["/GARMIN/terento_osmapa_pl_ogonki.img"], managed: ["/GARMIN/terento_osmapa_pl_ogonki.img"])
         check(ownSame.files.first?.prefixEvidence?.osmapa == .map(coverage: .pl, style: .ogonki)
             && ownSame.installedMaps.first?.managementState == .managedByTerento,

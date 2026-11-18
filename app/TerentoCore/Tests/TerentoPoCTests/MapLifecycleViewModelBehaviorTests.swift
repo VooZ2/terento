@@ -329,7 +329,7 @@ struct MapLifecycleViewModelBehaviorTests {
                 scanDeviceKeys: [watchA.physicalManifestDeviceKey!], store: store).isEmpty,
               MapEngine.ownershipManifestEntries(for: watchB,
                 scanDeviceKeys: [watchA.physicalManifestDeviceKey!, watchB.physicalManifestDeviceKey!], store: store).isEmpty else {
-            throw Failure("conflicting physical watches mixed ownership namespaces")
+            throw Failure("conflicting physical devices mixed ownership namespaces")
         }
         guard MapEngine.manifestDeviceKeys(for: [missing, missing]).isEmpty,
               MapEngine.ownershipManifestEntries(for: missing,

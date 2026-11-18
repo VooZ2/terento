@@ -172,14 +172,29 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
         sampleLength: UInt32,
         progress: @escaping @Sendable (TransferProgress) -> Void
     ) throws -> MTPReadBackMapObject {
-        var lastError: Error?
-        let verificationDeadline = ProcessInfo.processInfo.systemUptime + 600
-        // Only the parent may retry a completed metadata lookup. Transport failures
-        // require reconnect, never another nested reset/open sequence.
-        let retryDelays: [TimeInterval] = MTPFinishingWorker.isWorker ? [0] : [0, 1.0]
-        for (attempt, delay) in retryDelays.enumerated() {
-            FinishingTrace.event("readback_attempt", "worker=\(MTPFinishingWorker.isWorker) attempt=\(attempt + 1) delay=\(delay)")
-            if attempt > 0 {
+        let isWorker = MTPFinishingWorker.isWorker
+        var verificationDeadline = ProcessInfo.processInfo.systemUptime + 600
+        // Only the parent may repeat a check, and never as a nested reset/open
+        // sequence inside one session: every attempt is a new bounded worker
+        // and so a new USB session. Two bounded repeats exist:
+        // - a completed metadata lookup that did not find the exact object
+        //   (one repeat after 1 s);
+        // - a sample that could not be read (`terento_map_verify` -9): one
+        //   repeat of the same sampled read-back after
+        //   `SampledReadBackRetryPolicy.delay`, the wait and the repeat bounded
+        //   together by `SampledReadBackRetryPolicy.totalBudget`.
+        // Every other failure, a mismatch and any second failure end the
+        // verification as before and may require a reconnect.
+        var metadataRetriesMade = 0
+        var readFailureRetriesMade = 0
+        var attempt = 0
+        var delay: TimeInterval = 0
+        // A repeated check restarts its byte count; the bar must not go back.
+        let monotonicProgress = MonotonicTransferProgress(progress)
+        while true {
+            attempt += 1
+            FinishingTrace.event("readback_attempt", "worker=\(isWorker) attempt=\(attempt) delay=\(delay)")
+            if delay > 0 {
                 Thread.sleep(forTimeInterval: delay)
             }
 
@@ -201,22 +216,32 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
                         sampleOffsets: sampleOffsets,
                         sampleLength: sampleLength,
                         remainingTime: remaining,
-                        progress: progress
+                        progress: { monotonicProgress.report($0) }
                     )
                 }
             } catch {
-                FinishingTrace.event("readback_failed", "worker=\(MTPFinishingWorker.isWorker) attempt=\(attempt + 1) error=\(Self.traceError(error))")
-                lastError = error
-                guard Self.shouldRetryReadBack(error), attempt < retryDelays.count - 1 else {
-                    throw error
+                FinishingTrace.event("readback_failed", "worker=\(isWorker) attempt=\(attempt) error=\(Self.traceError(error))")
+                if !isWorker, metadataRetriesMade == 0, Self.shouldRetryReadBack(error) {
+                    metadataRetriesMade += 1
+                    delay = 1.0
+                    continue
                 }
+                let now = ProcessInfo.processInfo.systemUptime
+                if SampledReadBackRetryPolicy.shouldRetry(
+                    error, isWorker: isWorker, retriesMade: readFailureRetriesMade
+                ), let retryTimeout = SampledReadBackRetryPolicy.retryTimeout(
+                    remainingVerificationTime: verificationDeadline - now
+                ) {
+                    readFailureRetriesMade += 1
+                    delay = SampledReadBackRetryPolicy.delay
+                    // From here the wait and everything after it share one bound.
+                    verificationDeadline = now + delay + retryTimeout
+                    FinishingTrace.event("readback_retry", "reason=sample_read_failed delay=\(delay) budget=\(delay + retryTimeout)")
+                    continue
+                }
+                throw SampledReadBackRetryPolicy.failureAfterRetry(error, retriesMade: readFailureRetriesMade)
             }
         }
-
-        throw lastError ?? InstallationTransportError.operationFailed(
-            "The Garmin map could not be read back after verification retries.",
-            createdItemID: nil
-        )
     }
 
     fileprivate static func traceError(_ error: Error) -> String {

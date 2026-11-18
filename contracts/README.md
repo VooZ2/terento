@@ -238,7 +238,8 @@ so libmtp was never called (clients through 1.1.0 report that refusal as -7
 too); `terento_map_verify` is the result of the native sampled
 read-back after the write, for example -8 when the fresh watch session could
 not be opened, -9 when a sample could not be read and -11 when the sampled
-bytes differ from the validated source);
+bytes differ from the validated source; apps newer than 1.2.1 repeat the
+read-back once after -9 and then report `retryCount` 1 with the final result);
 no libmtp namespace or invented libmtp result code is accepted.
 
 Optional `writeFailureStep` (apps newer than 1.1.0) names where an attempted

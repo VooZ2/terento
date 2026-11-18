@@ -35,17 +35,17 @@ enum ManagedMapRecoveryError: LocalizedError, Equatable, Sendable {
     var errorDescription: String? {
         switch self {
         case .stableWatchIdentityUnavailable:
-            return "This Garmin watch does not expose the stable local identity required for recovery."
+            return "This Garmin device does not expose the stable local identity required for recovery."
         case .invalidExport:
             return "The Terento ownership file is invalid or unsupported."
         case .exportBelongsToAnotherWatch:
-            return "This ownership file belongs to a different Garmin watch."
+            return "This ownership file belongs to a different Garmin device."
         case .exactMapNotFound:
-            return "The exact exported Terento map was not found on this watch."
+            return "The exact exported Terento map was not found on this device."
         case .ambiguousMap:
             return "More than one possible map matched the ownership file. Nothing was recovered."
         case .liveMapChanged:
-            return "The complete map on the watch no longer matches the ownership file."
+            return "The complete map on the device no longer matches the ownership file."
         case .readFailed:
             return "Terento could not read the complete map needed for recovery."
         }
@@ -218,6 +218,18 @@ struct ManagedMapRecoveryCoordinator: Sendable {
             throw ManagedMapRecoveryError.liveMapChanged
         }
 
+        // The complete map was just read from this watch and its SHA-256
+        // equals the one Terento recorded when it wrote the map. A removal
+        // proof computed from exactly these bytes (re-hashed in full while
+        // sampling) is therefore bound to the same size and SHA-256 as a proof
+        // recorded at installation, so a later Remove or Update of this map
+        // can use the sampled content check instead of another full read.
+        // Without a proof (the copy cannot be re-read) the full read remains.
+        let removalProof = ManagedRemovalProof.make(
+            localFileURL: temporaryURL,
+            fileSizeBytes: match.0.sizeBytes,
+            fileSHA256: match.0.sha256
+        )
         let recovered = TerentoManifestEntry(
             deviceKey: deviceKey,
             devicePath: match.0.devicePath,
@@ -228,7 +240,8 @@ struct ManagedMapRecoveryCoordinator: Sendable {
             sizeBytes: match.0.sizeBytes,
             sha256: match.0.sha256.lowercased(),
             installedAt: match.0.installedAt,
-            bbbikeMetadata: match.0.bbbikeMetadata
+            bbbikeMetadata: match.0.bbbikeMetadata,
+            removalProof: removalProof
         )
         try manifestStore.record(recovered)
         return ManagedMapRecoveryResult(recoveredEntry: recovered)

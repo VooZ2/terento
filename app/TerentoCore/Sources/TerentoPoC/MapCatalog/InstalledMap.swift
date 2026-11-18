@@ -1016,13 +1016,13 @@ extension OSMapaProviderAdapter {
             let otherName = style.map { "\($0.title) - \(OSMapaProviderAdapter.displayName(coverage: other, style: $0))" } ?? other.displayName
             return "To install “\(name)”, first remove “\(otherName)” in Manage maps. OSMapaPL maps of one style cannot be installed together."
         case .unmanaged:
-            return "Another \(style?.title ?? "OSMapaPL") map is on this watch and Terento does not manage it. Remove it before installing “\(name)”."
+            return "Another \(style?.title ?? "OSMapaPL") map is on this device and Terento does not manage it. Remove it before installing “\(name)”."
         case .ambiguous:
-            return "An OSMapaPL map on this watch needs review before installing “\(name)”. Terento could not identify its style."
+            return "An OSMapaPL map on this device needs review before installing “\(name)”. Terento could not identify its style."
         case .unreadable:
-            return "One map file could not be read. Disconnect and reconnect the watch."
+            return "One map file could not be read. Disconnect and reconnect the device."
         case .familyID:
-            return "Another map on this watch uses the same Garmin map ID as “\(name)”. Remove it before installing."
+            return "Another map on this device uses the same Garmin map ID as “\(name)”. Remove it before installing."
         }
     }
 }

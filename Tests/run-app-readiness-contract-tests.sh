@@ -14,7 +14,10 @@ if grep -Fq 'Enough space remains after installation.' "$connect_screen"; then
     exit 1
 fi
 
-if ! grep -Fq 'return "Not enough space available. Remove a map or select fewer maps."' "$connect_screen"; then
+storage_planner="$repo_root/app/TerentoCore/Sources/TerentoPoC/Installation/StoragePlanner.swift"
+if ! grep -Fq 'return plan.storagePlan.insufficientSpaceMessage(formatBytes: formatBytes)' "$connect_screen" \
+    || ! grep -Fq 'return "Not enough space available. Remove a map or select fewer maps."' "$storage_planner" \
+    || ! grep -Fq 'return "Not enough space: the selected maps need ' "$storage_planner"; then
     print -u2 "FAIL: insufficient-storage warning is missing"
     exit 1
 fi

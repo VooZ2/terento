@@ -199,7 +199,7 @@ struct DeviceAuthorizationPresentation: Equatable, Sendable {
         switch state {
         case .resolving:
             title = "Checking…"
-            detail = "Checking whether this watch can install maps."
+            detail = "Checking whether this device can install maps."
             systemImage = "arrow.triangle.2.circlepath"
             tone = .neutral
             canRetry = false
@@ -218,18 +218,18 @@ struct DeviceAuthorizationPresentation: Equatable, Sendable {
             switch reason {
             case .catalogUnavailable:
                 title = "Couldn't check"
-                detail = "Terento couldn't check whether this watch can install maps. Check your internet connection and try again."
+                detail = "Terento couldn't check whether this device can install maps. Check your internet connection and try again."
                 systemImage = "exclamationmark.triangle.fill"
                 tone = .error
                 reviewReason = detail
-                browsingNotice = "Terento couldn't check this watch yet, so installing isn't available right now."
+                browsingNotice = "Terento couldn't check this device yet, so installing isn't available right now."
             case .pending, .unknownModel, .ambiguousCatalogMatch:
                 title = "Not yet enabled for this model"
-                detail = "This watch model isn't enabled for map installation yet. You can still browse maps."
+                detail = "This device model isn't enabled for map installation yet. You can still browse maps."
                 systemImage = "info.circle.fill"
                 tone = .warning
-                reviewReason = "This watch model isn't enabled for map installation yet."
-                browsingNotice = "This watch model isn't enabled for map installation yet. You can browse maps, but installing isn't available."
+                reviewReason = "This device model isn't enabled for map installation yet."
+                browsingNotice = "This device model isn't enabled for map installation yet. You can browse maps, but installing isn't available."
             case .updateRequired:
                 title = "Update Terento"
                 detail = "This Terento version needs an update before it can install maps. Update Terento, then try again."
@@ -239,11 +239,11 @@ struct DeviceAuthorizationPresentation: Equatable, Sendable {
                 browsingNotice = "Update Terento to install maps. You can still browse maps."
             case .outOfScope, .notAuthorized:
                 title = "Not available for this model"
-                detail = "Map installation isn't available for this watch model in Terento."
+                detail = "Map installation isn't available for this device model in Terento."
                 systemImage = "info.circle.fill"
                 tone = .warning
                 reviewReason = detail
-                browsingNotice = "Map installation isn't available for this watch model. You can still browse maps."
+                browsingNotice = "Map installation isn't available for this device model. You can still browse maps."
             }
         }
     }

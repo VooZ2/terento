@@ -430,15 +430,12 @@ struct DeviceAssetResolver {
     private static let controlledAssetPath = "/assets/devices/"
     private static let officialMediaHost = "res.garmin.com"
     private static let officialProductHosts: Set<String> = ["garmin.com", "www.garmin.com"]
-    /// The Mac App Store build shows only Terento's own watch images and never
-    /// fetches or displays manufacturer product photos.
-    static let allowsOfficialProductMedia: Bool = {
-        #if TERENTO_APP_STORE
-        return false
-        #else
-        return true
-        #endif
-    }()
+    /// Both distributions show the reviewed device photo of the connected
+    /// model, including official product media with its attribution. Through
+    /// 1.2.1 the Mac App Store build showed only Terento's own images and the
+    /// generic fallback; from the next version it shows the same photo as the
+    /// direct download. The App Store review notes must not claim otherwise.
+    static let allowsOfficialProductMedia = true
     private let client: any DeviceCatalogAPIClient
     private let cache: DeviceAssetCache
 

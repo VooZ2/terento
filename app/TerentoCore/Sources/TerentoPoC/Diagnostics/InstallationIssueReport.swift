@@ -219,7 +219,7 @@ enum InstallationIssueReport {
         appBuild: String = TerentoTelemetryMetadata.eventBuild,
         operatingSystem: String = ProcessInfo.processInfo.operatingSystemVersionString
     ) -> InstallationIssueDraft {
-        let title = "Couldn't read maps on the watch"
+        let title = "Couldn't read maps on the device"
         let stage = "Map scan"
         let context = (error as? any InstallationFailureContextProviding)?.failureContext
         var errorCodes = ["MAP_SCAN_FAILED"]

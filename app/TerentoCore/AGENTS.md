@@ -134,9 +134,19 @@ the behavior:
   SHA-256 mismatch; never add a fallback to the other method.
 - Entries without a valid bound proof, external maps and legacy entries keep
   the full read and SHA-256. Never synthesize a proof for a map Terento did not
-  write and verify.
+  write and verify. Besides installation, a proof is recorded only by ownership
+  recovery (`ManagedMapRecoveryCoordinator`), from the complete same-watch read
+  whose SHA-256 equals the exported record; never from a partial read, a
+  filename, a size or an unverified copy.
 - The new map in an Update is verified with the fresh-install sampled
   read-back (`SampledReadBackPlan`) before the old map is touched.
+- The post-write sampled read-back is repeated at most once, by the parent
+  only, in a new worker and USB session, and only for the exact "sample could
+  not be read" result (`terento_map_verify` -9): 5-second wait, 120-second
+  bound for the wait plus the repeat (`SampledReadBackRetryPolicy`). It is the
+  same sampled check of the same regions against the same validated artifact.
+  Never repeat a mismatch, never switch the method, and never add a write,
+  delete or reset to the repeat.
 - The residual limit (a same-name, same-size map that differs only outside the
   compared regions) is documented and accepted; do not widen it.
 - Changes here need the native fake-libmtp runners

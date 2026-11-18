@@ -77,11 +77,23 @@ require_source '.sheet(item: $watchReconnectWait, onDismiss: handleWatchReconnec
 require_source 'watchReconnectWait?.watchWasDisconnected = true' 'an unplug is not recorded for the reconnect wait'
 require_source 'connectedWatchKey: identity?.physicalManifestDeviceKey' 'the reconnected watch is not compared with the watch that stopped'
 require_source 'icon: isCheckingWatch ? "arrow.triangle.2.circlepath" : "cable.connector"' 'the reconnect wait status has no icon'
-require_source 'isCheckingWatch ? "Checking your watch" : "Reconnect your watch"' 'the reconnect wait status has no text'
+require_source 'isCheckingWatch ? "Checking your device" : "Reconnect your device"' 'the reconnect wait status has no text'
+reconnect_dialog="$(sed -n '/private struct WatchReconnectWaitDialog: View/,/private struct InstallationFailureDialog: View/p' "$connect_screen")"
+if grep -Fq 'mapTitle' <<< "$reconnect_dialog"; then
+    print -u2 'FAIL: the reconnect wait still shows a map name'
+    exit 1
+fi
+require_source '// No map name here: the dialog is about the watch, not one map.' 'the reconnect wait subtitle is not empty on purpose'
+require_source 'installationFailureSnapshot = makeInstallationFailureSnapshot()' 'the failure is not captured when the installation fails'
+require_source 'mapEngine.installationPhase == .failed ? nil : installationFailureSnapshot' 'the captured failure is not limited to a reset engine'
+require_source 'if let retained = retainedInstallationFailure { return retained.reason }' 'a disconnect replaces the real failure reason with a generic one'
+require_source 'if let retained = retainedInstallationFailure { return retained.safetyMessage }' 'a disconnect drops the safety reassurance of the real failure'
+require_source 'let draft = retainedInstallationFailure?.issueDraft ?? installationIssueDraft(for: plan)' 'Report issue loses the failure details after a disconnect'
+require_source 'installationFailureSnapshot = nil' 'the captured failure outlives its dialog'
 require_source '.onChange(of: isCheckingWatch) { _ in announceState() }' 'VoiceOver does not hear the reconnect wait state change'
 require_source '&& watchReconnectWait == nil' 'the update prompt can open over the reconnect wait'
 require_source 'watchReconnectFollowUp = endFollowUp(for: wait, decision: .keepWaiting)' 'Cancel skips the failure dialog and its Report issue'
-require_source 'supportingMessage: "Nothing was written to your watch. Terento waits up to 5 minutes."' 'the reconnect wait does not say that nothing was written'
+require_source 'supportingMessage: "Nothing was written to your device. Terento waits up to 5 minutes."' 'the reconnect wait does not say that nothing was written'
 require_source 'primaryLabel: nil,' 'the reconnect wait offers an action other than Cancel'
 require_source 'onManageMaps: mapEngine.installationResult?.mayHaveLeftMapOnWatch == true' 'leftover-map failures do not offer Manage maps'
 require_source 'selectedSection = .device' 'failure recovery does not navigate to Device'
