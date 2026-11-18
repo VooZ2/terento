@@ -24,12 +24,12 @@ const release = JSON.parse(read(path.join(root, "site", "updates", "macos-arm64.
 const guideContentReviewed = fs.readFileSync(path.join(__dirname, "..", "scripts", "build-guide-pages.py"), "utf8").match(/^GUIDE_CONTENT_REVIEWED = "([^"]+)"/m)[1];
 const metadataByPath = new Map(metadata.pages.map((page) => [page.path, page]));
 const downloadLabels = {
-  en: "Download",
-  de: "Herunterladen",
-  fr: "Télécharger",
-  pl: "Pobierz",
-  cs: "Stáhnout",
-  it: "Scarica",
+  en: "Download for Mac",
+  de: "Für Mac herunterladen",
+  fr: "Télécharger pour Mac",
+  pl: "Pobierz na Maca",
+  cs: "Stáhnout pro Mac",
+  it: "Scarica per Mac",
 };
 
 const availabilityHelp = {
@@ -90,7 +90,8 @@ for (const locale of locales) {
   assert.match(source, /maps-done-1600\.avif\?v=20260912-app-screens-v2[^\n]*width="2358" height="1575"/);
   assert.match(source, /your-garmin-1600\.avif\?v=20260912-app-screens-v2[^\n]*width="2358" height="1575"/);
   assert.equal((source.match(/<li class="guide-step[" ]/g) || []).length, 4, locale + ": four ordered steps");
-  assert.match(source, /<nav class="guide-v2-switch"[^>]*>[\s\S]*?aria-current="page"[^>]*data-umami-event="guide-link-click"/, locale + ": watch/Edge switch marks the current guide");
+  assert.match(source, /<nav class="chips guide-v2-switch"[^>]*>[\s\S]*?aria-current="page"[^>]*data-umami-event="guide-link-click"/, locale + ": guide switch marks the current guide");
+  assert.equal((source.match(/<nav class="chips guide-v2-switch"[^>]*>([\s\S]*?)<\/nav>/)[1].match(/class="chip guide-v2-switch-link"/g) || []).length, 3, locale + ": switch links watch, Edge and Linux guides");
   assert.doesNotMatch(source, /HowTo|aria-hidden="true">→/, locale + ": no HowTo schema or arrow glyphs");
   assert.match(source, /<ol class="guide-timeline steps">/);
   assert.match(source, /<ol class="guide-substeps">/);
@@ -110,10 +111,11 @@ for (const locale of locales) {
   assert.doesNotMatch(source, /mailto:hello@terento\.app/);
   assert.doesNotMatch(source, /mailto:hello@terento\.app\?subject=Terento%20installation%20issue/);
   assert.equal((source.match(/data-umami-event-location="guide-hero"/g) || []).length, 1, locale + ": one guide download CTA");
-  const downloadButtons = [...source.matchAll(/<a class="download-action"[^>]*data-umami-event-location="guide-hero">([^<]+)<\/a>/g)];
+  // One primary button component everywhere (owner, round 3): icon + "Download for Mac".
+  const downloadButtons = [...source.matchAll(/<a class="download-action download-action--store"[^>]*data-umami-event-location="guide-hero"><svg class="download-action-icon"[\s\S]*?<\/svg><span>([^<]+)<\/span><\/a>/g)];
   assert.equal(downloadButtons.length, 1, locale + ": one rendered download button");
   for (const button of downloadButtons) assert.equal(button[1].trim(), downloadLabels[locale], locale + ": download button label");
-  assert.match(source, /<p class="guide-hero-action"><a class="download-action"[^>]*data-umami-event-location="guide-hero"/, locale + ": download CTA in the guide intro");
+  assert.match(source, /<p class="guide-hero-action"><a class="download-action download-action--store"[^>]*data-umami-event-location="guide-hero"/, locale + ": download CTA in the guide intro");
   // Site refresh (owner spec 2026-11-18): one closing .cta-band; its title is a <p>, never a heading.
   assert.equal((source.match(/data-umami-event-location="guide-bottom"/g) || []).length, 1, locale + ": one closing call to action");
   assert.match(source, /<div class="cta-band guide-cta-band"><div class="cta-band__copy"><p class="cta-band__title">/, locale + ": closing band title is a paragraph");

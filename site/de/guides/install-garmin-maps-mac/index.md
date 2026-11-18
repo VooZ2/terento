@@ -7,7 +7,7 @@ canonical: https://terento.app/de/guides/install-garmin-maps-mac/
 
 Terento installiert kostenlose OpenStreetMap-Karten oder deine eigene Kartendatei auf einer Garmin-Uhr mit Kartenunterstützung. Du kopierst selbst keine Dateien, und deine Garmin-Karten bleiben unverändert.
 
-[Herunterladen](https://terento.app/de/download/)
+[Für Mac herunterladen](https://terento.app/de/download/)
 
 Du nutzt Linux? [Installiere Karten aus dem Browser](https://terento.app/de/guides/install-garmin-maps-linux/).
 
@@ -84,4 +84,4 @@ Beende Terento und bewege es aus „Programme“ in den Papierkorb. Karten auf d
 
 Installiere deine erste Karte
 
-[Herunterladen](https://terento.app/de/download/)
+[Für Mac herunterladen](https://terento.app/de/download/)

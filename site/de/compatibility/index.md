@@ -5,7 +5,7 @@ canonical: https://terento.app/de/compatibility/
 
 # Kompatibilität von Garmin-Uhren und Edge
 
-Terento funktioniert mit Garmin-Uhren und Edge Fahrradcomputern, die Karten anzeigen können (Edge 130 und 130 Plus können das nicht). Unten stehen die genauen Modelle, auf denen schon jemand eine Karte mit Terento installiert hat. Die Liste wächst mit jeder geteilten Installation.
+Terento funktioniert mit Garmin-Uhren und Edge Fahrradcomputern, die Karten anzeigen können. Unten stehen die genauen Modelle, auf denen schon jemand eine Karte mit Terento installiert hat. Die Liste wächst mit jeder geteilten Installation.
 
 Wenn dein Modell fehlt, heißt das nicht, dass es nicht funktioniert. Vielleicht hat noch niemand eine erfolgreiche Installation damit geteilt.
 

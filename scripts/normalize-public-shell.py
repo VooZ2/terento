@@ -12,11 +12,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SHELL_VERSION = "20261105-copy-command-v1"
 PROVIDER_SCRIPT_VERSION = "20261026-osmapa-v1"
-STYLE_VERSION = "20261119-site-refresh-v2"
+STYLE_VERSION = "20261119-site-refresh-v3"
 IMAGE_VERSION = "20260912-app-screens-v2"
 LANGUAGE_VERSION = "20260926-static-shell-v1"
 COMPATIBILITY_LOCALES_VERSION = "20261119-compatibility-labels-v2"
-COMPATIBILITY_VERSION = "20261119-compatibility-cards-v2"
+COMPATIBILITY_VERSION = "20261119-compatibility-cards-v3"
 UMAMI_SCRIPT_VERSION = "20261114-umami-monitoring"
 PAGE_LANGUAGE_VERSION = "20261015-shared-page-language-v3"
 # Footer Web installer link: the public installer (launch 2026-10-29) on the

@@ -5,7 +5,7 @@ canonical: https://terento.app/it/compatibility/
 
 # Compatibilità smartwatch Garmin ed Edge
 
-Terento funziona con gli orologi Garmin e i ciclocomputer Edge che possono mostrare mappe (gli Edge 130 e 130 Plus non possono). Qui sotto trovi i modelli esatti su cui qualcuno ha già installato una mappa con Terento. L’elenco cresce con ogni installazione condivisa.
+Terento funziona con gli orologi Garmin e i ciclocomputer Edge che possono mostrare mappe. Qui sotto trovi i modelli esatti su cui qualcuno ha già installato una mappa con Terento. L’elenco cresce con ogni installazione condivisa.
 
 Se il tuo modello non c’è, non significa che non funzioni. Forse nessuno ha ancora condiviso un’installazione riuscita con quel modello.
 

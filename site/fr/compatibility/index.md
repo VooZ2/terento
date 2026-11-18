@@ -5,7 +5,7 @@ canonical: https://terento.app/fr/compatibility/
 
 # Compatibilité des montres et compteurs Edge Garmin
 
-Terento fonctionne avec les montres Garmin et les compteurs vélo Edge qui peuvent afficher des cartes (les Edge 130 et 130 Plus ne le peuvent pas). Voici les modèles exacts sur lesquels quelqu’un a déjà installé une carte avec Terento. La liste s’allonge à chaque installation partagée.
+Terento fonctionne avec les montres Garmin et les compteurs vélo Edge qui peuvent afficher des cartes. Voici les modèles exacts sur lesquels quelqu’un a déjà installé une carte avec Terento. La liste s’allonge à chaque installation partagée.
 
 L’absence de votre modèle ne veut pas dire qu’il ne fonctionne pas. Personne n’a peut-être encore partagé d’installation réussie avec ce modèle.
 

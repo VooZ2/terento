@@ -141,7 +141,7 @@
       .filter(Boolean)
       .join(", ");
     const imageUrl = row.imageUrl || FALLBACK_IMAGE_URL;
-    return `<article class="watch-card card card--media" data-device-type="${deviceType(row)}" aria-label="${escapeHtml(accessibleName)}"><div class="watch-card-image"><img data-remote-src="${escapeHtml(imageUrl)}" src="${escapeHtml(imageUrl)}" alt="" loading="lazy"></div><div class="watch-card-body"><h3>${escapeHtml(modelName)} <span class="watch-variant">${escapeHtml(variantLabel)}</span></h3><p class="watch-install-count">${escapeHtml(installLabel)}</p>${sourcesMarkup}<p class="watch-card-meta"><span class="watch-family">${escapeHtml(row.familyName || "Garmin")}</span>${latestInstallationMarkup}</p></div></article>`;
+    return `<article class="watch-card card card--media" data-device-type="${deviceType(row)}" aria-label="${escapeHtml(accessibleName)}"><div class="watch-card-image"><img data-remote-src="${escapeHtml(imageUrl)}" src="${escapeHtml(imageUrl)}" alt="" width="400" height="300" loading="lazy"></div><div class="watch-card-body"><h3>${escapeHtml(modelName)} <span class="watch-variant">${escapeHtml(variantLabel)}</span></h3><p class="watch-install-count">${escapeHtml(installLabel)}</p>${sourcesMarkup}<p class="watch-card-meta"><span class="watch-family">${escapeHtml(row.familyName || "Garmin")}</span>${latestInstallationMarkup}</p></div></article>`;
   }
 
   function matchesSuccessfulRange(row) {

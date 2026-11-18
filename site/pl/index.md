@@ -115,6 +115,8 @@ macOS 13 lub nowszy na Apple Silicon.
 
 [Pobierz na Maca](https://terento.app/pl/download/)
 
+[Także w Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-home&mt=8)
+
 ### Instalator w przeglądarce
 
 Podłącz zegarek Garmin kablem USB, wybierz mapy i zainstaluj je prosto z Chrome, Microsoft Edge, Opery lub Brave. Później tak samo je zaktualizujesz lub usuniesz.

@@ -7,7 +7,7 @@ canonical: https://terento.app/cs/guides/install-garmin-maps-edge-mac/
 
 Novější cyklopočítače Garmin Edge se na Macu nezobrazí jako disk, takže do nich nelze jednoduše zkopírovat mapový soubor. Terento nainstaluje bezplatné mapy OpenStreetMap nebo váš vlastní kompatibilní mapový soubor do cyklopočítačů Garmin Edge s podporou map, například Edge 540, 840 a 1050.
 
-[Stáhnout](https://terento.app/cs/download/)
+[Stáhnout pro Mac](https://terento.app/cs/download/)
 
 ## Co potřebujete
 
@@ -71,4 +71,4 @@ Starší modely, například Edge 1030 Plus a dřívější, se na Macu obvykle 
 
 Nainstalujte svou první mapu
 
-[Stáhnout](https://terento.app/cs/download/)
+[Stáhnout pro Mac](https://terento.app/cs/download/)

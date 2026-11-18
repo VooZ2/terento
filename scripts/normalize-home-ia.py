@@ -656,6 +656,14 @@ def normalize_home(source: str, path: Path, locale: str) -> str:
     values["hero_download_button"] = COMPONENTS["store_download"](
         copy["download_href"], html.escape(copy["hero_download"]), "hero-download-action",
         'data-umami-event="download-cta-click" data-umami-event-location="home-hero"')
+    values["mac_card_download_button"] = COMPONENTS["primary_action"](
+        copy["download_href"], html.escape(copy["hero_download"]), "",
+        'data-umami-event="download-cta-click" data-umami-event-location="home-section"')
+    # Apple allows one badge per layout (the hero has it): the Mac app card uses a text link.
+    store_href = f'{APP_STORE["listing_url"]}?pt={APP_STORE["provider_token"]}&ct=site-home&mt=8'
+    values["mac_card_store_link"] = (
+        f'<a class="text-link" href="{html.escape(store_href)}" data-umami-event="app-store-click" '
+        f'data-umami-event-location="home-mac-card">{html.escape(copy["app_store_link"])}</a>')
     values["manage_icon"] = COMPONENTS["icon"]("layers", "card-icon")
     values["manage_href"] = "/guides/install-garmin-maps-mac/" if locale == "en" else f"/{locale}/guides/install-garmin-maps-mac/"
     prefix = "" if locale == "en" else f"/{locale}"

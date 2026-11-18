@@ -533,10 +533,12 @@ h1 {
   font-weight: 600;
 }
 
+/* Block-styled links keep at least a 24px target (WCAG 2.5.8); inline links in text are exempt. */
 .text-link {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  min-height: 24px;
   color: var(--link-text);
   font-size: 15px;
   font-weight: 600;
@@ -644,7 +646,7 @@ h1 {
   min-height: 40px;
   padding: 7px 11px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--control-radius);
   background: var(--surface);
   color: var(--link-text);
   font-size: 13px;
@@ -2120,47 +2122,24 @@ details p {
   font-variant-numeric: tabular-nums;
 }
 
+/* "How this list works": a plain <details> like the FAQ items (text summary, chevron). */
 .compatibility-how {
-  width: fit-content;
   max-width: 760px;
   margin: 0 0 18px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface-muted);
+  border-top: 1px solid var(--border);
 }
 
 .compatibility-how summary {
-  min-height: 0;
-  padding: 10px 14px;
-  color: var(--graphite);
-  cursor: pointer;
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.compatibility-how summary::after,
-.compatibility-how[open] summary::after {
-  width: 7px;
-  height: 7px;
-  border-right: 1.5px solid currentColor;
-  border-bottom: 1.5px solid currentColor;
-  content: "";
-  font-size: 0;
-  transform: rotate(45deg) translateY(-2px);
-  transition: transform .16s ease;
-}
-
-.compatibility-how[open] summary::after {
-  transform: rotate(-135deg) translate(-2px, -1px);
+  min-height: 56px;
 }
 
 .compatibility-how summary:focus-visible {
   outline: 3px solid var(--focus-ring);
-  outline-offset: 1px;
+  outline-offset: 2px;
 }
 
 .compatibility-how-body {
-  padding: 2px 14px 14px;
+  padding: 0 0 20px;
 }
 
 #main-content .compatibility-how-body p {
@@ -3175,10 +3154,6 @@ details p {
 }
 
 @media (max-width: 430px) {
-  .compatibility-how {
-    width: 100%;
-  }
-
   .compatibility-status-row {
     grid-template-columns: 1fr;
     gap: 8px;
@@ -3702,39 +3677,9 @@ details p {
   .map-styles-v2-facts > div { grid-template-columns: minmax(0, 1fr); }
 }
 
-/* v2: install guides */
+/* v2: install guides. The guide switch is the shared .chips pill control (links, aria-current). */
 .guide-v2-switch {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 4px;
   margin: 0 0 28px;
-  padding: 4px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--surface);
-}
-
-.guide-v2-switch-link {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 8px 14px;
-  border-radius: 10px;
-  color: var(--graphite);
-  font: 600 15px/1.2 var(--font-ui);
-  text-decoration: none;
-}
-
-.guide-v2-switch-link:hover { background: var(--surface-muted); }
-
-.guide-v2-switch-link[aria-current="page"] {
-  background: var(--interactive);
-  color: var(--interactive-primary-text);
-}
-
-.guide-v2-switch-link:focus-visible {
-  outline: 3px solid var(--focus-ring);
-  outline-offset: 2px;
 }
 
 .guide-v2 .guide-lede,
@@ -3843,8 +3788,6 @@ details p {
 @media (max-width: 760px) {
   .guide-v2 .guide-step { grid-template-columns: 32px minmax(0, 1fr); gap: 0 14px; }
   .guide-v2 .guide-step h3 { margin-top: 2px; font-size: 22px; }
-  .guide-v2-switch { display: flex; }
-  .guide-v2-switch-link { flex: 1 1 auto; justify-content: center; }
 }
 
 /* One type scale for every public page. Desktop sizes are brand/DESIGN_TOKENS.json typography.scale
@@ -3907,6 +3850,7 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
    card/step titles (--type-item). */
 :root {
   --card-radius: 20px;
+  --control-radius: 10px;
   --card-pad: clamp(20px, 2.4vw, 32px);
   --grid-gap: clamp(12px, 1.6vw, 20px);
   --block-space: clamp(56px, 7vw, 96px);
@@ -4053,7 +3997,7 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
   height: 40px;
   min-height: 40px;
   padding: 0 16px;
-  border-radius: 10px;
+  border-radius: var(--control-radius);
   font-size: 15px;
   font-weight: 600;
   line-height: 20px;
@@ -4084,6 +4028,13 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
     flex-direction: column;
     align-items: center;
     gap: 10px;
+  }
+}
+
+/* Home hero on phones: the stacked button and badge line up with the hero text. */
+@media (max-width: 560px) {
+  .home-actions.store-actions {
+    align-items: flex-start;
   }
 }
 
@@ -4314,6 +4265,22 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
   border-color: var(--interactive);
 }
 
+a.chip {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+#main-content a.chip:hover {
+  text-decoration: none;
+}
+
+.chip:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.chip[aria-current="page"],
 .chip[aria-pressed="true"] {
   border-color: var(--interactive);
   background: var(--interactive);
@@ -4492,13 +4459,31 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
   font-size: 15px;
 }
 
+/* Mac app and web installer cards: same height, actions at the bottom. */
+.home-way .home-way-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding-top: 16px;
+}
+
+.home-way .home-way-actions p {
+  margin: 0;
+}
+
 /* Compatibility (scripts/build-compatibility-pages.py). */
 .compatibility-hero.page-hero {
   padding: clamp(16px, 2.5vw, 32px) 0 clamp(24px, 3vw, 40px);
 }
 
-.compatibility-hero-copy {
+.compatibility-hero-copy.card {
   max-width: none;
+  padding: clamp(24px, 4vw, 56px);
+}
+
+#main-content .compatibility-hero-copy .hero-lede {
+  max-width: 68ch;
 }
 
 #main-content .compatibility-hero h1 {
@@ -4510,23 +4495,6 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
   color: var(--muted-text);
   font-size: 17px;
   line-height: 1.55;
-}
-
-.compatibility-hero-devices {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  gap: clamp(8px, 3vw, 32px);
-}
-
-.compatibility-hero-devices .home-watch {
-  width: min(58%, 300px);
-  margin: 0;
-}
-
-.compatibility-hero-devices .home-edge-screen {
-  width: min(28%, 150px);
-  margin: 0 0 6%;
 }
 
 .compatibility-chips {
@@ -4823,22 +4791,39 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
   padding: clamp(28px, 4.5vw, 64px);
 }
 
-.about-title-row {
+#main-content .about-story-card h1 {
+  margin: 0 0 clamp(20px, 2.5vw, 28px);
+}
+
+.about-maker {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   margin-bottom: clamp(24px, 3vw, 32px);
 }
 
-.about-title-icon {
+.about-maker-photo {
   flex: none;
-  width: 20px;
-  height: 20px;
-  color: var(--accent-text);
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
-#main-content .about-title-row h1 {
+#main-content .about-maker-text {
+  display: flex;
+  flex-direction: column;
   margin: 0;
+}
+
+.about-maker-name {
+  color: var(--graphite);
+  font: 600 17px/1.4 var(--font-ui);
+}
+
+.about-maker-role {
+  color: var(--muted-text);
+  font: 400 15px/1.4 var(--font-ui);
 }
 
 .about-story-copy {
@@ -4918,14 +4903,39 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
   font-weight: 600;
 }
 
-.about-v3 .about-bullet-list .text-link,
-.about-v2-mentions .text-link {
+.about-v3 .about-bullet-list .text-link {
   display: inline;
   font-size: inherit;
 }
 
-.about-v2-mentions .about-bullet-list {
-  max-width: 68ch;
+/* "Featured on": one card per mention, two columns from 900px. */
+.about-mentions {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.about-mentions > .about-mention {
+  grid-column: span 12;
+}
+
+@media (min-width: 900px) {
+  .about-mentions > .about-mention {
+    grid-column: span 6;
+  }
+}
+
+#main-content .about-mention-source {
+  margin: 0 0 6px;
+  color: var(--muted-text);
+  font: 600 13px/1.4 var(--font-ui);
+  letter-spacing: 0.02em;
+}
+
+#main-content .about-mention .text-link {
+  display: inline;
+  font-size: 17px;
+  line-height: 1.45;
 }
 
 .about-download-link {

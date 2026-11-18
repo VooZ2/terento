@@ -5,7 +5,7 @@ canonical: https://terento.app/pl/compatibility/
 
 # Zgodność zegarków Garmin i liczników Edge
 
-Terento działa z zegarkami Garmin i licznikami rowerowymi Edge, które potrafią wyświetlać mapy (Edge 130 i 130 Plus tego nie potrafią). Poniżej są dokładne modele, na których ktoś już zainstalował mapę przez Terento. Lista rośnie z każdą udostępnioną instalacją.
+Terento działa z zegarkami Garmin i licznikami rowerowymi Edge, które potrafią wyświetlać mapy. Poniżej są dokładne modele, na których ktoś już zainstalował mapę przez Terento. Lista rośnie z każdą udostępnioną instalacją.
 
 Brak Twojego modelu nie oznacza, że nie zadziała. Być może nikt jeszcze nie udostępnił z niego udanej instalacji.
 

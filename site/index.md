@@ -115,6 +115,8 @@ macOS 13 or later on Apple Silicon.
 
 [Download for Mac](https://terento.app/download/)
 
+[Also on the Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-home&mt=8)
+
 ### Web installer
 
 Connect your Garmin with a USB cable, choose maps and install them straight from Chrome, Microsoft Edge, Opera or Brave. Update or remove them later the same way.

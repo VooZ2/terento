@@ -115,6 +115,8 @@ macOS 13 nebo novější na Apple Silicon.
 
 [Stáhnout pro Mac](https://terento.app/cs/download/)
 
+[Také v Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-home&mt=8)
+
 ### Webový instalátor
 
 Připojte hodinky Garmin kabelem USB, vyberte mapy a nainstalujte je přímo z Chrome, Microsoft Edge, Opery nebo Brave. Později je stejně aktualizujete nebo odeberete.

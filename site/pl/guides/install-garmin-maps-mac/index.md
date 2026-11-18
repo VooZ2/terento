@@ -7,7 +7,7 @@ canonical: https://terento.app/pl/guides/install-garmin-maps-mac/
 
 Terento instaluje darmowe mapy OpenStreetMap albo Twój własny plik mapy na zegarku Garmin z obsługą map. Nie kopiujesz żadnych plików samodzielnie, a mapy Garmin pozostają bez zmian.
 
-[Pobierz](https://terento.app/pl/download/)
+[Pobierz na Maca](https://terento.app/pl/download/)
 
 Używasz Linuksa? [Zainstaluj mapy z przeglądarki](https://terento.app/pl/guides/install-garmin-maps-linux/).
 
@@ -84,4 +84,4 @@ Zamknij Terento i przenieś je z folderu Aplikacje do Kosza. Mapy na zegarku zos
 
 Zainstaluj pierwszą mapę
 
-[Pobierz](https://terento.app/pl/download/)
+[Pobierz na Maca](https://terento.app/pl/download/)

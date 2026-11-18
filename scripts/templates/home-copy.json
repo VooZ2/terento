@@ -65,7 +65,8 @@
     "trust_label": "Terento in numbers",
     "manage_link": "Read the Mac guide",
     "safety_link": "See the source code",
-    "hero_browser_note": "Mac and Linux only, not Windows or phones."
+    "hero_browser_note": "Mac and Linux only, not Windows or phones.",
+    "app_store_link": "Also on the Mac App Store"
   },
   "de": {
     "hero_download": "Für Mac herunterladen",
@@ -133,7 +134,8 @@
     "trust_label": "Terento in Zahlen",
     "manage_link": "Zur Mac-Anleitung",
     "safety_link": "Zum Quellcode",
-    "hero_browser_note": "Nur Mac und Linux, nicht Windows oder Smartphones."
+    "hero_browser_note": "Nur Mac und Linux, nicht Windows oder Smartphones.",
+    "app_store_link": "Auch im Mac App Store"
   },
   "fr": {
     "hero_download": "Télécharger pour Mac",
@@ -201,7 +203,8 @@
     "trust_label": "Terento en chiffres",
     "manage_link": "Lire le guide Mac",
     "safety_link": "Voir le code source",
-    "hero_browser_note": "Mac et Linux uniquement, pas Windows ni les téléphones."
+    "hero_browser_note": "Mac et Linux uniquement, pas Windows ni les téléphones.",
+    "app_store_link": "Aussi sur le Mac App Store"
   },
   "pl": {
     "hero_download": "Pobierz na Maca",
@@ -269,7 +272,8 @@
     "trust_label": "Terento w liczbach",
     "manage_link": "Przeczytaj poradnik dla Maca",
     "safety_link": "Zobacz kod źródłowy",
-    "hero_browser_note": "Tylko Mac i Linux, nie Windows ani telefony."
+    "hero_browser_note": "Tylko Mac i Linux, nie Windows ani telefony.",
+    "app_store_link": "Także w Mac App Store"
   },
   "cs": {
     "hero_download": "Stáhnout pro Mac",
@@ -337,7 +341,8 @@
     "trust_label": "Terento v číslech",
     "manage_link": "Přečíst návod pro Mac",
     "safety_link": "Zobrazit zdrojový kód",
-    "hero_browser_note": "Jen Mac a Linux, ne Windows ani telefony."
+    "hero_browser_note": "Jen Mac a Linux, ne Windows ani telefony.",
+    "app_store_link": "Také v Mac App Store"
   },
   "it": {
     "hero_download": "Scarica per Mac",
@@ -405,6 +410,7 @@
     "trust_label": "Terento in numeri",
     "manage_link": "Leggi la guida per Mac",
     "safety_link": "Vedi il codice sorgente",
-    "hero_browser_note": "Solo Mac e Linux, non Windows né telefoni."
+    "hero_browser_note": "Solo Mac e Linux, non Windows né telefoni.",
+    "app_store_link": "Anche sul Mac App Store"
   }
 }

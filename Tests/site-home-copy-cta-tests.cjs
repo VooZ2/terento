@@ -119,7 +119,7 @@ const anchorFor = (page, className) => {
 
 for (const [locale, expected] of locales) {
   const page = pageFor(locale);
-  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20261119-site-refresh-v2">/, `${locale}: Home stylesheet cache bust`);
+  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20261119-site-refresh-v3">/, `${locale}: Home stylesheet cache bust`);
   assert.match(page, /<script defer src="\/home-features\.js\?v=20261105-home-map-switch-v4"><\/script>/, `${locale}: Home feature script cache bust`);
   assert.match(page, /installing-maps-1600\.png\?v=20260912-app-screens-v2/, `${locale}: installation screenshot cache bust`);
   const heroDevice = page.match(/<figure class="home-device" data-map-switch>[\s\S]*?<\/figure>/)?.[0];
@@ -280,7 +280,8 @@ assert.ok(heroAction, "missing Hero Download CTA sizing block");
 assert.match(heroAction[1], /\bheight:\s*40px/);
 assert.match(heroAction[1], /width:\s*auto/);
 assert.match(heroAction[1], /padding:\s*0 16px/);
-assert.match(heroAction[1], /border-radius:\s*10px/);
+assert.match(heroAction[1], /border-radius:\s*var\(--control-radius\)/);
+assert.match(styles, /--control-radius:\s*10px/);
 assert.match(heroAction[1], /font-size:\s*15px/);
 assert.match(heroAction[1], /font-weight:\s*600/);
 assert.doesNotMatch(heroAction[1], /box-shadow/);
@@ -322,3 +323,14 @@ assert.match(englishHome, /Add lines that show elevation and help you read slope
 assert.match(styles, /grid-auto-columns: min\(90%, 420px\)/);
 assert.match(styles, /\.provider-cards\s*\{[^}]*max-width: 1300px/s);
 assert.match(styles, /overflow-x: auto/);
+
+// Round 3 (owner 2026-11-19): one App Store badge per layout. The Mac app card uses the shared
+// primary button plus a text link to the listing; both cards keep their actions at the bottom.
+for (const [locale] of locales) {
+  const html = pageFor(locale);
+  assert.equal((html.match(/class="app-store-badge /g) || []).length, 1, `${locale}: one App Store badge on Home`);
+  const macCard = html.match(/<article class="card col-6 home-way">[\s\S]*?<\/article>/)[0];
+  assert.match(macCard, /<div class="card-action home-way-actions"><a class="download-action download-action--store" href="[^"]+" data-umami-event="download-cta-click" data-umami-event-location="home-section">/);
+  assert.match(macCard, /<a class="text-link" href="https:\/\/apps\.apple\.com\/[^"]+ct=site-home[^"]*" data-umami-event="app-store-click" data-umami-event-location="home-mac-card">[^<]+<\/a>/);
+}
+assert.match(styles, /\.home-actions\.store-actions\s*\{\s*align-items:\s*flex-start;/, "Home hero buttons line up with the text on phones");

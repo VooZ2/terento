@@ -7,7 +7,7 @@ canonical: https://terento.app/pl/guides/install-garmin-maps-edge-mac/
 
 Nowsze liczniki rowerowe Garmin Edge nie pojawiają się na Macu jako dysk, więc nie da się po prostu skopiować na nie pliku mapy. Terento instaluje darmowe mapy OpenStreetMap albo Twój własny zgodny plik mapy na licznikach rowerowych Garmin Edge z obsługą map, takich jak Edge 540, 840 i 1050.
 
-[Pobierz](https://terento.app/pl/download/)
+[Pobierz na Maca](https://terento.app/pl/download/)
 
 ## Czego potrzebujesz
 
@@ -71,4 +71,4 @@ Starsze modele, takie jak Edge 1030 Plus i wcześniejsze, zwykle pojawiają się
 
 Zainstaluj pierwszą mapę
 
-[Pobierz](https://terento.app/pl/download/)
+[Pobierz na Maca](https://terento.app/pl/download/)

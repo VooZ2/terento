@@ -16,7 +16,7 @@
     ]
   },
   "site/about/index.html": {
-    "h1": "Hi, I’m Gediminas",
+    "h1": "About Terento",
     "jsonld_types": [
       "AboutPage",
       "BreadcrumbList",
@@ -52,7 +52,7 @@
     ]
   },
   "site/de/about/index.html": {
-    "h1": "Hallo, ich bin Gediminas",
+    "h1": "Über Terento",
     "jsonld_types": [
       "AboutPage",
       "BreadcrumbList",
@@ -88,7 +88,7 @@
     ]
   },
   "site/fr/about/index.html": {
-    "h1": "Bonjour, je suis Gediminas",
+    "h1": "À propos de Terento",
     "jsonld_types": [
       "AboutPage",
       "BreadcrumbList",
@@ -124,7 +124,7 @@
     ]
   },
   "site/pl/about/index.html": {
-    "h1": "Cześć, jestem Gediminas",
+    "h1": "O Terento",
     "jsonld_types": [
       "AboutPage",
       "BreadcrumbList",
@@ -160,7 +160,7 @@
     ]
   },
   "site/cs/about/index.html": {
-    "h1": "Ahoj, jsem Gediminas",
+    "h1": "O Terento",
     "jsonld_types": [
       "AboutPage",
       "BreadcrumbList",
@@ -196,7 +196,7 @@
     ]
   },
   "site/it/about/index.html": {
-    "h1": "Ciao, sono Gediminas",
+    "h1": "Informazioni su Terento",
     "jsonld_types": [
       "AboutPage",
       "BreadcrumbList",

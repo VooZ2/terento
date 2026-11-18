@@ -31,7 +31,7 @@ IMAGE_VERSION = "20260912-app-screens-v2"
 READING_STATE_VERSION = "20260902-reading-state"
 UMAMI_SCRIPT_VERSION = "20261114-umami-monitoring"
 SHELL_VERSION = "20260905-in-page-language-v1"
-STYLE_VERSION = "20261119-site-refresh-v2"
+STYLE_VERSION = "20261119-site-refresh-v3"
 LANGUAGE_VERSION = "20260905-language-selector-full-name-v1"
 SOCIAL_IMAGE = "/assets/social/terento-og.png"
 EMAIL_ADDRESS = "hello@terento.app"
@@ -353,24 +353,27 @@ GUIDE_CTA_TITLE = {
 }
 
 GUIDE_LINK_RE = re.compile(r"\[([^\]]+)\]\(([a-z0-9/#-]+)\)")
-# Switch labels between the two Mac app guides (real links, not tabs).
+# Guide switch (same pill chips as the Compatibility filters): real links to the three
+# install guides, never tabs. Linux has the same label everywhere.
 GUIDE_SWITCH = {
-    "en": ("Choose your Garmin", "Garmin watch", "Garmin Edge"),
-    "de": ("Wähle dein Garmin", "Garmin-Uhr", "Garmin Edge"),
-    "fr": ("Choisissez votre Garmin", "Montre Garmin", "Garmin Edge"),
-    "pl": ("Wybierz swój Garmin", "Zegarek Garmin", "Garmin Edge"),
-    "cs": ("Vyberte svůj Garmin", "Hodinky Garmin", "Garmin Edge"),
-    "it": ("Scegli il tuo Garmin", "Orologio Garmin", "Garmin Edge"),
+    "en": ("Choose a guide", "Garmin watch", "Garmin Edge"),
+    "de": ("Anleitung wählen", "Garmin-Uhr", "Garmin Edge"),
+    "fr": ("Choisir un guide", "Montre Garmin", "Garmin Edge"),
+    "pl": ("Wybierz poradnik", "Zegarek Garmin", "Garmin Edge"),
+    "cs": ("Vyberte návod", "Hodinky Garmin", "Garmin Edge"),
+    "it": ("Scegli una guida", "Orologio Garmin", "Garmin Edge"),
 }
+# The Mac guides' primary button says the same as the Home hero ("Download for Mac").
+HOME_COPY = json.loads((ROOT / "scripts/templates/home-copy.json").read_text(encoding="utf-8"))
 # One template renders all three install guides. data-page values and Umami
 # location prefixes are contracts used by the shell/metadata passes and tests.
 GUIDES = {
     "guide": {"slug": GUIDE_SLUG, "copy": WATCH_COPY, "published": PUBLISHED, "modified": REVIEWED,
-              "cta": ("download/", "download-cta-click"), "switch": True, "troubleshooting_link": True},
+              "cta": ("download/", "download-cta-click"), "troubleshooting_link": True},
     "edge-guide": {"slug": EDGE_SLUG, "copy": EDGE_COPY, "published": EDGE_PUBLISHED, "modified": EDGE_REVIEWED,
-                   "cta": ("download/", "download-cta-click"), "switch": True, "troubleshooting_link": True},
+                   "cta": ("download/", "download-cta-click"), "troubleshooting_link": True},
     "linux-guide": {"slug": LINUX_SLUG, "copy": LINUX_COPY, "published": LINUX_PUBLISHED, "modified": LINUX_REVIEWED,
-                    "cta": ("install/", "web-installer-link-click"), "switch": False, "troubleshooting_link": False},
+                    "cta": ("install/", "web-installer-link-click"), "troubleshooting_link": False},
 }
 
 
@@ -440,12 +443,24 @@ def guide_switch(page: str, locale: str) -> str:
     label, watch, edge = GUIDE_SWITCH[locale]
     current = ' aria-current="page"'
     links = "".join(
-        f'<a class="guide-v2-switch-link" href="{localized_path(locale, GUIDES[target]["slug"])}"'
+        f'<a class="chip guide-v2-switch-link" href="{localized_path(locale, GUIDES[target]["slug"])}"'
         f'{current if target == page else ""} data-umami-event="guide-link-click" '
         f'data-umami-event-location="{page}-switch">{esc(name)}</a>'
-        for target, name in (("guide", watch), ("edge-guide", edge))
+        for target, name in (("guide", watch), ("edge-guide", edge), ("linux-guide", "Linux"))
     )
-    return f'<nav class="guide-v2-switch" aria-label="{esc(label)}">{links}</nav>'
+    return f'<nav class="chips guide-v2-switch" aria-label="{esc(label)}">{links}</nav>'
+
+
+def guide_action(page: str, locale: str, where: str) -> str:
+    """The guide's primary button: Download for Mac, or Open the web installer on Linux."""
+    route, event = GUIDES[page]["cta"]
+    copy = GUIDES[page]["copy"][locale]
+    label = copy["cta"] if route == "install/" else HOME_COPY[locale]["hero_download"]
+    return COMPONENTS["primary_action"](
+        localized_path(locale, route), esc(label), "",
+        f'data-umami-event="{event}" data-umami-event-location="{page}-{where}"',
+        "globe" if route == "install/" else "download",
+    )
 
 
 def render_guide(page: str, locale: str) -> str:
@@ -453,7 +468,6 @@ def render_guide(page: str, locale: str) -> str:
     guide = GUIDES[page]
     copy = guide["copy"][locale]
     canonical = f"{BASE_URL}{localized_path(locale, guide['slug'])}"
-    cta_route, cta_event = guide["cta"]
     steps = []
     for index, step in enumerate(copy["steps"], start=1):
         command = (
@@ -513,7 +527,7 @@ def render_guide(page: str, locale: str) -> str:
     )
     cta_band = COMPONENTS["cta_band"](
         esc(GUIDE_CTA_TITLE[locale]), "",
-        f'<a class="download-action" href="{localized_path(locale, cta_route)}" data-umami-event="{cta_event}" data-umami-event-location="{page}-bottom">{esc(copy["cta"])}</a>',
+        guide_action(page, locale, "bottom"),
         "guide-cta-band",
     )
     needs_note = f'\n            <p>{guide_text(locale, copy["needs_note"], f"{page}-preflight")}</p>' if copy.get("needs_note") else ""
@@ -550,10 +564,10 @@ def render_guide(page: str, locale: str) -> str:
       <article class="guide-article guide-v2">
         <header class="guide-intro page-hero">
           <div class="shell">
-            {guide_switch(page, locale) if guide["switch"] else ""}
+            {guide_switch(page, locale)}
             <h1>{esc(copy["h1"])}</h1>
             <p class="guide-lede">{esc(copy["intro"])}</p>
-            <p class="guide-hero-action"><a class="download-action" href="{localized_path(locale, cta_route)}" data-umami-event="{cta_event}" data-umami-event-location="{page}-hero">{esc(copy["cta"])}</a></p>{other}
+            <p class="guide-hero-action">{guide_action(page, locale, "hero")}</p>{other}
           </div>
         </header>
 

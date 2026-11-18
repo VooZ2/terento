@@ -115,6 +115,8 @@ macOS 13 oder neuer auf Apple Silicon.
 
 [Für Mac herunterladen](https://terento.app/de/download/)
 
+[Auch im Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-home&mt=8)
+
 ### Web-Installer
 
 Verbinde deine Garmin-Uhr per USB-Kabel, wähle Karten und installiere sie direkt aus Chrome, Microsoft Edge, Opera oder Brave. Später aktualisierst oder entfernst du sie genauso.

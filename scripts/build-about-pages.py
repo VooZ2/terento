@@ -19,7 +19,7 @@ REDDIT_URL = "https://www.reddit.com/user/MrDonas/"
 BASE_URL = "https://terento.app"
 ABOUT_SLUG = "about/"
 SHELL_VERSION = "20260905-in-page-language-v1"
-STYLE_VERSION = "20261119-site-refresh-v2"
+STYLE_VERSION = "20261119-site-refresh-v3"
 UMAMI_SCRIPT_VERSION = "20261114-umami-monitoring"
 SOCIAL_IMAGE = "/assets/social/terento-og.png"
 EMAIL_ADDRESS = "hello@terento.app"
@@ -51,7 +51,8 @@ COPY = {
         "title": "About Terento: Free, Open-Source Garmin Maps",
         "description": "Why a Garmin hiker built Terento: a free, open-source way to get free maps onto Garmin watches and Edge bike computers. No account, no fees.",
         "skip": "Skip to content",
-        "h1": "Hi, I’m Gediminas",
+        "h1": "About Terento",
+        "role": "Maker of Terento",
         "story": [
             "I use a Garmin fēnix. On vacation I like to plan hikes to get to know a country, especially in the mountains of Europe. Before each trip, I wanted maps on my watch. On a Mac, that meant connecting the watch, searching how to add maps, finding them, downloading them and copying them over.",
             "I built Terento to make that simple: connect, install, done.",
@@ -86,14 +87,14 @@ COPY = {
         "maps": "Maps",
         "mentions_heading": "Featured on",
         "mentions_intro": "Thank you to the websites and reviewers who have tried, featured or recommended Terento.",
-        "mention_item": "{source}: {title}",
         "video": "video",
     },
     "de": {
         "title": "Über Terento: kostenlose Open-Source-Garmin-Karten",
         "description": "Warum ein Garmin-Wanderer Terento gebaut hat: ein kostenloser, offener Weg, freie Karten auf Garmin-Uhren und Edge-Radcomputer zu bringen. Ohne Konto.",
         "skip": "Zum Inhalt springen",
-        "h1": "Hallo, ich bin Gediminas",
+        "h1": "Über Terento",
+        "role": "Macher von Terento",
         "story": [
             "Ich nutze eine Garmin fēnix. Im Urlaub plane ich gern Wanderungen, um ein Land kennenzulernen, besonders in den Bergen Europas. Vor jeder Reise wollte ich Karten auf meiner Uhr haben. Auf dem Mac hieß das: die Uhr anschließen, suchen, wie man Karten hinzufügt, sie finden, herunterladen und auf die Uhr kopieren.",
             "Ich habe Terento gebaut, um das einfach zu machen: verbinden, installieren, fertig.",
@@ -128,14 +129,14 @@ COPY = {
         "maps": "Karten",
         "mentions_heading": "Vorgestellt auf",
         "mentions_intro": "Danke an die Websites und Tester, die Terento ausprobiert, vorgestellt oder empfohlen haben.",
-        "mention_item": "{source}: {title}",
         "video": "Video",
     },
     "fr": {
         "title": "À propos de Terento : cartes Garmin gratuites et libres",
         "description": "Pourquoi un randonneur Garmin a créé Terento : un moyen gratuit et open source d’installer des cartes libres sur montres et compteurs Edge Garmin.",
         "skip": "Aller au contenu",
-        "h1": "Bonjour, je suis Gediminas",
+        "h1": "À propos de Terento",
+        "role": "Créateur de Terento",
         "story": [
             "J’utilise une Garmin fēnix. En vacances, j’aime préparer des randonnées pour découvrir un pays, surtout dans les montagnes d’Europe. Avant chaque voyage, je voulais des cartes sur ma montre. Sur un Mac, il fallait brancher la montre, chercher comment ajouter des cartes, les trouver, les télécharger puis les copier sur la montre.",
             "J’ai créé Terento pour rendre tout cela simple : connecter, installer, terminé.",
@@ -170,14 +171,14 @@ COPY = {
         "maps": "Cartes",
         "mentions_heading": "Présenté sur",
         "mentions_intro": "Merci aux sites et aux testeurs qui ont essayé, présenté ou recommandé Terento.",
-        "mention_item": "{source} : {title}",
         "video": "vidéo",
     },
     "pl": {
         "title": "O Terento: darmowe mapy open source na Garmina",
         "description": "Dlaczego turysta z Garminem stworzył Terento: darmowy, otwarty sposób na wgranie darmowych map na zegarki Garmin i liczniki rowerowe Edge. Bez konta.",
         "skip": "Przejdź do treści",
-        "h1": "Cześć, jestem Gediminas",
+        "h1": "O Terento",
+        "role": "Twórca Terento",
         "story": [
             "Używam zegarka Garmin fēnix. Na wakacjach lubię planować wędrówki, żeby poznać dany kraj, zwłaszcza w górach Europy. Przed każdym wyjazdem chciałem mieć mapy na zegarku. Na Macu oznaczało to podłączenie zegarka, szukanie, jak dodać mapy, znalezienie ich, pobranie i skopiowanie na zegarek.",
             "Zrobiłem Terento, żeby to było proste: połącz, zainstaluj, gotowe.",
@@ -212,14 +213,14 @@ COPY = {
         "maps": "Mapy",
         "mentions_heading": "Pisali o Terento",
         "mentions_intro": "Dziękuję serwisom i recenzentom, którzy wypróbowali, opisali lub polecili Terento.",
-        "mention_item": "{source}: {title}",
         "video": "wideo",
     },
     "cs": {
         "title": "O Terento: bezplatné open-source mapy pro Garmin",
         "description": "Proč turista s Garminem vytvořil Terento: bezplatný a otevřený způsob, jak dostat mapy zdarma do hodinek Garmin a cyklopočítačů Edge. Bez účtu.",
         "skip": "Přejít k obsahu",
-        "h1": "Ahoj, jsem Gediminas",
+        "h1": "O Terento",
+        "role": "Tvůrce Terento",
         "story": [
             "Používám hodinky Garmin fēnix. Na dovolené rád plánuji túry, abych poznal zemi, hlavně v evropských horách. Před každou cestou jsem chtěl mít mapy v hodinkách. Na Macu to znamenalo připojit hodinky, hledat, jak přidat mapy, najít je, stáhnout a zkopírovat do hodinek.",
             "Terento jsem vytvořil, aby to bylo jednoduché: připojit, nainstalovat, hotovo.",
@@ -254,14 +255,14 @@ COPY = {
         "maps": "Mapy",
         "mentions_heading": "Psali o Terento",
         "mentions_intro": "Děkuji webům a recenzentům, kteří Terento vyzkoušeli, představili nebo doporučili.",
-        "mention_item": "{source}: {title}",
         "video": "video",
     },
     "it": {
         "title": "Informazioni su Terento: mappe Garmin gratuite e libere",
         "description": "Perché un escursionista con Garmin ha creato Terento: un modo gratuito e open source per mettere mappe libere su orologi Garmin e ciclocomputer Edge.",
         "skip": "Vai al contenuto",
-        "h1": "Ciao, sono Gediminas",
+        "h1": "Informazioni su Terento",
+        "role": "Creatore di Terento",
         "story": [
             "Uso un Garmin fēnix. In vacanza mi piace pianificare escursioni per conoscere un paese, soprattutto sulle montagne d’Europa. Prima di ogni viaggio volevo le mappe sull’orologio. Su un Mac significava collegare l’orologio, cercare come aggiungere le mappe, trovarle, scaricarle e copiarle sull’orologio.",
             "Ho creato Terento per rendere tutto semplice: collega, installa, fatto.",
@@ -296,7 +297,6 @@ COPY = {
         "maps": "Mappe",
         "mentions_heading": "In evidenza su",
         "mentions_intro": "Grazie ai siti e ai recensori che hanno provato, presentato o consigliato Terento.",
-        "mention_item": "{source}: {title}",
         "video": "video",
     },
 }
@@ -345,16 +345,29 @@ def isnt_item(text: str, links: dict[str, str]) -> str:
     return f"<strong>{with_links(lead, links)}.</strong> {with_links(rest, links)}"
 
 
-def mention_item(locale: str, copy: dict[str, object], mention: dict[str, str]) -> str:
-    """One list entry: the source name, then the original title as the link."""
+def mention_card(locale: str, copy: dict[str, object], mention: dict[str, str]) -> str:
+    """One "Featured on" card: the source as a small label, the original title as the link."""
     assert mention["kind"] in ("article", "video"), f"unknown mention kind: {mention['kind']}"
     assert mention["url"].startswith("https://"), f"mention URL must be https: {mention['url']}"
     source = esc(mention["source"])
     if mention["kind"] == "video":
         source += f' ({esc(copy["video"])})'
     language = "" if locale == MENTION_LANGUAGE else f' lang="{MENTION_LANGUAGE}"'
-    title = f'<a class="text-link" href="{esc(mention["url"])}"{language}>{esc(mention["title"])}</a>'
-    return esc(copy["mention_item"]).replace("{source}", source).replace("{title}", title)
+    return (f'<li class="card about-mention"><p class="about-mention-source">{source}</p>'
+            f'<a class="text-link" href="{esc(mention["url"])}"{language}>{esc(mention["title"])}</a></li>')
+
+
+# Optional round portrait: rendered only when the owner adds this file (no placeholder).
+PORTRAIT = ROOT / "site/assets/about/gediminas.jpg"
+
+
+def maker_row(copy: dict[str, object]) -> str:
+    photo = ""
+    if PORTRAIT.is_file():
+        photo = ('<img class="about-maker-photo" src="/assets/about/gediminas.jpg" alt="Gediminas" '
+                 'width="96" height="96" loading="eager" decoding="async">')
+    return (f'<div class="about-maker">{photo}<p class="about-maker-text"><span class="about-maker-name">Gediminas</span>'
+            f'<span class="about-maker-role">{esc(copy["role"])}</span></p></div>')
 
 
 def about_json_ld(locale: str) -> str:
@@ -388,7 +401,7 @@ def render(locale: str, copy: dict[str, object]) -> str:
     story = "\n".join(f'            <p>{esc(paragraph)}</p>' for paragraph in copy["story"])
     is_items = "\n".join(f'              <li>{with_links(item, links)}</li>' for item in copy["is_items"])
     isnt_items = "\n".join(f'              <li>{isnt_item(item, links)}</li>' for item in copy["isnt_items"])
-    mentions = "\n".join(f'            <li>{mention_item(locale, copy, mention)}</li>' for mention in MENTIONS)
+    mentions = "\n".join(f'            {mention_card(locale, copy, mention)}' for mention in MENTIONS)
     social = f'''          <div class="card about-socials">
             <p class="about-social-label">{esc(copy["contact"])}</p>
             <div class="about-social-links">
@@ -447,7 +460,8 @@ def render(locale: str, copy: dict[str, object]) -> str:
       <section class="block about-hero" aria-labelledby="about-title">
         <div class="shell grid">
           <div class="card about-story-card">
-            <div class="about-title-row">{COMPONENTS["icon"]("mountain", "about-title-icon")}<h1 id="about-title">{esc(copy["h1"])}</h1></div>
+            <h1 id="about-title">{esc(copy["h1"])}</h1>
+            {maker_row(copy)}
             <div class="about-story-copy">
 {story}
             </div>
@@ -471,7 +485,7 @@ def render(locale: str, copy: dict[str, object]) -> str:
       <section class="block about-v2-mentions" aria-labelledby="about-mentions-title">
         <div class="shell">
           <div class="section-head"><h2 id="about-mentions-title">{esc(copy["mentions_heading"])}</h2><p>{esc(copy["mentions_intro"])}</p></div>
-          <ul class="about-bullet-list">
+          <ul class="grid about-mentions">
 {mentions}
           </ul>
           <p class="about-download-link"><a class="text-link" href="{localized_path(locale, 'download/')}" data-umami-event="download-cta-click" data-umami-event-location="about-bottom">{esc(DOWNLOAD_COPY[locale]["h1"])}</a></p>

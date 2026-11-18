@@ -7,7 +7,7 @@ canonical: https://terento.app/cs/guides/install-garmin-maps-mac/
 
 Terento nainstaluje bezplatné mapy OpenStreetMap nebo váš vlastní mapový soubor do hodinek Garmin s podporou map. Sami nekopírujete žádné soubory a mapy od Garminu zůstanou beze změny.
 
-[Stáhnout](https://terento.app/cs/download/)
+[Stáhnout pro Mac](https://terento.app/cs/download/)
 
 Používáte Linux? [Nainstalujte mapy z prohlížeče](https://terento.app/cs/guides/install-garmin-maps-linux/).
 
@@ -84,4 +84,4 @@ Ukončete Terento a přesuňte ho ze složky Aplikace do koše. Mapy v hodinkác
 
 Nainstalujte svou první mapu
 
-[Stáhnout](https://terento.app/cs/download/)
+[Stáhnout pro Mac](https://terento.app/cs/download/)

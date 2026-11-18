@@ -7,7 +7,7 @@ canonical: https://terento.app/guides/install-garmin-maps-edge-mac/
 
 Newer Garmin Edge bike computers don’t show up on a Mac as a drive, so you can’t simply copy a map file to them. Terento installs free OpenStreetMap maps, or your own compatible map file, on Garmin Edge bike computers with map support, such as Edge 540, 840 and 1050.
 
-[Download](https://terento.app/download/)
+[Download for Mac](https://terento.app/download/)
 
 ## What you need
 
@@ -71,4 +71,4 @@ Older models, such as the Edge 1030 Plus and earlier, usually show up on a Mac a
 
 Install your first map
 
-[Download](https://terento.app/download/)
+[Download for Mac](https://terento.app/download/)

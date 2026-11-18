@@ -7,7 +7,7 @@ canonical: https://terento.app/fr/guides/install-garmin-maps-edge-mac/
 
 Les compteurs vélo Garmin Edge récents n’apparaissent pas comme un disque sur un Mac : impossible d’y copier simplement un fichier de carte. Terento installe des cartes OpenStreetMap gratuites, ou votre propre fichier de carte compatible, sur les compteurs vélo Garmin Edge qui prennent en charge les cartes, comme les Edge 540, 840 et 1050.
 
-[Télécharger](https://terento.app/fr/download/)
+[Télécharger pour Mac](https://terento.app/fr/download/)
 
 ## Ce qu’il vous faut
 
@@ -71,4 +71,4 @@ Les modèles plus anciens, comme l’Edge 1030 Plus et les précédents, apparai
 
 Installez votre première carte
 
-[Télécharger](https://terento.app/fr/download/)
+[Télécharger pour Mac](https://terento.app/fr/download/)

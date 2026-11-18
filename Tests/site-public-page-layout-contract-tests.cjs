@@ -8,7 +8,7 @@ const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "u
 const styles = read("site/styles.css");
 const shellSource = read("site/site-shell.js");
 const languageSource = read("site/language.js");
-const styleVersion = "20261119-site-refresh-v2";
+const styleVersion = "20261119-site-refresh-v3";
 const mobileLanguageNames = { en: "English", de: "Deutsch", fr: "Français", pl: "Polski", cs: "Čeština", it: "Italiano" };
 
 const cssBlock = (selector) => {
@@ -78,7 +78,8 @@ for (const [name, digest] of Object.entries(appStoreArtwork)) {
 assert.deepEqual(Object.fromEntries(Object.entries(appStoreBadge.badges).map(([locale, badge]) => [locale, badge.artwork])), { en: "en", de: "de", fr: "fr", pl: "en", cs: "en", it: "it" });
 assert.match(cssBlock(".app-store-badge img"), /height:\s*40px/, "App Store badge keeps Apple's 40px minimum height");
 assert.match(cssBlock(".download-action--store"), /\bheight:\s*40px/, "Download button has the badge height");
-assert.match(cssBlock(".download-action--store"), /border-radius:\s*10px/, "Download button keeps the 10px control radius");
+assert.match(cssBlock(".download-action--store"), /border-radius:\s*var\(--control-radius\)/, "Download button keeps the 10px control radius");
+assert.match(styles, /--control-radius:\s*10px;/, "control radius token is 10px");
 assert.match(cssBlock(".store-actions"), /gap:\s*12px/, "Button and badge sit 12px apart");
 assert.doesNotMatch(styles, /\.app-store-badge[^{]*\{[^}]*(transform|filter|animation|transition|opacity|rotate|scale)/, "App Store badge is never modified, angled or animated");
 const manifest = JSON.parse(read("site/updates/macos-arm64.json"));
@@ -125,7 +126,9 @@ for (const locale of Object.keys(locales)) {
   const prefix = locale === "en" ? "" : `${locale}/`;
   const html = read(`site/${prefix}compatibility/index.html`);
   assert.equal((html.match(/ compatibility-hero-copy"/g) || []).length, 1, `${locale} must use one constrained hero copy wrapper`);
-  assert.match(html, /<div class="shell bento-hero compatibility-hero-inner"><div class="bento-hero-copy compatibility-hero-copy">/);
+  // Round 3 (owner): text-only hero card, no device images, no model names.
+  assert.match(html, /<section class="compatibility-hero page-hero" aria-labelledby="compatibility-title">\s*<div class="shell"><div class="card compatibility-hero-copy">/);
+  assert.doesNotMatch(html.match(/<section class="compatibility-hero[\s\S]*?<\/section>/)[0], /<img\b|130 Plus/, `${locale} compatibility hero has no images and names no models`);
 }
 
 for (const locale of Object.keys(locales)) {
@@ -162,7 +165,7 @@ assert.match(styles, /\.mobile-language-menu \.language-option\s*\{[^}]*width:\s
 
 assert.match(cssBlock(".about-social-link"), /min-height:\s*40px/);
 assert.match(cssBlock(".about-social-link"), /padding:\s*7px 11px/);
-assert.match(cssBlock(".about-social-link"), /border-radius:\s*8px/);
+assert.match(cssBlock(".about-social-link"), /border-radius:\s*var\(--control-radius\)/);
 assert.match(cssBlock(".about-bullet-list"), /gap:\s*12px/);
 assert.match(styles, /@media \(min-width: 1100px\)\s*\{\s*\.app-shot--hero\s*\{[^}]*width:\s*115%/s);
 assert.match(cssBlock(".problem-statement p"), /font-family:\s*var\(--font-ui\)/);
@@ -189,6 +192,10 @@ for (const locale of Object.keys(locales)) {
   assert.doesNotMatch(html, /class="compatibility-hero about-hero"/);
   assert.equal((html.match(/<h1\b/g) || []).length, 1, `${locale} must have one primary About heading`);
   assert.match(html, /<section class="block about-hero" aria-labelledby="about-title">[\s\S]*<h1 id="about-title">/);
+  // Round 3: H1 "About Terento" (localized), no icon; name and role under it; photo only if the owner adds it.
+  assert.match(html, /<h1 id="about-title">(?:About Terento|Über Terento|À propos de Terento|O Terento|Informazioni su Terento)<\/h1>\s*<div class="about-maker">(?:<img class="about-maker-photo" src="\/assets\/about\/gediminas\.jpg" alt="Gediminas" width="96" height="96" loading="eager"[^>]*>)?<p class="about-maker-text"><span class="about-maker-name">Gediminas<\/span><span class="about-maker-role">[^<]+<\/span><\/p><\/div>/);
+  assert.equal(/about-maker-photo/.test(html), fs.existsSync(path.join(root, "site/assets/about/gediminas.jpg")), `${locale} photo only when the file exists`);
+  assert.doesNotMatch(html, /about-title-icon/);
   assert.doesNotMatch(html.match(/<main[\s\S]*?<\/main>/)[0], /class="eyebrow"|about-intro-copy|data-umami-event-location="about-intro"/, `${locale} no product sentence or Download button at the top`);
   assert.doesNotMatch(html.match(/<div class="card about-story-card">[\s\S]*?<\/div>\s*<\/div>/)[0], /<img\b/, `${locale} About story is text only (no photo or avatar)`);
   const storyCopy = html.match(/<div class="about-story-copy">[\s\S]*?<\/div>/)?.[0];
@@ -216,8 +223,9 @@ for (const locale of Object.keys(locales)) {
   const mentions = aboutMain.match(/<section class="block about-v2-mentions" aria-labelledby="about-mentions-title">[\s\S]*?<\/section>/)?.[0];
   assert.ok(mentions, `${locale} About lists who wrote about Terento`);
   assert.ok(aboutMain.indexOf('class="block about-main"') < aboutMain.indexOf('class="block about-v2-mentions"'), `${locale} mentions close the page`);
-  assert.match(mentions, /<h2 id="about-mentions-title">[^<]+<\/h2><p>[^<]+<\/p><\/div>\s*<ul class="about-bullet-list">/);
-  const mentionLinks = [...mentions.matchAll(/<li>([^<]+)<a class="text-link" href="([^"]+)"([^>]*)>([^<]+)<\/a><\/li>/g)];
+  // Round 3: one card per mention (site name label, title link), two columns from 900px.
+  assert.match(mentions, /<h2 id="about-mentions-title">[^<]+<\/h2><p>[^<]+<\/p><\/div>\s*<ul class="grid about-mentions">/);
+  const mentionLinks = [...mentions.matchAll(/<li class="card about-mention"><p class="about-mention-source">([^<]+)<\/p><a class="text-link" href="([^"]+)"([^>]*)>([^<]+)<\/a><\/li>/g)];
   assert.deepEqual(mentionLinks.map(match => match[2]), [
     "https://the5krunner.com/2026/09/22/garmin-mac-custom-maps-terento/",
     "https://hikingguy.com/gear/garmin-fenix-9-pro-review/",
@@ -228,8 +236,8 @@ for (const locale of Object.keys(locales)) {
     "Garmin Fenix 9 Pro Review",
     "Garmin Fenix: 17 Tips I Wish I Knew Sooner",
   ], `${locale} mention titles stay in the original language`);
-  assert.match(mentionLinks[0][1], /^the5krunner \(Indie Spotlight\) ?: $/, `${locale} the5krunner label stays in English`);
-  assert.match(mentionLinks[1][1], /^HikingGuy ?: $/, `${locale} HikingGuy label`);
+  assert.equal(mentionLinks[0][1], "the5krunner (Indie Spotlight)", `${locale} the5krunner label stays in English`);
+  assert.equal(mentionLinks[1][1], "HikingGuy", `${locale} HikingGuy label`);
   assert.match(mentionLinks[2][1], /^HikingGuy \([^)]+\)/, `${locale} the video mention says it is a video`);
   for (const match of mentionLinks) {
     assert.doesNotMatch(match[3], /rel=|target=/, `${locale} mentions are normal followed links`);
@@ -241,7 +249,7 @@ for (const locale of Object.keys(locales)) {
   assert.ok(main.indexOf('about-download-link') > main.indexOf('about-v2-mentions'), `${locale} the Download link closes the page`);
   assert.match(main, new RegExp(`href="/${prefix}compatibility/"`));
   assert.match(main, /\.img/);
-  assert.equal((html.match(/class="about-bullet-list"/g) || []).length, 3, `${locale} must use lists for Does, Doesn't and mentions`);
+  assert.equal((html.match(/class="about-bullet-list"/g) || []).length, 2, `${locale} must use lists for Does and Doesn't`);
   assert.match(html, /href="https:\/\/www\.linkedin\.com\/in\/gediminasc\/"[^>]+data-umami-event="social-link-click"[^>]+data-umami-event-location="about-story"[^>]+data-umami-event-channel="linkedin"[^>]+data-umami-event-destination="linkedin\.com"/);
   assert.match(html, /href="https:\/\/www\.reddit\.com\/user\/MrDonas\/"[^>]+data-umami-event="social-link-click"[^>]+data-umami-event-location="about-story"[^>]+data-umami-event-channel="reddit"[^>]+data-umami-event-destination="reddit\.com"/);
   assert.match(html, /<a class="about-social-link about-email-link" href="mailto:hello&#64;terento\.app"[^>]+data-umami-event="support-link-click"[^>]+data-umami-event-location="about-story"[^>]+data-umami-event-channel="email"[^>]*>[\s\S]*<span>(?:Email|E-Mail|E-mail)<\/span><\/a>/);

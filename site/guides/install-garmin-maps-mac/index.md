@@ -7,7 +7,7 @@ canonical: https://terento.app/guides/install-garmin-maps-mac/
 
 Terento puts free OpenStreetMap maps, or your own map file, on a Garmin watch with map support. You don’t copy any files yourself, and your Garmin maps stay as they are.
 
-[Download](https://terento.app/download/)
+[Download for Mac](https://terento.app/download/)
 
 Using Linux? [Install maps from your browser](https://terento.app/guides/install-garmin-maps-linux/).
 
@@ -84,4 +84,4 @@ Quit Terento and move it from Applications to the Trash. Maps already on your wa
 
 Install your first map
 
-[Download](https://terento.app/download/)
+[Download for Mac](https://terento.app/download/)

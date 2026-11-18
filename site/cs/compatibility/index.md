@@ -5,7 +5,7 @@ canonical: https://terento.app/cs/compatibility/
 
 # Kompatibilita hodinek a cyklopočítačů Garmin Edge
 
-Terento funguje s hodinkami Garmin a cyklopočítači Edge, které umí zobrazit mapy (Edge 130 a 130 Plus to neumí). Níže jsou přesné modely, do kterých už někdo nainstaloval mapu přes Terento. Seznam roste s každou sdílenou instalací.
+Terento funguje s hodinkami Garmin a cyklopočítači Edge, které umí zobrazit mapy. Níže jsou přesné modely, do kterých už někdo nainstaloval mapu přes Terento. Seznam roste s každou sdílenou instalací.
 
 Pokud zde svůj model nevidíte, neznamená to, že nebude fungovat. Možná z něj zatím nikdo nesdílel úspěšnou instalaci.
 

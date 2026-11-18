@@ -5,7 +5,7 @@ canonical: https://terento.app/compatibility/
 
 # Garmin watch and Edge compatibility
 
-Terento works with Garmin watches and Edge bike computers that can show maps (the Edge 130 and 130 Plus can’t). Below are the exact models where people have already installed a map with Terento. The list grows as more installs are shared.
+Terento works with Garmin watches and Edge bike computers that can show maps. Below are the exact models where people have already installed a map with Terento. The list grows as more installs are shared.
 
 Not seeing your model? That doesn’t mean it won’t work. It may be that no one has shared a successful install from it yet.
 

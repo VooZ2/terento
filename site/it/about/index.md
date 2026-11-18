@@ -3,7 +3,9 @@ title: "Informazioni su Terento: mappe Garmin gratuite e libere"
 canonical: https://terento.app/it/about/
 ---
 
-# Ciao, sono Gediminas
+# Informazioni su Terento
+
+GediminasCreatore di Terento
 
 Uso un Garmin fēnix. In vacanza mi piace pianificare escursioni per conoscere un paese, soprattutto sulle montagne d’Europa. Prima di ogni viaggio volevo le mappe sull’orologio. Su un Mac significava collegare l’orologio, cercare come aggiungere le mappe, trovarle, scaricarle e copiarle sull’orologio.
 
@@ -51,10 +53,16 @@ Terento è gratuito e lo resterà. Se ti è utile, una donazione aiuta a pagare 
 
 Grazie ai siti e ai recensori che hanno provato, presentato o consigliato Terento.
 
-- the5krunner (Indie Spotlight): [Terento Makes Installing Custom Maps on Garmin Watches Effortless for Mac Users](https://the5krunner.com/2026/09/22/garmin-mac-custom-maps-terento/)
+- the5krunner (Indie Spotlight)
 
-- HikingGuy: [Garmin Fenix 9 Pro Review](https://hikingguy.com/gear/garmin-fenix-9-pro-review/)
+[Terento Makes Installing Custom Maps on Garmin Watches Effortless for Mac Users](https://the5krunner.com/2026/09/22/garmin-mac-custom-maps-terento/)
 
-- HikingGuy (video): [Garmin Fenix: 17 Tips I Wish I Knew Sooner](https://www.youtube.com/watch?v=szqwPHHWiTM)
+- HikingGuy
+
+[Garmin Fenix 9 Pro Review](https://hikingguy.com/gear/garmin-fenix-9-pro-review/)
+
+- HikingGuy (video)
+
+[Garmin Fenix: 17 Tips I Wish I Knew Sooner](https://www.youtube.com/watch?v=szqwPHHWiTM)
 
 [Scarica Terento per Mac](https://terento.app/it/download/)
