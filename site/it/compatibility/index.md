@@ -9,7 +9,7 @@ Terento funziona con gli orologi Garmin e i ciclocomputer Garmin Edge più recen
 
 Se il tuo modello non c’è, non significa che non funzioni. Forse nessuno ha ancora condiviso un’installazione riuscita con quel modello.
 
-**45** modelli con installazioni riuscite**431** installazioni riusciteUltima installazione riuscita 17 novembre 2026
+**47** modelli con installazioni riuscite**463** installazioni riusciteUltima installazione riuscita 18 novembre 2026
 
 Come funziona questo elenco
 
@@ -19,7 +19,7 @@ I risultati delle installazioni sono condivisi con Terento dagli utenti; non cos
 
 La versione attuale include tutti i provider di mappe del catalogo. Questa informazione sul prodotto è distinta dai risultati dei dispositivi mostrati qui.
 
-45 modelli
+47 modelli
 
 fēnix
 
@@ -35,11 +35,11 @@ Forerunner
 
 ### Forerunner 970 AMOLED
 
-35 installazioni riuscite
+60 installazioni riuscite
 
-App 34 Web 1
+App 59 Web 1
 
-Ultima installazione riuscita 14 novembre 2026
+Ultima installazione riuscita 18 novembre 2026
 
 Forerunner
 
@@ -75,11 +75,11 @@ fēnix
 
 ### fēnix 7X Pro Solar, Historical
 
-20 installazioni riuscite
+22 installazioni riuscite
 
-App 15 Web 5
+App 17 Web 5
 
-Ultima installazione riuscita 9 novembre 2026
+Ultima installazione riuscita 17 novembre 2026
 
 fēnix
 
@@ -133,16 +133,6 @@ Ultima installazione riuscita 30 ottobre 2026
 
 fēnix
 
-### fēnix 8 51 mm, AMOLED
-
-14 installazioni riuscite
-
-App 13 Web 1
-
-Ultima installazione riuscita 12 novembre 2026
-
-fēnix
-
 ### fēnix 7 47 mm, Solar
 
 13 installazioni riuscite
@@ -150,6 +140,16 @@ fēnix
 App 12 Web 1
 
 Ultima installazione riuscita 14 novembre 2026
+
+fēnix
+
+### fēnix 8 51 mm, AMOLED
+
+13 installazioni riuscite
+
+App 13
+
+Ultima installazione riuscita 12 novembre 2026
 
 fēnix
 
@@ -170,6 +170,16 @@ epix
 App 6 Web 4
 
 Ultima installazione riuscita 3 novembre 2026
+
+Edge
+
+### Edge 1050 Smartwatch
+
+8 installazioni riuscite
+
+App 8
+
+Ultima installazione riuscita 18 novembre 2026
 
 epix
 
@@ -211,16 +221,6 @@ App 8
 
 Ultima installazione riuscita 13 novembre 2026
 
-Edge
-
-### Edge 1050 Smartwatch
-
-7 installazioni riuscite
-
-App 7
-
-Ultima installazione riuscita 14 novembre 2026
-
 Enduro
 
 ### Enduro 3 MIP, Solar
@@ -255,11 +255,21 @@ Edge
 
 ### Edge 540 Smartwatch
 
+5 installazioni riuscite
+
+App 4 Web 1
+
+Ultima installazione riuscita 17 novembre 2026
+
+Enduro
+
+### Enduro 4 MIP, Solar
+
 4 installazioni riuscite
 
-App 3 Web 1
+App 4
 
-Ultima installazione riuscita 16 novembre 2026
+Ultima installazione riuscita 17 novembre 2026
 
 fēnix
 
@@ -280,16 +290,6 @@ fēnix
 App 4
 
 Ultima installazione riuscita 23 settembre 2026
-
-Enduro
-
-### Enduro 4 MIP, Solar
-
-3 installazioni riuscite
-
-App 3
-
-Ultima installazione riuscita 2 novembre 2026
 
 fēnix
 
@@ -361,6 +361,16 @@ App 2
 
 Ultima installazione riuscita 14 novembre 2026
 
+Edge
+
+### Edge 840 Smartwatch
+
+2 installazioni riuscite
+
+App 2
+
+Ultima installazione riuscita 17 novembre 2026
+
 Enduro
 
 ### Enduro 2 Historical
@@ -413,16 +423,6 @@ Ultima installazione riuscita 29 ottobre 2026
 
 Edge
 
-### Edge 840 Smartwatch
-
-1 installazione riuscita
-
-App 1
-
-Ultima installazione riuscita 13 novembre 2026
-
-Edge
-
 ### Edge 850 Smartwatch
 
 1 installazione riuscita
@@ -430,6 +430,16 @@ Edge
 App 1
 
 Ultima installazione riuscita 17 novembre 2026
+
+fēnix
+
+### fēnix 8 51 mm, MIP, Solar
+
+1 installazione riuscita
+
+Web 1
+
+Ultima installazione riuscita 18 ottobre 2026
 
 fēnix
 
@@ -450,6 +460,16 @@ fēnix
 App 1
 
 Ultima installazione riuscita 27 settembre 2026
+
+fēnix
+
+### fēnix E 47 mm, AMOLED
+
+1 installazione riuscita
+
+App 1
+
+Ultima installazione riuscita 17 novembre 2026
 
 quatix
 
