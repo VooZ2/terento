@@ -39,6 +39,8 @@ Některá data zůstávají ve vašem prohlížeči, ne na našem serveru: kter�
 
 Požadavky na web, webový instalátor, API, katalog a aktualizace mohou poskytovatelům hostingu a zabezpečení zpřístupnit IP adresu a metadata. V aplikaci se mapy stahují přímo od Freizeitkarte, OpenTopoMap, MapRando, BBBike či OSMapaPL; pro tato připojení platí jejich pravidla soukromí. Kontrola při spuštění načítá informace o vydání, nikoli aplikaci. Verze z Mac App Store nekontroluje aktualizace; aktualizace dodává Apple. Stahování, aktualizace a hodnocení v App Store zpracovává Apple podle svých [zásad ochrany soukromí](https://www.apple.com/legal/privacy/). Apple poskytuje Terento statistiky stahování a jen pokud jste souhlasili se sdílením analytických dat s vývojáři aplikací, také zprávy o pádech a statistiky používání.
 
+**Obrázek zařízení.** Když je připojeno zařízení Garmin, aplikace zobrazí obrázek jeho modelu. Aplikace stažená z terento.app načítá tento obrázek ze serveru Terento nebo z obrázkového serveru Garmin (`res.garmin.com`); u některých modelů nejprve otevře veřejnou produktovou stránku modelu na `garmin.com`, aby obrázek našla. Garmin přitom získá vaši IP adresu a běžné údaje požadavku, včetně názvu a verze aplikace, a z požadované adresy je zřejmé, kterého modelu se obrázek týká. Servery Garmin mohou nastavit soubory cookie; zůstávají ve vlastním úložišti aplikace a odesílají se pouze společnosti Garmin. Požadavek neobsahuje sériové číslo, Unit ID ani údaje o účtu či mapách. Obrázek se ukládá ve vašem Macu. Pro tato připojení platí [zásady ochrany soukromí společnosti Garmin](https://www.garmin.com/en-US/privacy/global/). Verze z Mac App Store až do 1.2.1 včetně neposílají společnosti Garmin žádné požadavky a zobrazují vlastní obrázek Terento; novější verze načítají obrázek stejně jako aplikace stažená z terento.app.
+
 Připojení poskytují obsah, požadované funkce a ochranu před zneužitím. Bezpečnostní zpracování se opírá o oprávněné zájmy podle čl. 6 odst. 1 písm. f GDPR.
 
 ## Pomoc a veřejná hlášení
@@ -77,4 +79,4 @@ Kompatibilita může zahrnovat očištěný název modelu MTP, USB VID/PID, tran
 
 Zprávy mohou navíc obsahovat původní popis modelu z XML (nejvýše 160 znaků) a produktový kód modelu (nejvýše 64 písmen ASCII, číslic nebo spojovníků). Tyto údaje označují model výrobku, nikoli jednotlivé hodinky. Celé dokumenty XML, Unit ID a sériová čísla jsou vyloučeny. Přiřazení kódů modelů a opravy správce se ukládají odděleně od původní zprávy.
 
-Aktualizováno: 29. října 2026.
+Aktualizováno: 18. listopadu 2026.

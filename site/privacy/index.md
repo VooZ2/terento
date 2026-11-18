@@ -44,6 +44,8 @@ Some data stays in your browser, not on our server: which maps the web installer
 
 Website, web installer, API, catalog and app-update requests may expose your IP address and request metadata to hosting and security providers. In the app, catalog maps download directly from Freizeitkarte, OpenTopoMap, MapRando, BBBike or OSMapaPL, whose privacy practices apply to those connections. The app’s launch update check retrieves release metadata, not an app download. The Mac App Store version has no update check; Apple delivers its updates. Apple handles App Store downloads, updates and ratings under [Apple’s privacy policy](https://www.apple.com/legal/privacy/). Apple gives Terento download statistics and, only if you agreed to share analytics with app developers, crash reports and usage statistics.
 
+**Device picture.** When a Garmin device is connected, the app shows a picture of its model. The app downloaded from terento.app loads that picture from Terento’s server or from Garmin’s image server (`res.garmin.com`); for some models it first opens the model’s public product page on `garmin.com` to find the picture. Garmin then receives your IP address and standard request details, including the app’s name and version, and the address requested shows which model the picture is for. Garmin’s servers may set cookies; they stay in the app’s own storage and are sent only to Garmin. The request contains no serial number, Unit ID, account or map details. The picture is kept on your Mac. [Garmin’s privacy policy](https://www.garmin.com/en-US/privacy/global/) applies to these connections. Mac App Store versions up to and including 1.2.1 make no requests to Garmin and show Terento’s own picture; newer versions load the picture in the same way as the app downloaded from terento.app.
+
 These connections serve content, provide requested app functions and protect against abuse. Security processing relies on legitimate interests under GDPR Article 6(1)(f).
 
 ## Help and public issues
@@ -82,7 +84,7 @@ Compatibility reports may also include a sanitized MTP model label, USB VID/PID,
 
 Reports may additionally include the original XML model description (up to 160 characters) and model product code (up to 64 ASCII letters, digits or hyphens). These identify a product model, not an individual watch. Whole XML documents, Unit IDs and serial numbers are excluded. Model-code mappings and any administrator corrections are kept separately from the original report.
 
-Updated: 29 October 2026.
+Updated: 18 November 2026.
 
 # Datenschutz
 
@@ -125,6 +127,8 @@ Einige Daten bleiben in deinem Browser, nicht auf unserem Server: welche Karten 
 
 Bei Website-, Web-Installer-, API-, Katalog- und Update-Anfragen können Hosting- und Sicherheitsanbieter deine IP-Adresse und Anfrage-Metadaten erhalten. In der App werden Katalogkarten direkt von Freizeitkarte, OpenTopoMap, MapRando, BBBike oder OSMapaPL geladen; deren Datenschutzregeln gelten für diese Verbindungen. Die Update-Prüfung beim App-Start lädt Veröffentlichungsdaten, nicht die App selbst. Die Mac App Store-Version hat keine Update-Prüfung; Updates liefert Apple. Downloads, Updates und Bewertungen im App Store verarbeitet Apple nach der [Datenschutzrichtlinie von Apple](https://www.apple.com/legal/privacy/). Apple stellt Terento Download-Statistiken bereit und, nur wenn du dem Teilen von Analysedaten mit App-Entwicklern zugestimmt hast, Absturzberichte und Nutzungsstatistiken.
 
+**Gerätebild.** Wenn ein Garmin-Gerät verbunden ist, zeigt die App ein Bild des Modells. Die von terento.app geladene App lädt dieses Bild vom Terento-Server oder vom Bildserver von Garmin (`res.garmin.com`); bei manchen Modellen ruft sie zuerst die öffentliche Produktseite des Modells auf `garmin.com` auf, um das Bild zu finden. Garmin erhält dabei deine IP-Adresse und übliche Anfragedaten, darunter Name und Version der App; aus der angefragten Adresse geht hervor, für welches Modell das Bild ist. Die Server von Garmin können Cookies setzen; sie bleiben im eigenen Speicher der App und werden nur an Garmin gesendet. Die Anfrage enthält keine Seriennummer, keine Unit ID und keine Konto- oder Kartendaten. Das Bild wird auf deinem Mac gespeichert. Für diese Verbindungen gilt die [Datenschutzrichtlinie von Garmin](https://www.garmin.com/en-US/privacy/global/). Mac App Store-Versionen bis einschließlich 1.2.1 senden keine Anfragen an Garmin und zeigen ein eigenes Bild von Terento; neuere Versionen laden das Bild wie die von terento.app geladene App.
+
 Diese Verbindungen liefern Inhalte, ermöglichen angeforderte Funktionen und schützen vor Missbrauch. Die Sicherheitsverarbeitung beruht auf berechtigten Interessen nach Art. 6 Abs. 1 lit. f DSGVO.
 
 ## Hilfe und öffentliche Meldungen
@@ -163,7 +167,7 @@ Kompatibilitätsberichte können außerdem eine bereinigte MTP-Modellbezeichnung
 
 Berichte können zusätzlich die ursprüngliche XML-Modellbeschreibung (bis zu 160 Zeichen) und den Modellproduktcode (bis zu 64 ASCII-Buchstaben, Ziffern oder Bindestrichen) enthalten. Diese beschreiben ein Produktmodell, keine einzelne Uhr. Vollständige XML-Dokumente, Unit IDs und Seriennummern sind ausgeschlossen. Modellcode-Zuordnungen und administrative Korrekturen werden getrennt vom ursprünglichen Bericht gespeichert.
 
-Aktualisiert: 29. Oktober 2026.
+Aktualisiert: 18. November 2026.
 
 # Confidentialité
 
@@ -206,6 +210,8 @@ Certaines données restent dans votre navigateur, pas sur notre serveur : les ca
 
 Les requêtes au site, à l’installateur web, à l’API, au catalogue et aux mises à jour peuvent communiquer votre adresse IP et des métadonnées aux hébergeurs et services de sécurité. Dans l’application, les cartes du catalogue sont téléchargées directement depuis Freizeitkarte, OpenTopoMap, MapRando, BBBike ou OSMapaPL ; leurs règles de confidentialité s’appliquent à ces connexions. La vérification au démarrage récupère des informations de version, pas l’application. La version Mac App Store n’a pas de vérification des mises à jour ; Apple fournit ses mises à jour. Apple traite les téléchargements, mises à jour et évaluations de l’App Store selon sa [politique de confidentialité](https://www.apple.com/legal/privacy/). Apple fournit à Terento des statistiques de téléchargement et, seulement si vous avez accepté de partager les données d’analyse avec les développeurs d’apps, des rapports de plantage et des statistiques d’utilisation.
 
+**Image de l’appareil.** Lorsqu’un appareil Garmin est connecté, l’application affiche une image de son modèle. L’application téléchargée depuis terento.app charge cette image depuis le serveur de Terento ou depuis le serveur d’images de Garmin (`res.garmin.com`) ; pour certains modèles, elle ouvre d’abord la page produit publique du modèle sur `garmin.com` pour trouver l’image. Garmin reçoit alors votre adresse IP et les informations habituelles de la requête, dont le nom et la version de l’application ; l’adresse demandée indique le modèle concerné. Les serveurs de Garmin peuvent déposer des cookies ; ils restent dans le stockage propre à l’application et ne sont envoyés qu’à Garmin. La requête ne contient ni numéro de série, ni Unit ID, ni informations de compte ou de cartes. L’image est conservée sur votre Mac. La [politique de confidentialité de Garmin](https://www.garmin.com/en-US/privacy/global/) s’applique à ces connexions. Les versions Mac App Store jusqu’à la 1.2.1 incluse n’envoient aucune requête à Garmin et affichent une image propre à Terento ; les versions plus récentes chargent l’image comme l’application téléchargée depuis terento.app.
+
 Ces connexions fournissent le contenu et les fonctions demandées et protègent contre les abus. Le traitement de sécurité repose sur l’intérêt légitime selon l’article 6(1)(f) du RGPD.
 
 ## Assistance et signalements publics
@@ -244,7 +250,7 @@ La compatibilité peut aussi inclure un libellé MTP nettoyé, USB VID/PID, tran
 
 Les rapports peuvent aussi contenir la description originale du modèle XML (160 caractères maximum) et son code produit (64 lettres ASCII, chiffres ou traits d’union maximum). Ces données désignent un modèle, pas une montre individuelle. Les documents XML complets, Unit IDs et numéros de série sont exclus. Les correspondances des codes et les corrections administratives sont conservées séparément du rapport original.
 
-Mise à jour : 29 octobre 2026.
+Mise à jour : 18 novembre 2026.
 
 # Prywatność
 
@@ -287,6 +293,8 @@ Część danych zostaje w Twojej przeglądarce, nie na naszym serwerze: które m
 
 Żądania do witryny, instalatora webowego, API, katalogu i aktualizacji mogą ujawniać adres IP i metadane dostawcom hostingu i zabezpieczeń. W aplikacji mapy są pobierane bezpośrednio z Freizeitkarte, OpenTopoMap, MapRando, BBBike lub OSMapaPL; do tych połączeń mają zastosowanie ich zasady prywatności. Kontrola aktualizacji przy uruchomieniu pobiera informacje o wydaniu, nie aplikację. Wersja z Mac App Store nie sprawdza aktualizacji; aktualizacje dostarcza Apple. Pobrania, aktualizacje i oceny w App Store przetwarza Apple zgodnie ze swoją [polityką prywatności](https://www.apple.com/legal/privacy/). Apple przekazuje Terento statystyki pobrań oraz, tylko jeśli zgodzisz się udostępniać dane analityczne twórcom aplikacji, raporty awarii i statystyki użycia.
 
+**Obraz urządzenia.** Gdy urządzenie Garmin jest podłączone, aplikacja pokazuje obraz jego modelu. Aplikacja pobrana z terento.app pobiera ten obraz z serwera Terento albo z serwera obrazów Garmin (`res.garmin.com`); w przypadku niektórych modeli najpierw otwiera publiczną stronę produktu danego modelu w `garmin.com`, aby znaleźć obraz. Garmin otrzymuje wtedy Twój adres IP i standardowe dane żądania, w tym nazwę i wersję aplikacji, a z żądanego adresu wynika, którego modelu dotyczy obraz. Serwery Garmin mogą ustawiać pliki cookie; pozostają one w pamięci samej aplikacji i są wysyłane tylko do Garmin. Żądanie nie zawiera numeru seryjnego, Unit ID ani danych konta lub map. Obraz jest przechowywany na Twoim Macu. Do tych połączeń ma zastosowanie [polityka prywatności Garmin](https://www.garmin.com/en-US/privacy/global/). Wersje z Mac App Store do 1.2.1 włącznie nie wysyłają żądań do Garmin i pokazują własny obraz Terento; nowsze wersje pobierają obraz tak samo jak aplikacja pobrana z terento.app.
+
 Połączenia dostarczają treści i żądane funkcje oraz chronią przed nadużyciami. Przetwarzanie dla bezpieczeństwa opiera się na uzasadnionym interesie zgodnie z art. 6 ust. 1 lit. f RODO.
 
 ## Pomoc i publiczne zgłoszenia
@@ -325,7 +333,7 @@ Zgodność może obejmować oczyszczoną nazwę modelu MTP, USB VID/PID, transpo
 
 Raporty mogą dodatkowo zawierać oryginalny opis modelu z XML (do 160 znaków) i kod produktu modelu (do 64 liter ASCII, cyfr lub łączników). Dane te określają model produktu, a nie pojedynczy zegarek. Pełne dokumenty XML, Unit ID i numery seryjne są wykluczone. Powiązania kodów modeli i poprawki administratora są przechowywane oddzielnie od oryginalnego raportu.
 
-Aktualizacja: 29 października 2026 r.
+Aktualizacja: 18 listopada 2026 r.
 
 # Soukromí
 
@@ -368,6 +376,8 @@ Některá data zůstávají ve vašem prohlížeči, ne na našem serveru: kter�
 
 Požadavky na web, webový instalátor, API, katalog a aktualizace mohou poskytovatelům hostingu a zabezpečení zpřístupnit IP adresu a metadata. V aplikaci se mapy stahují přímo od Freizeitkarte, OpenTopoMap, MapRando, BBBike či OSMapaPL; pro tato připojení platí jejich pravidla soukromí. Kontrola při spuštění načítá informace o vydání, nikoli aplikaci. Verze z Mac App Store nekontroluje aktualizace; aktualizace dodává Apple. Stahování, aktualizace a hodnocení v App Store zpracovává Apple podle svých [zásad ochrany soukromí](https://www.apple.com/legal/privacy/). Apple poskytuje Terento statistiky stahování a jen pokud jste souhlasili se sdílením analytických dat s vývojáři aplikací, také zprávy o pádech a statistiky používání.
 
+**Obrázek zařízení.** Když je připojeno zařízení Garmin, aplikace zobrazí obrázek jeho modelu. Aplikace stažená z terento.app načítá tento obrázek ze serveru Terento nebo z obrázkového serveru Garmin (`res.garmin.com`); u některých modelů nejprve otevře veřejnou produktovou stránku modelu na `garmin.com`, aby obrázek našla. Garmin přitom získá vaši IP adresu a běžné údaje požadavku, včetně názvu a verze aplikace, a z požadované adresy je zřejmé, kterého modelu se obrázek týká. Servery Garmin mohou nastavit soubory cookie; zůstávají ve vlastním úložišti aplikace a odesílají se pouze společnosti Garmin. Požadavek neobsahuje sériové číslo, Unit ID ani údaje o účtu či mapách. Obrázek se ukládá ve vašem Macu. Pro tato připojení platí [zásady ochrany soukromí společnosti Garmin](https://www.garmin.com/en-US/privacy/global/). Verze z Mac App Store až do 1.2.1 včetně neposílají společnosti Garmin žádné požadavky a zobrazují vlastní obrázek Terento; novější verze načítají obrázek stejně jako aplikace stažená z terento.app.
+
 Připojení poskytují obsah, požadované funkce a ochranu před zneužitím. Bezpečnostní zpracování se opírá o oprávněné zájmy podle čl. 6 odst. 1 písm. f GDPR.
 
 ## Pomoc a veřejná hlášení
@@ -406,7 +416,7 @@ Kompatibilita může zahrnovat očištěný název modelu MTP, USB VID/PID, tran
 
 Zprávy mohou navíc obsahovat původní popis modelu z XML (nejvýše 160 znaků) a produktový kód modelu (nejvýše 64 písmen ASCII, číslic nebo spojovníků). Tyto údaje označují model výrobku, nikoli jednotlivé hodinky. Celé dokumenty XML, Unit ID a sériová čísla jsou vyloučeny. Přiřazení kódů modelů a opravy správce se ukládají odděleně od původní zprávy.
 
-Aktualizováno: 29. října 2026.
+Aktualizováno: 18. listopadu 2026.
 
 # Privacy
 
@@ -449,6 +459,8 @@ Alcuni dati restano nel tuo browser, non sul nostro server: quali mappe l’inst
 
 Le richieste al sito, all’installer web, API, catalogo e aggiornamenti possono comunicare IP e metadati ai fornitori di hosting e sicurezza. Nell’app le mappe si scaricano direttamente da Freizeitkarte, OpenTopoMap, MapRando, BBBike o OSMapaPL; a queste connessioni si applicano le loro regole privacy. Il controllo all’avvio recupera informazioni sulla versione, non l’app. La versione Mac App Store non controlla gli aggiornamenti; li fornisce Apple. Download, aggiornamenti e valutazioni nell’App Store sono gestiti da Apple secondo la sua [informativa sulla privacy](https://www.apple.com/legal/privacy/). Apple fornisce a Terento statistiche sui download e, solo se hai accettato di condividere i dati di analisi con gli sviluppatori, rapporti sugli arresti anomali e statistiche di utilizzo.
 
+**Immagine del dispositivo.** Quando è collegato un dispositivo Garmin, l’app mostra un’immagine del suo modello. L’app scaricata da terento.app carica questa immagine dal server di Terento o dal server di immagini di Garmin (`res.garmin.com`); per alcuni modelli apre prima la pagina prodotto pubblica del modello su `garmin.com` per trovare l’immagine. Garmin riceve così il tuo indirizzo IP e i normali dati della richiesta, tra cui nome e versione dell’app; l’indirizzo richiesto indica a quale modello si riferisce l’immagine. I server di Garmin possono impostare cookie; restano nell’archivio dell’app e vengono inviati solo a Garmin. La richiesta non contiene numero di serie, Unit ID né dati di account o mappe. L’immagine viene conservata sul tuo Mac. A queste connessioni si applica l’ [informativa sulla privacy di Garmin](https://www.garmin.com/en-US/privacy/global/). Le versioni Mac App Store fino alla 1.2.1 inclusa non inviano richieste a Garmin e mostrano un’immagine propria di Terento; le versioni più recenti caricano l’immagine come l’app scaricata da terento.app.
+
 Le connessioni forniscono contenuti e funzioni richieste e proteggono dagli abusi. Il trattamento per sicurezza si basa sul legittimo interesse ai sensi dell’art. 6(1)(f) GDPR.
 
 ## Assistenza e segnalazioni pubbliche
@@ -487,4 +499,4 @@ La compatibilità può includere un nome modello MTP ripulito, USB VID/PID, tras
 
 I rapporti possono includere anche la descrizione originale del modello XML (fino a 160 caratteri) e il codice prodotto del modello (fino a 64 lettere ASCII, cifre o trattini). Questi dati identificano un modello, non un singolo orologio. Sono esclusi documenti XML completi, Unit ID e numeri di serie. Le associazioni dei codici e le correzioni amministrative sono conservate separatamente dal rapporto originale.
 
-Aggiornamento: 29 ottobre 2026.
+Aggiornamento: 18 novembre 2026.
