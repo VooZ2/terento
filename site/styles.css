@@ -796,10 +796,20 @@ h1 {
   scale: 0.96;
 }
 
-.hero-download-action {
-  min-height: 52px;
-  padding: 12px 22px;
+/* Beside Apple's badge the Download button has the badge's 40px height (owner decision 2026-11-18),
+   at every width; ::after keeps a 44px touch target. */
+.home-actions .hero-download-action {
+  position: relative;
+  min-height: 40px;
+  padding: 6px 20px;
   font-size: 15px;
+}
+
+.home-actions .hero-download-action::after,
+.download-v2-actions .download-v2-primary::after {
+  content: "";
+  position: absolute;
+  inset: -2px 0;
 }
 
 .hero-actions {
@@ -3616,21 +3626,20 @@ details p {
   margin-top: 32px;
 }
 
-.home-app-store {
+/* Apple's official "Download on the Mac App Store" badge (site/assets/app-store/, unmodified artwork).
+   Apple's marketing guidelines: at least 40px tall on screen, clear space of a quarter of its height,
+   one badge per page, no effects. The 44px box only enlarges the touch target. */
+.app-store-badge {
   display: inline-flex;
   align-items: center;
-  min-height: 52px;
-  padding: 12px 22px;
-  border: 1px solid var(--interactive);
-  border-radius: 10px;
-  color: var(--link-text);
-  font-size: 15px;
-  font-weight: 600;
-  text-decoration: none;
+  min-height: 44px;
 }
 
-.home-app-store:hover {
-  background: color-mix(in srgb, var(--interactive) 10%, transparent);
+.app-store-badge img {
+  display: block;
+  width: auto;
+  max-width: none;
+  height: 40px;
 }
 
 .home-actions .text-link,
@@ -3985,26 +3994,11 @@ details p {
   margin-top: 32px;
 }
 
-.download-v2-primary {
-  min-height: 52px;
-  padding: 12px 22px;
+.download-v2-actions .download-v2-primary {
+  position: relative;
+  min-height: 40px;
+  padding: 6px 20px;
   font-size: 15px;
-}
-
-.download-v2-store {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 10px;
-  margin: 0;
-  color: var(--graphite);
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.download-v2-store-link {
-  min-height: 44px;
-  color: var(--link-text);
 }
 
 .download-v2 .download-release {
@@ -4012,13 +4006,6 @@ details p {
   padding-top: 16px;
   border-top: 1px solid var(--border);
   font-size: 15px;
-}
-
-.download-v2-store-note {
-  max-width: 60ch;
-  margin: 16px 0 0;
-  color: var(--muted-text);
-  font-size: 14px;
 }
 
 .download-v2-web {
@@ -4155,8 +4142,8 @@ details p {
     align-items: stretch;
   }
 
-  .download-v2-store {
-    justify-content: center;
+  .download-v2-actions .app-store-badge {
+    align-self: center;
   }
 }
 

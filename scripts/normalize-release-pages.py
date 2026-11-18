@@ -31,8 +31,9 @@ def page_path(locale: str) -> Path:
 
 
 COPY = json.loads((ROOT / "scripts" / "templates" / "download-copy.json").read_text(encoding="utf-8"))
-# Mac App Store listing (released 2026-11-18). Apple redirects to the visitor's own storefront.
-APP_STORE_URL = "https://apps.apple.com/app/terento-gps-watch-maps/id6828556832"
+# Apple's official "Download on the Mac App Store" badge beside the Download button.
+# Listing URL, campaign token, artwork and alt text per locale: scripts/templates/app-store-badge.json.
+APP_STORE = json.loads((ROOT / "scripts" / "templates" / "app-store-badge.json").read_text(encoding="utf-8"))
 SHOT = "/assets/app/optimized/your-garmin-{width}.{fmt}?v=20260912-app-screens-v2"
 SHOT_SIZES = "(max-width: 899px) min(480px, calc(100vw - 32px)), 480px"
 
@@ -68,6 +69,19 @@ def fill(template: str, **links: str) -> str:
     return text
 
 
+def app_store_badge(locale: str, css_class: str, campaign: str, location: str) -> str:
+    """Link Apple's unmodified badge artwork to the listing with an App Store Connect campaign (pt, ct)."""
+    badge = APP_STORE["badges"][locale]
+    href = f'{APP_STORE["listing_url"]}?pt={APP_STORE["provider_token"]}&ct={campaign}&mt=8'
+    # Apple has no Polish or Czech Mac App Store badge: those pages show the English artwork.
+    lang = "" if badge["artwork"] == locale else f' lang="{badge["artwork"]}"'
+    return (
+        f'<a class="app-store-badge {css_class}" href="{html.escape(href)}" data-umami-event="app-store-click" data-umami-event-location="{location}">'
+        f'<img src="/assets/app-store/download-on-the-mac-app-store-{badge["artwork"]}.svg?v={APP_STORE["asset_version"]}" '
+        f'width="{APP_STORE["width"]}" height="{APP_STORE["height"]}" alt="{html.escape(badge["alt"])}"{lang}></a>'
+    )
+
+
 def render_main(locale: str, release: dict[str, object], dmg_url: str, notes_url: str) -> str:
     c = COPY[locale]
     root = "/" if locale == "en" else f"/{locale}/"
@@ -78,8 +92,7 @@ def render_main(locale: str, release: dict[str, object], dmg_url: str, notes_url
     published = date.fromisoformat(str(release["publishedAt"]))
     release_text = fill(c["release_" + release_family(label)],
                         version=f"<strong>v{html.escape(label)}</strong>", date=html.escape(release_date(locale, published)))
-    store = (f'<a class="download-v2-store download-v2-store-link" href="{APP_STORE_URL}" data-umami-event="app-store-click" '
-             f'data-umami-event-location="download-page">{html.escape(c["store_label"])}</a>')
+    store = app_store_badge(locale, "download-v2-store-link", "site-download", "download-page")
     sources = "".join(
         f'<source type="image/{fmt}" srcset="'
         + ", ".join(f"{SHOT.format(width=w, fmt=fmt)} {w}w" for w in (640, 960, 1280, 1600))
@@ -105,7 +118,6 @@ def render_main(locale: str, release: dict[str, object], dmg_url: str, notes_url
         '<div class="download-v2-actions">'
         f'<a class="download-action download-v2-primary" href="{dmg_url}" rel="noopener noreferrer">{html.escape(c["download"])}</a>'
         f'{store}</div>'
-        f'<p class="download-v2-store-note">{html.escape(c["store_note"])}</p>'
         f'<p class="download-release">{release_text} '
         f'<a class="text-link" href="{notes_url}" rel="noopener noreferrer">{html.escape(c["notes"])}</a></p>'
         f'<p class="download-v2-web">{web}</p>'

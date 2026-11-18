@@ -22,7 +22,7 @@ compatible `.img` map.
 **Connect → Install → Done**
 
 **[Download for Mac](https://terento.app/download/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_top_download)**
-· [Mac App Store](https://apps.apple.com/app/terento-gps-watch-maps/id6828556832)
+· [Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=readme&mt=8)
 · [Check compatibility](https://terento.app/compatibility/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_top_compatibility)
 · [Mac installation guide](https://terento.app/guides/install-garmin-maps-mac/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_top_guide)
 · [Compare map styles](https://terento.app/map-styles/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_top_map_styles)
@@ -171,14 +171,13 @@ required.
 
 **[Download Terento](https://terento.app/download/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_download)**
 
-Terento is also on the [Mac App Store](https://apps.apple.com/app/terento-gps-watch-maps/id6828556832). That version
+Terento is also on the [Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=readme&mt=8). That version
 updates through the App Store, so a new release reaches it only after Apple's
 review and it can be behind the download. It has no update notice of its own,
 no donation link and no in-app support report, and its diagnostics stay off
-until you agree. Garmin Edge and your own `.img` maps have so far been tested
-only in the downloaded app. Use one version on each Mac: the first time the
-App Store version opens, macOS moves the downloaded app's data to it, so the
-downloaded app no longer recognises the maps it installed.
+until you agree. Use one version on each Mac: the first time the App Store
+version opens, macOS moves the downloaded app's data to it, so the downloaded
+app no longer recognises the maps it installed.
 
 Temporarily unavailable maps remain visible with a reason. Install and Update
 are disabled until downloads are available again; installed maps remain usable.
