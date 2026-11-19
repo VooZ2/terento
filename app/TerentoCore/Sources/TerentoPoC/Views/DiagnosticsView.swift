@@ -274,8 +274,8 @@ private struct DiagnosticsActionButton: View {
             Text(title)
                 .font(.terentoUI(size: 15, weight: .semibold))
                 .foregroundStyle(isEnabled ? .white : TerentoColors.secondaryText)
-                .padding(.horizontal, 22)
-                .frame(height: 46)
+                .padding(.horizontal, 16)
+                .frame(height: 44)
                 .background(
                     isEnabled ? TerentoColors.interactive : TerentoColors.border,
                     in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control)

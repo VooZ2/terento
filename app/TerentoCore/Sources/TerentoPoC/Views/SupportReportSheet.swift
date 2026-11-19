@@ -149,7 +149,7 @@ struct SupportReportSheet: View {
                 .font(.terentoUI(size: 14, weight: .semibold))
                 .foregroundStyle(primary ? .white : TerentoColors.graphite)
                 .padding(.horizontal, 16)
-                .frame(minHeight: 38)
+                .frame(minHeight: 40)
                 .background(primary ? TerentoColors.interactive : TerentoColors.canvas,
                             in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control))
                 .overlay {

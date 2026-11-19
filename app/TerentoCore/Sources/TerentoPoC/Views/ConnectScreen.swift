@@ -3302,7 +3302,7 @@ private struct MapLifecycleConfirmationSheet: View {
                     .font(.terentoUI(size: 14, weight: .semibold))
                     .foregroundStyle(TerentoColors.graphite)
                     .padding(.horizontal, 16)
-                    .frame(minHeight: 38)
+                    .frame(minHeight: 40)
                     .background(TerentoColors.canvas, in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control))
                     .overlay {
                         RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control)
@@ -3315,7 +3315,7 @@ private struct MapLifecycleConfirmationSheet: View {
                     .font(.terentoUI(size: 14, weight: .semibold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 16)
-                    .frame(minHeight: 38)
+                    .frame(minHeight: 40)
                     .background(
                         TerentoColors.interactive,
                         in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control)
@@ -3568,7 +3568,7 @@ private struct InstallSharingDialog: View {
                             .font(.terentoUI(size: 14, weight: .semibold))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 16)
-                            .frame(minHeight: 38)
+                            .frame(minHeight: 40)
                             .background(TerentoColors.interactive, in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control, style: .continuous))
                     }
                     .buttonStyle(.plain)
@@ -3593,7 +3593,7 @@ private struct TerentoConfirmationDialog: View {
     private static let iconFrame: CGFloat = 40
     private static let iconSize: CGFloat = 29
     private static let iconTextGap: CGFloat = 14
-    private static let buttonHeight: CGFloat = 38
+    private static let buttonHeight: CGFloat = 40
     private static let buttonRadius: CGFloat = TerentoGeneratedTokens.Radius.control
     private static let buttonGap: CGFloat = 10
 
@@ -4429,7 +4429,7 @@ struct PrimaryButton: View {
     init(
         title: String,
         systemImage: String? = nil,
-        height: CGFloat = 50,
+        height: CGFloat = 44,
         width: CGFloat? = nil,
         action: @escaping () -> Void = {}
     ) {
@@ -4451,7 +4451,7 @@ struct PrimaryButton: View {
             }
             .font(.terentoUI(size: 15, weight: .semibold))
             .foregroundStyle(isEnabled ? .white : TerentoColors.secondaryText)
-            .padding(.horizontal, 24)
+            .padding(.horizontal, 16)
             .frame(width: width, height: height)
             .background(
                 isEnabled ? TerentoColors.interactive : TerentoColors.border,
@@ -4513,7 +4513,7 @@ struct DeviceCard: View {
                         .font(.terentoUI(size: 13, weight: .medium))
                         .foregroundStyle(canEject ? TerentoColors.interactive : TerentoColors.secondaryText)
                         .padding(.horizontal, 10)
-                        .frame(minHeight: 36)
+                        .frame(minHeight: 40)
                         .background(
                             canEject
                                 ? TerentoColors.canvas
@@ -6058,8 +6058,8 @@ private struct SecondaryButton: View {
             Text(title)
                 .font(.terentoUI(size: 15, weight: .semibold))
                 .foregroundStyle(isEnabled ? TerentoColors.graphite : TerentoColors.secondaryText)
-                .padding(.horizontal, 22)
-                .frame(height: 50)
+                .padding(.horizontal, 16)
+                .frame(height: 44)
                 .background(
                     isEnabled ? TerentoColors.canvas : TerentoColors.border.opacity(0.55),
                     in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control)
