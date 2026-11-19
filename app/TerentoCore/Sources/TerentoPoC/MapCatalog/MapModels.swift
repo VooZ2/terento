@@ -1309,7 +1309,8 @@ struct BBBikeProviderAdapter: MapProviderAdapter, Sendable {
     static func unverifiedTypeConflictMessage(for package: MapPackage, otherType: BBBikeMapType? = nil) -> String {
         guard BBBikeMapType(rawValue: package.mapType ?? "") != nil else { return coexistenceReason }
         let other = otherType.map { "the \($0.versionName) version" } ?? "another version"
-        return "Can't install yet: \(other) of this map is on your Garmin and Terento hasn't checked it. Check it in Manage maps first."
+        // Manage offers Remove for such a file; ownership recovery has no button there.
+        return "Can't install next to \(other) of this map on your Garmin. Remove that one in Manage maps first."
     }
     /// The other BBBike type of the same source region that `region` names, if any.
     static func conflictingType(_ package: MapPackage, provider: String?, region: String?) -> BBBikeMapType? {

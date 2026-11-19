@@ -104,8 +104,11 @@ private struct PrefixReader: DeviceFileReader {
                 "Can't install next to the OpenTopoMap version of this map. Remove that one in Manage maps first.",
                 "OpenTopoMap conflict copy names the installed variant")
             check(BBBikeProviderAdapter.unverifiedTypeConflictMessage(for: package) ==
-                "Can't install yet: another version of this map is on your Garmin and Terento hasn't checked it. Check it in Manage maps first.",
+                "Can't install next to another version of this map on your Garmin. Remove that one in Manage maps first.",
                 "unknown conflicting variant is not guessed")
+            check(BBBikeProviderAdapter.unverifiedTypeConflictMessage(for: package, otherType: .opentopo) ==
+                "Can't install next to the OpenTopoMap version of this map on your Garmin. Remove that one in Manage maps first.",
+                "unchecked conflict points to Remove, not to a check Manage cannot do")
         }
         check(!BBBikeProviderAdapter.conflicts(andorra[0], provider: "bbbike",
             region: BBBikeProviderAdapter.regionToken(path: "europe/alps", type: BBBikeMapType.opentopo.rawValue)),
