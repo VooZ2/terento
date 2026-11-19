@@ -45,6 +45,15 @@ if rg -q 'ProgressView\(value:|progressViewStyle\(\.linear\)' "$repo_root/app/Te
     exit 1
 fi
 assert_contains 'TerentoProgressBar(value: progress, label: title)' "$connect_screen"
+# QA round 3: no "0%"; the % appears only for a measured value above zero, in Manage and install steps.
+[[ "$progress_block" == *'if let measuredFraction {'* ]] || { print -u2 "FAIL: Manage % is not limited to a measured value"; exit 1; }
+assert_contains 'let measured = TerentoProgressBar.measured(progress) {' "$connect_screen"
+assert_contains 'guard let value, value.isFinite, value > 0 else { return nil }' "$connect_screen"
+# Finishing is one indeterminate bar for the whole step, so it never jumps backwards.
+finishing_block="$(awk '/title: "Finishing",/ { capture = 1 } capture { print } /isLast: true/ { capture = 0 }' "$connect_screen")"
+[[ "$finishing_block" == *'progress: nil,'* && "$finishing_block" != *'installationPhaseProgress'* ]] \
+    || { print -u2 "FAIL: Finishing must use one indeterminate bar"; exit 1; }
+assert_contains '.onChange(of: value == nil) { _ in startSweepIfNeeded() }' "$connect_screen"
 assert_contains 'TerentoProgressBar(value: normalizedFillRatio, fill: TerentoColors.lichen' "$connect_screen"
 assert_contains 'selectedValue: projection.fraction(for: projection.selectedMapBytes)' "$connect_screen"
 
