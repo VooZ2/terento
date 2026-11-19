@@ -4967,6 +4967,11 @@ a.chip {
   .button-secondary {
     border-color: var(--link-text);
   }
+
+  /* About contacts: linkedin.svg has no fill (renders black); LinkedIn allows the white logo on dark. */
+  .about-social-link img[src$="linkedin.svg"] {
+    filter: invert(1);
+  }
 }
 
 /* Home hero: computer actions on a computer, "send this link" on a phone or tablet. */
