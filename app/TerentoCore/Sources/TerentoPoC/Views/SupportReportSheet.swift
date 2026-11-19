@@ -59,7 +59,8 @@ struct SupportReportSheet: View {
                 Text("\(controller.userMessage.unicodeScalars.count)/\(SupportReportController.maximumDescriptionLength)")
                     .monospacedDigit()
             }
-            .font(.terentoUI(size: 11, weight: .medium))
+            // Help-text level shared with About and Diagnostics: 12, secondary.
+            .font(.terentoUI(size: 12, weight: .regular))
             .foregroundStyle(TerentoColors.secondaryText)
             .padding(.top, 4)
 
@@ -129,7 +130,7 @@ struct SupportReportSheet: View {
             .foregroundStyle(TerentoColors.secondaryText)
         case .sent(let reference):
             Label("Report \(reference) sent", systemImage: "checkmark.circle.fill")
-                .font(.terentoUI(size: 14, weight: .semibold))
+                .font(.terentoUI(size: 13, weight: .semibold))
                 .foregroundStyle(TerentoColors.lichenDark)
                 .textSelection(.enabled)
         case .failed(let message):

@@ -62,6 +62,9 @@ require_text '.disabled(mapManagementActionsBusy)
                     .help("Refresh map information")' "$connect_screen" "Manage Refresh is not disabled during an operation"
 # After Remove the list stays on screen and refreshes in place; the reading card is only for no list.
 require_text 'if inventory == nil, managedInventory != nil, isReadingDeviceMaps { return }' "$connect_screen" "rescan replaces the list with the reading card"
+# QA round 3: a rescan keeps the rows' buttons and Refresh in place, disabled, instead of drawing them late.
+require_text '? keptManagedAvailability[item.id] ?? lifecycleViewModel.availability(for: item)' "$connect_screen" "kept rows lose their buttons during a rescan"
+require_text 'if mapEngine.state == .scanned || (isReadingDeviceMaps && managedInventory != nil) {' "$connect_screen" "Refresh disappears during a rescan of the kept list"
 require_text 'removedManagedMapIDs.insert(itemID)' "$connect_screen" "removed row is not hidden from the kept list"
 require_text '.transition(.opacity)' "$connect_screen" "removed row does not fade out"
 require_text '.animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: lifecycleInventory.allItems.map(\.id))' "$connect_screen" "row fade ignores reduced motion"

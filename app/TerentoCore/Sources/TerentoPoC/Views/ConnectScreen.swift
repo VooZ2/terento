@@ -62,6 +62,8 @@ struct ConnectScreen: View {
     // The map in the last Remove dialog, and maps removed since the last fresh list.
     @State private var removingManagedMapID: String?
     @State private var removedManagedMapIDs: Set<String> = []
+    // Row actions from the last full list, drawn disabled while a rescan keeps that list.
+    @State private var keptManagedAvailability: [String: MapLifecycleActionAvailability] = [:]
     @State private var managedSearchText = ""
     @State private var managedProviderID = ""
     @FocusState private var managedSearchFocused: Bool
@@ -1191,6 +1193,9 @@ struct ConnectScreen: View {
         if inventory == nil, managedInventory != nil, isReadingDeviceMaps { return }
         removedManagedMapIDs = []
         managedInventory = inventory
+        keptManagedAvailability = Dictionary((inventory?.allItems ?? []).map {
+            ($0.id, lifecycleViewModel.availability(for: $0))
+        }, uniquingKeysWith: { first, _ in first })
         managedPresentationIndex = managedInventory.map(MapInventoryListPresentationIndex.init)
         if !managedProviderID.isEmpty,
            !(managedPresentationIndex?.providerOptions.contains { $0.id == managedProviderID } ?? false) {
@@ -1292,7 +1297,8 @@ struct ConnectScreen: View {
 
                 Spacer(minLength: 20)
 
-                if mapEngine.state == .scanned {
+                // Kept list during a rescan: Refresh stays in place, disabled.
+                if mapEngine.state == .scanned || (isReadingDeviceMaps && managedInventory != nil) {
                     Button {
                         refreshMapInventory()
                     } label: {
@@ -1629,7 +1635,9 @@ struct ConnectScreen: View {
             item: item,
             providerLabel: item.sourceKind == .custom ? "" : MapProviderDisplay.title(providerID: item.provider ?? "",
                 regionID: item.region, fallback: provider ?? item.provider ?? ""),
-            availability: lifecycleViewModel.availability(for: item),
+            availability: isReadingDeviceMaps
+                ? keptManagedAvailability[item.id] ?? lifecycleViewModel.availability(for: item)
+                : lifecycleViewModel.availability(for: item),
             operation: lifecycleViewModel.operation(for: item.id),
             timeRemaining: lifecycleViewModel.timeRemaining(for: item.id),
             isLifecycleBusy: mapManagementActionsBusy,
@@ -2504,11 +2512,9 @@ struct ConnectScreen: View {
                 title: "Finishing",
                 detail: "Checking the transferred map and completing final checks",
                 state: installationStepState(for: .finishing),
-                progress: mapEngine.installationPhase == .finishing
-                    && mapEngine.installationPhaseProgressIsMeasured
-                    && (mapEngine.installationPhaseProgress ?? 0) > 0.05
-                    ? mapEngine.installationPhaseProgress
-                    : nil,
+                // Finishing is several waits; only the read-back is measured, so one
+                // indeterminate bar for the whole step never moves backwards.
+                progress: nil,
                 bytes: nil,
                 timeRemaining: mapEngine.finishingTimeRemaining,
                 isLast: true
@@ -2559,8 +2565,8 @@ struct ConnectScreen: View {
                     Spacer()
 
                     if state == .active,
-                       let progress {
-                        Text("\(Int(progress * 100))%")
+                       let measured = TerentoProgressBar.measured(progress) {
+                        Text("\(Int(measured * 100))%")
                             .font(.terentoUI(size: 13, weight: .semibold))
                             .foregroundStyle(TerentoColors.graphite)
                     }
@@ -4897,6 +4903,10 @@ private struct ManageOperationProgress: View {
         return progress
     }
 
+    private var measuredFraction: Double? {
+        TerentoProgressBar.measured(progress?.fractionCompleted)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline) {
@@ -4907,8 +4917,8 @@ private struct ManageOperationProgress: View {
                 Spacer()
 
                 // Same rule as the install steps: % only for a measured value.
-                if let progress {
-                    Text("\(Int(progress.fractionCompleted * 100))%")
+                if let measuredFraction {
+                    Text("\(Int(measuredFraction * 100))%")
                         .font(.terentoUI(size: 13, weight: .semibold))
                         .foregroundStyle(TerentoColors.graphite)
                 }
@@ -5108,19 +5118,29 @@ struct TerentoProgressBar: View {
             .clipShape(Capsule())
         }
         .frame(height: InstallationTimelineLayout.progressBarHeight)
-        .onAppear {
-            guard value == nil, !reduceMotion else { return }
-            withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true)) {
-                sweeping = true
-            }
-        }
+        .onAppear(perform: startSweepIfNeeded)
+        .onChange(of: value == nil) { _ in startSweepIfNeeded() }
         .accessibilityElement()
         .accessibilityLabel(label)
         .accessibilityValue(value.map { "\(Int(Self.clamped($0) * 100)) percent" } ?? "In progress")
     }
 
+    private func startSweepIfNeeded() {
+        guard value == nil, !reduceMotion, !sweeping else { return }
+        withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true)) {
+            sweeping = true
+        }
+    }
+
     static func clamped(_ value: Double) -> Double {
         value.isFinite ? min(1, max(0, value)) : 0
+    }
+
+    /// The % next to a bar, only once something was measured; before that the
+    /// bar is shown without a number (no "0%").
+    static func measured(_ value: Double?) -> Double? {
+        guard let value, value.isFinite, value > 0 else { return nil }
+        return value
     }
 }
 

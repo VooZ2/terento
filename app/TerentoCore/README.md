@@ -381,7 +381,10 @@ progress holds at the last completed checkpoint with an action description until
 the call returns. Unknown download lengths show an empty bar without a
 percentage until a total is known; no timer fabricates progress. Install steps,
 Manage rows and the storage meters share one 6 pt capsule bar
-(`TerentoProgressBar`); a percentage appears only for a measured value. Device safety checks and mutation order are unchanged.
+(`TerentoProgressBar`); a percentage appears only for a measured value above zero,
+so a step that has measured nothing yet shows the bar without "0%". The install
+Finishing step chains several waits and only one of them is measured, so it shows
+one indeterminate bar for the whole step and never moves backwards. Device safety checks and mutation order are unchanged.
 Remove and Update's old-map removal reserve 20–90% for the content check
 immediately before deletion (the recorded sampled proof of a managed map, which
 usually ends before the 5-second estimate warm-up, so no time estimate appears,
@@ -394,7 +397,9 @@ Interactive Primary bar as Install; a confirmed removal shows “<Map> removed.�
 for 4 seconds above the list, and VoiceOver announces it. The list stays on
 screen during the rescan that follows: the removed row fades out (no animation
 with Reduce Motion), and "Reading your maps" appears only while there is no
-list yet. While Remove or Update runs, the other Update/Remove buttons and
+list yet. Whenever a rescan keeps the list on screen (after Remove, or on opening
+Manage maps), the rows keep their buttons and Refresh stays in place, all disabled
+until the new list is read. While Remove or Update runs, the other Update/Remove buttons and
 Refresh are disabled. The Remove dialog body is one line: provider (as the
 provider filter names it, e.g. "BBBike (Ontrail)"), release and size, then
 "Other maps stay. This can't be undone." VoiceOver names each row action with
