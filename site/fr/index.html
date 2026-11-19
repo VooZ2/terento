@@ -2,7 +2,7 @@
 <html lang="fr" data-language="fr">
   <head>
     <script defer src="/site-shell.js?v=20261105-copy-command-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20261119-site-refresh-v5">
+    <link rel="stylesheet" href="/styles.css?v=20261119-site-refresh-v6">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#F7F3EC">
@@ -42,7 +42,7 @@
     <link rel="manifest" href="/manifest.webmanifest">
     <script defer src="/language.js?v=20260926-static-shell-v1"></script>
     <script defer src="/privacy-consent.js?v=20261114-umami-monitoring"></script>
-    <script defer src="/provider-list.js?v=20261026-osmapa-v1"></script>
+    <script defer src="/provider-list.js?v=20261119-compare-card-v1"></script>
     <script defer src="/home-features.js?v=20261105-home-map-switch-v4"></script>
     <script defer src="/home-numbers.js?v=20261119-home-numbers-v1"></script>
     <script type="application/ld+json">
@@ -323,8 +323,14 @@
               <p class="provider-summary">Pour parcourir la Pologne à pied ou à vélo.</p>
               <ul class="provider-benefits"><li>Carte détaillée de la Pologne, aussi avec les zones frontalières</li><li>Trois styles : avec les lettres polonaises, sans elles, ou une carte plus légère et plus petite</li><li>Courbes de niveau dans un paquet séparé</li></ul>
             </article>
+            <article class="card card--media home-compare-card" data-compare-card data-span="3">
+              <div class="card-media home-compare-media"><img src="/assets/home/maps-opentopomap.webp?v=20261106-home-watch-srcset" width="640" height="400" alt="" loading="lazy" decoding="async"><img src="/assets/home/maps-freizeitkarte.webp?v=20261106-home-watch-srcset" width="640" height="400" alt="" loading="lazy" decoding="async"></div>
+              <div class="home-compare-copy">
+                <h3><a class="home-compare-link" href="/fr/map-styles/" data-umami-event="maps-link-click" data-umami-event-location="home-providers">Comparer les styles en direct</a></h3>
+                <p class="home-compare-line">Voyez comment chacune représente le même lieu, puis installez celle qui convient à vos sorties.</p>
+              </div>
+            </article>
           </div>
-          <p class="provider-compare"><a class="text-link" href="/fr/map-styles/" data-umami-event="maps-link-click" data-umami-event-location="home-providers">Comparer les styles en direct</a></p>
         </div>
       </section>
       <section class="block home-ways" id="web-installer" aria-labelledby="ways-title">

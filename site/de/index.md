@@ -87,7 +87,9 @@ Zum Erkunden kleinerer Wege zu Fuß.
 
 Einige Kartenbeschriftungen sind auf Französisch.
 
-[Kartenstile live vergleichen](https://terento.app/de/map-styles/)
+### [Kartenstile live vergleichen](https://terento.app/de/map-styles/)
+
+Sieh dir an, wie jede denselben Ort darstellt, und installiere die, die zu deinen Touren passt.
 
 ## Mit der Mac-App oder im Browser
 

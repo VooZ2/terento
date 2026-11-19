@@ -8,7 +8,7 @@ const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "u
 const styles = read("site/styles.css");
 const shellSource = read("site/site-shell.js");
 const languageSource = read("site/language.js");
-const styleVersion = "20261119-site-refresh-v5";
+const styleVersion = "20261119-site-refresh-v6";
 const mobileLanguageNames = { en: "English", de: "Deutsch", fr: "Français", pl: "Polski", cs: "Čeština", it: "Italiano" };
 
 const cssBlock = (selector) => {
@@ -221,7 +221,8 @@ for (const locale of Object.keys(locales)) {
   assert.ok(storyCopy, `${locale} must have a story copy block`);
   assert.equal((storyCopy.match(/<p>/g) || []).length, 3, `${locale} owner-approved story in three short paragraphs`);
   assert.match(storyCopy, /Garmin fēnix/, `${locale} fēnix keeps its macron`);
-  assert.match(story, /<\/div>\s*<div class="about-socials">\s*<p class="about-social-label">[^<]+<\/p>[\s\S]*class="about-donate"/, `${locale} contact links and the donation line follow the story in the same section`);
+  // Round 6 (owner): story + contact links in two thirds, the donation block as a card in the last third.
+  assert.match(story, /<div class="shell about-story-grid">\s*<div class="about-story-main">\s*<div class="about-story-copy">[\s\S]*?<\/div>\s*<div class="about-socials">\s*<p class="about-social-label">[^<]+<\/p>\s*<div class="about-social-links">[\s\S]*?<\/div>\s*<\/div>\s*<\/div>\s*<div class="card about-donate">\s*<p>[^<]+<\/p>\s*<a class="about-social-link about-social-link--donate" href="https:\/\/buymeacoffee\.com\/vooz2"/, `${locale} story and contacts, then the donation card, in the same section`);
   assert.doesNotMatch(html, /cta-band|end-cta|about-bottom/, `${locale} no closing call to action on About`);
   const schema = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
   const person = schema["@graph"].find(node => node["@type"] === "Person");

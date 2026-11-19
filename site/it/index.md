@@ -87,7 +87,9 @@ Per esplorare i sentieri minori a piedi.
 
 Alcune etichette della mappa sono in francese.
 
-[Confronta gli stili dal vivo](https://terento.app/it/map-styles/)
+### [Confronta gli stili dal vivo](https://terento.app/it/map-styles/)
+
+Guarda come ognuna disegna lo stesso luogo, poi installa quella adatta alle tue uscite.
 
 ## Con l’app per Mac o dal browser
 

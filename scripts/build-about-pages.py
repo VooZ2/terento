@@ -18,7 +18,7 @@ REDDIT_URL = "https://www.reddit.com/user/MrDonas/"
 BASE_URL = "https://terento.app"
 ABOUT_SLUG = "about/"
 SHELL_VERSION = "20260905-in-page-language-v1"
-STYLE_VERSION = "20261119-site-refresh-v5"
+STYLE_VERSION = "20261119-site-refresh-v6"
 UMAMI_SCRIPT_VERSION = "20261114-umami-monitoring"
 SOCIAL_IMAGE = "/assets/social/terento-og.png"
 EMAIL_ADDRESS = "hello@terento.app"
@@ -412,11 +412,12 @@ def render(locale: str, copy: dict[str, object]) -> str:
               <a class="about-social-link" href="{REDDIT_URL}" target="_blank" rel="noopener noreferrer" data-umami-event="social-link-click" data-umami-event-location="about-story" data-umami-event-channel="reddit" data-umami-event-destination="reddit.com"><img src="/assets/social/reddit.svg" alt="" width="16" height="16"><span>{esc(copy["reddit"])}</span></a>
               <a class="about-social-link about-email-link" href="{EMAIL_HREF}" data-umami-event="support-link-click" data-umami-event-location="about-story" data-umami-event-channel="email"><img src="/assets/social/email.svg" alt="" width="16" height="16"><span>{esc(copy["email"])}</span></a>
             </div>
-            <div class="about-donate">
-              <p>{esc(copy["donate_text"])}</p>
-              <a class="about-social-link about-social-link--donate" href="https://buymeacoffee.com/vooz2" target="_blank" rel="noopener noreferrer" data-umami-event="donate" data-umami-event-location="about-story" data-umami-event-channel="donate"><img src="/assets/social/buymeacoffee.svg" alt="" width="16" height="16"><span>{esc(copy["donate"])}</span></a>
-            </div>
           </div>'''
+    # Round 6 (owner): the donation block is a card in the right third, top-aligned with the story.
+    donate = f'''        <div class="card about-donate">
+          <p>{esc(copy["donate_text"])}</p>
+          <a class="about-social-link about-social-link--donate" href="https://buymeacoffee.com/vooz2" target="_blank" rel="noopener noreferrer" data-umami-event="donate" data-umami-event-location="about-story" data-umami-event-channel="donate"><img src="/assets/social/buymeacoffee.svg" alt="" width="16" height="16"><span>{esc(copy["donate"])}</span></a>
+        </div>'''
     return f'''<!doctype html>
 <html lang="{locale}" data-language="{locale}" data-page="about">
   <head>
@@ -480,13 +481,16 @@ def render(locale: str, copy: dict[str, object]) -> str:
         </div>
       </section>
       <section class="block about-story" aria-labelledby="about-maker-title">
-        <div class="shell">
+        <div class="shell about-story-grid">
+        <div class="about-story-main">
           <div class="about-story-copy">
             <h2 id="about-maker-title">{esc(copy["maker_heading"])}</h2>
             {maker_row(copy)}
 {story}
           </div>
 {social}
+        </div>
+{donate}
         </div>
       </section>
       <section class="block about-v2-mentions" aria-labelledby="about-mentions-title">

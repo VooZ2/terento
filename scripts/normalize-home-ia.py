@@ -14,7 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCALES = ("en", "de", "fr", "pl", "cs", "it")
-PROVIDER_SCRIPT_VERSION = "20261026-osmapa-v1"
+PROVIDER_SCRIPT_VERSION = "20261119-compare-card-v1"
 FEATURE_SCRIPT_VERSION = "20261105-home-map-switch-v4"
 NUMBERS_SCRIPT_VERSION = "20261119-home-numbers-v2"
 ASSET_VERSION = "20261106-home-watch-srcset"
@@ -41,6 +41,18 @@ EDGE_IMAGE = ROOT / "site/assets/home/edge-front.webp"
 EMAIL_URL = "mailto:hello@terento.app?subject=Terento%20installation%20issue"
 EMAIL_URL_HTML = EMAIL_URL.replace("@", "&#64;")
 HOME_COPY = json.loads((ROOT / "scripts/templates/home-copy.json").read_text())
+# The Compare card's one line is the last sentence of the Map styles lead (no new copy, owner round 6).
+MAP_STYLES_COPY = json.loads((ROOT / "scripts/templates/map-styles-copy.json").read_text())
+
+
+def compare_line(locale: str) -> str:
+    return re.split(r"(?<=[.!?])\s+", MAP_STYLES_COPY[locale]["lead"])[-1]
+
+
+def compare_span(visible_cards: int) -> int:
+    """Columns (of 3) the Compare card takes so the last row has no empty slot; provider-list.js
+    recomputes this when the catalog shows or hides cards."""
+    return 3 - visible_cards % 3
 COMPATIBILITY = runpy.run_path(str(ROOT / "scripts/build-compatibility-pages.py"))
 COMPONENTS = runpy.run_path(str(ROOT / "scripts/site_components.py"))
 SITE_URL = "https://terento.app"
@@ -623,13 +635,22 @@ def provider_cards_markup(locale: str, copy: dict[str, str]) -> str:
 def normalize_home(source: str, path: Path, locale: str) -> str:
     copy = HOME_COPY[locale]
     provider_cards = provider_cards_markup(locale, copy)
+    visible_cards = len(re.findall(r'<article class="provider-card[^"]*" data-provider-card="[^"]+"(?![^>]*\bhidden)[^>]*>', provider_cards))
+    compare_href = "/map-styles/" if locale == "en" else f"/{locale}/map-styles/"
+    compare_card = f'''<article class="card card--media home-compare-card" data-compare-card data-span="{compare_span(visible_cards)}">
+              <div class="card-media home-compare-media"><img src="/assets/home/maps-opentopomap.webp?v={ASSET_VERSION}" width="640" height="400" alt="" loading="lazy" decoding="async"><img src="/assets/home/maps-freizeitkarte.webp?v={ASSET_VERSION}" width="640" height="400" alt="" loading="lazy" decoding="async"></div>
+              <div class="home-compare-copy">
+                <h3><a class="home-compare-link" href="{compare_href}" data-umami-event="maps-link-click" data-umami-event-location="home-providers">{PROVIDER_CARD_COPY[locale]["compare_styles"]}</a></h3>
+                <p class="home-compare-line">{html.escape(compare_line(locale), quote=False)}</p>
+              </div>
+            </article>'''
     provider_section = f'''<section class="block home-providers" id="providers" aria-labelledby="providers-title">
         <div class="shell">
           <div class="section-head"><h2 id="providers-title">{copy["provider_title"]}</h2><p class="provider-copy">{copy["provider_copy"]}</p></div>
           <div class="grid home-provider-grid" id="provider-cards" data-provider-cards>
             {provider_cards}
+            {compare_card}
           </div>
-          <p class="provider-compare"><a class="text-link" href="{"/map-styles/" if locale == "en" else f"/{locale}/map-styles/"}" data-umami-event="maps-link-click" data-umami-event-location="home-providers">{PROVIDER_CARD_COPY[locale]["compare_styles"]}</a></p>
         </div>
       </section>'''
     values = {**copy, "provider_section": provider_section, "asset_version": ASSET_VERSION}

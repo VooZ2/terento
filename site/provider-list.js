@@ -64,6 +64,9 @@
       const counter = addon.querySelector('[data-contour-count]');
       if (count && counter) counter.textContent = counter.dataset.countTemplate.replace('{count}', String(count));
     });
+    // The Compare card fills the rest of the last row (3 columns), so the grid never has an empty slot.
+    const compare = document.querySelector('[data-compare-card]');
+    if (compare) compare.dataset.span = String(3 - (cards.filter((card) => !card.hidden).length % 3));
     updateControls();
   };
   fetch(API_URL, { headers: { Accept: 'application/json' } })

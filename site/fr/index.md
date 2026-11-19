@@ -87,7 +87,9 @@ Pour explorer les petits sentiers à pied.
 
 Certains libellés de la carte sont en français.
 
-[Comparer les styles en direct](https://terento.app/fr/map-styles/)
+### [Comparer les styles en direct](https://terento.app/fr/map-styles/)
+
+Voyez comment chacune représente le même lieu, puis installez celle qui convient à vos sorties.
 
 ## Avec l’app Mac ou depuis votre navigateur
 

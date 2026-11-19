@@ -119,7 +119,7 @@ const anchorFor = (page, className) => {
 
 for (const [locale, expected] of locales) {
   const page = pageFor(locale);
-  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20261119-site-refresh-v5">/, `${locale}: Home stylesheet cache bust`);
+  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20261119-site-refresh-v6">/, `${locale}: Home stylesheet cache bust`);
   assert.match(page, /<script defer src="\/home-features\.js\?v=20261105-home-map-switch-v4"><\/script>/, `${locale}: Home feature script cache bust`);
   assert.match(page, /installing-maps-1600\.png\?v=20260912-app-screens-v2/, `${locale}: installation screenshot cache bust`);
   const heroDevice = page.match(/<figure class="home-device" data-map-switch>[\s\S]*?<\/figure>/)?.[0];
@@ -213,8 +213,15 @@ for (const [locale, expected] of locales) {
   }
   assert.equal((providerSection.match(/class="provider-summary"/g) || []).length, 5);
   assert.doesNotMatch(providerSection, /data-provider-previous|data-provider-next/);
-  assert.match(providerSection, new RegExp(`<p class="provider-compare"><a class="text-link" href="${locale === "en" ? "" : `/${locale}`}/map-styles/"`));
-  assert.match(page, /provider-list\.js\?v=20261026-osmapa-v1/);
+  // Round 6 (owner): "Compare map styles live" is a card in the grid's last row (no separate row under it);
+  // href and Umami event unchanged. Its span fills the row: 3 visible providers in the static HTML.
+  assert.doesNotMatch(providerSection, /class="provider-compare"/, `${locale}: no full-width Compare row`);
+  const compareCard = providerSection.match(/<div class="grid home-provider-grid"[\s\S]*?(<article class="card card--media home-compare-card" data-compare-card data-span="(\d)">[\s\S]*?<\/article>)\s*<\/div>/);
+  assert.ok(compareCard, `${locale}: Compare card is the last item of the provider grid`);
+  assert.equal(compareCard[2], String(3 - ((providerSection.match(/<article class="provider-card[^"]*" data-provider-card="[^"]+">/g) || []).length % 3)), `${locale}: Compare card fills the last row`);
+  assert.match(compareCard[1], new RegExp(`<div class="card-media home-compare-media"><img src="/assets/home/maps-[a-z-]+\\.webp[^"]*"[^>]*><img src="/assets/home/maps-[a-z-]+\\.webp[^"]*"[^>]*></div>[\\s\\S]*<h3><a class="home-compare-link" href="${locale === "en" ? "" : `/${locale}`}/map-styles/" data-umami-event="maps-link-click" data-umami-event-location="home-providers">[^<]+</a></h3>\\s*<p class="home-compare-line">[^<]+</p>`));
+  assert.match(page, /provider-list\.js\?v=20261119-compare-card-v1/);
+  assert.match(fs.readFileSync(path.join(root, "site", "provider-list.js"), "utf8"), /compare\.dataset\.span = String\(3 - \(cards\.filter\(\(card\) => !card\.hidden\)\.length % 3\)\)/, "provider-list.js keeps the Compare card filling the last row");
   assert.match(providerSection, /data-count-template="[^"]*\{count\}[^"]*"/);
   assert.match(providerSection, /63/);
   assert.match(providerSection, /177/);

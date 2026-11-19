@@ -87,7 +87,9 @@ For exploring smaller trails on foot.
 
 Some map labels are in French.
 
-[Compare map styles live](https://terento.app/map-styles/)
+### [Compare map styles live](https://terento.app/map-styles/)
+
+See how each one draws the same place, then install the one that fits your trips.
 
 ## Use the Mac app or your browser
 

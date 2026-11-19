@@ -11,8 +11,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SHELL_VERSION = "20261105-copy-command-v1"
-PROVIDER_SCRIPT_VERSION = "20261026-osmapa-v1"
-STYLE_VERSION = "20261119-site-refresh-v5"
+PROVIDER_SCRIPT_VERSION = "20261119-compare-card-v1"
+STYLE_VERSION = "20261119-site-refresh-v6"
 IMAGE_VERSION = "20260912-app-screens-v2"
 LANGUAGE_VERSION = "20260926-static-shell-v1"
 COMPATIBILITY_LOCALES_VERSION = "20261119-compatibility-labels-v4"

@@ -4298,11 +4298,11 @@ a.chip {
 
 .home-switch {
   border: 0;
-  background: var(--off-white);
+  background: var(--tile);
 }
 
 .home-switch-button:hover {
-  background: var(--tile);
+  background: var(--surface);
 }
 
 @media (max-width: 899px) {
@@ -4401,7 +4401,7 @@ a.chip {
 }
 
 .home-edge .home-edge-screen {
-  width: min(100%, 360px);
+  width: min(100%, 294px);
 }
 
 .home-edge-copy {
@@ -5017,7 +5017,7 @@ a.chip {
 }
 
 /* Map providers on Home: three per row on desktop, one on phones (scripts/normalize-home-ia.py
-   makes every card col-4), equal heights; "Compare map styles live" is a full-width row under it. */
+   makes every card col-4), equal heights; "Compare map styles live" is a card in the last row. */
 @media (max-width: 639px) {
   .home-provider-grid > .provider-card {
     grid-column: span 12;
@@ -5028,16 +5028,6 @@ a.chip {
   height: 100%;
 }
 
-.home-providers .provider-compare {
-  display: flex;
-  align-items: center;
-  max-width: none;
-  margin: var(--grid-gap) 0 0;
-  padding: 6px var(--card-pad);
-  border-radius: var(--card-radius);
-  background: var(--tile);
-  text-align: left;
-}
 
 /* Navigation: the current page is 600 in the link colour (the text-safe interactive colour). */
 .primary-nav a[aria-current="page"]:not(.download-action) {
@@ -5596,17 +5586,6 @@ a.chip {
   font: 400 17px/1.55 var(--font-ui);
 }
 
-.about-socials .about-donate {
-  display: block;
-  margin-top: 24px;
-}
-
-#main-content .about-socials .about-donate p {
-  margin: 0 0 12px;
-  color: var(--muted-text);
-  font-size: 17px;
-  line-height: 1.55;
-}
 
 /* Home: the Mac App Store badge sits under "Download for Mac" in the Mac app card. */
 .home-way .home-app-store {
@@ -5630,4 +5609,209 @@ a.chip {
     white-space: normal;
     text-overflow: clip;
   }
+}
+
+/* Site refresh round 6 (2026-11-19): layout polish only. */
+
+/* Home providers: the Compare card fills the rest of the last row (data-span = columns of 3,
+   set by scripts/normalize-home-ia.py and kept current by provider-list.js). Shorter photos. */
+.home-providers .provider-card .card-media img {
+  aspect-ratio: 16 / 7;
+  object-fit: cover;
+}
+
+.home-compare-card {
+  grid-column: span 4;
+}
+
+.home-compare-card[data-span="2"] {
+  grid-column: span 8;
+}
+
+.home-compare-card[data-span="3"] {
+  grid-column: span 12;
+}
+
+.home-compare-media {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  background: var(--off-white);
+}
+
+.home-compare-media img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 8 / 7;
+  object-fit: cover;
+}
+
+#main-content .home-compare-copy h3 {
+  margin: 0 0 8px;
+  font: 600 clamp(24px, 2vw, 28px)/1.15 var(--font-brand);
+  letter-spacing: -0.02em;
+}
+
+#main-content .home-compare-link {
+  color: var(--link-text);
+  text-decoration: none;
+}
+
+#main-content .home-compare-link::after {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  content: "";
+}
+
+#main-content .home-compare-link:hover {
+  text-decoration: underline;
+}
+
+.home-compare-card:focus-within {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+#main-content .home-compare-link:focus-visible {
+  outline: none;
+}
+
+#main-content .home-compare-line {
+  margin: 0;
+  color: var(--muted-text);
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+/* Wider than one column: photo on the left, text on the right, vertically centred. */
+@media (min-width: 640px) {
+  .home-compare-card:is([data-span="2"], [data-span="3"]) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 0 var(--card-pad);
+  }
+
+  .home-compare-card:is([data-span="2"], [data-span="3"]) .home-compare-media {
+    margin: calc(var(--card-pad) * -1) 0 calc(var(--card-pad) * -1) calc(var(--card-pad) * -1);
+    height: calc(100% + var(--card-pad) * 2);
+  }
+
+  .home-compare-card:is([data-span="2"], [data-span="3"]) .home-compare-media img {
+    height: 100%;
+    aspect-ratio: auto;
+  }
+}
+
+/* For one column the photo pair matches the provider photos. */
+.home-compare-card[data-span="1"] .home-compare-media img {
+  aspect-ratio: 8 / 7;
+}
+
+.home-compare-card[data-span="1"] .home-compare-media {
+  aspect-ratio: 16 / 7;
+  overflow: hidden;
+}
+
+@media (max-width: 639px) {
+  .home-compare-card,
+  .home-compare-card[data-span] {
+    grid-column: span 12;
+  }
+
+  .home-compare-media {
+    aspect-ratio: 16 / 7;
+    overflow: hidden;
+  }
+}
+
+/* "Use the Mac app or your browser": icon left of the title, text, then one action row at the
+   bottom of each card; both cards the same height, both action rows on one line. */
+#main-content .home-way {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto 1fr auto;
+  align-items: center;
+  column-gap: 12px;
+}
+
+#main-content .home-way .home-feature-visual {
+  grid-column: 1;
+  grid-row: 1;
+  margin: 0;
+}
+
+#main-content .home-way h3 {
+  grid-column: 2;
+  grid-row: 1;
+  margin: 0;
+}
+
+#main-content .home-way > p {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  align-self: start;
+  margin: 12px 0 0;
+}
+
+#main-content .home-way .home-way-actions {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px; /* the badge link is 44px (touch target), so both rows share one centre line */
+  margin: 24px 0 0;
+  padding-top: 0;
+}
+
+/* About "Who makes it": story and contacts in two thirds, the donation card in the last third,
+   top-aligned; one column on phones. */
+.about-story-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: clamp(32px, 5vw, 64px);
+  align-items: start;
+}
+
+.about-story-grid .about-story-copy,
+.about-story-grid .about-socials {
+  max-width: none;
+}
+
+#main-content .about-story-grid .about-donate {
+  display: block;
+  margin: 0;
+  border-radius: var(--card-radius);
+}
+
+#main-content .about-story-grid .about-donate p {
+  margin: 0 0 12px;
+  color: var(--muted-text);
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+@media (max-width: 899px) {
+  .about-story-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Step numbers: the digit centred in its circle and the circle centred on the first text line. */
+.steps > li::before,
+.guide-v2 .guide-timeline.steps > li::before {
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.steps--compact > li::before {
+  display: grid;
+  place-items: center;
+  top: calc((23.25px - 28px) / 2); /* li text is 15px/23.25px */
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
