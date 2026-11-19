@@ -88,7 +88,7 @@
     "provider_list_label": "Kartenanbieter",
     "web_installer_href": "/de/install/",
     "faq_questions": [
-      "Welche Garmin-Uhren und Edge-Radcomputer funktionieren mit Terento?",
+      "Welche Garmin-Uhren und Edge-Fahrradcomputer funktionieren mit Terento?",
       "Kann ich Drittanbieter-Karten von einem Mac ohne Garmin Express oder BaseCamp auf einer Garmin-Uhr installieren?",
       "Ist das sicher für mein Garmin?",
       "Kann ich meine eigene .img-Karte hinzufügen?",
@@ -97,7 +97,7 @@
       "Was soll ich tun, wenn die Installation fehlschlägt?",
       "Kann ich Karten installieren, ohne die App zu installieren?"
     ],
-    "compatibility_answer": "Auf der <a href=\"/de/compatibility/\" data-umami-event=\"compatibility-link-click\" data-umami-event-location=\"home-faq-compatibility\">Kompatibilitätsseite</a> findest du genaue Garmin-Modelle und Varianten mit mindestens einer erfolgreich geteilten Installation. Ein fehlendes Modell ist nicht unbedingt ununterstützt. Auch neuere Garmin-Edge-Radcomputer mit Kartenunterstützung wie Edge 540, 840 und 1050 funktionieren. <a href=\"/de/guides/install-garmin-maps-edge-mac/\" data-umami-event=\"guide-link-click\" data-umami-event-location=\"home-faq-compatibility-edge\">Zur Edge-Anleitung.</a>",
+    "compatibility_answer": "Auf der <a href=\"/de/compatibility/\" data-umami-event=\"compatibility-link-click\" data-umami-event-location=\"home-faq-compatibility\">Kompatibilitätsseite</a> findest du genaue Garmin-Modelle und Varianten mit mindestens einer erfolgreich geteilten Installation. Fehlt ein Modell in der Liste, heißt das nicht, dass es nicht unterstützt wird. Auch neuere Garmin-Edge-Fahrradcomputer mit Kartenunterstützung wie Edge 540, 840 und 1050 funktionieren. <a href=\"/de/guides/install-garmin-maps-edge-mac/\" data-umami-event=\"guide-link-click\" data-umami-event-location=\"home-faq-compatibility-edge\">Zur Edge-Anleitung.</a>",
     "basecamp_answer": "Ja. Terento erledigt alles auf deinem Mac: Karte und Region wählen, auf deinem Garmin installieren und später aktualisieren oder entfernen. Garmin Express oder BaseCamp brauchst du nicht. <a href=\"/de/guides/install-garmin-maps-mac/\" data-umami-event=\"guide-link-click\" data-umami-event-location=\"home-faq-basecamp\">Lies die Installationsanleitung.</a>",
     "safety_answer": "Ja. Füge eine kompatible .img-Karte von deinem Mac hinzu und installiere sie auf deiner verbundenen Garmin-Uhr.",
     "update_answer": "Ja. Terento zeigt dir, wenn es eine neuere Version einer installierten Karte gibt, und aktualisiert sie für dich.",

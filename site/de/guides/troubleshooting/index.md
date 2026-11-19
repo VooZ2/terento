@@ -9,7 +9,7 @@ Finde dein Problem – von einer Garmin-Uhr, die der Mac nicht erkennt, bis zu e
 
 ## Garmin Edge wird am Mac nicht erkannt
 
-Neuere Garmin-Edge-Radcomputer mit Kartenunterstützung verbinden sich mit dem Mac genauso wie aktuelle Garmin-Uhren. Die meisten Schritte auf dieser Seite gelten deshalb auch für einen Edge: USB-Datenkabel nutzen, Garmin Express beenden und bis zu 2 Minuten warten. Ältere Edge-Modelle, die im Finder als Laufwerk erscheinen, funktionieren anders.
+Neuere Garmin-Edge-Fahrradcomputer mit Kartenunterstützung verbinden sich mit dem Mac genauso wie aktuelle Garmin-Uhren. Die meisten Schritte auf dieser Seite gelten deshalb auch für einen Edge: USB-Datenkabel nutzen, Garmin Express beenden und bis zu 2 Minuten warten. Ältere Edge-Modelle, die im Finder als Laufwerk erscheinen, funktionieren anders.
 
 [Anleitung für Garmin Edge lesen](https://terento.app/de/guides/install-garmin-maps-edge-mac/)
 

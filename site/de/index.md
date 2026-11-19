@@ -107,9 +107,9 @@ Verbinde deine Garmin-Uhr per USB-Kabel, wähle Karten und installiere sie direk
 
 ## Fragen und Antworten
 
-Welche Garmin-Uhren und Edge-Radcomputer funktionieren mit Terento?
+Welche Garmin-Uhren und Edge-Fahrradcomputer funktionieren mit Terento?
 
-Auf der [Kompatibilitätsseite](https://terento.app/de/compatibility/) findest du genaue Garmin-Modelle und Varianten mit mindestens einer erfolgreich geteilten Installation. Ein fehlendes Modell ist nicht unbedingt ununterstützt. Auch neuere Garmin-Edge-Radcomputer mit Kartenunterstützung wie Edge 540, 840 und 1050 funktionieren. [Zur Edge-Anleitung.](https://terento.app/de/guides/install-garmin-maps-edge-mac/)
+Auf der [Kompatibilitätsseite](https://terento.app/de/compatibility/) findest du genaue Garmin-Modelle und Varianten mit mindestens einer erfolgreich geteilten Installation. Fehlt ein Modell in der Liste, heißt das nicht, dass es nicht unterstützt wird. Auch neuere Garmin-Edge-Fahrradcomputer mit Kartenunterstützung wie Edge 540, 840 und 1050 funktionieren. [Zur Edge-Anleitung.](https://terento.app/de/guides/install-garmin-maps-edge-mac/)
 
 Kann ich Drittanbieter-Karten von einem Mac ohne Garmin Express oder BaseCamp auf einer Garmin-Uhr installieren?
 

@@ -250,7 +250,7 @@ PROVIDER_CARD_COPY = {
         "contours": {
             "badge": "Volitelný doplněk pro OpenTopoMap",
             "name": "Vrstevnice",
-            "description": "Přidejte výškové čáry, které pomáhají rozpoznat svahy. Tento doplněk vyberte při instalaci regionu OpenTopoMap v Terento.",
+            "description": "Přidejte vrstevnice, které pomáhají rozpoznat svahy. Tento doplněk vyberte při instalaci regionu OpenTopoMap v Terento.",
             "count_template": "Dostupné pro {count} mapových balíčků · Zabírají další místo."
         },
         "compare_styles": "Porovnat styly map naživo"
@@ -289,7 +289,7 @@ PROVIDER_CARD_COPY = {
         "contours": {
             "badge": "Componente aggiuntivo opzionale per OpenTopoMap",
             "name": "Curve di livello",
-            "description": "Aggiungi linee altimetriche per leggere meglio le pendenze. Scegli questo componente durante l’installazione di una regione OpenTopoMap in Terento.",
+            "description": "Aggiungi curve di livello per leggere meglio le pendenze. Scegli questo componente durante l’installazione di una regione OpenTopoMap in Terento.",
             "count_template": "Disponibile per {count} pacchetti di mappe · Occupa spazio aggiuntivo."
         },
         "compare_styles": "Confronta gli stili dal vivo"

@@ -5,7 +5,7 @@ canonical: https://terento.app/de/download/
 
 # Terento für Mac herunterladen
 
-Eine kostenlose Open-Source-App, die freie Karten auf Garmin-Uhren und Edge-Radcomputer mit Kartenunterstützung installiert.
+Eine kostenlose Open-Source-App, die freie Karten auf Garmin-Uhren und Edge-Fahrradcomputer mit Kartenunterstützung installiert.
 
 [Für Mac herunterladen](https://github.com/VooZ2/terento/releases/download/v1.2.1-build48/Terento-1.2.1-macOS-arm64.dmg) [Laden im Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-download&mt=8)
 

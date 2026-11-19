@@ -15,7 +15,7 @@ Eine kostenlose Karten-App, gebaut von einem Garmin-Wanderer.
 
 - Ein [Web-Installer](https://terento.app/de/install/) für Chrome, Microsoft Edge, Opera oder Brave auf dem Mac; Linux wird noch getestet.
 
-- Ein Weg, kostenlose Karten auf Garmin-Uhren und neueren Edge-Radcomputern mit Kartenunterstützung zu installieren, zu aktualisieren und zu entfernen.
+- Ein Weg, kostenlose Karten auf Garmin-Uhren und neueren Edge-Fahrradcomputern mit Kartenunterstützung zu installieren, zu aktualisieren und zu entfernen.
 
 - Auch für deine eigene kompatible Karte (.img). Eigene Karten werden nicht automatisch aktualisiert.
 

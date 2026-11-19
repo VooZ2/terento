@@ -71,7 +71,7 @@ Na túry, při kterých záleží na terénu.
 
 Volitelný doplněk pro OpenTopoMap Vrstevnice
 
-Přidejte výškové čáry, které pomáhají rozpoznat svahy. Tento doplněk vyberte při instalaci regionu OpenTopoMap v Terento.
+Přidejte vrstevnice, které pomáhají rozpoznat svahy. Tento doplněk vyberte při instalaci regionu OpenTopoMap v Terento.
 
 Dostupné pro 157 mapových balíčků · Zabírají další místo.
 

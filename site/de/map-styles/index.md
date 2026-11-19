@@ -5,7 +5,7 @@ canonical: https://terento.app/de/map-styles/
 
 # Kostenlose Karten für deinen Garmin
 
-OpenTopoMap, Freizeitkarte, MapRando, BBBike und OSMapaPL sind kostenlose topografische Karten aus OpenStreetMap für Garmin-Uhren und Edge-Radcomputer. Sieh dir an, wie jede denselben Ort darstellt, und installiere die, die zu deinen Touren passt.
+OpenTopoMap, Freizeitkarte, MapRando, BBBike und OSMapaPL sind kostenlose topografische Karten aus OpenStreetMap für Garmin-Uhren und Edge-Fahrradcomputer. Sieh dir an, wie jede denselben Ort darstellt, und installiere die, die zu deinen Touren passt.
 
 Kartenstil links Kartenstil rechts
 
@@ -143,9 +143,9 @@ Sind diese Karten kostenlos?
 
 Ja. Jede Karte hier ist kostenlos und wird von Community-Projekten aus OpenStreetMap erstellt. Auch Terento, die App, die sie installiert, ist kostenlos und Open Source.
 
-Funktionieren sie auf Garmin-Edge-Radcomputern?
+Funktionieren sie auf Garmin-Edge-Fahrradcomputern?
 
-Ja, auf neueren Edge-Radcomputern mit Kartenunterstützung wie Edge 540, 840 und 1050 sowie auf Garmin-Uhren mit Kartenunterstützung. Die [Kompatibilitätsseite](https://terento.app/de/compatibility/) listet die Modelle, auf denen bereits Karten installiert wurden.
+Ja, auf neueren Edge-Fahrradcomputern mit Kartenunterstützung wie Edge 540, 840 und 1050 sowie auf Garmin-Uhren mit Kartenunterstützung. Die [Kompatibilitätsseite](https://terento.app/de/compatibility/) listet die Modelle, auf denen bereits Karten installiert wurden.
 
 Ersetzt eine kostenlose Karte meine Garmin-Karten?
 

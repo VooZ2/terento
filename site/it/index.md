@@ -71,7 +71,7 @@ Per escursioni in cui il terreno conta.
 
 Componente aggiuntivo opzionale per OpenTopoMap Curve di livello
 
-Aggiungi linee altimetriche per leggere meglio le pendenze. Scegli questo componente durante l’installazione di una regione OpenTopoMap in Terento.
+Aggiungi curve di livello per leggere meglio le pendenze. Scegli questo componente durante l’installazione di una regione OpenTopoMap in Terento.
 
 Disponibile per 157 pacchetti di mappe · Occupa spazio aggiuntivo.
 
