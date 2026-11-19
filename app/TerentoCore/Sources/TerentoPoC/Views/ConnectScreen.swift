@@ -233,7 +233,8 @@ struct ConnectScreen: View {
                 detectionPhase: deviceEngine.detectionPhase,
                 canEject: canSafelyEject,
                 isInstalling: installationOperationIsActive,
-                navigationLocked: installationOperationIsActive,
+                // The reconnect wait replaces the page until it ends, as its dialog did.
+                navigationLocked: installationOperationIsActive || watchReconnectWait != nil,
                 mapNavigationEnabled: canOpenMapSections,
                 onNavigate: navigate,
                 onEject: performSafeEject
@@ -413,38 +414,7 @@ struct ConnectScreen: View {
         .onChange(of: updatePresentationIsSafe) { _ in
             presentUpdatePromptIfSafe()
         }
-        .sheet(item: $updatePrompt) { update in
-            AppUpdatePromptView(
-                update: update,
-                onDownload: {
-                    if appUpdateController.openDownload(for: update) {
-                        updatePrompt = nil
-                    }
-                },
-                onLater: {
-                    appUpdateController.deferPrompt(for: update)
-                    updatePrompt = nil
-                },
-                onReleaseNotes: {
-                    _ = appUpdateController.openReleaseNotes(for: update)
-                }
-            )
-        }
         #endif
-        .sheet(item: $watchReconnectWait, onDismiss: handleWatchReconnectWaitDismissed) { presented in
-            let wait = watchReconnectWait ?? presented
-            WatchReconnectWaitDialog(
-                watchWasBusy: wait.watchWasBusy,
-                isCheckingWatch: wait.watchWasDisconnected && deviceEngine.hasConnectedDevice,
-                onCancel: {
-                    // Cancel ends the wait with the failure dialog, as before
-                    // the wait existed, so Report issue stays available.
-                    watchReconnectFollowUp = endFollowUp(for: wait, decision: .keepWaiting)
-                    watchReconnectWait = nil
-                }
-            )
-            .interactiveDismissDisabled(false)
-        }
         .sheet(
             isPresented: $isShowingInstallationFailure,
             onDismiss: handleInstallationFailureDismissed
@@ -477,24 +447,6 @@ struct ConnectScreen: View {
             }
             .interactiveDismissDisabled(false)
         }
-        #if TERENTO_APP_STORE
-        .sheet(isPresented: $isShowingInstallSharingPrompt) {
-            InstallSharingDialog(
-                mapTitles: successfullyInstalledItems.map(\.title),
-                isPartial: hasPartialInstallation,
-                onDone: { share in
-                    evidenceController.decideConsent(share ? .accepted : .declined)
-                    // A map usage refusal carried over from the DMG app stands.
-                    if mapStatisticsController.store.consent() == nil {
-                        mapStatisticsController.decideConsent(share ? .accepted : .declined)
-                    }
-                    if share { evidenceController.shareOperation(evidenceOperationID) }
-                    isShowingInstallSharingPrompt = false
-                }
-            )
-            .interactiveDismissDisabled(true)
-        }
-        #endif
     }
 
     #if TERENTO_APP_STORE
@@ -508,11 +460,27 @@ struct ConnectScreen: View {
         }
         isShowingInstallSharingPrompt = asksAboutSharing
     }
+
+    /// Share or Not now in the Done page callout; nothing is pre-selected.
+    private func decideInstallSharing(_ share: Bool) {
+        evidenceController.decideConsent(share ? .accepted : .declined)
+        // A map usage refusal carried over from the DMG app stands.
+        if mapStatisticsController.store.consent() == nil {
+            mapStatisticsController.decideConsent(share ? .accepted : .declined)
+        }
+        if share { evidenceController.shareOperation(evidenceOperationID) }
+        isShowingInstallSharingPrompt = false
+    }
     #endif
 
     private var mainContent: some View {
         Group {
-            if selectedSection == .installMaps {
+            if let wait = watchReconnectWait {
+                // The wait stays in place across the unplug, which resets the
+                // section to Device, until it continues or ends.
+                watchReconnectWaitContent(wait)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            } else if selectedSection == .installMaps {
                 if localInstallStep == .choose {
                     mapsContent
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -535,6 +503,54 @@ struct ConnectScreen: View {
                 }
                 .scrollIndicators(.automatic)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        #if !TERENTO_APP_STORE
+        // An offer, not a dialog: one quiet line at the top of Device.
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if selectedSection == .device, watchReconnectWait == nil, let update = updatePrompt {
+                AppUpdateBanner(
+                    update: update,
+                    onDownload: {
+                        if appUpdateController.openDownload(for: update) {
+                            updatePrompt = nil
+                        }
+                    },
+                    onLater: {
+                        appUpdateController.deferPrompt(for: update)
+                        updatePrompt = nil
+                    },
+                    onReleaseNotes: {
+                        _ = appUpdateController.openReleaseNotes(for: update)
+                    }
+                )
+                .frame(maxWidth: TerentoPageLayout.maxWidth, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, TerentoPageLayout.horizontalPadding)
+                .padding(.top, 16)
+            }
+        }
+        #endif
+    }
+
+    private func watchReconnectWaitContent(_ wait: WatchReconnectWait) -> some View {
+        TerentoInstallationProgressPageShell {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Installing maps")
+                    .font(.terentoHeading(size: 42, weight: .semibold))
+                    .foregroundStyle(TerentoColors.graphite)
+
+                WatchReconnectWaitPanel(
+                    watchWasBusy: wait.watchWasBusy,
+                    isCheckingWatch: wait.watchWasDisconnected && deviceEngine.hasConnectedDevice,
+                    onCancel: {
+                        // Cancel ends the wait with the failure dialog, as before
+                        // the wait existed, so Report issue stays available.
+                        watchReconnectFollowUp = endFollowUp(for: wait, decision: .keepWaiting)
+                        endWatchReconnectWait()
+                    }
+                )
+                .padding(.top, 18)
             }
         }
     }
@@ -740,7 +756,15 @@ struct ConnectScreen: View {
         case .differentWatch, .timedOut:
             watchReconnectFollowUp = endFollowUp(for: wait, decision: decision)
         }
+        endWatchReconnectWait()
+    }
+
+    /// Every end of the wait runs its follow-up exactly once (the sheet's
+    /// onDismiss did this while the wait was a dialog).
+    private func endWatchReconnectWait() {
+        guard watchReconnectWait != nil else { return }
         watchReconnectWait = nil
+        handleWatchReconnectWaitEnded()
     }
 
     /// While the watch never left, the engine still holds the original
@@ -755,8 +779,7 @@ struct ConnectScreen: View {
             for: wait, decision: decision, deviceConnected: deviceEngine.hasConnectedDevice))
     }
 
-    private func handleWatchReconnectWaitDismissed() {
-        // Escape or another dismissal ends the wait like Cancel.
+    private func handleWatchReconnectWaitEnded() {
         let followUp = watchReconnectFollowUp ?? .showFailure
         watchReconnectFollowUp = nil
         switch followUp {
@@ -2369,6 +2392,18 @@ struct ConnectScreen: View {
                             .foregroundStyle(TerentoColors.secondaryText)
                     }
                     .padding(.top, 14)
+                } else if mapEngine.installationPhase == .preparing {
+                    // The install step owns the device from here: Cancel stays
+                    // in view, disabled, and says why.
+                    HStack(spacing: 12) {
+                        SecondaryButton(title: "Cancel") {}
+                            .disabled(true)
+
+                        Text("Can’t cancel while the map is being prepared.")
+                            .font(.terentoUI(size: 12, weight: .medium))
+                            .foregroundStyle(TerentoColors.secondaryText)
+                    }
+                    .padding(.top, 14)
                 }
             }
         }
@@ -2976,9 +3011,10 @@ struct ConnectScreen: View {
             VStack(alignment: .leading, spacing: 0) {
                 TerentoPageHeader(
                     title: installedCount == 1 ? "Map installed" : "Maps installed",
+                    // A complete install needs no subtitle; the title says it.
                     subtitle: hasPartialInstallation
                         ? "The main map is ready. An optional contour component needs attention."
-                        : "Installation complete."
+                        : ""
                 )
 
                 if mapEngine.installationPhase == .completed, !installedItems.isEmpty {
@@ -2997,6 +3033,13 @@ struct ConnectScreen: View {
                     )
                         .padding(.top, TerentoPageLayout.sectionSpacing)
 
+                    #if TERENTO_APP_STORE
+                    if isShowingInstallSharingPrompt {
+                        InstallSharingCallout(onDecide: decideInstallSharing)
+                            .padding(.top, TerentoPageLayout.sectionSpacing)
+                    }
+                    #endif
+
                     #if !TERENTO_APP_STORE
                     // One quiet line after a complete installation, from the
                     // third one and once per version (DonationPromptPolicy).
@@ -3005,11 +3048,11 @@ struct ConnectScreen: View {
                     if showsDonationLine, !hasPartialInstallation {
                         HStack(alignment: .firstTextBaseline, spacing: 6) {
                             Text("Terento is free and open source. If it saved you time, you can support it.")
-                                .font(.terentoUI(size: 13, weight: .medium))
+                                .font(.terentoUI(size: 15, weight: .medium))
                                 .foregroundStyle(TerentoColors.secondaryText)
                                 .fixedSize(horizontal: false, vertical: true)
                             Link("Donate ↗", destination: TerentoAppLinks.donate)
-                                .font(.terentoUI(size: 13, weight: .medium))
+                                .font(.terentoUI(size: 15, weight: .medium))
                                 .foregroundStyle(TerentoColors.interactive)
                         }
                         .padding(.top, TerentoPageLayout.sectionSpacing)
@@ -3203,7 +3246,8 @@ private struct TerentoBrandLockup: View {
     }
 }
 
-private struct AppUpdatePromptView: View {
+/// The update offer as one quiet line at the top of Device (DMG build only).
+private struct AppUpdateBanner: View {
     let update: TerentoAppUpdateManifest
     let onDownload: () -> Void
     let onLater: () -> Void
@@ -3215,23 +3259,46 @@ private struct AppUpdatePromptView: View {
     }
 
     var body: some View {
-        TerentoConfirmationDialog(
-            icon: "arrow.down.circle",
-            role: .info,
-            title: "Terento \(update.releaseLabel) is available",
-            message: summary,
-            secondaryLabel: "Later",
-            primaryLabel: "Download",
-            isDestructive: false,
-            onCancel: onLater,
-            onConfirm: onDownload,
-            accessory: update.releaseNotesURL == nil ? nil : AnyView(
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Image(systemName: "arrow.down.circle")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(TerentoColors.interactive)
+                .accessibilityHidden(true)
+            Text("Terento \(update.releaseLabel) is available")
+                .font(.terentoUI(size: 14, weight: .semibold))
+                .foregroundStyle(TerentoColors.graphite)
+                .layoutPriority(1)
+            Text(summary)
+                .font(.terentoUI(size: 13, weight: .medium))
+                .foregroundStyle(TerentoColors.secondaryText)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .help(summary)
+            Spacer(minLength: 12)
+            if update.releaseNotesURL != nil {
                 Button("What’s new ↗", action: onReleaseNotes)
                     .buttonStyle(.plain)
                     .font(.terentoUI(size: 13, weight: .semibold))
                     .foregroundStyle(TerentoColors.interactive)
-            )
-        )
+            }
+            Button("Later", action: onLater)
+                .buttonStyle(.plain)
+                .font(.terentoUI(size: 13, weight: .semibold))
+                .foregroundStyle(TerentoColors.secondaryText)
+            Button("Download", action: onDownload)
+                .buttonStyle(.plain)
+                .font(.terentoUI(size: 13, weight: .semibold))
+                .foregroundStyle(TerentoColors.interactive)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(TerentoColors.surface, in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.card))
+        .overlay {
+            RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.card)
+                .stroke(TerentoColors.border.opacity(0.72), lineWidth: 1)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Terento \(update.releaseLabel) is available")
     }
 }
 
@@ -3329,10 +3396,10 @@ private enum WatchReconnectFollowUp {
     case resume(WatchReconnectWait)
 }
 
-/// Shown instead of the failure dialog after a stop before any write because
-/// the watch was busy or no longer visible. It only waits; reconnecting the
-/// same watch starts the normal installation again.
-private struct WatchReconnectWaitDialog: View {
+/// Shown on the page instead of the failure dialog after a stop before any
+/// write because the watch was busy or no longer visible. It only waits;
+/// reconnecting the same watch starts the normal installation again.
+private struct WatchReconnectWaitPanel: View {
     let watchWasBusy: Bool
     let isCheckingWatch: Bool
     let onCancel: () -> Void
@@ -3351,7 +3418,15 @@ private struct WatchReconnectWaitDialog: View {
         isCheckingWatch ? "Checking your device" : "Reconnect your device"
     }
 
-    /// VoiceOver hears the state when the dialog opens and when it changes.
+    private var icon: String {
+        isCheckingWatch ? "arrow.triangle.2.circlepath" : "cable.connector"
+    }
+
+    private var role: TerentoDialogRole {
+        isCheckingWatch ? .info : .warning
+    }
+
+    /// VoiceOver hears the state when the wait appears and when it changes.
     private func announceState() {
         NSAccessibility.post(element: NSApp as Any, notification: .announcementRequested, userInfo: [
             .announcement: title,
@@ -3360,20 +3435,42 @@ private struct WatchReconnectWaitDialog: View {
     }
 
     var body: some View {
-        TerentoConfirmationDialog(
-            icon: isCheckingWatch ? "arrow.triangle.2.circlepath" : "cable.connector",
-            role: isCheckingWatch ? .info : .warning,
-            title: title,
-            // No map name here: the dialog is about the watch, not one map.
-            subtitle: "",
-            message: message,
-            supportingMessage: "Nothing was written to your device. Terento waits up to 5 minutes.",
-            secondaryLabel: "Cancel",
-            primaryLabel: nil,
-            isDestructive: false,
-            onCancel: onCancel,
-            onConfirm: {}
-        )
+        VStack(alignment: .leading, spacing: 14) {
+            // No map name here: the wait is about the watch, not one map.
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(role.color)
+                    .frame(width: 15)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.terentoUI(size: 15, weight: .semibold))
+                        .foregroundStyle(TerentoColors.graphite)
+                    Text(message)
+                        .font(.terentoUI(size: 14, weight: .regular))
+                        .foregroundStyle(TerentoColors.graphite)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("Nothing was written to your device. Terento waits up to 5 minutes.")
+                        .font(.terentoUI(size: 12, weight: .medium))
+                        .foregroundStyle(TerentoColors.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 4)
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(TerentoColors.surface, in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.card))
+            .overlay {
+                RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.card)
+                    .stroke(TerentoColors.border.opacity(0.72), lineWidth: 1)
+            }
+            .accessibilityElement(children: .combine)
+
+            // The only action: Escape ends the wait like Cancel, as the dialog did.
+            SecondaryButton(title: "Cancel", action: onCancel)
+                .keyboardShortcut(.cancelAction)
+        }
         .accessibilityElement(children: .contain)
         .onAppear(perform: announceState)
         .onChange(of: isCheckingWatch) { _ in announceState() }
@@ -3444,26 +3541,11 @@ private struct InstallationFailureDialog: View {
 }
 
 #if TERENTO_APP_STORE
-/// Shown once, after the first successful installation in App Store builds.
-/// Sharing starts unticked; Done records the choice either way.
-private struct InstallSharingDialog: View {
-    let mapTitles: [String]
-    let isPartial: Bool
-    let onDone: (Bool) -> Void
-    @State private var share = false
-
-    private var title: String {
-        mapTitles.count > 1 ? "Maps installed" : "Map installed"
-    }
-
-    private var message: String {
-        if isPartial {
-            return "The main map is installed and checked. The optional contours were not completed. Next: disconnect your Garmin, open its map settings and turn the new map on. If it isn’t listed, restart the device."
-        }
-        return mapTitles.count > 1
-            ? "Your maps are installed and checked. Next: disconnect your Garmin, open its map settings and turn the new maps on. If they aren’t listed, restart the device."
-            : "Your map is installed and checked. Next: disconnect your Garmin, open its map settings and turn the new map on. If it isn’t listed, restart the device."
-    }
+/// Shown on the Done page after the first successful installation in App
+/// Store builds, until the person chooses. Nothing is pre-selected: Share
+/// and Not now carry equal weight and neither is the default action.
+private struct InstallSharingCallout: View {
+    let onDecide: (Bool) -> Void
 
     private var shareDetails: AttributedString {
         var link = AttributedString("Privacy Policy ↗")
@@ -3473,45 +3555,31 @@ private struct InstallSharingDialog: View {
         return AttributedString("Device model and software, map name, result, and app versions. Never serial numbers, Unit IDs or files. Change anytime in Diagnostics. ") + link
     }
 
-    private var shareChoice: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Toggle(isOn: $share) {
-                Text("Share install results with Terento")
-                    .font(.terentoUI(size: 14, weight: .semibold))
-                    .foregroundStyle(TerentoColors.graphite)
-            }
-            .toggleStyle(.checkbox)
-            .tint(TerentoColors.interactive)
-
-            Text(shareDetails)
-                .font(.terentoUI(size: 12, weight: .medium))
-                .foregroundStyle(TerentoColors.secondaryText)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.leading, 20)
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(TerentoColors.surfaceElevated, in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.card, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.card, style: .continuous)
-                .stroke(TerentoColors.border, lineWidth: 1)
-        }
-    }
-
     var body: some View {
-        TerentoConfirmationDialog(
-            icon: "CircleCheck",
-            iconIsAsset: true,
-            role: .success,
-            title: title,
-            subtitle: mapTitles.joined(separator: ", "),
-            message: message,
-            secondaryLabel: nil,
-            primaryLabel: "Done",
-            isDestructive: false,
-            onConfirm: { onDone(share) },
-            accessory: AnyView(shareChoice)
-        )
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Share install results with Terento")
+                    .font(.terentoUI(size: 15, weight: .semibold))
+                    .foregroundStyle(TerentoColors.graphite)
+                    .accessibilityAddTraits(.isHeader)
+                Text(shareDetails)
+                    .font(.terentoUI(size: 12, weight: .medium))
+                    .foregroundStyle(TerentoColors.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            HStack(spacing: 10) {
+                SecondaryButton(title: "Share") { onDecide(true) }
+                SecondaryButton(title: "Not now") { onDecide(false) }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(TerentoColors.surface, in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.card))
+        .overlay {
+            RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.card)
+                .stroke(TerentoColors.border.opacity(0.72), lineWidth: 1)
+        }
+        .accessibilityElement(children: .contain)
     }
 }
 #endif
@@ -4211,10 +4279,12 @@ private struct TerentoPageHeader: View {
                 .font(.terentoHeading(size: 42, weight: .semibold))
                 .foregroundStyle(TerentoColors.graphite)
 
-            Text(subtitle)
-                .font(.terentoBody(size: 19, weight: .medium))
-                .foregroundStyle(TerentoColors.secondaryText)
-                .fixedSize(horizontal: false, vertical: true)
+            if !subtitle.isEmpty {
+                Text(subtitle)
+                    .font(.terentoBody(size: 19, weight: .medium))
+                    .foregroundStyle(TerentoColors.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 }
@@ -5156,7 +5226,7 @@ private struct InstallationResultCallout: View {
 
     private var steps: [String] {
         [
-            "Disconnect it from the Mac.",
+            "Eject it here, then unplug it.",
             mapNames.count == 1 ? "Open map settings and turn the new map on." : "Open map settings and turn the new maps on.",
             "Not in the list? Restart the device."
         ]
