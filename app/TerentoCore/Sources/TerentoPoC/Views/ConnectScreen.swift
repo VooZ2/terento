@@ -3999,7 +3999,8 @@ private struct SidebarSectionRow: View {
 
             Text(title)
                 .font(.terentoUI(size: 15, weight: isSelected ? .medium : .regular))
-                .foregroundStyle(isSelected ? TerentoColors.interactive : TerentoColors.secondaryText)
+                // Interactive Hover: 4.6:1 on the selected tint (Interactive Primary is 4.1:1, below AA for text).
+                .foregroundStyle(isSelected ? TerentoColors.interactiveHover : TerentoColors.secondaryText)
                 .lineLimit(1)
                 // Fill the row instead of a Spacer, whose own gap left "Manage maps" too little width.
                 .frame(maxWidth: .infinity, alignment: .leading)
