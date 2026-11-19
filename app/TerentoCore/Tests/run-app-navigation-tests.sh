@@ -98,7 +98,7 @@ if ! grep -Fq 'ManageActionButton' "$connect_screen" \
     || ! grep -Fq '.onHover' "$connect_screen" \
     || ! grep -Fq 'action == .update ? 72 : 68' "$connect_screen" \
     || ! grep -Fq 'ManageOperationProgress' "$connect_screen" \
-    || ! grep -Fq 'ProgressView(value: progress.fractionCompleted)' \
+    || ! grep -Fq 'TerentoProgressBar(value: progress.fractionCompleted' \
         "$project_root/Sources/TerentoPoC/Views/ConnectScreen.swift"; then
     print -u2 "FAIL: Manage map actions or real-progress presentation is incomplete"
     exit 1

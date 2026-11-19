@@ -21,15 +21,32 @@ progress_block="$(awk '
     capture { print }
 ' "$connect_screen")"
 
-if [[ "$progress_block" != *'ProgressView(value: progress.fractionCompleted)'* \
-   || "$progress_block" == *'ProgressView()'* \
-   || "$progress_block" != *'ProgressView(value: 0)'* \
-   || "$progress_block" != *'.progressViewStyle(.linear)'* \
-   || "$progress_block" != *'.tint(TerentoColors.interactive)'* \
-   || "$progress_block" != *'.frame(height: InstallationTimelineLayout.progressBarHeight)'* ]]; then
-    print -u2 "FAIL: Manage progress must use a determinate bar with the shared installation styling"
+if [[ "$progress_block" != *'TerentoProgressBar(value: progress.fractionCompleted'* \
+   || "$progress_block" == *'ProgressView('* \
+   || "$progress_block" != *'TerentoProgressBar(value: 0'* \
+   || "$progress_block" == *'Text("0%")'* ]]; then
+    print -u2 "FAIL: Manage progress must use the shared determinate TerentoProgressBar and show % only when measured"
     exit 1
 fi
+
+# One progress bar component for activity and storage: 6 pt, capsule, border track.
+bar_block="$(awk '
+    /^struct TerentoProgressBar: View/ { capture = 1 }
+    /^struct StorageCard: View/ { capture = 0 }
+    capture { print }
+' "$connect_screen")"
+for needle in '.frame(height: InstallationTimelineLayout.progressBarHeight)' 'Capsule()' \
+    '.fill(TerentoColors.border)' 'var fill: Color = TerentoColors.interactive' \
+    '.fill(TerentoColors.sky)' '.accessibilityValue(' '.accessibilityLabel(label)'; do
+    [[ "$bar_block" == *"$needle"* ]] || { print -u2 "FAIL: TerentoProgressBar lost $needle"; exit 1; }
+done
+if rg -q 'ProgressView\(value:|progressViewStyle\(\.linear\)' "$repo_root/app/TerentoCore/Sources"; then
+    print -u2 "FAIL: a native linear ProgressView is back; use TerentoProgressBar"
+    exit 1
+fi
+assert_contains 'TerentoProgressBar(value: progress, label: title)' "$connect_screen"
+assert_contains 'TerentoProgressBar(value: normalizedFillRatio, fill: TerentoColors.lichen' "$connect_screen"
+assert_contains 'selectedValue: projection.fraction(for: projection.selectedMapBytes)' "$connect_screen"
 
 assert_contains 'static let progressBarHeight: CGFloat = 6' "$connect_screen"
 assert_contains 'static let manageProgressWidth: CGFloat = 220' "$connect_screen"
