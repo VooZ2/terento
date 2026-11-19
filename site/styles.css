@@ -4972,6 +4972,11 @@ a.chip {
   .about-social-link img[src$="linkedin.svg"] {
     filter: invert(1);
   }
+
+  /* email.svg has a dark blue stroke: brightness(0) first so the invert gives white, not peach. */
+  .about-social-link img[src$="email.svg"] {
+    filter: brightness(0) invert(1);
+  }
 }
 
 /* Home hero: computer actions on a computer, "send this link" on a phone or tablet. */
