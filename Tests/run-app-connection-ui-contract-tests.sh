@@ -52,7 +52,7 @@ assert_contains 'connectFailure = failure' "$device_engine"
 # finding, icon steps, the guide link and a note. There is no second list.
 assert_contains 'connectHelpBox(heading: issue.finding, steps: issue.steps, note: issue.note)' "$connect_screen"
 assert_contains 'troubleshootingRow(step.text, icon: step.systemImage)' "$connect_screen"
-assert_contains '.background(TerentoColors.helpSurface, in: RoundedRectangle(cornerRadius: 10))' "$connect_screen"
+assert_contains '.background(TerentoColors.helpSurface, in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.card))' "$connect_screen"
 assert_contains 'return ("exclamationmark.circle", TerentoColors.warning)' "$connect_screen"
 assert_contains 'return ("exclamationmark.triangle", TerentoColors.error)' "$connect_screen"
 assert_absent 'Having trouble connecting?' "$connect_screen"

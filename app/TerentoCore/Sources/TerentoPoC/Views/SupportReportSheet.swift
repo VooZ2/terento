@@ -50,7 +50,7 @@ struct SupportReportSheet: View {
             TextEditor(text: $controller.userMessage)
                 .font(.terentoUI(size: 13, weight: .regular))
                 .frame(height: 70)
-                .overlay { RoundedRectangle(cornerRadius: 6).stroke(TerentoColors.border, lineWidth: 1) }
+                .overlay { RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control).stroke(TerentoColors.border, lineWidth: 1) }
                 .disabled(!controller.canSend)
                 .accessibilityLabel("Description, optional")
                 .accessibilityHint("Don't include personal information.")
@@ -78,8 +78,8 @@ struct SupportReportSheet: View {
                     .padding(10)
             }
             .frame(height: 200)
-            .background(TerentoColors.surface, in: RoundedRectangle(cornerRadius: 8))
-            .overlay { RoundedRectangle(cornerRadius: 8).stroke(TerentoColors.border, lineWidth: 1) }
+            .background(TerentoColors.surface, in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control))
+            .overlay { RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control).stroke(TerentoColors.border, lineWidth: 1) }
             .accessibilityLabel("Report content that will be sent")
             .padding(.top, 6)
 
@@ -151,9 +151,9 @@ struct SupportReportSheet: View {
                 .padding(.horizontal, 16)
                 .frame(minHeight: 38)
                 .background(primary ? TerentoColors.interactive : TerentoColors.canvas,
-                            in: RoundedRectangle(cornerRadius: 8))
+                            in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control))
                 .overlay {
-                    if !primary { RoundedRectangle(cornerRadius: 8).stroke(TerentoColors.border, lineWidth: 1) }
+                    if !primary { RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control).stroke(TerentoColors.border, lineWidth: 1) }
                 }
         }
         .buttonStyle(.plain)

@@ -202,10 +202,10 @@ private struct AboutSecondaryButton: View {
                 .frame(height: 46)
                 .background(
                     isEnabled ? TerentoColors.canvas : TerentoColors.border.opacity(0.55),
-                    in: RoundedRectangle(cornerRadius: 9)
+                    in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control)
                 )
                 .overlay {
-                    RoundedRectangle(cornerRadius: 9)
+                    RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control)
                         .stroke(
                             isEnabled ? TerentoColors.border : TerentoColors.inactiveBorder,
                             lineWidth: 1
@@ -231,7 +231,7 @@ private struct AboutPrimaryButton: View {
                 .frame(height: 46)
                 .background(
                     isEnabled ? TerentoColors.interactive : TerentoColors.border,
-                    in: RoundedRectangle(cornerRadius: 9)
+                    in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control)
                 )
         }
         .buttonStyle(.plain)

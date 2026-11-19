@@ -1042,9 +1042,9 @@ struct ConnectScreen: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(TerentoColors.helpSurface, in: RoundedRectangle(cornerRadius: 10))
+        .background(TerentoColors.helpSurface, in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.card))
         .overlay {
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.card)
                 .stroke(TerentoColors.border.opacity(0.5), lineWidth: 1)
         }
     }
@@ -2023,7 +2023,7 @@ struct ConnectScreen: View {
                             .accessibilityHint("Removes the local staged file. It does not change the Garmin device.")
                         }
                         .padding(10)
-                        .background(TerentoColors.canvas, in: RoundedRectangle(cornerRadius: 9))
+                        .background(TerentoColors.canvas, in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control))
                     } else {
                         customMapDropZone
                     }
@@ -2045,9 +2045,9 @@ struct ConnectScreen: View {
                 .padding(.bottom, 12)
             }
         }
-        .background(TerentoColors.surface.opacity(0.62), in: RoundedRectangle(cornerRadius: 12))
+        .background(TerentoColors.surface.opacity(0.62), in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.card))
         .overlay {
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.card)
                 .stroke(TerentoColors.border.opacity(0.48), lineWidth: 1)
         }
         .accessibilityElement(children: .contain)
@@ -2094,10 +2094,10 @@ struct ConnectScreen: View {
             customMapDropTargeted
                 ? TerentoColors.interactive.opacity(0.10)
                 : TerentoColors.canvas,
-            in: RoundedRectangle(cornerRadius: 9)
+            in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control)
         )
         .overlay {
-            RoundedRectangle(cornerRadius: 9)
+            RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control)
                 .stroke(
                     customMapDropTargeted
                         ? TerentoColors.interactive
@@ -2382,9 +2382,9 @@ struct ConnectScreen: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(TerentoColors.surface, in: RoundedRectangle(cornerRadius: 14))
+        .background(TerentoColors.surface, in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.card))
         .overlay {
-            RoundedRectangle(cornerRadius: 14)
+            RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.card)
                 .stroke(TerentoColors.border.opacity(0.72), lineWidth: 1)
         }
     }
@@ -3303,9 +3303,9 @@ private struct MapLifecycleConfirmationSheet: View {
                     .foregroundStyle(TerentoColors.graphite)
                     .padding(.horizontal, 16)
                     .frame(minHeight: 38)
-                    .background(TerentoColors.canvas, in: RoundedRectangle(cornerRadius: 8))
+                    .background(TerentoColors.canvas, in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control))
                     .overlay {
-                        RoundedRectangle(cornerRadius: 8)
+                        RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control)
                             .stroke(TerentoColors.border, lineWidth: 1)
                     }
                     .keyboardShortcut(.cancelAction)
@@ -3318,7 +3318,7 @@ private struct MapLifecycleConfirmationSheet: View {
                     .frame(minHeight: 38)
                     .background(
                         TerentoColors.interactive,
-                        in: RoundedRectangle(cornerRadius: 8)
+                        in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control)
                     )
                     .keyboardShortcut(.defaultAction)
             }
@@ -3552,9 +3552,9 @@ private struct InstallSharingDialog: View {
                 }
                 .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(TerentoColors.surfaceElevated, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .background(TerentoColors.surfaceElevated, in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.card, style: .continuous))
                 .overlay {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.card, style: .continuous)
                         .stroke(TerentoColors.border, lineWidth: 1)
                 }
                 .padding(.top, 20)
@@ -3569,7 +3569,7 @@ private struct InstallSharingDialog: View {
                             .foregroundStyle(.white)
                             .padding(.horizontal, 16)
                             .frame(minHeight: 38)
-                            .background(TerentoColors.interactive, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .background(TerentoColors.interactive, in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control, style: .continuous))
                     }
                     .buttonStyle(.plain)
                     .keyboardShortcut(.defaultAction)
@@ -3580,21 +3580,21 @@ private struct InstallSharingDialog: View {
         }
         .padding(28)
         .frame(width: 500)
-        .background(TerentoColors.canvas, in: RoundedRectangle(cornerRadius: 27, style: .continuous))
-        .clipShape(RoundedRectangle(cornerRadius: 27, style: .continuous))
+        .background(TerentoColors.canvas, in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.large, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.large, style: .continuous))
         .preferredColorScheme(.light)
     }
 }
 #endif
 
 private struct TerentoConfirmationDialog: View {
-    private static let cornerRadius: CGFloat = 27
+    private static let cornerRadius: CGFloat = TerentoGeneratedTokens.Radius.large
     private static let outerPadding: CGFloat = 28
     private static let iconFrame: CGFloat = 40
     private static let iconSize: CGFloat = 29
     private static let iconTextGap: CGFloat = 14
     private static let buttonHeight: CGFloat = 38
-    private static let buttonRadius: CGFloat = 8
+    private static let buttonRadius: CGFloat = TerentoGeneratedTokens.Radius.control
     private static let buttonGap: CGFloat = 10
 
     let icon: String
@@ -4006,7 +4006,7 @@ private struct SidebarSectionRow: View {
         .frame(height: 50)
         .background(
             isSelected ? TerentoColors.selectedBackground : .clear,
-            in: RoundedRectangle(cornerRadius: 10)
+            in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control)
         )
     }
 }
@@ -4455,7 +4455,7 @@ struct PrimaryButton: View {
             .frame(width: width, height: height)
             .background(
                 isEnabled ? TerentoColors.interactive : TerentoColors.border,
-                in: RoundedRectangle(cornerRadius: 9)
+                in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control)
             )
         }
         .buttonStyle(.plain)
@@ -4518,10 +4518,10 @@ struct DeviceCard: View {
                             canEject
                                 ? TerentoColors.canvas
                                 : TerentoColors.border.opacity(0.55),
-                            in: RoundedRectangle(cornerRadius: 7)
+                            in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control)
                         )
                         .overlay {
-                            RoundedRectangle(cornerRadius: 7)
+                            RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control)
                                 .stroke(
                                     canEject
                                         ? TerentoColors.border
@@ -4885,10 +4885,10 @@ private struct ManageActionButton: View {
                 .frame(minWidth: action == .update ? 72 : 68, minHeight: 30)
                 .background(
                     backgroundColor,
-                    in: RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control, style: .continuous)
                 )
                 .overlay {
-                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control, style: .continuous)
                         .stroke(focusColor, lineWidth: isFocused ? 2 : 1)
                 }
         }
@@ -4896,7 +4896,7 @@ private struct ManageActionButton: View {
         .controlSize(.small)
         .focused($isFocused)
         .disabled(!isEnabled)
-        .contentShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control, style: .continuous))
         .onHover { hovering in
             if reduceMotion {
                 isHovered = hovering
@@ -5246,9 +5246,9 @@ struct MapStatusRow: View {
         }
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(TerentoColors.surface, in: RoundedRectangle(cornerRadius: 14))
+        .background(TerentoColors.surface, in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.card))
         .overlay {
-            RoundedRectangle(cornerRadius: 14)
+            RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.card)
                 .stroke(TerentoColors.border.opacity(0.72), lineWidth: 1)
         }
     }
@@ -6062,10 +6062,10 @@ private struct SecondaryButton: View {
                 .frame(height: 50)
                 .background(
                     isEnabled ? TerentoColors.canvas : TerentoColors.border.opacity(0.55),
-                    in: RoundedRectangle(cornerRadius: 9)
+                    in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control)
                 )
                 .overlay {
-                    RoundedRectangle(cornerRadius: 9)
+                    RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control)
                         .stroke(
                             isEnabled ? TerentoColors.border : TerentoColors.inactiveBorder,
                             lineWidth: 1

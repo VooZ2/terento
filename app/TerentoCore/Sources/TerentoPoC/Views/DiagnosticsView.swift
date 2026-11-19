@@ -278,7 +278,7 @@ private struct DiagnosticsActionButton: View {
                 .frame(height: 46)
                 .background(
                     isEnabled ? TerentoColors.interactive : TerentoColors.border,
-                    in: RoundedRectangle(cornerRadius: 9)
+                    in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control)
                 )
         }
         .buttonStyle(.plain)
