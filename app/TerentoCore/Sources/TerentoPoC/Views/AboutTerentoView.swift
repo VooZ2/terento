@@ -35,7 +35,7 @@ struct AboutTerentoView: View {
                         Text("Terento")
                             .font(.terentoHeading(size: 30, weight: .semibold))
                             .foregroundStyle(TerentoColors.graphite)
-                        Text("Install maps on Garmin watches, simply.")
+                        Text("Install maps on Garmin devices, simply.")
                             .font(.terentoUI(size: 15, weight: .medium))
                             .foregroundStyle(TerentoColors.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
