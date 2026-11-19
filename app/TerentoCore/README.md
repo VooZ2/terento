@@ -105,7 +105,9 @@ status shows an icon with its text and colour, including "Needs attention".
 While maps are downloaded and checked on the Mac, or the no-write preflight
 runs, the install page offers Cancel; it uses the existing task cancellation
 and workspace cleanup, and nothing has been written to the watch. Once the
-install step owns the device it is not cancellable. After a failure in which
+install step owns the device it is not cancellable: while it still prepares,
+Cancel stays visible but disabled with "Can’t cancel while the map is being
+prepared." After a failure in which
 nothing was written, validated provider artifacts are kept for 30 minutes,
 keyed by package and artifact with their SHA-256; Try again (offered for
 download, connection, pre-write check, write-start and authorization-check
@@ -126,7 +128,8 @@ installation was written, and the reported failure code is unchanged. When that
 stop comes before any map or contour of the installation was written (a busy
 session after its retries, the snapshot no longer seeing a Garmin (-2/-3), or a
 confirmed unplug, at the reads before the write), the failure dialog is replaced
-by "Reconnect your device": unplug the watch, wait 5 seconds and plug it back in,
+by "Reconnect your device" shown on the page in place of the install progress
+(it stays across the unplug and the sidebar is locked until it ends): unplug the watch, wait 5 seconds and plug it back in,
 with Cancel and no other action; it names no map, because it is about the
 device. Only a new connection after the unplug can
 continue. The same watch (its local physical key) that is read again and whose
@@ -137,8 +140,10 @@ write. A different or unidentifiable watch, an authorization that no longer
 allows installing, 5 minutes without the same watch ready, or Cancel ends with
 the failure dialog (Report issue included); if the watch never left, it shows
 the original failure unchanged, otherwise what happened during the wait. The
-dialog announces its state to VoiceOver, and the update prompt never opens over
-it. What the failure dialog shows (map, reason, safety line, help topic and the
+wait announces its state to VoiceOver, and the update offer is never claimed
+while it runs. In the GitHub (DMG) build that offer is one quiet line at the top
+of Device ("Terento X is available" with What’s new, Later and Download), not a
+dialog; it is claimed only when nothing is reading, writing or waiting. What the failure dialog shows (map, reason, safety line, help topic and the
 prepared report) is captured when the installation fails. A disconnect resets
 the engine's failure state while that dialog is open or about to open; the
 dialog then keeps the captured failure instead of the generic "Installation
@@ -728,9 +733,13 @@ The Device page shows no public compatibility tier (Testing, Tested, Supported,
 Verified): the tier counts shared successful installations, which proves write
 and read-back but not that the device shows the map, and it is not a support
 badge. The tier stays in the Compatibility API, Admin and diagnostics logs.
-The Done page and the App Store sharing dialog say "installed and checked" and
-give the next step from the install guides: disconnect, turn the new map on in
-the device's map settings, restart the device if it is not listed.
+The Done page has no subtitle after a complete installation (the title says it)
+and gives the next step from the install guides: eject it here, then unplug it,
+turn the new map on in the device's map settings, restart the device if it is
+not listed. In App Store builds the first successful installation also shows a
+"Share install results with Terento" callout under those steps with two equal
+buttons, Share and Not now; nothing is pre-selected and leaving the page
+without choosing records nothing, so it asks again after the next installation.
 A map from an unrecognized provider is named by its whole IMG header
 description (20 bytes at 0x49 joined with the 31-byte continuation at 0x65,
 decoded as UTF-8). Recognized providers keep their own parsing. For an
