@@ -1,0 +1,69 @@
+#!/bin/zsh
+set -euo pipefail
+
+# One dialog standard: every sheet or alert in the app's views is built on the
+# shared TerentoConfirmationDialog (SupportReportSheet is the wide variant
+# built from the shared header and buttons). The quit NSAlert stays native.
+project_root="$(cd "$(dirname "$0")/.." && pwd)"
+
+python3 - "$project_root/Sources/TerentoPoC/Views" <<'PY'
+import pathlib, re, sys
+views = pathlib.Path(sys.argv[1])
+sources = {p.name: p.read_text() for p in views.glob('*.swift')}
+everything = '\n'.join(sources.values())
+
+def struct_body(name):
+    m = re.search(r'struct ' + name + r': View \{', everything)
+    assert m, f'{name} not found'
+    end = everything.index('\n}\n', m.start())
+    return everything[m.start():end]
+
+for name, text in sources.items():
+    assert '.alert(' not in text and 'Alert(' not in text, f'{name} uses a system alert instead of the shared dialog'
+    assert 'confirmationDialog(' not in text, f'{name} uses a system confirmation dialog'
+    assert 'sheetButton(' not in text and 'dialogButton(' not in text, f'{name} has a hand-made dialog button'
+
+presented = []
+for name, text in sources.items():
+    for m in re.finditer(r'\.sheet\(', text):
+        tail = text[m.end():]
+        body = tail[tail.index('{') + 1:]
+        view = re.search(r'\b([A-Z][A-Za-z]+)\(', body).group(1)
+        presented.append(view)
+assert presented, 'no sheets found'
+for view in presented:
+    if view == 'TerentoConfirmationDialog':
+        continue
+    body = struct_body(view)
+    if view == 'SupportReportSheet':
+        assert 'TerentoDialogHeader(' in body and 'TerentoDialogButton(' in body, 'Send report does not use the shared header and buttons'
+        assert 'TerentoDialogMetrics.wideWidth' in body, 'Send report is not the wide dialog variant'
+        continue
+    assert 'TerentoConfirmationDialog(' in body, f'{view} is a sheet that does not use the shared dialog'
+
+dialog = struct_body('TerentoConfirmationDialog')
+assert 'TerentoDialogHeader(' in dialog and 'TerentoDialogMetrics.width' in dialog
+assert dialog.count('.keyboardShortcut(.defaultAction)') == 1, 'more than one Return action in the dialog'
+destructive = dialog[dialog.index('if isDestructive {'):dialog.index('} else {', dialog.index('if isDestructive {'))]
+assert '.keyboardShortcut' not in destructive, 'a destructive dialog binds Return'
+
+metrics = everything[everything.index('enum TerentoDialogMetrics'):]
+metrics = metrics[:metrics.index('\n}\n')]
+for needle in ['iconSize: CGFloat = 20', 'iconCircle: CGFloat = 36', 'iconTintOpacity: Double = 0.12',
+               'titleSize: CGFloat = 20', 'bodySize: CGFloat = 14', 'supportingSize: CGFloat = 13',
+               'padding: CGFloat = 24', 'width: CGFloat = 440', 'wideWidth: CGFloat = 560',
+               'buttonHeight: CGFloat = 40', 'buttonGap: CGFloat = 8',
+               'sheetRadius: CGFloat = TerentoGeneratedTokens.Radius.large',
+               'buttonRadius: CGFloat = TerentoGeneratedTokens.Radius.control']:
+    assert needle in metrics, f'dialog metric missing: {needle}'
+
+role = everything[everything.index('enum TerentoDialogRole'):]
+role = role[:role.index('\n}\n')]
+for needle in ['case .error: return TerentoColors.error', 'case .warning: return TerentoColors.warning',
+               'case .success: return TerentoColors.lichenDark', 'case .info: return TerentoColors.interactive']:
+    assert needle in role, f'dialog role colour missing: {needle}'
+
+screen = sources['ConnectScreen.swift']
+assert 'MapLifecycleConfirmationCopy.removeTitle(' in screen and 'MapLifecycleConfirmationCopy.removeMessage(' in screen
+print(f'PASS: {len(presented)} sheets use the shared dialog standard')
+PY

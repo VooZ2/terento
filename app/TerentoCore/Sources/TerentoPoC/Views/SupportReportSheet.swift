@@ -14,22 +14,13 @@ struct SupportReportSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: "paperplane")
-                    .font(.system(size: 22, weight: .medium))
-                    .foregroundStyle(TerentoColors.interactive)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("Send report to Terento")
-                        .font(.terentoHeading(size: 24, weight: .semibold))
-                        .foregroundStyle(TerentoColors.graphite)
-                        .accessibilityAddTraits(.isHeader)
-                    Text("No GitHub account needed. Terento receives exactly what is shown below, only when you press Send.")
-                        .font(.terentoUI(size: 13, weight: .medium))
-                        .foregroundStyle(TerentoColors.secondaryText)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
+            // The wide variant of the shared dialog standard.
+            TerentoDialogHeader(icon: "paperplane", role: .info, title: "Send report to Terento")
+            Text("No GitHub account needed. Terento receives exactly what is shown below, only when you press Send.")
+                .font(.terentoUI(size: TerentoDialogMetrics.bodySize, weight: .regular))
+                .foregroundStyle(TerentoColors.graphite)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 12)
 
             if controller.allowsCategoryChoice {
                 Picker("What is this about?", selection: $controller.category) {
@@ -86,16 +77,16 @@ struct SupportReportSheet: View {
             statusView
                 .padding(.top, 12)
 
-            HStack(spacing: 10) {
+            HStack(spacing: TerentoDialogMetrics.buttonGap) {
                 Spacer(minLength: 0)
                 if case .sent = controller.state {
-                    sheetButton("Done", primary: true, action: onClose)
+                    TerentoDialogButton("Done", kind: .primary, action: onClose)
                         .keyboardShortcut(.defaultAction)
                 } else {
-                    sheetButton("Cancel", primary: false, action: onClose)
+                    TerentoDialogButton("Cancel", action: onClose)
                         .keyboardShortcut(.cancelAction)
                         .disabled(controller.state == .sending)
-                    sheetButton(controller.isFailed ? "Try again" : "Send", primary: true) {
+                    TerentoDialogButton(controller.isFailed ? "Try again" : "Send", kind: .primary) {
                         Task { await controller.send() }
                     }
                     .keyboardShortcut(.defaultAction)
@@ -104,8 +95,8 @@ struct SupportReportSheet: View {
             }
             .padding(.top, 14)
         }
-        .padding(24)
-        .frame(width: 560)
+        .padding(TerentoDialogMetrics.padding)
+        .frame(width: TerentoDialogMetrics.wideWidth)
         .background(TerentoColors.canvas)
         .preferredColorScheme(.light)
     }
@@ -143,22 +134,6 @@ struct SupportReportSheet: View {
             : .custom(TerentoGeneratedTokens.Typography.monoFontName, size: 11)
     }
 
-    private func sheetButton(_ title: String, primary: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(.terentoUI(size: 14, weight: .semibold))
-                .foregroundStyle(primary ? .white : TerentoColors.graphite)
-                .padding(.horizontal, 16)
-                .frame(minHeight: 40)
-                .background(primary ? TerentoColors.interactive : TerentoColors.canvas,
-                            in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control))
-                .overlay {
-                    if !primary { RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control).stroke(TerentoColors.border, lineWidth: 1) }
-                }
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(title)
-    }
 }
 
 /// Builds the report for the Diagnostics window and Help menu: the latest

@@ -1296,9 +1296,11 @@ struct ConnectScreen: View {
         }
         .sheet(item: $lifecycleViewModel.pendingConfirmation) { confirmation in
             MapLifecycleConfirmationSheet(
-                title: confirmation.action == .remove ? "Remove this map?" : "Update this map?",
+                title: mapConfirmationTitle(for: confirmation),
                 subtitle: mapConfirmationSubtitle(for: confirmation),
-                message: lifecycleViewModel.confirmationMessage,
+                message: confirmation.action == .remove
+                    ? MapLifecycleConfirmationCopy.removeMessage(metadata: mapConfirmationMetadata(for: confirmation))
+                    : lifecycleViewModel.confirmationMessage,
                 actionTitle: confirmation.action == .remove ? "Remove map" : "Update map",
                 isDestructive: confirmation.action == .remove,
                 onCancel: { lifecycleViewModel.cancelPendingAction() },
@@ -1388,17 +1390,35 @@ struct ConnectScreen: View {
         }
     }
 
-    private func mapConfirmationSubtitle(for confirmation: MapLifecycleConfirmation) -> String {
-        guard let inventory = mapEngine.mapLifecycleInventory() else {
-            return lifecycleViewModel.confirmationSubtitle
-        }
+    private func confirmationItem(for confirmation: MapLifecycleConfirmation) -> (item: MapLifecycleItem, provider: String?)? {
+        guard let inventory = mapEngine.mapLifecycleInventory() else { return nil }
         let items = inventory.providerGroups.flatMap(\.items) + inventory.otherMaps
-        guard let item = items.first(where: { $0.id == confirmation.itemID }) else {
-            return lifecycleViewModel.confirmationSubtitle
-        }
+        guard let item = items.first(where: { $0.id == confirmation.itemID }) else { return nil }
         let provider = inventory.providerGroups.first(where: { group in
             group.items.contains(where: { $0.id == item.id })
         })?.title ?? item.provider
+        return (item, provider)
+    }
+
+    private func mapConfirmationTitle(for confirmation: MapLifecycleConfirmation) -> String {
+        let name = confirmationItem(for: confirmation)?.item.title
+        return confirmation.action == .remove
+            ? MapLifecycleConfirmationCopy.removeTitle(mapName: name)
+            : "Update this map?"
+    }
+
+    /// "BBBike Ontrail · 2026-11-18 · 483 KB" for the Remove dialog.
+    private func mapConfirmationMetadata(for confirmation: MapLifecycleConfirmation) -> String {
+        guard let (item, provider) = confirmationItem(for: confirmation) else {
+            return lifecycleViewModel.confirmationSubtitle
+        }
+        return MapLifecycleConfirmationCopy.metadata(item: item, provider: provider)
+    }
+
+    private func mapConfirmationSubtitle(for confirmation: MapLifecycleConfirmation) -> String {
+        guard let (item, provider) = confirmationItem(for: confirmation) else {
+            return lifecycleViewModel.confirmationSubtitle
+        }
         return [item.title, provider, item.manageMetadataLabel]
             .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
     }
@@ -1878,18 +1898,21 @@ struct ConnectScreen: View {
             }
             mapEngine.importCustomMap(fileURL: url)
         }
-        .alert(
+        .sheet(
             item: Binding(
                 get: { mapEngine.customMapImportWarning },
                 set: { _ in mapEngine.dismissCustomMapImportWarning() }
             )
         ) { warning in
-            Alert(
-                title: Text("File could not be confirmed as a map"),
-                message: Text(warning.message),
-                dismissButton: .default(Text("Choose another file")) {
-                    mapEngine.dismissCustomMapImportWarning()
-                }
+            TerentoConfirmationDialog(
+                icon: "exclamationmark.triangle",
+                role: .warning,
+                title: "File could not be confirmed as a map",
+                message: warning.message,
+                secondaryLabel: nil,
+                primaryLabel: "Choose another file",
+                isDestructive: false,
+                onConfirm: { mapEngine.dismissCustomMapImportWarning() }
             )
         }
         .sheet(
@@ -3171,38 +3194,29 @@ private struct AppUpdatePromptView: View {
     let onLater: () -> Void
     let onReleaseNotes: () -> Void
 
+    private var summary: String {
+        let value = update.summary?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return value.isEmpty ? "A newer version of Terento is ready." : value
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            VStack(alignment: .leading, spacing: 7) {
-                Text("Terento \(update.releaseLabel) is available")
-                    .font(.title3.weight(.semibold))
-
-                Text(
-                    update.summary?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
-                        ? update.summary!
-                        : "A newer version of Terento is ready."
-                )
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            HStack {
-                if update.releaseNotesURL != nil {
-                    Button("What’s new ↗", action: onReleaseNotes)
-                        .buttonStyle(.plain)
-                        .foregroundStyle(TerentoColors.interactive)
-                }
-
-                Spacer()
-
-                Button("Later", action: onLater)
-                    .keyboardShortcut(.cancelAction)
-                Button("Download", action: onDownload)
-                    .keyboardShortcut(.defaultAction)
-            }
-        }
-        .padding(24)
-        .frame(width: 420)
+        TerentoConfirmationDialog(
+            icon: "arrow.down.circle",
+            role: .info,
+            title: "Terento \(update.releaseLabel) is available",
+            message: summary,
+            secondaryLabel: "Later",
+            primaryLabel: "Download",
+            isDestructive: false,
+            onCancel: onLater,
+            onConfirm: onDownload,
+            accessory: update.releaseNotesURL == nil ? nil : AnyView(
+                Button("What’s new ↗", action: onReleaseNotes)
+                    .buttonStyle(.plain)
+                    .font(.terentoUI(size: 13, weight: .semibold))
+                    .foregroundStyle(TerentoColors.interactive)
+            )
+        )
     }
 }
 
@@ -3219,7 +3233,7 @@ private struct CustomMapImportConfirmationSheet: View {
     var body: some View {
         TerentoConfirmationDialog(
             icon: "exclamationmark.triangle",
-            iconColor: TerentoColors.warning,
+            role: .warning,
             title: "Import this map?",
             subtitle: safeFilename,
             message: "Terento can verify that this is a Garmin map file, but cannot verify who created it or whether you trust its source.",
@@ -3241,89 +3255,33 @@ private struct MapLifecycleConfirmationSheet: View {
     let onCancel: () -> Void
     let onConfirm: () -> Void
 
-    @ViewBuilder
     var body: some View {
         if isDestructive {
+            // Destructive: one body line, no Return shortcut on Remove.
             TerentoConfirmationDialog(
                 icon: "trash",
-                iconColor: TerentoColors.error,
+                role: .error,
                 title: title,
-                subtitle: subtitle,
-                message: "This map will be removed from your Garmin.",
-                supportingMessage: "Other maps will not be changed. No backup will be created.",
+                message: message,
                 primaryLabel: actionTitle,
                 isDestructive: true,
                 onCancel: onCancel,
                 onConfirm: onConfirm
             )
         } else {
-            unchangedUpdateDialog
+            TerentoConfirmationDialog(
+                icon: "arrow.triangle.2.circlepath",
+                role: .info,
+                title: title,
+                subtitle: subtitle,
+                message: message,
+                supportingMessage: "Terento will keep the current map until the new one is verified.",
+                primaryLabel: actionTitle,
+                isDestructive: false,
+                onCancel: onCancel,
+                onConfirm: onConfirm
+            )
         }
-    }
-
-    private var unchangedUpdateDialog: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: "arrow.triangle.2.circlepath")
-                    .font(.system(size: 19, weight: .semibold))
-                    .foregroundStyle(TerentoColors.interactive)
-                    .frame(width: 24, height: 24)
-
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(title)
-                        .font(.terentoHeading(size: 20, weight: .semibold))
-                        .foregroundStyle(TerentoColors.graphite)
-
-                    Text(subtitle)
-                        .font(.terentoUI(size: 13, weight: .semibold))
-                        .foregroundStyle(TerentoColors.secondaryText)
-                        .lineLimit(2)
-                }
-            }
-
-            Text(message)
-                .font(.terentoUI(size: 14, weight: .regular))
-                .foregroundStyle(TerentoColors.graphite)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Text("Terento will keep the current map until the new one is verified.")
-                .font(.terentoUI(size: 12, weight: .medium))
-                .foregroundStyle(TerentoColors.secondaryText)
-                .fixedSize(horizontal: false, vertical: true)
-
-            HStack(spacing: 10) {
-                Spacer(minLength: 0)
-
-                Button("Cancel", action: onCancel)
-                    .buttonStyle(.plain)
-                    .font(.terentoUI(size: 14, weight: .semibold))
-                    .foregroundStyle(TerentoColors.graphite)
-                    .padding(.horizontal, 16)
-                    .frame(minHeight: 40)
-                    .background(TerentoColors.canvas, in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control)
-                            .stroke(TerentoColors.border, lineWidth: 1)
-                    }
-                    .keyboardShortcut(.cancelAction)
-
-                Button(actionTitle, action: onConfirm)
-                    .buttonStyle(.plain)
-                    .font(.terentoUI(size: 14, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 16)
-                    .frame(minHeight: 40)
-                    .background(
-                        TerentoColors.interactive,
-                        in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control)
-                    )
-                    .keyboardShortcut(.defaultAction)
-            }
-        }
-        .padding(24)
-        .frame(width: 430)
-        .background(TerentoColors.canvas)
-        .preferredColorScheme(.light)
     }
 }
 
@@ -3389,7 +3347,7 @@ private struct WatchReconnectWaitDialog: View {
     var body: some View {
         TerentoConfirmationDialog(
             icon: isCheckingWatch ? "arrow.triangle.2.circlepath" : "cable.connector",
-            iconColor: isCheckingWatch ? TerentoColors.interactive : TerentoColors.warning,
+            role: isCheckingWatch ? .info : .warning,
             title: title,
             // No map name here: the dialog is about the watch, not one map.
             subtitle: "",
@@ -3448,7 +3406,7 @@ private struct InstallationFailureDialog: View {
     var body: some View {
         TerentoConfirmationDialog(
             icon: "exclamationmark.circle",
-            iconColor: TerentoColors.error,
+            role: .error,
             title: "Installation stopped",
             subtitle: mapTitle ?? "",
             message: "The map could not be installed.",
@@ -3500,108 +3458,198 @@ private struct InstallSharingDialog: View {
         return AttributedString("Device model and software, map name, result, and app versions. Never serial numbers, Unit IDs or files. Change anytime in Diagnostics. ") + link
     }
 
-    var body: some View {
-        HStack(alignment: .top, spacing: 14) {
-            Image("CircleCheck")
-                .renderingMode(.template)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 29, height: 29)
-                .foregroundStyle(TerentoColors.lichenDark)
-                .frame(width: 40, height: 40, alignment: .top)
-                .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 0) {
-                Text(title)
-                    .font(.terentoHeading(size: 27, weight: .semibold))
+    private var shareChoice: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Toggle(isOn: $share) {
+                Text("Share install results with Terento")
+                    .font(.terentoUI(size: 14, weight: .semibold))
                     .foregroundStyle(TerentoColors.graphite)
-                    .accessibilityAddTraits(.isHeader)
-
-                if !mapTitles.isEmpty {
-                    Text(mapTitles.joined(separator: ", "))
-                        .font(.terentoUI(size: 13, weight: .semibold))
-                        .foregroundStyle(TerentoColors.secondaryText)
-                        .lineLimit(2)
-                        .truncationMode(.middle)
-                        .padding(.top, 5)
-                }
-
-                Text(message)
-                    .font(.terentoUI(size: 14, weight: .regular))
-                    .foregroundStyle(TerentoColors.graphite)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 22)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Toggle(isOn: $share) {
-                        Text("Share install results with Terento")
-                            .font(.terentoUI(size: 14, weight: .semibold))
-                            .foregroundStyle(TerentoColors.graphite)
-                    }
-                    .toggleStyle(.checkbox)
-                    .tint(TerentoColors.interactive)
-
-                    Text(shareDetails)
-                        .font(.terentoUI(size: 12, weight: .medium))
-                        .foregroundStyle(TerentoColors.secondaryText)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.leading, 20)
-                }
-                .padding(14)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(TerentoColors.surfaceElevated, in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.card, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.card, style: .continuous)
-                        .stroke(TerentoColors.border, lineWidth: 1)
-                }
-                .padding(.top, 20)
-
-                HStack {
-                    Spacer(minLength: 0)
-                    Button {
-                        onDone(share)
-                    } label: {
-                        Text("Done")
-                            .font(.terentoUI(size: 14, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 16)
-                            .frame(minHeight: 40)
-                            .background(TerentoColors.interactive, in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                    .keyboardShortcut(.defaultAction)
-                }
-                .padding(.top, 24)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .toggleStyle(.checkbox)
+            .tint(TerentoColors.interactive)
+
+            Text(shareDetails)
+                .font(.terentoUI(size: 12, weight: .medium))
+                .foregroundStyle(TerentoColors.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.leading, 20)
         }
-        .padding(28)
-        .frame(width: 500)
-        .background(TerentoColors.canvas, in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.large, style: .continuous))
-        .clipShape(RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.large, style: .continuous))
-        .preferredColorScheme(.light)
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(TerentoColors.surfaceElevated, in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.card, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.card, style: .continuous)
+                .stroke(TerentoColors.border, lineWidth: 1)
+        }
+    }
+
+    var body: some View {
+        TerentoConfirmationDialog(
+            icon: "CircleCheck",
+            iconIsAsset: true,
+            role: .success,
+            title: title,
+            subtitle: mapTitles.joined(separator: ", "),
+            message: message,
+            secondaryLabel: nil,
+            primaryLabel: "Done",
+            isDestructive: false,
+            onConfirm: { onDone(share) },
+            accessory: AnyView(shareChoice)
+        )
     }
 }
 #endif
 
-private struct TerentoConfirmationDialog: View {
-    private static let cornerRadius: CGFloat = TerentoGeneratedTokens.Radius.large
-    private static let outerPadding: CGFloat = 28
-    private static let iconFrame: CGFloat = 40
-    private static let iconSize: CGFloat = 29
-    private static let iconTextGap: CGFloat = 14
-    private static let buttonHeight: CGFloat = 40
-    private static let buttonRadius: CGFloat = TerentoGeneratedTokens.Radius.control
-    private static let buttonGap: CGFloat = 10
+/// One dialog standard for every custom sheet. Sizes live here so a dialog
+/// cannot drift from the others; `SupportReportSheet` is the wide variant.
+enum TerentoDialogMetrics {
+    static let iconSize: CGFloat = 20
+    static let iconCircle: CGFloat = 36
+    static let iconTintOpacity: Double = 0.12
+    static let iconTitleGap: CGFloat = 12
+    static let titleSize: CGFloat = 20
+    static let bodySize: CGFloat = 14
+    static let supportingSize: CGFloat = 13
+    static let padding: CGFloat = 24
+    static let width: CGFloat = 440
+    static let wideWidth: CGFloat = 560
+    static let buttonHeight: CGFloat = 40
+    static let buttonGap: CGFloat = 8
+    static let sheetRadius: CGFloat = TerentoGeneratedTokens.Radius.large
+    static let buttonRadius: CGFloat = TerentoGeneratedTokens.Radius.control
+}
 
+/// The icon colour follows what the dialog is about, never the screen it is on.
+enum TerentoDialogRole {
+    case error, warning, success, info
+
+    var color: Color {
+        switch self {
+        case .error: return TerentoColors.error
+        case .warning: return TerentoColors.warning
+        case .success: return TerentoColors.lichenDark
+        case .info: return TerentoColors.interactive
+        }
+    }
+}
+
+struct TerentoDialogHeader: View {
     let icon: String
-    let iconColor: Color
+    var iconIsAsset = false
+    let role: TerentoDialogRole
+    let title: String
+    var subtitle: String = ""
+
+    var body: some View {
+        HStack(alignment: .center, spacing: TerentoDialogMetrics.iconTitleGap) {
+            ZStack {
+                Circle().fill(role.color.opacity(TerentoDialogMetrics.iconTintOpacity))
+                iconImage
+                    .foregroundStyle(role.color)
+            }
+            .frame(width: TerentoDialogMetrics.iconCircle, height: TerentoDialogMetrics.iconCircle)
+            .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.terentoHeading(size: TerentoDialogMetrics.titleSize, weight: .semibold))
+                    .foregroundStyle(TerentoColors.graphite)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityAddTraits(.isHeader)
+                if !subtitle.isEmpty {
+                    Text(subtitle)
+                        .font(.terentoUI(size: TerentoDialogMetrics.supportingSize, weight: .semibold))
+                        .foregroundStyle(TerentoColors.secondaryText)
+                        .lineLimit(2)
+                        .truncationMode(.middle)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private var iconImage: some View {
+        if iconIsAsset {
+            Image(icon)
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .frame(width: TerentoDialogMetrics.iconSize, height: TerentoDialogMetrics.iconSize)
+        } else {
+            Image(systemName: icon)
+                .font(.system(size: TerentoDialogMetrics.iconSize - 2, weight: .semibold))
+                .frame(width: TerentoDialogMetrics.iconSize, height: TerentoDialogMetrics.iconSize)
+        }
+    }
+}
+
+/// The only dialog button. Primary is Interactive Primary, destructive is the
+/// error colour, secondary is outlined.
+struct TerentoDialogButton: View {
+    enum Kind { case primary, secondary, destructive }
+
+    let label: String
+    var kind: Kind = .secondary
+    var assetIcon: String? = nil
+    let action: () -> Void
+
+    init(_ label: String, kind: Kind = .secondary, assetIcon: String? = nil, action: @escaping () -> Void) {
+        self.label = label
+        self.kind = kind
+        self.assetIcon = assetIcon
+        self.action = action
+    }
+
+    var body: some View {
+        Button(role: kind == .destructive ? .destructive : nil, action: action) {
+            HStack(spacing: 7) {
+                if let assetIcon {
+                    Image(assetIcon)
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 15, height: 15)
+                        .accessibilityHidden(true)
+                }
+                Text(label)
+                    .font(.terentoUI(size: TerentoDialogMetrics.bodySize, weight: .semibold))
+            }
+            .foregroundStyle(kind == .secondary ? TerentoColors.graphite : .white)
+            .padding(.horizontal, 16)
+            .frame(minHeight: TerentoDialogMetrics.buttonHeight)
+            .background(background, in: RoundedRectangle(cornerRadius: TerentoDialogMetrics.buttonRadius, style: .continuous))
+            .overlay {
+                if kind == .secondary {
+                    RoundedRectangle(cornerRadius: TerentoDialogMetrics.buttonRadius, style: .continuous)
+                        .stroke(TerentoColors.border, lineWidth: 1)
+                }
+            }
+            .contentShape(RoundedRectangle(cornerRadius: TerentoDialogMetrics.buttonRadius, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+    }
+
+    private var background: Color {
+        switch kind {
+        case .primary: return TerentoColors.interactive
+        case .destructive: return TerentoColors.error
+        case .secondary: return TerentoColors.canvas
+        }
+    }
+}
+
+private struct TerentoConfirmationDialog: View {
+    let icon: String
+    let iconIsAsset: Bool
+    let role: TerentoDialogRole
     let title: String
     let subtitle: String
     let message: String
     let detailMessage: String?
     let supportingMessage: String?
-    let secondaryLabel: String
+    /// nil leaves only the primary action (a result the user acknowledges).
+    let secondaryLabel: String?
     let secondaryAssetIcon: String?
     let secondaryUsesCancelShortcut: Bool
     let tertiaryLabel: String?
@@ -3611,6 +3659,8 @@ private struct TerentoConfirmationDialog: View {
     let isDestructive: Bool
     let onCancel: () -> Void
     let onConfirm: () -> Void
+    /// Extra content under the message, e.g. a sharing choice or a link.
+    let accessory: AnyView?
     /// Optional text links below the message: the matching guide section and
     /// the Terento support report. Neither is a primary action.
     var helpTopic: TroubleshootingTopic? = nil
@@ -3618,21 +3668,23 @@ private struct TerentoConfirmationDialog: View {
 
     init(
         icon: String,
-        iconColor: Color,
+        iconIsAsset: Bool = false,
+        role: TerentoDialogRole,
         title: String,
-        subtitle: String,
+        subtitle: String = "",
         message: String,
         detailMessage: String? = nil,
         supportingMessage: String? = nil,
-        secondaryLabel: String = "Cancel",
+        secondaryLabel: String? = "Cancel",
         secondaryAssetIcon: String? = nil,
         secondaryUsesCancelShortcut: Bool = true,
         tertiaryLabel: String? = nil,
         onTertiary: @escaping () -> Void = {},
         primaryLabel: String?,
         isDestructive: Bool,
-        onCancel: @escaping () -> Void,
+        onCancel: @escaping () -> Void = {},
         onConfirm: @escaping () -> Void,
+        accessory: AnyView? = nil,
         helpTopic: TroubleshootingTopic? = nil,
         onSendSupportReport: (() -> Void)? = nil
     ) {
@@ -3644,7 +3696,8 @@ private struct TerentoConfirmationDialog: View {
         self.onSendSupportReport = onSendSupportReport
         #endif
         self.icon = icon
-        self.iconColor = iconColor
+        self.iconIsAsset = iconIsAsset
+        self.role = role
         self.title = title
         self.subtitle = subtitle
         self.message = message
@@ -3659,51 +3712,38 @@ private struct TerentoConfirmationDialog: View {
         self.isDestructive = isDestructive
         self.onCancel = onCancel
         self.onConfirm = onConfirm
+        self.accessory = accessory
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: Self.iconTextGap) {
-            Image(systemName: icon)
-                .font(.system(size: Self.iconSize, weight: .medium))
-                .foregroundStyle(iconColor)
-                .frame(width: Self.iconFrame, height: Self.iconFrame, alignment: .top)
-                .accessibilityHidden(true)
+        VStack(alignment: .leading, spacing: 0) {
+            TerentoDialogHeader(icon: icon, iconIsAsset: iconIsAsset, role: role, title: title, subtitle: subtitle)
 
+            // Body text lines up with the title, not with the icon.
             VStack(alignment: .leading, spacing: 0) {
-                Text(title)
-                    .font(.terentoHeading(size: 27, weight: .semibold))
-                    .foregroundStyle(TerentoColors.graphite)
-                    .accessibilityAddTraits(.isHeader)
-
-                if !subtitle.isEmpty {
-                    Text(subtitle)
-                        .font(.terentoUI(size: 13, weight: .semibold))
-                        .foregroundStyle(TerentoColors.secondaryText)
-                        .lineLimit(2)
-                        .truncationMode(.middle)
-                        .padding(.top, 5)
-                }
-
                 Text(message)
-                    .font(.terentoUI(size: 14, weight: .regular))
+                    .font(.terentoUI(size: TerentoDialogMetrics.bodySize, weight: .regular))
                     .foregroundStyle(TerentoColors.graphite)
                     .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 22)
 
                 if let detailMessage, !detailMessage.isEmpty {
                     Text(detailMessage)
-                        .font(.terentoUI(size: 14, weight: .semibold))
+                        .font(.terentoUI(size: TerentoDialogMetrics.bodySize, weight: .semibold))
                         .foregroundStyle(TerentoColors.error)
                         .fixedSize(horizontal: false, vertical: true)
-                        .padding(.top, 14)
+                        .padding(.top, 10)
                 }
 
                 if let supportingMessage, !supportingMessage.isEmpty {
                     Text(supportingMessage)
-                        .font(.terentoUI(size: 12, weight: .medium))
+                        .font(.terentoUI(size: TerentoDialogMetrics.supportingSize, weight: .regular))
                         .foregroundStyle(TerentoColors.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
-                        .padding(.top, 16)
+                        .padding(.top, 10)
+                }
+
+                if let accessory {
+                    accessory.padding(.top, 14)
                 }
 
                 if helpTopic != nil || onSendSupportReport != nil {
@@ -3721,113 +3761,48 @@ private struct TerentoConfirmationDialog: View {
                             TerentoHelpLink(topic: helpTopic)
                         }
                     }
-                    .padding(.top, 14)
+                    .padding(.top, 12)
                 }
-
-                HStack(spacing: Self.buttonGap) {
-                    Spacer(minLength: 0)
-
-                    if secondaryUsesCancelShortcut {
-                        dialogButton(
-                            secondaryLabel,
-                            assetIcon: secondaryAssetIcon,
-                            color: TerentoColors.graphite,
-                            background: TerentoColors.canvas,
-                            border: TerentoColors.border,
-                            role: nil,
-                            action: onCancel
-                        )
-                        .keyboardShortcut(.cancelAction)
-                    } else {
-                        dialogButton(
-                            secondaryLabel,
-                            assetIcon: secondaryAssetIcon,
-                            color: TerentoColors.graphite,
-                            background: TerentoColors.canvas,
-                            border: TerentoColors.border,
-                            role: nil,
-                            action: onCancel
-                        )
-                    }
-
-                    if let tertiaryLabel {
-                        dialogButton(
-                            tertiaryLabel,
-                            assetIcon: nil,
-                            color: TerentoColors.graphite,
-                            background: TerentoColors.canvas,
-                            border: TerentoColors.border,
-                            role: nil,
-                            action: onTertiary
-                        )
-                    }
-
-                    if let primaryLabel {
-                        dialogButton(
-                            primaryLabel,
-                            assetIcon: nil,
-                            color: .white,
-                            background: isDestructive ? TerentoColors.error : TerentoColors.interactive,
-                            border: nil,
-                            role: isDestructive ? .destructive : nil,
-                            action: onConfirm
-                        )
-                        .keyboardShortcut(.defaultAction)
-                    }
-                }
-                .padding(.top, 24)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.leading, TerentoDialogMetrics.iconCircle + TerentoDialogMetrics.iconTitleGap)
+            .padding(.top, 12)
+
+            HStack(spacing: TerentoDialogMetrics.buttonGap) {
+                Spacer(minLength: 0)
+
+                if let secondaryLabel {
+                    if secondaryUsesCancelShortcut {
+                        TerentoDialogButton(secondaryLabel, assetIcon: secondaryAssetIcon, action: onCancel)
+                            .keyboardShortcut(.cancelAction)
+                    } else {
+                        TerentoDialogButton(secondaryLabel, assetIcon: secondaryAssetIcon, action: onCancel)
+                    }
+                }
+
+                if let tertiaryLabel {
+                    TerentoDialogButton(tertiaryLabel, action: onTertiary)
+                }
+
+                if let primaryLabel {
+                    if isDestructive {
+                        // Return never confirms a destructive action; Escape still cancels.
+                        TerentoDialogButton(primaryLabel, kind: .destructive, action: onConfirm)
+                    } else {
+                        TerentoDialogButton(primaryLabel, kind: .primary, action: onConfirm)
+                            .keyboardShortcut(.defaultAction)
+                    }
+                }
+            }
+            .padding(.top, 20)
         }
-        .padding(Self.outerPadding)
-        .frame(width: 500)
+        .padding(TerentoDialogMetrics.padding)
+        .frame(width: TerentoDialogMetrics.width)
         .background(
             TerentoColors.canvas,
-            in: RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
+            in: RoundedRectangle(cornerRadius: TerentoDialogMetrics.sheetRadius, style: .continuous)
         )
-        .clipShape(RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: TerentoDialogMetrics.sheetRadius, style: .continuous))
         .preferredColorScheme(.light)
-    }
-
-    private func dialogButton(
-        _ label: String,
-        assetIcon: String?,
-        color: Color,
-        background: Color,
-        border: Color?,
-        role: ButtonRole?,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(role: role, action: action) {
-            HStack(spacing: 7) {
-                if let assetIcon {
-                    Image(assetIcon)
-                        .renderingMode(.template)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 15, height: 15)
-                        .accessibilityHidden(true)
-                }
-
-                Text(label)
-                    .font(.terentoUI(size: 14, weight: .semibold))
-            }
-            .foregroundStyle(color)
-            .padding(.horizontal, 16)
-            .frame(minHeight: Self.buttonHeight)
-            .background(
-                background,
-                in: RoundedRectangle(cornerRadius: Self.buttonRadius, style: .continuous)
-            )
-            .overlay {
-                if let border {
-                    RoundedRectangle(cornerRadius: Self.buttonRadius, style: .continuous)
-                        .stroke(border, lineWidth: 1)
-                }
-            }
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(label)
     }
 }
 

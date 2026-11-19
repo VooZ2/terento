@@ -410,3 +410,27 @@ enum MapLifecycleInterruption {
         }
     }
 }
+
+/// Remove dialog copy: the map name in the title, and one body line with
+/// provider, style, release and size before what Remove does.
+enum MapLifecycleConfirmationCopy {
+    static func removeTitle(mapName: String?) -> String {
+        guard let mapName, !mapName.isEmpty else { return "Remove this map?" }
+        return "Remove \(mapName)?"
+    }
+
+    static func metadata(item: MapLifecycleItem, provider: String?) -> String {
+        var providerLabel = provider ?? ""
+        if MapIdentity.normalizeProvider(item.provider ?? "") == "bbbike",
+           let style = BBBikeMapType(regionToken: item.region ?? "")?.styleName {
+            providerLabel = providerLabel.isEmpty ? style : "\(providerLabel) \(style)"
+        }
+        return [providerLabel, item.manageMetadataLabel]
+            .filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+
+    static func removeMessage(metadata: String) -> String {
+        let action = "It will be deleted from your Garmin; other maps stay as they are. There is no backup."
+        return metadata.isEmpty ? action : "\(metadata). \(action)"
+    }
+}
