@@ -105,3 +105,21 @@ struct MapInventoryListPresentationIndex: Sendable {
         return fold(terms.joined(separator: " "))
     }
 }
+
+/// Text of the Install flow's Downloading step. It follows the step's own
+/// state: acquisition and phase publish separately, so a finished step could
+/// otherwise still read "Waiting to download" with "Zero KB of …".
+enum InstallationDownloadStepPresentation {
+    static func detail(customOnly: Bool, stepIsComplete: Bool, isDownloading: Bool) -> String {
+        if customOnly { return "Custom map is already on this Mac" }
+        if stepIsComplete { return "Download complete" }
+        if isDownloading { return "Downloading the map package to this Mac" }
+        return "Waiting to download the selected map"
+    }
+
+    /// The byte line appears once bytes have arrived; ByteCountFormatter
+    /// writes zero as "Zero KB".
+    static func showsByteLine(current: UInt64, total: UInt64) -> Bool {
+        total > 0 && current > 0
+    }
+}

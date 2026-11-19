@@ -72,12 +72,11 @@ private struct PrefixReader: DeviceFileReader {
             let filename = try TerentoManagedFilenameGenerator().filename(providerId: package.providerId, regionId: package.canonicalRegionId)
             check(TerentoManagedFilenameGenerator().isValid(filename), "variant filename grammar")
             let other = andorra.first { $0.id != package.id }!
-            let selectedTitle = BBBikeMapType(rawValue: package.mapType!)!.title
             let installedType = BBBikeMapType(rawValue: other.mapType!)!
             check(BBBikeProviderAdapter.conflictingType(package, provider: other.providerId, region: other.canonicalRegionId) == installedType,
                 "conflict resolves the exact installed variant")
             check(BBBikeProviderAdapter.installedTypeConflictMessage(for: package, installedType: installedType) ==
-                "To install “\(selectedTitle) - Andorra”, first remove “\(installedType.title) - Andorra” in Manage maps. Only one BBBike map type can be installed for the same region.",
+                "Can't install next to the \(installedType.versionName) version of this map. Remove that one in Manage maps first.",
                 "conflict copy names exact selected and installed variants in both directions")
             for provider in ["maprando", "opentopomap", "freizeitkarte"] {
                 check(!BBBikeProviderAdapter.conflicts(package, provider: provider, region: other.canonicalRegionId),
@@ -102,10 +101,10 @@ private struct PrefixReader: DeviceFileReader {
                 && BBBikeProviderAdapter.conflictingType(package, filename: openTopoName) == .opentopo,
                 "installed OpenTopoMap blocks \(selectedTitle) of the same region")
             check(BBBikeProviderAdapter.installedTypeConflictMessage(for: package, installedType: .opentopo) ==
-                "To install “\(selectedTitle) - Andorra”, first remove “BBBike (OpenTopoMap) - Andorra” in Manage maps. Only one BBBike map type can be installed for the same region.",
+                "Can't install next to the OpenTopoMap version of this map. Remove that one in Manage maps first.",
                 "OpenTopoMap conflict copy names the installed variant")
             check(BBBikeProviderAdapter.unverifiedTypeConflictMessage(for: package) ==
-                "Another BBBike map of Andorra needs review before installing “\(selectedTitle) - Andorra”. Terento has not confirmed ownership of the conflicting file.",
+                "Can't install yet: another version of this map is on your Garmin and Terento hasn't checked it. Check it in Manage maps first.",
                 "unknown conflicting variant is not guessed")
         }
         check(!BBBikeProviderAdapter.conflicts(andorra[0], provider: "bbbike",

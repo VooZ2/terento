@@ -2463,7 +2463,7 @@ struct ConnectScreen: View {
                 }
 
                 if let bytes,
-                   bytes.total > 0,
+                   InstallationDownloadStepPresentation.showsByteLine(current: bytes.current, total: bytes.total),
                    state == .active || state == .complete {
                     HStack {
                         Text("\(formatBytes(bytes.current)) of \(formatBytes(bytes.total))")
@@ -2659,16 +2659,12 @@ struct ConnectScreen: View {
     }
 
     private var downloadStepDetail: String {
-        if planContainsOnlyCustomMaps {
-            return "Custom map is already on this Mac"
-        }
-        if mapEngine.acquisitionState == .downloading {
-            return "Downloading the map package to this Mac"
-        }
-        if mapEngine.acquisitionState == .validated || mapEngine.installationPhase == .awaitingConfirmation {
-            return "Download complete"
-        }
-        return "Waiting to download the selected map"
+        InstallationDownloadStepPresentation.detail(
+            customOnly: planContainsOnlyCustomMaps,
+            stepIsComplete: installationStepState(for: .downloading) == .complete
+                || mapEngine.acquisitionState == .validated,
+            isDownloading: mapEngine.acquisitionState == .downloading
+        )
     }
 
     private var finishingProgressDetail: String {
@@ -4754,8 +4750,9 @@ private struct ManageMapRow: View {
 
     var body: some View {
         TerentoMapRow(
-            title: item.title,
+            title: item.manageTitle,
             detail: manageDetail,
+            note: operation == nil && !availability.updateBlocked ? availability.updateNotice : nil,
             contentSpacing: 9,
             rowVerticalPadding: 10
         ) {
@@ -5694,7 +5691,7 @@ struct MapSelectionRow: View {
         } else if item.package.sourceKind == .custom {
             return "From this Mac"
         } else if isAlreadyInstalledSearchResult {
-            baseDetail = "Already installed"
+            baseDetail = item.alreadyInstalledDetail
         } else {
             switch item.comparison.status {
             case .notInstalled:
@@ -5760,6 +5757,9 @@ struct MapSelectionRow: View {
     }
 
     private var statusColor: Color {
+        if item.preflightStatus == .blockedMapTypeConflict {
+            return TerentoColors.warning
+        }
         switch item.comparison.status {
         case .updateAvailable:
             return TerentoColors.interactive
@@ -5776,7 +5776,7 @@ struct MapSelectionRow: View {
         }
 
         if isAlreadyInstalledSearchResult {
-            return "\(item.title), \(item.comparison.providerName), Already installed"
+            return "\(item.title), \(item.comparison.providerName), \(item.alreadyInstalledDetail)"
         }
 
         if showsSize {
@@ -5794,8 +5794,10 @@ struct MapSelectionRow: View {
     }
 
     private var showsRecommendation: Bool {
+        // Only rows the user can actually tick get the recommendation badge.
         highlightsRecommendation && item.isRecommended && isAvailable
             && item.comparison.installedMap == nil && item.acquisitionAvailability == .available
+            && item.isSelectable && selectionEnabled
     }
 
     private var crossProviderSelectionDisabled: Bool {

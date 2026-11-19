@@ -1178,6 +1178,16 @@ enum BBBikeMapType: String, Codable, CaseIterable, Sendable {
         }
     }
     var filterID: String { self == .bbbike ? "bbbike" : "bbbike" + style }
+    /// Style shown next to a region name; nil for the plain BBBike style.
+    /// Plain name for conflict copy; the plain BBBike type has no style name.
+    var versionName: String { styleName ?? "standard BBBike" }
+    var styleName: String? {
+        switch self {
+        case .bbbike: return nil
+        case .ontrail: return "Ontrail"
+        case .opentopo: return "OpenTopoMap"
+        }
+    }
     /// The type named by a BBBike region token such as `EUROPE-ANDORRA-ONTRAIL-LATIN1`.
     init?(regionToken: String) {
         let region = MapIdentity.normalizeRegion(regionToken)
@@ -1284,13 +1294,13 @@ struct BBBikeProviderAdapter: MapProviderAdapter, Sendable {
     }
     static let coexistenceReason = "Select only one BBBike map type for the same region. BBBike, BBBike (Ontrail) and BBBike (OpenTopoMap) cannot be installed together."
     static func installedTypeConflictMessage(for package: MapPackage, installedType: BBBikeMapType) -> String {
-        guard let selectedType = BBBikeMapType(rawValue: package.mapType ?? "") else { return coexistenceReason }
-        return "To install “\(selectedType.title) - \(package.name)”, first remove “\(installedType.title) - \(package.name)” in Manage maps. Only one BBBike map type can be installed for the same region."
+        guard BBBikeMapType(rawValue: package.mapType ?? "") != nil else { return coexistenceReason }
+        return "Can't install next to the \(installedType.versionName) version of this map. Remove that one in Manage maps first."
     }
     static func unverifiedTypeConflictMessage(for package: MapPackage, otherType: BBBikeMapType? = nil) -> String {
-        guard let selectedType = BBBikeMapType(rawValue: package.mapType ?? "") else { return coexistenceReason }
-        let other = otherType.map { "A possible “\($0.title) - \(package.name)” map" } ?? "Another BBBike map of \(package.name)"
-        return "\(other) needs review before installing “\(selectedType.title) - \(package.name)”. Terento has not confirmed ownership of the conflicting file."
+        guard BBBikeMapType(rawValue: package.mapType ?? "") != nil else { return coexistenceReason }
+        let other = otherType.map { "the \($0.versionName) version" } ?? "another version"
+        return "Can't install yet: \(other) of this map is on your Garmin and Terento hasn't checked it. Check it in Manage maps first."
     }
     /// The other BBBike type of the same source region that `region` names, if any.
     static func conflictingType(_ package: MapPackage, provider: String?, region: String?) -> BBBikeMapType? {

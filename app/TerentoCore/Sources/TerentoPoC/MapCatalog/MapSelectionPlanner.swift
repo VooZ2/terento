@@ -51,6 +51,18 @@ struct MapSelectionItem: Identifiable, Equatable, Sendable {
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
+    /// Install-list status of a catalog row that is already on the device.
+    /// Update itself stays in Manage maps; an unowned copy cannot be updated.
+    var alreadyInstalledDetail: String {
+        guard comparison.status == .updateAvailable, let installed = comparison.installedMap else {
+            return "Already installed"
+        }
+        let installedLabel = installed.version.map { "Installed \($0.description)" } ?? "Installed"
+        return installed.managementState == .managedByTerento
+            ? "\(installedLabel) · Update in Manage maps"
+            : "\(installedLabel) · Newer release available"
+    }
+
     var action: MapSelectionAction { lifecycleAction }
 
     /// Optional artifacts are exposed only after they have an independently
