@@ -9,13 +9,11 @@ Sous Linux, l’installateur web Terento installe des cartes gratuites sur les m
 
 [Ouvrir l’installateur web](https://terento.app/fr/install/)
 
-Sur Mac ? Lisez le guide pour une [montre Garmin](https://terento.app/fr/guides/install-garmin-maps-mac/) ou un [Garmin Edge](https://terento.app/fr/guides/install-garmin-maps-edge-mac/).
-
 ## Ce qu’il vous faut
 
-- Chrome, Microsoft Edge, Opera ou Brave sur un ordinateur Linux. Firefox ne peut pas se connecter aux appareils USB.
-- Un câble USB de données, pas un câble de charge seule.
-- Une montre Garmin compatible avec les cartes, déverrouillée.
+- Chrome, Microsoft Edge, Opera ou Brave sous Linux (Firefox ne peut pas se connecter en USB)
+- Montre Garmin prenant en charge les cartes
+- Câble USB permettant le transfert de données
 
 ## Installer une carte depuis le navigateur
 
@@ -48,3 +46,7 @@ Laissez la liste ouverte jusqu’à deux minutes. Si aucune entrée contenant «
 ### Le navigateur n’a pas d’accès USB
 
 Un navigateur installé en paquet Snap peut ne pas obtenir l’accès USB. Utilisez le navigateur issu de son paquet officiel .deb ou .rpm.
+
+Installez une carte gratuite sur votre Garmin
+
+[Ouvrir l’installateur web](https://terento.app/fr/install/)

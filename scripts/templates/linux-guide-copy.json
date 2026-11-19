@@ -11,9 +11,9 @@
     "other": "On a Mac? Read the guide for a [Garmin watch](guides/install-garmin-maps-mac/) or a [Garmin Edge](guides/install-garmin-maps-edge-mac/).",
     "needs_title": "What you need",
     "needs": [
-      "Chrome, Microsoft Edge, Opera or Brave on a Linux computer. Firefox can’t connect to USB devices.",
-      "A USB data cable, not a charge-only cable.",
-      "A Garmin watch that supports maps, unlocked."
+      "Chrome, Microsoft Edge, Opera or Brave on Linux (Firefox can’t connect to USB)",
+      "Garmin watch with map support",
+      "USB cable that supports data transfer"
     ],
     "steps_title": "Install a map from your browser",
     "steps": [
@@ -62,9 +62,9 @@
     "other": "Am Mac? Lies die Anleitung für eine [Garmin-Uhr](guides/install-garmin-maps-mac/) oder einen [Garmin Edge](guides/install-garmin-maps-edge-mac/).",
     "needs_title": "Das brauchst du",
     "needs": [
-      "Chrome, Microsoft Edge, Opera oder Brave auf einem Linux-Computer. Firefox kann keine USB-Geräte verbinden.",
-      "Ein USB-Datenkabel, kein reines Ladekabel.",
-      "Eine entsperrte Garmin-Uhr mit Kartenunterstützung."
+      "Chrome, Microsoft Edge, Opera oder Brave unter Linux (Firefox kann nicht per USB verbinden)",
+      "Garmin-Smartwatch mit Kartenunterstützung",
+      "USB-Kabel mit Datenübertragung"
     ],
     "steps_title": "Eine Karte aus dem Browser installieren",
     "steps": [
@@ -113,9 +113,9 @@
     "other": "Sur Mac ? Lisez le guide pour une [montre Garmin](guides/install-garmin-maps-mac/) ou un [Garmin Edge](guides/install-garmin-maps-edge-mac/).",
     "needs_title": "Ce qu’il vous faut",
     "needs": [
-      "Chrome, Microsoft Edge, Opera ou Brave sur un ordinateur Linux. Firefox ne peut pas se connecter aux appareils USB.",
-      "Un câble USB de données, pas un câble de charge seule.",
-      "Une montre Garmin compatible avec les cartes, déverrouillée."
+      "Chrome, Microsoft Edge, Opera ou Brave sous Linux (Firefox ne peut pas se connecter en USB)",
+      "Montre Garmin prenant en charge les cartes",
+      "Câble USB permettant le transfert de données"
     ],
     "steps_title": "Installer une carte depuis le navigateur",
     "steps": [
@@ -164,9 +164,9 @@
     "other": "Masz Maca? Przeczytaj poradnik dla [zegarka Garmin](guides/install-garmin-maps-mac/) lub [Garmin Edge](guides/install-garmin-maps-edge-mac/).",
     "needs_title": "Czego potrzebujesz",
     "needs": [
-      "Chrome, Microsoft Edge, Opery lub Brave na komputerze z Linuksem. Firefox nie łączy się z urządzeniami USB.",
-      "Kabla USB do transmisji danych, nie tylko do ładowania.",
-      "Odblokowanego zegarka Garmin obsługującego mapy."
+      "Chrome, Microsoft Edge, Opera lub Brave na Linuksie (Firefox nie łączy się przez USB)",
+      "Zegarek Garmin z obsługą map",
+      "Kabel USB obsługujący przesyłanie danych"
     ],
     "steps_title": "Zainstaluj mapę z przeglądarki",
     "steps": [
@@ -215,9 +215,9 @@
     "other": "Máte Mac? Přečtěte si průvodce pro [hodinky Garmin](guides/install-garmin-maps-mac/) nebo [Garmin Edge](guides/install-garmin-maps-edge-mac/).",
     "needs_title": "Co potřebujete",
     "needs": [
-      "Chrome, Microsoft Edge, Operu nebo Brave na počítači s Linuxem. Firefox se nemůže připojit k zařízením USB.",
-      "Datový kabel USB, ne kabel jen pro nabíjení.",
-      "Odemčené hodinky Garmin s podporou map."
+      "Chrome, Microsoft Edge, Opera nebo Brave na Linuxu (Firefox se k USB nepřipojí)",
+      "Hodinky Garmin s podporou map",
+      "USB kabel pro přenos dat"
     ],
     "steps_title": "Instalace mapy z prohlížeče",
     "steps": [
@@ -266,9 +266,9 @@
     "other": "Hai un Mac? Leggi la guida per un [orologio Garmin](guides/install-garmin-maps-mac/) o un [Garmin Edge](guides/install-garmin-maps-edge-mac/).",
     "needs_title": "Cosa ti serve",
     "needs": [
-      "Chrome, Microsoft Edge, Opera o Brave su un computer Linux. Firefox non può collegarsi ai dispositivi USB.",
-      "Un cavo USB per dati, non solo di ricarica.",
-      "Un orologio Garmin che supporta le mappe, sbloccato."
+      "Chrome, Microsoft Edge, Opera o Brave su Linux (Firefox non si collega via USB)",
+      "Smartwatch Garmin con supporto alle mappe",
+      "Cavo USB per il trasferimento dati"
     ],
     "steps_title": "Installa una mappa dal browser",
     "steps": [

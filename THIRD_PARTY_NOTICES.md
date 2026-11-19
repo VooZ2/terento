@@ -236,16 +236,21 @@ or Go dependency or source code is incorporated. Reference:
   `scripts/build-compatibility-pages.py` and
   `site/compatibility/compatibility.js`), `x` (Compatibility clear filters) and
   `copy` and `check` (Linux guide command copy, in
-  `scripts/build-guide-pages.py`), `clock` (Download "coming soon" in
-  `scripts/normalize-release-pages.py`) and the Map styles controls (`search`,
+  `scripts/build-guide-pages.py`) and the Map styles controls (`search`,
   `x`, `map-pin`, `square`, `columns-2`, `chevrons-left-right`, `link`,
   `arrow-left-right`, `plus`, `minus`, `info`, `chevron-right`, `star`,
   `circle-minus`, `clock`, in `scripts/build-map-style-pages.py` and
   `site/map-styles/map-styles.js`) and `heart` (footer Support link, in
-  `scripts/normalize-public-shell.py`).
+  `scripts/normalize-public-shell.py`) and the shared page components
+  (`shield-check`, `layers` and `bike` for the Home feature cards, `laptop`
+  and `globe` for the Home "Mac app or browser" cards and the secondary
+  web-installer button, `send` for the Home "Send this link to your computer"
+  button, `download` for the primary Download button, `info` and
+  `triangle-alert` for `.callout` notes and warnings, in
+  `scripts/site_components.py`).
 - Each SVG carries the `@license lucide-static v0.460.0 - ISC` comment
-  (except the Download clock and the footer heart, which appear on the
-  Download page whose HTML must carry only the release version).
+  (except the footer heart and the Download button icon, which also appear on
+  the Download page whose HTML must carry only the release version).
 
 ### Web installer
 
@@ -334,3 +339,20 @@ original solid `circle-check` SVG from the same pinned Font Awesome Free 7.3.1
 revision, under CC BY 4.0. The unchanged SVG, with its attribution comment, is
 `app/Terento/Assets.xcassets/CircleCheck.imageset/circle-check.svg`; the app
 only tints it. No Font Awesome font, CSS or runtime is bundled.
+
+## Apple "Download on the Mac App Store" badge
+
+- Files: `site/assets/app-store/download-on-the-mac-app-store-{en,de,fr,it}.svg`,
+  Apple's black badge artwork, byte-for-byte as served by Apple's App Store
+  marketing tools (https://toolbox.marketingtools.apple.com/app-store) on
+  2026-11-18. Never redraw, edit, recolor, angle or animate it; replace a file
+  only with a newer download from Apple.
+- Terms: Apple's App Store Marketing Guidelines,
+  https://developer.apple.com/app-store/marketing/guidelines/. The artwork is
+  Apple's property; it is not covered by this repository's GPL licence.
+- Use on the public website: one badge per page (Home and Download), at least
+  40 px tall with clear space of a quarter of its height, linked to the Mac
+  App Store listing. Apple provides no Polish or Czech Mac App Store badge, so
+  those locales show the English artwork. Locale mapping, alt text and the
+  campaign link live in `scripts/templates/app-store-badge.json`.
+- Mac App Store is a service mark of Apple Inc.

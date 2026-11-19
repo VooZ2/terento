@@ -39,6 +39,8 @@ Some data stays in your browser, not on our server: which maps the web installer
 
 Website, web installer, API, catalog and app-update requests may expose your IP address and request metadata to hosting and security providers. In the app, catalog maps download directly from Freizeitkarte, OpenTopoMap, MapRando, BBBike or OSMapaPL, whose privacy practices apply to those connections. The app’s launch update check retrieves release metadata, not an app download. The Mac App Store version has no update check; Apple delivers its updates. Apple handles App Store downloads, updates and ratings under [Apple’s privacy policy](https://www.apple.com/legal/privacy/). Apple gives Terento download statistics and, only if you agreed to share analytics with app developers, crash reports and usage statistics.
 
+**Device picture.** When a Garmin device is connected, the app shows a picture of its model. The app downloaded from terento.app loads that picture from Terento’s server or from Garmin’s image server (`res.garmin.com`); for some models it first opens the model’s public product page on `garmin.com` to find the picture. Garmin then receives your IP address and standard request details, including the app’s name and version, and the address requested shows which model the picture is for. Garmin’s servers may set cookies; they stay in the app’s own storage and are sent only to Garmin. The request contains no serial number, Unit ID, account or map details. The picture is kept on your Mac. [Garmin’s privacy policy](https://www.garmin.com/en-US/privacy/global/) applies to these connections. Mac App Store versions up to and including 1.2.1 make no requests to Garmin and show Terento’s own picture; newer versions load the picture in the same way as the app downloaded from terento.app.
+
 These connections serve content, provide requested app functions and protect against abuse. Security processing relies on legitimate interests under GDPR Article 6(1)(f).
 
 ## Help and public issues
@@ -77,4 +79,4 @@ Compatibility reports may also include a sanitized MTP model label, USB VID/PID,
 
 Reports may additionally include the original XML model description (up to 160 characters) and model product code (up to 64 ASCII letters, digits or hyphens). These identify a product model, not an individual watch. Whole XML documents, Unit IDs and serial numbers are excluded. Model-code mappings and any administrator corrections are kept separately from the original report.
 
-Updated: 29 October 2026.
+Updated: 18 November 2026.

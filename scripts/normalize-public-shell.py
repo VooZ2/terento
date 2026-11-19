@@ -11,12 +11,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SHELL_VERSION = "20261105-copy-command-v1"
-PROVIDER_SCRIPT_VERSION = "20261026-osmapa-v1"
-STYLE_VERSION = "20261117-map-place-v1"
+PROVIDER_SCRIPT_VERSION = "20261119-compare-card-v1"
+STYLE_VERSION = "20261119-site-refresh-v9"
 IMAGE_VERSION = "20260912-app-screens-v2"
 LANGUAGE_VERSION = "20260926-static-shell-v1"
-COMPATIBILITY_LOCALES_VERSION = "20261106-compatibility-title-v1"
-COMPATIBILITY_VERSION = "20261105-compatibility-clear-v2"
+COMPATIBILITY_LOCALES_VERSION = "20261119-compatibility-labels-v4"
+COMPATIBILITY_VERSION = "20261119-compatibility-cards-v5"
 UMAMI_SCRIPT_VERSION = "20261114-umami-monitoring"
 PAGE_LANGUAGE_VERSION = "20261015-shared-page-language-v3"
 # Footer Web installer link: the public installer (launch 2026-10-29) on the
@@ -76,8 +76,11 @@ def shell(locale: str, route: str, page: str) -> tuple[str, str]:
         "download": "download-cta-click",
     }
 
+    # Header and mobile nav: every guide page (watch, Edge, Linux, Troubleshooting) marks "Guide".
+    nav_active = {**active, "guide": page in {"guide", "edge-guide", "linux-guide", "troubleshooting"}}
+
     def nav_link(key: str, variant: str = "", location: str = "header-nav") -> str:
-        current = ' aria-current="page"' if active.get(key) else ""
+        current = ' aria-current="page"' if nav_active.get(key) else ""
         class_attribute = f' class="{variant}"' if variant else ""
         return f'<a{class_attribute} href="{nav[key]}" data-shell-copy="{key}" data-shell-route="{key}"{current}{umami_attributes(nav_events[key], location)}>{copy[key]}</a>'
     language_menu = f'''<details class="language-menu">
@@ -119,7 +122,7 @@ def shell(locale: str, route: str, page: str) -> tuple[str, str]:
       <div class="shell footer-grid">
         <div class="footer-identity">
           <a class="brand-lockup footer-brand" href="{root}" data-shell-aria="home" data-shell-root aria-label="{copy["home"]}"{umami_attributes("home-link-click", "footer-brand")}>
-            <img src="/assets/logo-white.svg" alt="" width="32" height="32">
+            <img src="/assets/logo-white.svg" alt="" width="32" height="32" loading="lazy" decoding="async">
             <span>Terento</span>
           </a>
           <p class="footer-tagline" data-shell-copy="tagline">{copy["tagline"]}</p>

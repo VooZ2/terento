@@ -39,6 +39,8 @@ Einige Daten bleiben in deinem Browser, nicht auf unserem Server: welche Karten 
 
 Bei Website-, Web-Installer-, API-, Katalog- und Update-Anfragen können Hosting- und Sicherheitsanbieter deine IP-Adresse und Anfrage-Metadaten erhalten. In der App werden Katalogkarten direkt von Freizeitkarte, OpenTopoMap, MapRando, BBBike oder OSMapaPL geladen; deren Datenschutzregeln gelten für diese Verbindungen. Die Update-Prüfung beim App-Start lädt Veröffentlichungsdaten, nicht die App selbst. Die Mac App Store-Version hat keine Update-Prüfung; Updates liefert Apple. Downloads, Updates und Bewertungen im App Store verarbeitet Apple nach der [Datenschutzrichtlinie von Apple](https://www.apple.com/legal/privacy/). Apple stellt Terento Download-Statistiken bereit und, nur wenn du dem Teilen von Analysedaten mit App-Entwicklern zugestimmt hast, Absturzberichte und Nutzungsstatistiken.
 
+**Gerätebild.** Wenn ein Garmin-Gerät verbunden ist, zeigt die App ein Bild des Modells. Die von terento.app geladene App lädt dieses Bild vom Terento-Server oder vom Bildserver von Garmin (`res.garmin.com`); bei manchen Modellen ruft sie zuerst die öffentliche Produktseite des Modells auf `garmin.com` auf, um das Bild zu finden. Garmin erhält dabei deine IP-Adresse und übliche Anfragedaten, darunter Name und Version der App; aus der angefragten Adresse geht hervor, für welches Modell das Bild ist. Die Server von Garmin können Cookies setzen; sie bleiben im eigenen Speicher der App und werden nur an Garmin gesendet. Die Anfrage enthält keine Seriennummer, keine Unit ID und keine Konto- oder Kartendaten. Das Bild wird auf deinem Mac gespeichert. Für diese Verbindungen gilt die [Datenschutzrichtlinie von Garmin](https://www.garmin.com/en-US/privacy/global/). Mac App Store-Versionen bis einschließlich 1.2.1 senden keine Anfragen an Garmin und zeigen ein eigenes Bild von Terento; neuere Versionen laden das Bild wie die von terento.app geladene App.
+
 Diese Verbindungen liefern Inhalte, ermöglichen angeforderte Funktionen und schützen vor Missbrauch. Die Sicherheitsverarbeitung beruht auf berechtigten Interessen nach Art. 6 Abs. 1 lit. f DSGVO.
 
 ## Hilfe und öffentliche Meldungen
@@ -77,4 +79,4 @@ Kompatibilitätsberichte können außerdem eine bereinigte MTP-Modellbezeichnung
 
 Berichte können zusätzlich die ursprüngliche XML-Modellbeschreibung (bis zu 160 Zeichen) und den Modellproduktcode (bis zu 64 ASCII-Buchstaben, Ziffern oder Bindestrichen) enthalten. Diese beschreiben ein Produktmodell, keine einzelne Uhr. Vollständige XML-Dokumente, Unit IDs und Seriennummern sind ausgeschlossen. Modellcode-Zuordnungen und administrative Korrekturen werden getrennt vom ursprünglichen Bericht gespeichert.
 
-Aktualisiert: 29. Oktober 2026.
+Aktualisiert: 18. November 2026.

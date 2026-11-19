@@ -1,0 +1,15 @@
+{
+  "listing_url": "https://apps.apple.com/app/apple-store/id6828556832",
+  "provider_token": "129348028",
+  "asset_version": "20261118-apple-badge-v1",
+  "width": 156,
+  "height": 40,
+  "badges": {
+    "en": {"artwork": "en", "alt": "Download on the Mac App Store"},
+    "de": {"artwork": "de", "alt": "Laden im Mac App Store"},
+    "fr": {"artwork": "fr", "alt": "Télécharger dans le Mac App Store"},
+    "pl": {"artwork": "en", "alt": "Download on the Mac App Store"},
+    "cs": {"artwork": "en", "alt": "Download on the Mac App Store"},
+    "it": {"artwork": "it", "alt": "Scarica su Mac App Store"}
+  }
+}

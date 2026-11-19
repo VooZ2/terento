@@ -5,19 +5,17 @@ canonical: https://terento.app/de/download/
 
 # Terento für Mac herunterladen
 
-Eine kostenlose Open-Source-App, die freie Karten auf Garmin-Uhren und Edge-Radcomputer mit Kartenunterstützung installiert.
+Eine kostenlose Open-Source-App, die freie Karten auf Garmin-Uhren und Edge-Fahrradcomputer mit Kartenunterstützung installiert.
 
-[Für Mac herunterladen](https://github.com/VooZ2/terento/releases/download/v1.2.1-build48/Terento-1.2.1-macOS-arm64.dmg)
+[Für Mac herunterladen](https://github.com/VooZ2/terento/releases/download/v1.2.1-build48/Terento-1.2.1-macOS-arm64.dmg) [Laden im Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-download&mt=8)
 
-Mac App Store Demnächst
-
-Neueste Version **v1.2.1**, veröffentlicht am 14. November 2026. [Was ist neu](https://github.com/VooZ2/terento/releases/tag/v1.2.1-build48)
-
-Kein Mac mit Apple Silicon? [Nutze den Web-Installer](https://terento.app/de/install/) in Chrome, Microsoft Edge, Opera oder Brave auf dem Mac. Linux ist noch im Test: siehe [Linux-Anleitung](https://terento.app/de/guides/install-garmin-maps-linux/).
+[Nutze den Web-Installer](https://terento.app/de/install/)
 
 Terento zeigt eine verbundene Garmin-Uhr unter macOS
 
 ## Das brauchst du
+
+Neueste Version **v1.2.1**, 14. November 2026. [Was ist neu](https://github.com/VooZ2/terento/releases/tag/v1.2.1-build48)
 
 - Einen Mac mit Apple Silicon
 - macOS 13 oder neuer
@@ -37,6 +35,6 @@ Nutze ein USB-Datenkabel und entsperre Uhr oder Edge.
 
 3. Karte wählen
 
-Wähle eine Karte und eine Region und installiere sie.
+Wähle eine Karte und eine Region und installiere sie. Schalte die Karte dann in den Karteneinstellungen deines Garmin ein (fehlt sie in der Liste, starte das Gerät neu).
 
 Schritt für Schritt: [Anleitung für Garmin-Uhren](https://terento.app/de/guides/install-garmin-maps-mac/) und [Anleitung für Garmin Edge](https://terento.app/de/guides/install-garmin-maps-edge-mac/).

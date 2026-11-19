@@ -26,7 +26,7 @@ function pageData(locale) {
 function homeCards(locale) {
   const source = read(localeFile(locale, ""));
   const cards = [];
-  const pattern = /<article class="provider-card" data-provider-card="([^"]+)"[^>]*>([\s\S]*?)<\/article>/g;
+  const pattern = /<article class="provider-card[^"]*" data-provider-card="([^"]+)"[^>]*>([\s\S]*?)<\/article>/g;
   let match;
   while ((match = pattern.exec(source))) {
     const body = match[2];

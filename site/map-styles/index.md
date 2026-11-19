@@ -158,3 +158,7 @@ Freizeitkarte includes them. OpenTopoMap offers them as an optional add-on, and 
 How do I install one?
 
 [Download](https://terento.app/download/) Terento for a Mac with Apple Silicon, or use the [web installer](https://terento.app/install/) in a Chromium browser. Connect your watch or Edge, choose a map and a region, and install. The [Garmin watch guide](https://terento.app/guides/install-garmin-maps-mac/) and the [Garmin Edge guide](https://terento.app/guides/install-garmin-maps-edge-mac/) walk you through it.
+
+Put a free map on your Garmin
+
+[Download for Mac](https://terento.app/download/) [Use the web installer](https://terento.app/install/)

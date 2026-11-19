@@ -1,0 +1,416 @@
+{
+  "site/index.html": {
+    "events_removed": [
+      "app-store-click @ home-hero"
+    ],
+    "h2": [
+      "How it works",
+      "On the bike, too",
+      "Pick the map that fits the trip",
+      "Use the Mac app or your browser",
+      "Questions and answers",
+      "Install",
+      "Help",
+      "Project"
+    ]
+  },
+  "site/about/index.html": {
+    "h1": "About Terento",
+    "jsonld_types": [
+      "AboutPage",
+      "BreadcrumbList",
+      "ListItem",
+      "Organization",
+      "Person"
+    ],
+    "events_removed": [
+      "download-cta-click @ about-intro"
+    ],
+    "h2": [
+      "What Terento is, and what it isn’t",
+      "Who makes it",
+      "Featured on",
+      "Install",
+      "Help",
+      "Project"
+    ]
+  },
+  "site/de/index.html": {
+    "events_removed": [
+      "app-store-click @ home-hero"
+    ],
+    "h2": [
+      "So funktioniert es",
+      "Auch auf dem Rad",
+      "Wähle die Karte, die zur Tour passt",
+      "Mit der Mac-App oder im Browser",
+      "Fragen und Antworten",
+      "Installieren",
+      "Hilfe",
+      "Projekt"
+    ]
+  },
+  "site/de/about/index.html": {
+    "h1": "Über Terento",
+    "jsonld_types": [
+      "AboutPage",
+      "BreadcrumbList",
+      "ListItem",
+      "Organization",
+      "Person"
+    ],
+    "events_removed": [
+      "download-cta-click @ about-intro"
+    ],
+    "h2": [
+      "Was Terento ist und was nicht",
+      "Wer es macht",
+      "Vorgestellt auf",
+      "Installieren",
+      "Hilfe",
+      "Projekt"
+    ]
+  },
+  "site/fr/index.html": {
+    "events_removed": [
+      "app-store-click @ home-hero"
+    ],
+    "h2": [
+      "Comment ça marche",
+      "À vélo aussi",
+      "Choisissez la carte adaptée à votre sortie",
+      "Avec l’app Mac ou depuis votre navigateur",
+      "Questions et réponses",
+      "Installer",
+      "Aide",
+      "Projet"
+    ]
+  },
+  "site/fr/about/index.html": {
+    "h1": "À propos de Terento",
+    "jsonld_types": [
+      "AboutPage",
+      "BreadcrumbList",
+      "ListItem",
+      "Organization",
+      "Person"
+    ],
+    "events_removed": [
+      "download-cta-click @ about-intro"
+    ],
+    "h2": [
+      "Ce qu’est Terento, et ce qu’il n’est pas",
+      "Qui le fait",
+      "Présenté sur",
+      "Installer",
+      "Aide",
+      "Projet"
+    ]
+  },
+  "site/pl/index.html": {
+    "events_removed": [
+      "app-store-click @ home-hero"
+    ],
+    "h2": [
+      "Jak to działa",
+      "Także na rowerze",
+      "Wybierz mapę pasującą do wyprawy",
+      "W aplikacji na Maca lub w przeglądarce",
+      "Pytania i odpowiedzi",
+      "Instalacja",
+      "Pomoc",
+      "Projekt"
+    ]
+  },
+  "site/pl/about/index.html": {
+    "h1": "O Terento",
+    "jsonld_types": [
+      "AboutPage",
+      "BreadcrumbList",
+      "ListItem",
+      "Organization",
+      "Person"
+    ],
+    "events_removed": [
+      "download-cta-click @ about-intro"
+    ],
+    "h2": [
+      "Czym Terento jest, a czym nie jest",
+      "Kto go tworzy",
+      "Pisali o Terento",
+      "Instalacja",
+      "Pomoc",
+      "Projekt"
+    ]
+  },
+  "site/cs/index.html": {
+    "events_removed": [
+      "app-store-click @ home-hero"
+    ],
+    "h2": [
+      "Jak to funguje",
+      "I na kole",
+      "Vyberte mapu, která sedí k výletu",
+      "V aplikaci pro Mac nebo v prohlížeči",
+      "Otázky a odpovědi",
+      "Instalace",
+      "Nápověda",
+      "Projekt"
+    ]
+  },
+  "site/cs/about/index.html": {
+    "h1": "O Terento",
+    "jsonld_types": [
+      "AboutPage",
+      "BreadcrumbList",
+      "ListItem",
+      "Organization",
+      "Person"
+    ],
+    "events_removed": [
+      "download-cta-click @ about-intro"
+    ],
+    "h2": [
+      "Co Terento je a co není",
+      "Kdo ho dělá",
+      "Psali o Terento",
+      "Instalace",
+      "Nápověda",
+      "Projekt"
+    ]
+  },
+  "site/it/index.html": {
+    "events_removed": [
+      "app-store-click @ home-hero"
+    ],
+    "h2": [
+      "Come funziona",
+      "Anche in bici",
+      "Scegli la mappa adatta al percorso",
+      "Con l’app per Mac o dal browser",
+      "Domande e risposte",
+      "Installa",
+      "Aiuto",
+      "Progetto"
+    ]
+  },
+  "site/it/about/index.html": {
+    "h1": "Informazioni su Terento",
+    "jsonld_types": [
+      "AboutPage",
+      "BreadcrumbList",
+      "ListItem",
+      "Organization",
+      "Person"
+    ],
+    "events_removed": [
+      "download-cta-click @ about-intro"
+    ],
+    "h2": [
+      "Cos’è Terento, e cosa non è",
+      "Chi lo fa",
+      "In evidenza su",
+      "Installa",
+      "Aiuto",
+      "Progetto"
+    ]
+  },
+  "site/compatibility/index.html": {
+    "events_removed": [
+      "download-cta-click @ compatibility-community-testing",
+      "web-installer-link-click @ compatibility-community-testing"
+    ],
+    "h2": [
+      "Don’t see your Garmin here?",
+      "How this list works",
+      "Install",
+      "Help",
+      "Project"
+    ]
+  },
+  "site/cs/compatibility/index.html": {
+    "events_removed": [
+      "download-cta-click @ compatibility-community-testing",
+      "web-installer-link-click @ compatibility-community-testing"
+    ],
+    "h2": [
+      "Nevidíte zde svůj Garmin?",
+      "Jak tento seznam funguje",
+      "Instalace",
+      "Nápověda",
+      "Projekt"
+    ]
+  },
+  "site/cs/download/index.html": {
+    "events_removed": [
+      "guide-link-click @ download-page-linux"
+    ]
+  },
+  "site/cs/guides/install-garmin-maps-linux/index.html": {
+    "events_removed": [
+      "guide-link-click @ linux-guide-other"
+    ]
+  },
+  "site/cs/guides/install-garmin-maps-mac/index.html": {
+    "events_removed": [
+      "guide-link-click @ guide-other"
+    ]
+  },
+  "site/cs/guides/troubleshooting/index.html": {
+    "events_removed": [
+      "guide-link-click @ troubleshooting-bottom"
+    ]
+  },
+  "site/de/compatibility/index.html": {
+    "events_removed": [
+      "download-cta-click @ compatibility-community-testing",
+      "web-installer-link-click @ compatibility-community-testing"
+    ],
+    "h2": [
+      "Dein Garmin ist nicht dabei?",
+      "So funktioniert diese Liste",
+      "Installieren",
+      "Hilfe",
+      "Projekt"
+    ]
+  },
+  "site/de/download/index.html": {
+    "events_removed": [
+      "guide-link-click @ download-page-linux"
+    ]
+  },
+  "site/de/guides/install-garmin-maps-linux/index.html": {
+    "events_removed": [
+      "guide-link-click @ linux-guide-other"
+    ]
+  },
+  "site/de/guides/install-garmin-maps-mac/index.html": {
+    "events_removed": [
+      "guide-link-click @ guide-other"
+    ]
+  },
+  "site/de/guides/troubleshooting/index.html": {
+    "events_removed": [
+      "guide-link-click @ troubleshooting-bottom"
+    ]
+  },
+  "site/download/index.html": {
+    "events_removed": [
+      "guide-link-click @ download-page-linux"
+    ]
+  },
+  "site/fr/compatibility/index.html": {
+    "events_removed": [
+      "download-cta-click @ compatibility-community-testing",
+      "web-installer-link-click @ compatibility-community-testing"
+    ],
+    "h2": [
+      "Votre Garmin n’apparaît pas ?",
+      "Comment fonctionne cette liste",
+      "Installer",
+      "Aide",
+      "Projet"
+    ]
+  },
+  "site/fr/download/index.html": {
+    "events_removed": [
+      "guide-link-click @ download-page-linux"
+    ]
+  },
+  "site/fr/guides/install-garmin-maps-linux/index.html": {
+    "events_removed": [
+      "guide-link-click @ linux-guide-other"
+    ]
+  },
+  "site/fr/guides/install-garmin-maps-mac/index.html": {
+    "events_removed": [
+      "guide-link-click @ guide-other"
+    ]
+  },
+  "site/fr/guides/troubleshooting/index.html": {
+    "events_removed": [
+      "guide-link-click @ troubleshooting-bottom"
+    ]
+  },
+  "site/guides/install-garmin-maps-linux/index.html": {
+    "events_removed": [
+      "guide-link-click @ linux-guide-other"
+    ]
+  },
+  "site/guides/install-garmin-maps-mac/index.html": {
+    "events_removed": [
+      "guide-link-click @ guide-other"
+    ]
+  },
+  "site/guides/troubleshooting/index.html": {
+    "events_removed": [
+      "guide-link-click @ troubleshooting-bottom"
+    ]
+  },
+  "site/it/compatibility/index.html": {
+    "events_removed": [
+      "download-cta-click @ compatibility-community-testing",
+      "web-installer-link-click @ compatibility-community-testing"
+    ],
+    "h2": [
+      "Non vedi il tuo Garmin?",
+      "Come funziona questo elenco",
+      "Installa",
+      "Aiuto",
+      "Progetto"
+    ]
+  },
+  "site/it/download/index.html": {
+    "events_removed": [
+      "guide-link-click @ download-page-linux"
+    ]
+  },
+  "site/it/guides/install-garmin-maps-linux/index.html": {
+    "events_removed": [
+      "guide-link-click @ linux-guide-other"
+    ]
+  },
+  "site/it/guides/install-garmin-maps-mac/index.html": {
+    "events_removed": [
+      "guide-link-click @ guide-other"
+    ]
+  },
+  "site/it/guides/troubleshooting/index.html": {
+    "events_removed": [
+      "guide-link-click @ troubleshooting-bottom"
+    ]
+  },
+  "site/pl/compatibility/index.html": {
+    "events_removed": [
+      "download-cta-click @ compatibility-community-testing",
+      "web-installer-link-click @ compatibility-community-testing"
+    ],
+    "h2": [
+      "Nie widzisz swojego Garmina?",
+      "Jak działa ta lista",
+      "Instalacja",
+      "Pomoc",
+      "Projekt"
+    ]
+  },
+  "site/pl/download/index.html": {
+    "events_removed": [
+      "guide-link-click @ download-page-linux"
+    ]
+  },
+  "site/pl/guides/install-garmin-maps-linux/index.html": {
+    "events_removed": [
+      "guide-link-click @ linux-guide-other"
+    ]
+  },
+  "site/pl/guides/install-garmin-maps-mac/index.html": {
+    "events_removed": [
+      "guide-link-click @ guide-other"
+    ]
+  },
+  "site/pl/guides/troubleshooting/index.html": {
+    "events_removed": [
+      "guide-link-click @ troubleshooting-bottom"
+    ]
+  }
+}

@@ -18,6 +18,7 @@
     search: "",
     successfulRange: "ALL",
     family: "ALL",
+    deviceType: "ALL",
     sort: "successful",
     loadState: "ready",
     hasLoaded: false,
@@ -46,6 +47,7 @@
     freshness: document.querySelector("#compatibility-freshness"),
     retry: document.querySelector("#compatibility-retry"),
     clear: document.querySelector("#compatibility-clear"),
+    chips: [...document.querySelectorAll("[data-device-filter]")],
   };
 
   const { normalize, canonicalFamilyKey, familyOptions, filterByFamily, exactVariantLabel, publicModelName } = data;
@@ -61,7 +63,15 @@
     if (!value) return "";
     const date = new Date(value);
     if (Number.isNaN(date.valueOf())) return "";
-    return new Intl.DateTimeFormat(locale.dateLocale, { dateStyle: "medium" }).format(date);
+    return new Intl.DateTimeFormat(locale.dateLocale, { dateStyle: "long", timeZone: "UTC" }).format(date);
+  };
+
+  const formatShortDate = (value) => {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.valueOf())) return "";
+    // Dense places use the medium date ("Nov 15, 2026"), never "11/15/2026" (round 5).
+    return new Intl.DateTimeFormat(locale.dateLocale, { dateStyle: "medium", timeZone: "UTC" }).format(date);
   };
 
   const sourceCount = (value) => {
@@ -109,6 +119,9 @@
       }));
   }
 
+  // Keep in sync with device_type() in scripts/build-compatibility-pages.py.
+  const deviceType = (row) => (row.family === "edge" ? "edge" : "watch");
+
   function hydrateImages() {
     [...elements.grid.querySelectorAll("img[data-remote-src]")].forEach((image) => {
       image.addEventListener("load", () => image.classList.add("is-ready"), { once: true });
@@ -119,10 +132,12 @@
 
   function createCard(row) {
     const modelName = publicModelName(row.model);
-    const variantLabel = row.variants[0] || exactVariantLabel(row) || locale.card.smartwatch;
-    const latestInstallation = formatDate(row.lastSuccess);
+    // A real variant name or nothing (round 5).
+    const variantLabel = row.variants[0] || exactVariantLabel(row) || "";
+    const latestInstallation = formatShortDate(row.lastSuccess);
+    // One short line (no family name: the filter covers it); hidden on phones.
     const latestInstallationMarkup = latestInstallation
-      ? `<p class="watch-card-meta">${escapeHtml(locale.card.latest)} ${escapeHtml(latestInstallation)}</p>`
+      ? `<p class="watch-card-meta">${escapeHtml(locale.card.last)} ${escapeHtml(latestInstallation)}</p>`
       : "";
     const installLabel = locale.successfulInstallLabel(row.successful);
     const sources = [["app", row.appSuccessful], ["web", row.webSuccessful]]
@@ -132,11 +147,11 @@
       ? `<p class="watch-install-sources">${sources.map(({ source, text }) => `<span class="watch-install-source">${SOURCE_ICONS[source]}${escapeHtml(locale.sources[source])} ${escapeHtml(text)}</span>`).join(" ")}</p>`
       : "";
     const sourcesLabel = sources.map(({ source, text }) => locale.sources[`${source}Label`](text)).join(", ");
-    const accessibleName = [modelName, variantLabel, installLabel, sourcesLabel, latestInstallation && `${locale.card.latest} ${latestInstallation}`]
+    const accessibleName = [modelName, variantLabel, installLabel, sourcesLabel, latestInstallation && `${locale.card.last} ${latestInstallation}`]
       .filter(Boolean)
       .join(", ");
     const imageUrl = row.imageUrl || FALLBACK_IMAGE_URL;
-    return `<article class="watch-card" aria-label="${escapeHtml(accessibleName)}"><div class="watch-card-image"><img data-remote-src="${escapeHtml(imageUrl)}" src="${escapeHtml(imageUrl)}" alt="" loading="lazy"></div><div class="watch-card-body"><div class="watch-card-heading"><p class="watch-family">${escapeHtml(row.familyName || "Garmin")}</p><div class="watch-card-model-row"><h3>${escapeHtml(modelName)} <span class="watch-variant">${escapeHtml(variantLabel)}</span></h3></div></div><p class="watch-install-count">${escapeHtml(installLabel)}</p>${sourcesMarkup}${latestInstallationMarkup}</div></article>`;
+    return `<article class="watch-card card" data-device-type="${deviceType(row)}" aria-label="${escapeHtml(accessibleName)}"><div class="watch-card-image"><img data-remote-src="${escapeHtml(imageUrl)}" src="${escapeHtml(imageUrl)}" alt="" width="400" height="300" loading="lazy"></div><div class="watch-card-body"><h3>${escapeHtml(modelName)}${variantLabel ? ` <span class="watch-variant">${escapeHtml(variantLabel)}</span>` : ""}</h3><p class="watch-install-count">${escapeHtml(installLabel)}</p>${sourcesMarkup}${latestInstallationMarkup}</div></article>`;
   }
 
   function matchesSuccessfulRange(row) {
@@ -148,10 +163,12 @@
 
   function render() {
 
-    if (elements.clear) elements.clear.disabled = !state.search && state.successfulRange === "ALL" && state.family === "ALL" && state.sort === "successful";
+    if (elements.clear) elements.clear.disabled = !state.search && state.successfulRange === "ALL" && state.family === "ALL" && state.deviceType === "ALL" && state.sort === "successful";
+    elements.chips.forEach((chip) => chip.setAttribute("aria-pressed", String(chip.dataset.deviceFilter === state.deviceType)));
     const query = normalize(state.search);
     const filtered = state.rows
       .filter(matchesSuccessfulRange)
+      .filter((row) => state.deviceType === "ALL" || deviceType(row) === state.deviceType)
       .filter((row) => filterByFamily([row], state.family).length > 0)
       .filter((row) => !query || normalize(`${row.model} ${row.variants.join(" ")} ${row.familyName}`).includes(query))
       .sort((a, b) => {
@@ -272,6 +289,7 @@
     state.search = elements.search.value = "";
     state.successfulRange = elements.successfulRange.value = "ALL";
     state.family = elements.family.value = "ALL";
+    state.deviceType = "ALL";
     state.sort = elements.sort.value = "successful";
     render();
     elements.search.focus();
@@ -280,6 +298,7 @@
   elements.search.addEventListener("input", (event) => { state.search = event.target.value; render(); });
   elements.successfulRange.addEventListener("change", (event) => { state.successfulRange = event.target.value; render(); });
   elements.family.addEventListener("change", (event) => { state.family = event.target.value; render(); });
+  elements.chips.forEach((chip) => chip.addEventListener("click", () => { state.deviceType = chip.dataset.deviceFilter; render(); }));
   elements.sort.addEventListener("change", (event) => { state.sort = event.target.value; render(); });
   if (elements.evidenceNote && locale.evidenceNote) elements.evidenceNote.textContent = locale.evidenceNote;
   initializeSnapshot();

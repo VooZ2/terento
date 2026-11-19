@@ -26,7 +26,7 @@ Terento tyto mapy nevytváří, nemění jejich licence, neprovozuje knihovnu ma
 
 ## Názvy a nezávislost
 
-Garmin a názvy jeho produktů jsou ochranné známky Garmin Ltd. Apple, Mac, macOS a Apple Silicon jsou ochranné známky Apple Inc. Google a Chrome jsou ochranné známky Google LLC. Microsoft a Edge jsou ochranné známky Microsoft Corporation. Opera je ochranná známka Opera Norway AS. Brave je ochranná známka Brave Software, Inc. Používají se popisně. Terento není s těmito společnostmi spojeno ani jimi podporováno nebo certifikováno.
+Garmin a názvy jeho produktů jsou ochranné známky Garmin Ltd. Apple, Mac, macOS, Apple Silicon, App Store a Mac App Store jsou ochranné známky Apple Inc. Google a Chrome jsou ochranné známky Google LLC. Microsoft a Edge jsou ochranné známky Microsoft Corporation. Opera je ochranná známka Opera Norway AS. Brave je ochranná známka Brave Software, Inc. Používají se popisně. Terento není s těmito společnostmi spojeno ani jimi podporováno nebo certifikováno.
 
 ## Záruka a vaše práva
 

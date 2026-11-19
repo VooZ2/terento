@@ -7,9 +7,7 @@ canonical: https://terento.app/de/guides/install-garmin-maps-mac/
 
 Terento installiert kostenlose OpenStreetMap-Karten oder deine eigene Kartendatei auf einer Garmin-Uhr mit Kartenunterstützung. Du kopierst selbst keine Dateien, und deine Garmin-Karten bleiben unverändert.
 
-[Herunterladen](https://terento.app/de/download/)
-
-Du nutzt Linux? [Installiere Karten aus dem Browser](https://terento.app/de/guides/install-garmin-maps-linux/).
+[Für Mac herunterladen](https://terento.app/de/download/)
 
 ## Das brauchst du
 
@@ -17,7 +15,7 @@ Du nutzt Linux? [Installiere Karten aus dem Browser](https://terento.app/de/guid
 - Garmin-Smartwatch mit Kartenunterstützung
 - USB-Kabel mit Datenübertragung
 
-Nach dem Verbinden prüft Terento die Uhr und sagt dir, ob es Karten installieren kann. Unter [Kompatibilität](https://terento.app/de/compatibility/) stehen die Modelle mit erfolgreichen Installationen; fehlt ein Modell, heißt das nicht unbedingt, dass es nicht unterstützt wird.
+Nach dem Verbinden prüft Terento die Uhr und sagt dir, ob es Karten installieren kann. Nicht auf der [Kompatibilitätsliste](https://terento.app/de/compatibility/)? Es kann trotzdem funktionieren: Die Liste zeigt nur Modelle, auf denen schon jemand eine Karte installiert hat.
 
 ## Eine Karte installieren
 
@@ -31,7 +29,7 @@ Beende Garmin Express, falls es geöffnet ist. Entsperre die Uhr und verbinde si
 
 [Garmin-Uhr wird am Mac nicht erkannt](https://terento.app/de/guides/troubleshooting/#connect-watch)
 
-Terento zeigt eine verbundene Garmin-Uhr und den Gerätestatus
+[Terento zeigt eine verbundene Garmin-Uhr und den Gerätestatus](https://terento.app/assets/app/optimized/your-garmin-1600.webp?v=20260912-app-screens-v2)
 Terento erkennt die verbundene Garmin-Uhr vor der Installation.
 
 3. Karte wählen
@@ -46,14 +44,14 @@ Wähle einen Anbieter und eine Region aus dem Katalog.
 
 Füge eine kompatible .img-Karte von deinem Mac hinzu.
 
-Terento zeigt Drittanbieter-Kartenanbieter, Regionen und verfügbaren Garmin-Speicher
+[Terento zeigt Drittanbieter-Kartenanbieter, Regionen und verfügbaren Garmin-Speicher](https://terento.app/assets/app/optimized/map-selected-1600.webp?v=20260912-app-screens-v2)
 Wähle eine Karte aus dem Katalog oder füge deine eigene kompatible Datei hinzu.
 
 4. Installieren
 
 Starte die Installation und lass die Uhr verbunden, bis Terento meldet, dass die Karte bereit ist. Trenne die Uhr danach.
 
-Terento zeigt eine abgeschlossene Karteninstallation auf einer Garmin-Uhr
+[Terento zeigt eine abgeschlossene Karteninstallation auf einer Garmin-Uhr](https://terento.app/assets/app/optimized/maps-done-1600.webp?v=20260912-app-screens-v2)
 Lass die Uhr verbunden, bis Übertragung und Prüfung abgeschlossen sind.
 
 ## Die Karte auf der Uhr anzeigen
@@ -81,3 +79,7 @@ Wähle nach einer fehlgeschlagenen Installation „Report issue“. Terento öff
 ## Terento deinstallieren
 
 Beende Terento und bewege es aus „Programme“ in den Papierkorb. Karten auf deiner Uhr bleiben dort. Terento speichert die Angaben zu den installierten Karten in ~/Library/Application Support/Terento: Behalte diesen Ordner, wenn du Terento wieder installieren möchtest, damit es diese Karten weiter aktualisieren und entfernen kann. Um alles zu entfernen, lösche auch diesen Ordner, ~/Library/Caches/Terento, ~/Library/Logs/Terento und ~/Library/Preferences/app.terento.mac.plist.
+
+Bring eine kostenlose Karte auf dein Garmin
+
+[Für Mac herunterladen](https://terento.app/de/download/) [Web-Installer verwenden](https://terento.app/de/install/)

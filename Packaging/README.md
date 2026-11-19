@@ -420,7 +420,7 @@ read mutable engine/UI state.
 
 ## Mac App Store configuration
 
-The `AppStore` Xcode configuration is an unreleased App Sandbox variant for a
-private technical test. `Packaging/release.sh` never builds it, and it does not
-change the Developer ID artifacts above. See
+The `AppStore` Xcode configuration builds the App Sandbox variant published on
+the [Mac App Store](https://apps.apple.com/app/terento-gps-watch-maps/id6828556832) since 2026-11-18. `Packaging/release.sh` never
+builds it, and it does not change the Developer ID artifacts above. See
 [the App Store configuration](AppStore/README.md).
