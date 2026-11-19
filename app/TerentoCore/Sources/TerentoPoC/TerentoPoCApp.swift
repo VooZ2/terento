@@ -87,11 +87,11 @@ struct TerentoPoCApp: App {
                 Button("About Terento") {
                     openWindow(id: "about")
                 }
-                Button("Diagnostics") {
+                Button("Diagnostics…") {
                     openWindow(id: "diagnostics")
                 }
                 #if !TERENTO_APP_STORE
-                Button("Check updates") {
+                Button("Check for Updates…") {
                     appUpdateController.checkForUpdates()
                 }
                 #endif

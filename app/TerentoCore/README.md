@@ -484,7 +484,7 @@ catalog before workspace creation or HTTP acquisition. Existing device files
 remain protected.
 
 Manifests and device identifiers stay on the Mac. Compatibility and map-use
-reports are privacy-minimised and enabled by default; either stream can be
+reports are privacy-minimized and enabled by default; either stream can be
 turned off in Diagnostics. Custom maps contribute compatibility evidence and
 eligible common fresh-install totals, but no provider-download event or guessed
 catalog geography.

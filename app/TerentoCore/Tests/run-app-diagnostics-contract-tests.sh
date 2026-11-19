@@ -10,11 +10,16 @@ connect_source="$repo_root/app/TerentoCore/Sources/TerentoPoC/Views/ConnectScree
 for text in \
     'struct DiagnosticsView: View' \
     'Text("Diagnostics")' \
-    'Text("Privacy-minimised diagnostics help improve the Terento app and its services.")' \
-    'Send privacy-minimised compatibility diagnostics' \
-    'Send privacy-minimised map usage diagnostics' \
-    'Text("Both diagnostics streams are enabled by default.' \
-    'DiagnosticsActionButton(title: isSending ? "Sending diagnostics…" : "Send diagnostics")' \
+    'Text("Privacy-minimized diagnostics help improve the Terento app and its services.")' \
+    'Send privacy-minimized compatibility diagnostics' \
+    'Send privacy-minimized map usage diagnostics' \
+    'Text("Both are on by default. Turning one off also deletes what is waiting to be sent.")' \
+    'DisclosureGroup("What is sent")' \
+    'diagnosticsSection(title: "Problem with a map?")' \
+    'Text("If an install, update or removal failed, send us the saved report.")' \
+    'Button("Report on GitHub (public)", action: reportOnGitHub)' \
+    'if pendingCount > 0 || actionMessage != nil {' \
+    'Button(isSending ? "Sending…" : "Send now", action: sendDiagnostics)' \
     '.disabled(pendingCount == 0 || isSending)' \
     'await evidenceController.flushPendingUploads()' \
     'await mapStatisticsController.flushPendingEvents()'; do
@@ -26,7 +31,7 @@ done
 
 for text in \
     'Window("Diagnostics", id: "diagnostics")' \
-    'Button("Diagnostics")' \
+    'Button("Diagnostics…")' \
     'openWindow(id: "diagnostics")'; do
     if ! grep -Fq "$text" "$app_source"; then
         print -u2 "FAIL: Diagnostics menu/window wiring is missing: $text"
@@ -66,5 +71,7 @@ public = re.sub(r"#if DEBUG\n[\s\S]*?#endif", "", source)
 for field in ['Connected device identity', 'MTP model:', 'XML model:', 'XML part number:', 'USB VID/PID:', 'API catalog candidate:']:
     assert field not in public, field
 assert 'diagnosticsSection(title: "Sharing")' in public
+assert any('DisclosureGroup("Technical details")' in block and 'MTP model:' in block for block in debug), 'device fields are not under Technical details'
+assert 'DiagnosticsActionButton(title: "Send diagnostics")' not in source, 'a disabled Send diagnostics button remains'
 print('PASS: connected-watch technical fields are local-build only; public sharing controls remain')
 PYTHON

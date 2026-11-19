@@ -27,7 +27,7 @@ drifts from `Release`. A version or build bump must therefore change the
 
 These code paths are removed at compile time, not hidden:
 
-- the update check: no `updates/macos-arm64.json` request, no `Check updates`
+- the update check: no `updates/macos-arm64.json` request, no `Check for Updates…`
   menu item, no About `Update` button or status, no update prompt
   (guideline 2.4.5(vii));
 - the `Donate` links in About and on Maps installed (guideline 3.1.1);

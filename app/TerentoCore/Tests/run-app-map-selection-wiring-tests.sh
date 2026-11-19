@@ -39,7 +39,7 @@ if grep -Fq 'Help improve Garmin compatibility' "$connect_screen" \
     exit 1
 fi
 
-if ! grep -Fq 'Terento sends privacy-minimised diagnostics by default' "$project_root/Sources/TerentoPoC/Views/AboutTerentoView.swift" \
+if ! grep -Fq 'Terento sends privacy-minimized diagnostics by default' "$project_root/Sources/TerentoPoC/Views/AboutTerentoView.swift" \
     || ! grep -Fq 'AboutSecondaryButton(title: "Manage diagnostics")' "$project_root/Sources/TerentoPoC/Views/AboutTerentoView.swift"; then
     print -u2 "FAIL: About diagnostics disclosure or settings entry point is missing"
     exit 1
@@ -140,7 +140,7 @@ fi
 if grep -Fq 'LocalInstallStepperLayout' "$connect_screen" \
     || grep -Fq 'LocalInstallProgress' "$connect_screen" \
     || grep -Fq 'WorkflowProgress' "$connect_screen" \
-    || ! grep -Fq 'title: "Maps installed"' "$connect_screen"; then
+    || ! grep -Fq 'installedCount == 1 ? "Map installed" : "Maps installed"' "$connect_screen"; then
     print -u2 "FAIL: install stepper remains or successful Done state is missing"
     exit 1
 fi

@@ -32,7 +32,7 @@ enum MapStatisticsEventOutcome: String, Codable, Sendable {
     case unknown = "UNKNOWN"
 }
 
-/// Privacy-minimised product statistics. This model intentionally has no
+/// Privacy-minimized product statistics. This model intentionally has no
 /// device identity, source URL, local path, manifest, checksum, or diagnostic
 /// fields, so those values cannot accidentally enter the API payload.
 struct MapStatisticsEvent: Codable, Equatable, Identifiable, Sendable {
@@ -488,7 +488,7 @@ final class MapStatisticsEventController: ObservableObject {
         if sharingEnabled { scheduleFlush() }
     }
 
-    /// Privacy-minimised map usage diagnostics are enabled by default, except
+    /// Privacy-minimized map usage diagnostics are enabled by default, except
     /// in App Store builds, which wait for an opt-in. An explicit choice
     /// remains persisted and is independent from compatibility data.
     var sharingEnabled: Bool {

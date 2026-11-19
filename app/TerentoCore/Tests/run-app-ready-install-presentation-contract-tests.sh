@@ -33,10 +33,10 @@ require_text 'componentRowCount > Self.visibleRowCapacity ? .automatic : .hidden
 require_text 'idealHeight: visibleListHeight' 'selected-map region does not keep a responsive ideal height'
 require_text 'MapSelectionRow(' 'Review does not reuse the shared map row presentation'
 reject_text 'Text("Terento will install these maps to your Garmin. Existing Garmin maps will not be changed.")' 'Ready still repeats the installation explanation'
-reject_text 'Terento sends privacy-minimised diagnostics by default' 'Ready still repeats the About privacy explanation'
-if ! grep -Fq 'Terento sends privacy-minimised diagnostics by default' "$project_root/Sources/TerentoPoC/Views/AboutTerentoView.swift" \
+reject_text 'Terento sends privacy-minimized diagnostics by default' 'Ready still repeats the About privacy explanation'
+if ! grep -Fq 'Terento sends privacy-minimized diagnostics by default' "$project_root/Sources/TerentoPoC/Views/AboutTerentoView.swift" \
     || ! grep -Fq 'AboutSecondaryButton(title: "Manage diagnostics")' "$project_root/Sources/TerentoPoC/Views/AboutTerentoView.swift" \
-    || ! grep -Fq 'Both diagnostics streams are enabled by default.' "$project_root/Sources/TerentoPoC/Views/DiagnosticsView.swift"; then
+    || ! grep -Fq 'Both are on by default. Turning one off also deletes what is waiting to be sent.' "$project_root/Sources/TerentoPoC/Views/DiagnosticsView.swift"; then
     print -u2 'FAIL: dedicated About/Diagnostics disclosure or settings entry point is missing'
     exit 1
 fi

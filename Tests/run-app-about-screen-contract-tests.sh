@@ -80,7 +80,7 @@ for update_contract in \
 done
 
 for privacy_copy in \
-    'Terento sends privacy-minimised diagnostics by default' \
+    'Terento sends privacy-minimized diagnostics by default' \
     'Device state, maps, manifests, Unit IDs, serial numbers, and local paths stay on this Mac.' \
     'Terento may contact terento.app when the app starts to check whether a newer version is available.' \
     'This request is not used for analytics or user tracking.'; do

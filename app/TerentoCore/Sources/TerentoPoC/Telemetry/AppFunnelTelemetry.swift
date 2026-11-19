@@ -3,7 +3,7 @@ import Foundation
 
 /// First-run funnel telemetry (contracts/APP_FUNNEL_CONTRACT.md, schema v1).
 ///
-/// Privacy-minimised and governed by the existing device-compatibility
+/// Privacy-minimized and governed by the existing device-compatibility
 /// reporting preference. Events carry no serial, Unit ID, account, path, IP or
 /// persistent user/device identifier; `sessionId` is random per app launch and
 /// lives only in memory.

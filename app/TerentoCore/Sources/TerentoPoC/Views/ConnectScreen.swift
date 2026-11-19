@@ -2948,7 +2948,7 @@ struct ConnectScreen: View {
         return TerentoInstallFooterPageShell {
             VStack(alignment: .leading, spacing: 0) {
                 TerentoPageHeader(
-                    title: "Maps installed",
+                    title: installedCount == 1 ? "Map installed" : "Maps installed",
                     subtitle: hasPartialInstallation
                         ? "The main map is ready. An optional contour component needs attention."
                         : "Installation complete."
@@ -2964,41 +2964,11 @@ struct ConnectScreen: View {
                     )
                         .padding(.top, TerentoPageLayout.sectionContentTopPadding)
 
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Image(systemName: hasPartialInstallation ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(hasPartialInstallation ? TerentoColors.error : TerentoColors.lichenDark)
-                            .accessibilityHidden(true)
-
-                        Text(hasPartialInstallation
-                            ? "The main map is installed and checked. The optional contours were not completed."
-                            : (installedCount == 1
-                                ? "Your map is installed and checked."
-                                : "Your maps are installed and checked."))
-                            .font(.terentoUI(size: 14, weight: .medium))
-                            .foregroundStyle(TerentoColors.secondaryText)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                        .accessibilityElement(children: .combine)
+                    InstallationResultCallout(
+                        mapNames: installedItems.map(\.title),
+                        isPartial: hasPartialInstallation
+                    )
                         .padding(.top, TerentoPageLayout.sectionSpacing)
-
-                    // The Garmin does not always show a new map until it is
-                    // turned on in its map settings (same step as the guides).
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Image(systemName: "switch.2")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(TerentoColors.interactive)
-                            .accessibilityHidden(true)
-
-                        Text(installedCount == 1
-                            ? "Next: disconnect your Garmin, open its map settings and turn the new map on. If it isn’t listed, restart the device."
-                            : "Next: disconnect your Garmin, open its map settings and turn the new maps on. If they aren’t listed, restart the device.")
-                            .font(.terentoUI(size: 14, weight: .medium))
-                            .foregroundStyle(TerentoColors.secondaryText)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                        .accessibilityElement(children: .combine)
-                        .padding(.top, 8)
 
                     #if !TERENTO_APP_STORE
                     // One quiet line after a complete installation, from the
@@ -5251,6 +5221,78 @@ private struct InstallationMapsSectionHeader: View {
     }
 }
 
+/// The result of a finished installation and what to do on the Garmin, in
+/// one card so the steps line up with the result.
+private struct InstallationResultCallout: View {
+    let mapNames: [String]
+    let isPartial: Bool
+
+    private static let iconSize: CGFloat = 15
+    private static let iconTextGap: CGFloat = 8
+
+    private var resultTitle: String {
+        mapNames.count == 1 ? "\(mapNames[0]) is on your Garmin" : "\(mapNames.count) maps are on your Garmin"
+    }
+
+    private var steps: [String] {
+        [
+            "Disconnect it from the Mac.",
+            mapNames.count == 1 ? "Open map settings and turn the new map on." : "Open map settings and turn the new maps on.",
+            "Not in the list? Restart the device."
+        ]
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .firstTextBaseline, spacing: Self.iconTextGap) {
+                Image(systemName: isPartial ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                    .font(.system(size: Self.iconSize, weight: .semibold))
+                    .foregroundStyle(isPartial ? TerentoColors.error : TerentoColors.lichenDark)
+                    .frame(width: Self.iconSize)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(resultTitle)
+                        .font(.terentoUI(size: 15, weight: .semibold))
+                        .foregroundStyle(TerentoColors.graphite)
+                    if isPartial {
+                        Text("The optional contours were not completed.")
+                            .font(.terentoUI(size: 14, weight: .regular))
+                            .foregroundStyle(TerentoColors.graphite)
+                    }
+                }
+            }
+            .accessibilityElement(children: .combine)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("On your Garmin")
+                    .font(.terentoUI(size: 14, weight: .semibold))
+                    .foregroundStyle(TerentoColors.graphite)
+                    .accessibilityAddTraits(.isHeader)
+                ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text("\(index + 1).")
+                            .monospacedDigit()
+                        Text(step)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .font(.terentoUI(size: 14, weight: .regular))
+                    .foregroundStyle(TerentoColors.graphite)
+                    .accessibilityElement(children: .combine)
+                }
+            }
+            .padding(.leading, Self.iconSize + Self.iconTextGap)
+            .padding(.top, 14)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(TerentoColors.surface, in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.card))
+        .overlay {
+            RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.card)
+                .stroke(TerentoColors.border, lineWidth: 1)
+        }
+    }
+}
+
 private struct InstalledMapsSectionHeader: View {
     let count: Int
 
@@ -5264,12 +5306,14 @@ private struct InstalledMapsSectionHeader: View {
                 .font(.terentoUI(size: 16, weight: .semibold))
                 .foregroundStyle(TerentoColors.graphite)
 
-            Text(countLabel)
-                .font(.terentoUI(size: 12, weight: .semibold))
-                .foregroundStyle(TerentoColors.secondaryText)
+            if count > 1 {
+                Text(countLabel)
+                    .font(.terentoUI(size: 12, weight: .semibold))
+                    .foregroundStyle(TerentoColors.secondaryText)
+            }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(count == 1 ? "Installed map" : "Installed maps"), \(countLabel)")
+        .accessibilityLabel(count == 1 ? "Installed map" : "Installed maps, \(countLabel)")
     }
 }
 

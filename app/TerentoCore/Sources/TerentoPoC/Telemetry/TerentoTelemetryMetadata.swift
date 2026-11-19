@@ -1,6 +1,6 @@
 import Foundation
 
-/// The release identity shared by both privacy-minimised telemetry streams.
+/// The release identity shared by both privacy-minimized telemetry streams.
 ///
 /// A SwiftPM executable has no generated app Info.plist, so it deliberately
 /// uses the local fallback. An app bundle must provide TerentoReleaseLabel;

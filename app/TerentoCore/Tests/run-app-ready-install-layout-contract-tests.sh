@@ -29,7 +29,7 @@ reject_review_text() {
 }
 
 reject_review_text 'Terento will install these maps to your Garmin.' 'Ready repeats the installation explanation'
-reject_review_text 'Terento sends privacy-minimised diagnostics by default' 'Ready repeats the About privacy explanation'
+reject_review_text 'Terento sends privacy-minimized diagnostics by default' 'Ready repeats the About privacy explanation'
 require_review_text 'TerentoInstallFooterPageShell(bodyScrolls: true)' 'Review body cannot scroll independently of Storage and actions'
 require_review_text 'VStack(spacing: TerentoPageLayout.sectionSpacing + 18)' 'Storage-to-button spacing no longer matches Install maps'
 require_review_text 'if let reason = installAvailability.userReason' 'Review hides the resolved blocked-install reason'

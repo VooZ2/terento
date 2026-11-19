@@ -94,10 +94,10 @@ struct AboutTerentoView: View {
                     #if TERENTO_APP_STORE
                     // App Store builds share diagnostics only after an opt-in and
                     // compile out the update check.
-                    Text("Terento sends privacy-minimised diagnostics only if you choose to share them, to help improve the app and its services. Device state, maps, manifests, Unit IDs, serial numbers, and local paths stay on this Mac.")
+                    Text("Terento sends privacy-minimized diagnostics only if you choose to share them, to help improve the app and its services. Device state, maps, manifests, Unit IDs, serial numbers, and local paths stay on this Mac.")
                         .font(.terentoUI(size: 15, weight: .medium))
                     #else
-                    Text("Terento sends privacy-minimised diagnostics by default to help improve the app and its services. Device state, maps, manifests, Unit IDs, serial numbers, and local paths stay on this Mac.")
+                    Text("Terento sends privacy-minimized diagnostics by default to help improve the app and its services. Device state, maps, manifests, Unit IDs, serial numbers, and local paths stay on this Mac.")
                         .font(.terentoUI(size: 15, weight: .medium))
                     Text("Terento may contact terento.app when the app starts to check whether a newer version is available. This request is not used for analytics or user tracking.")
                         .font(.terentoUI(size: 13, weight: .regular))
