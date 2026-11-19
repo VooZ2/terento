@@ -92,6 +92,20 @@ any change to their boundaries requires its own UI/UX and safety decision.
 - Keep normal UI outcome-oriented. MTP, IMG, filesystem, and transport terms
   belong in diagnostics/developer context, not primary user flows.
 
+## Popups
+
+- A popup (sheet, alert, NSAlert) is only for an error or a confirmation.
+  Results, information, waiting states, offers and sharing questions belong
+  on the page.
+- Allowed today: `InstallationFailureDialog` and the Send report sheet it
+  opens (errors), "File could not be confirmed as a map" (error),
+  `MapLifecycleConfirmationSheet` (Remove / Update confirmation),
+  `CustomMapImportConfirmationSheet` (import confirmation), and the
+  quit-while-writing `NSAlert`.
+- `app/TerentoCore/Tests/run-app-dialog-standard-contract-tests.sh` holds the
+  same allowlist and fails on any other popup. A new error or confirmation
+  popup is added to both on purpose; anything else goes on the page.
+
 ## Functional freeze and SwiftUI safety
 
 Visual or structural polish must not change `DeviceEngine`, `MapEngine`, map

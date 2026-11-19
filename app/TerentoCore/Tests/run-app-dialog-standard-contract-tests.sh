@@ -4,6 +4,7 @@ set -euo pipefail
 # One dialog standard: every sheet or alert in the app's views is built on the
 # shared TerentoConfirmationDialog (SupportReportSheet is the wide variant
 # built from the shared header and buttons). The quit NSAlert stays native.
+# Only errors and confirmations may be popups (allowlist below).
 project_root="$(cd "$(dirname "$0")/.." && pwd)"
 
 python3 - "$project_root/Sources/TerentoPoC/Views" <<'PY'
@@ -86,5 +87,45 @@ check('isDestructive: true' in branch(struct_body('MapLifecycleConfirmationSheet
       'the map Remove sheet does not open the shared dialog as destructive')
 check('TerentoDialogButton(primaryLabel, kind: .destructive' in destructive,
       'the destructive dialog confirm button is not the destructive kind')
-print(f'PASS: {len(presented)} sheets use the shared dialog standard; map Remove uses the destructive dialog')
+# Popup rule (app/TerentoCore/AGENTS.md): a sheet or alert is only for an
+# error or a confirmation. Results, waiting, offers and sharing questions stay
+# on the page. Any new popup must be added here on purpose.
+POPUP_ALLOWLIST = {
+    'InstallationFailureDialog',          # error
+    'SupportReportSheet',                 # error follow-up from the failure dialog
+    'MapLifecycleConfirmationSheet',      # confirmation: Remove / Update
+    'CustomMapImportConfirmationSheet',   # confirmation: import an unrecognized file
+    'File could not be confirmed as a map',  # error (shared dialog, by title)
+}
+popups = []
+for view in presented:
+    popups.append(view)
+for m in re.finditer(r'\.sheet\(', everything):
+    tail = everything[m.end():]
+    body = tail[tail.index('{') + 1:]
+    if re.search(r'\b([A-Z][A-Za-z]+)\(', body).group(1) == 'TerentoConfirmationDialog':
+        title = re.search(r'title: "([^"]+)"', body[:600])
+        popups.remove('TerentoConfirmationDialog')
+        popups.append(title.group(1) if title else 'TerentoConfirmationDialog (no literal title)')
+for popup in popups:
+    check(popup in POPUP_ALLOWLIST, f'{popup} is a popup but is not an error or confirmation on the allowlist')
+for name in ('WatchReconnectWaitDialog', 'AppUpdatePromptView', 'InstallSharingDialog'):
+    check(name not in popups, f'{name} must be shown on the page, not as a popup')
+
+# Outside the views: only the quit-while-writing NSAlert, nothing else modal.
+app_sources = pathlib.Path(sys.argv[1]).parent
+for path in app_sources.rglob('*.swift'):
+    if path.parent == views:
+        continue
+    text = path.read_text()
+    for needle in ('.sheet(', '.alert(', 'confirmationDialog(', 'beginSheet', '.popover('):
+        check(needle not in text, f'{path.name} presents a popup ({needle}) outside the allowlist')
+    alerts = text.count('NSAlert()')
+    if path.name == 'TerentoPoCApp.swift':
+        check(alerts == 1 and 'writesToDevice(' in text, 'the only NSAlert must be the quit-while-writing alert')
+    else:
+        check(alerts == 0, f'{path.name} shows an NSAlert outside the allowlist')
+
+print(f'PASS: {len(presented)} sheets use the shared dialog standard; map Remove uses the destructive dialog; '
+      f'{len(popups)} popups, all errors or confirmations on the allowlist')
 PY
