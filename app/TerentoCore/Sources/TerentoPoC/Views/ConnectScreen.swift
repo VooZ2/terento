@@ -2971,16 +2971,34 @@ struct ConnectScreen: View {
                             .accessibilityHidden(true)
 
                         Text(hasPartialInstallation
-                            ? "The main map is ready and verified. You can safely disconnect your Garmin; the optional contours were not completed."
+                            ? "The main map is installed and checked. The optional contours were not completed."
                             : (installedCount == 1
-                                ? "Your map is ready and verified. You can safely disconnect your Garmin."
-                                : "Your maps are ready and verified. You can safely disconnect your Garmin."))
+                                ? "Your map is installed and checked."
+                                : "Your maps are installed and checked."))
                             .font(.terentoUI(size: 14, weight: .medium))
                             .foregroundStyle(TerentoColors.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                         .accessibilityElement(children: .combine)
                         .padding(.top, TerentoPageLayout.sectionSpacing)
+
+                    // The Garmin does not always show a new map until it is
+                    // turned on in its map settings (same step as the guides).
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Image(systemName: "switch.2")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(TerentoColors.interactive)
+                            .accessibilityHidden(true)
+
+                        Text(installedCount == 1
+                            ? "Next: disconnect your Garmin, open its map settings and turn the new map on. If it isn’t listed, restart the device."
+                            : "Next: disconnect your Garmin, open its map settings and turn the new maps on. If they aren’t listed, restart the device.")
+                            .font(.terentoUI(size: 14, weight: .medium))
+                            .foregroundStyle(TerentoColors.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                        .accessibilityElement(children: .combine)
+                        .padding(.top, 8)
 
                     #if !TERENTO_APP_STORE
                     // One quiet line after a complete installation, from the
@@ -3443,11 +3461,11 @@ private struct InstallSharingDialog: View {
 
     private var message: String {
         if isPartial {
-            return "The main map is ready and verified. You can safely disconnect your Garmin; the optional contours were not completed."
+            return "The main map is installed and checked. The optional contours were not completed. Next: disconnect your Garmin, open its map settings and turn the new map on. If it isn’t listed, restart the device."
         }
         return mapTitles.count > 1
-            ? "Your maps are ready and verified. You can safely disconnect your Garmin."
-            : "Your map is ready and verified. You can safely disconnect your Garmin."
+            ? "Your maps are installed and checked. Next: disconnect your Garmin, open its map settings and turn the new maps on. If they aren’t listed, restart the device."
+            : "Your map is installed and checked. Next: disconnect your Garmin, open its map settings and turn the new map on. If it isn’t listed, restart the device."
     }
 
     private var shareDetails: AttributedString {
@@ -4463,12 +4481,6 @@ struct DeviceCard: View {
                     .foregroundStyle(TerentoColors.secondaryText)
                     .padding(.top, 6)
 
-                if presentation.mapSupport.showsTerentoCompatibility,
-                   let compatibility = presentation.compatibility {
-                    CompatibilityStatusView(status: compatibility)
-                        .padding(.top, 12)
-                }
-
                 if let authorization {
                     DeviceAuthorizationStatusView(
                         presentation: authorization,
@@ -4658,40 +4670,6 @@ private struct DeviceAssetImage: View {
         }
 
         return NSImage(contentsOf: url)
-    }
-}
-
-private struct CompatibilityStatusView: View {
-    let status: CompatibilityStatus
-
-    var body: some View {
-        Text(status.userLabel)
-            .font(.terentoUI(size: 12, weight: .semibold))
-            .foregroundStyle(statusColor)
-            .padding(.horizontal, 9)
-            .padding(.vertical, 5)
-            .background(statusColor.opacity(0.16), in: Capsule())
-            .overlay(Capsule().stroke(statusColor.opacity(0.38), lineWidth: 1))
-            .help(compatibilityExplanation)
-            .accessibilityLabel("\(status.userLabel) compatibility status")
-            .accessibilityValue(compatibilityExplanation)
-    }
-
-    private var compatibilityExplanation: String {
-        CompatibilityPresentation.explanation(for: status)
-    }
-
-    private var statusColor: Color {
-        switch status {
-        case .tested:
-            return TerentoColors.warmStone
-        case .supported:
-            return TerentoColors.interactive
-        case .verified:
-            return TerentoColors.lichenDark
-        case .testing:
-            return TerentoColors.secondaryText
-        }
     }
 }
 

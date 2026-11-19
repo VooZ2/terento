@@ -47,7 +47,7 @@ if grep -Fq 'Compatibility reports are up to date.' "$connect_screen" \
     exit 1
 fi
 
-if ! grep -Fq 'Install maps on Garmin watches, simply.' "$about" \
+if ! grep -Fq 'Install maps on Garmin devices, simply.' "$about" \
     || grep -Fq 'TerentoAppMetadata.description' "$connect_screen" \
     || grep -Fq 'TerentoAppMetadata.description' "$about"; then
     print -u2 "FAIL: About does not use the concise installation tagline"

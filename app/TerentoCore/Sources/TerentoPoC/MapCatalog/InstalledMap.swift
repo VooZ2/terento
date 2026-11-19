@@ -181,6 +181,10 @@ struct GarminIMGMetadataParser: Sendable {
             } else {
                 name = "\(provider) \(region)"
             }
+        } else if provider == nil {
+            // Maps from other sources (for example MapForge) are shown by
+            // their whole header description, not its first 20 bytes.
+            name = fullHeaderDescription(bytes) ?? description ?? headerDetail
         } else {
             name = stitchedOpenTopoMapHeader ?? stitchedHeader ?? description ?? headerDetail
         }
@@ -226,6 +230,27 @@ struct GarminIMGMetadataParser: Sendable {
             family: "MapRando", rawVersion: version.description, version: version,
             identifier: nil, productId: nil, familyId: nil
         )
+    }
+
+    /// The Garmin IMG description is 50 bytes split by a binary gap: 20 bytes
+    /// at 0x49 continue with 31 bytes at 0x65 when the first field is full.
+    /// Bytes are joined before decoding so split UTF-8 characters survive.
+    /// Used only for the display name of maps from an unrecognized provider.
+    private func fullHeaderDescription(_ bytes: [UInt8]) -> String? {
+        guard bytes.count >= 0x84 else { return nil }
+        let first = Array(bytes[0x49..<0x5D])
+        guard !first.contains(0) else { return nil }
+        let joined = Array((first + Array(bytes[0x65..<0x83])).prefix { $0 != 0 })
+        guard let decoded = String(bytes: joined, encoding: .utf8)
+            ?? String(bytes: joined, encoding: .isoLatin1) else {
+            return nil
+        }
+        var scalars = String.UnicodeScalarView()
+        scalars.append(contentsOf: decoded.unicodeScalars.filter {
+            !CharacterSet.controlCharacters.contains($0)
+        })
+        let result = String(scalars).trimmingCharacters(in: .whitespacesAndNewlines)
+        return result.isEmpty ? nil : result
     }
 
     private func text(_ bytes: [UInt8], offset: Int, length: Int) -> String? {
