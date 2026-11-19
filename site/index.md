@@ -7,19 +7,51 @@ canonical: https://terento.app/
 
 Terento puts free maps from OpenStreetMap projects on Garmin watches and Edge bike computers. Use the Mac app, or install straight from your desktop browser. Free, and the Mac app is open source.
 
-[Download for Mac](https://terento.app/download/) [Download on the Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-home&mt=8)
+[Download for Mac](https://terento.app/download/) [Install from your browser](https://terento.app/install/)
 
-[Install from your browser](https://terento.app/install/) Mac and Linux only, not Windows or phones.
-
-Not sure about your model? [Check compatibility](https://terento.app/compatibility/)
-
-[Send this link to your computer](mailto:?subject=Terento%3A%20free%20maps%20for%20your%20Garmin&body=https%3A%2F%2Fterento.app%2F)
+[Send this link to your computer](mailto:?subject=Terento%3A%20free%20maps%20for%20your%20Garmin&body=https%3A%2F%2Fterento.app%2F) [Check compatibility](https://terento.app/compatibility/)
 
 Garmin watch showing the OpenTopoMap map of Lake Königssee in the Bavarian Alps
 
 - **47** models with successful installs
 - **463** successful installs
-- **November 18, 2026** Latest successful install
+- **November 18, 202611/18/2026** Latest successful install
+
+## How it works
+
+1. Connect
+
+Terento recognizes your Garmin and shows when it is ready.
+
+2. Install
+
+Choose maps from the catalog, or add your own compatible .img map.
+
+3. Done
+
+Your maps are installed and ready to use on your Garmin.
+
+Terento showing third-party map providers and regions on macOS
+
+## Manage maps
+
+See what is on your Garmin, update maps when a newer version is out, or remove them. Your original Garmin maps stay untouched.
+
+[Read the Mac guide](https://terento.app/guides/install-garmin-maps-mac/)
+
+### Safe for your Garmin
+
+Terento always leaves at least 1 GB free on your Garmin and checks each map after copying. The check uses a SHA-256 checksum.
+
+[See the source code](https://github.com/VooZ2/terento)
+
+## On the bike, too
+
+Newer Garmin Edge bike computers with map support, such as Edge 540, 840 and 1050, take the same maps. Connect, choose a region, install.
+
+Garmin Edge bike computer showing the Freizeitkarte map of the Sa Calobra climb in Mallorca’s Serra de Tramuntana
+
+[Read the Garmin Edge guide](https://terento.app/guides/install-garmin-maps-edge-mac/)
 
 ## Pick the map that fits the trip
 
@@ -69,59 +101,17 @@ Some map labels are in French.
 
 [Compare map styles live](https://terento.app/map-styles/)
 
-## How it works
-
-1. Connect
-
-Terento recognizes your Garmin and shows when it is ready.
-
-2. Install
-
-Choose maps from the catalog, or add your own compatible .img map.
-
-3. Done
-
-Your maps are installed and ready to use on your Garmin.
-
-Terento showing third-party map providers and regions on macOS
-
-## Manage maps
-
-See what is on your Garmin, update maps when a newer version is out, or remove them. Your original Garmin maps stay untouched.
-
-[Read the Mac guide](https://terento.app/guides/install-garmin-maps-mac/)
-
-### Safe for your Garmin
-
-Terento always leaves at least 1 GB free on your Garmin and checks each map after copying. The check uses a SHA-256 checksum.
-
-[See the source code](https://github.com/VooZ2/terento)
-
-Garmin Edge bike computer showing the Freizeitkarte map of the Sa Calobra climb in Mallorca’s Serra de Tramuntana
-
-## On the bike, too
-
-Newer Garmin Edge bike computers with map support, such as Edge 540, 840 and 1050, take the same maps. Connect, choose a region, install.
-
-[Read the Garmin Edge guide](https://terento.app/guides/install-garmin-maps-edge-mac/)
-
 ## Use the Mac app or your browser
 
 ### Mac app
 
 Install catalog maps or your own .img map, see what is on your Garmin and update maps when newer releases come out.
 
-macOS 13 or later on Apple Silicon.
-
 [Download for Mac](https://terento.app/download/)
-
-[Also on the Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-home&mt=8)
 
 ### Web installer
 
-Connect your Garmin with a USB cable, choose maps and install them straight from Chrome, Microsoft Edge, Opera or Brave. Update or remove them later the same way.
-
-Works on a Mac and, still in testing, on Linux. Not on Windows, phones or tablets yet.
+Connect your Garmin with a USB cable, choose maps and install them straight from Chrome, Microsoft Edge, Opera or Brave.
 
 [Open the web installer](https://terento.app/install/)
 
@@ -156,3 +146,7 @@ On the failed installation screen, choose “Report issue”. Terento opens GitH
 Can I install maps without installing the app?
 
 Yes. The [web installer](https://terento.app/install/) installs, updates and removes catalog maps from Chrome, Microsoft Edge, Opera or Brave on a Mac, and on Linux, where it is still being tested. It does not work on Windows, phones or tablets yet, and it cannot add your own .img maps.
+
+Put a free map on your Garmin
+
+[Download for Mac](https://terento.app/download/) [Use the web installer](https://terento.app/install/)

@@ -2058,9 +2058,6 @@ details p {
   border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
 }
 
-.compatibility-hero-inner {
-  text-align: left;
-}
 
 .compatibility-hero-copy {
   max-width: 900px;
@@ -3542,7 +3539,7 @@ details p {
   margin-bottom: 20px;
 }
 
-.download-v2-needs ul {
+:is(.download-v2-needs, .guide-needs) .checklist {
   display: grid;
   gap: 12px;
   margin: 0;
@@ -3550,7 +3547,7 @@ details p {
   list-style: none;
 }
 
-.download-v2-needs li {
+:is(.download-v2-needs, .guide-needs) .checklist li {
   position: relative;
   max-width: 60ch;
   padding-left: 28px;
@@ -3558,7 +3555,7 @@ details p {
   line-height: 1.5;
 }
 
-.download-v2-needs li::before {
+:is(.download-v2-needs, .guide-needs) .checklist li::before {
   position: absolute;
   top: .45em;
   left: 2px;
@@ -3797,16 +3794,17 @@ details p {
   --type-hero: clamp(40px, 5.2vw, 64px);
   --type-display: clamp(38px, 4.6vw, 52px);
   --type-section: clamp(28px, 3.2vw, 40px);
-  --type-item: clamp(20px, 1.8vw, 24px);
+  --type-item: 22px;
   --type-label: 22px;
   --type-lede: clamp(18px, 1.9vw, 21px);
 }
 #main-content h1 { max-width: 20ch; margin-top: 0; margin-bottom: 20px; font-size: var(--type-display); line-height: 1.15; }
 #main-content #hero-title { font-size: var(--type-hero); line-height: 1.094; }
 #main-content h2 { font-size: var(--type-section); line-height: 1.2; }
-#main-content h3 { font-size: var(--type-item); line-height: 1.25; }
+#main-content h3 { font-family: var(--font-brand); font-weight: 600; font-size: var(--type-item); line-height: 1.25; }
 #main-content :is(.legal-item h2) { font-size: var(--type-item); line-height: 1.267; }
-#main-content :is(.guide-v2-help-item h3, .map-styles-v2-variants h3, .about-social-label) { font: 600 var(--type-label)/28px var(--font-ui); letter-spacing: 0; }
+#main-content :is(.guide-v2-help-item h3, .map-styles-v2-variants h3) { font: 600 var(--type-item)/1.25 var(--font-brand); }
+#main-content .about-social-label { font: 600 17px/1.45 var(--font-ui); letter-spacing: 0; }
 #main-content :is(.hero-lede, .download-intro, .guide-lede, .legal-summary p) { max-width: 62ch; font-size: var(--type-lede); line-height: 1.5; }
 #main-content :is(.steps p, .provider-copy, .about-bullet-list li, .download-v2-needs li, .guide-step-copy p, .guide-v2-help-item p, .guide-v2-section > p, .guide-v2-more, .guide-preflight-copy p, .troubleshooting-guide-link, .map-styles-v2-map-copy p, .about-story-copy p, .map-styles-v2-map-summary) { font-size: 17px; line-height: 1.55; }
 :root { --section-space: clamp(64px, 8vw, 96px); }
@@ -3827,7 +3825,7 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
 .guide-command code { font: inherit; }
 
 /* Standalone text links get a 44px tap area; the negative margin keeps the layout unchanged. */
-:is(.home-edge-copy p, .provider-compare, .map-styles-v2-table th) > .text-link:only-child { padding-block: 11px; margin-block: -11px; }
+:is(.provider-compare, .map-styles-v2-table th) > .text-link:only-child { padding-block: 11px; margin-block: -11px; }
 
 /* Step numbers sit on the centre of the first title line (2026-11-13): the
    title's top margin is half the marker minus half its own line height, so
@@ -3841,7 +3839,7 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
    "Step by step" blocks uses the same muted colour and line height as the
    rest of the site's body copy; an inline guide link keeps its sentence's
    size (2026-11-13 type check). */
-#main-content :is(.download-v2-needs li, .download-v2-guides) { color: var(--muted-text); line-height: 1.55; }
+#main-content :is(.download-v2-needs li, .guide-needs li, .download-v2-guides) { color: var(--muted-text); line-height: 1.55; }
 #main-content .download-v2-guides .text-link { font-size: inherit; line-height: inherit; }
 
 /* Site refresh layer (2026-11, step 0 round 2). Bento: the Off-White canvas carries the page,
@@ -3849,7 +3847,8 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
    Brand tokens only; dark mode comes from the tokens. One type step between section H2 and
    card/step titles (--type-item). */
 :root {
-  --card-radius: 20px;
+  --card-radius: 14px;
+  --panel-radius: 18px;
   --control-radius: 10px;
   --card-pad: clamp(20px, 2.4vw, 32px);
   --grid-gap: clamp(12px, 1.6vw, 20px);
@@ -3914,10 +3913,6 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
   border: 0;
   border-radius: var(--card-radius);
   background: var(--tile);
-}
-
-.card--lift {
-  background: var(--surface);
 }
 
 .card > :last-child {
@@ -4058,25 +4053,8 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
   align-items: center;
 }
 
-/* Bento hero: a text tile and a media tile side by side. */
-.bento-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
-  gap: var(--grid-gap);
-  align-items: stretch;
-}
-
-.bento-hero > * {
-  min-width: 0;
-  margin: 0;
-  padding: clamp(24px, 4vw, 56px);
-  border-radius: var(--card-radius);
-  background: var(--tile);
-}
-
 @media (max-width: 899px) {
-  .page-hero-grid,
-  .bento-hero {
+  .page-hero-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -4177,7 +4155,7 @@ main[aria-labelledby="not-found-title"] h1 { font-size: var(--type-display); lin
   margin: 24px 0 0;
   padding: 16px 20px;
   border-left: 3px solid var(--interactive);
-  border-radius: 12px;
+  border-radius: var(--card-radius);
   background: var(--tile);
   color: var(--graphite);
   font-size: 15px;
@@ -4289,36 +4267,25 @@ a.chip {
 
 /* Home (scripts/templates/home.html): hero bento, trust strip, maps, how it works, three
    feature cards, Mac app or browser, FAQ. */
-.home-hero {
-  padding: clamp(16px, 2.5vw, 32px) 0 clamp(32px, 4vw, 48px);
-}
-
+/* Home hero (round 4): no cards. Text column on the canvas, the watch beside it, centred. */
 .home-hero-grid {
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-  gap: var(--grid-gap);
-  align-items: stretch;
+  grid-template-columns: minmax(0, 720px) minmax(0, 1fr);
+  gap: clamp(24px, 4vw, 64px);
+  align-items: center;
 }
 
 .home-hero-copy,
 .home-device {
   min-width: 0;
-  border-radius: var(--card-radius);
-  background: var(--tile);
-}
-
-.home-hero-copy {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  max-width: none;
-  padding: clamp(24px, 3.5vw, 64px);
+  padding: 0;
+  border-radius: 0;
+  background: none;
 }
 
 .home-device {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  padding: clamp(20px, 3vw, 40px) clamp(16px, 3vw, 40px) clamp(16px, 2vw, 24px);
+  align-items: center;
 }
 
 .home-device .home-watch {
@@ -4338,43 +4305,13 @@ a.chip {
   background: var(--tile);
 }
 
-.home-hero-browser {
-  margin: 16px 0 0;
-  color: var(--muted-text);
-  font-size: 15px;
-}
-
-.home-hero-browser .text-link {
-  display: inline;
-}
-
-.home-hero-note {
-  margin: 8px 0 0;
-  padding-top: 0;
-  border-top: 0;
-}
-
-.home-send-link {
-  margin: 4px 0 0;
-}
-
-.home-send-link .text-link {
-  min-height: 44px;
-}
-
-@media (min-width: 900px) {
-  .home-send-link {
-    display: none;
-  }
-}
-
 @media (max-width: 899px) {
   .home-hero-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .home-device .home-watch {
-    width: min(100%, 300px);
+  .home-watch {
+    width: min(100%, 340px);
   }
 }
 
@@ -4406,22 +4343,23 @@ a.chip {
   margin: 0;
 }
 
-@media (min-width: 640px) {
+/* One column below 900px: three columns at 640–899px were too narrow. */
+@media (max-width: 899px) {
   .home-features .grid > .col-4 {
-    grid-column: span 4;
+    grid-column: span 12;
   }
 }
 
+/* Feature and "Mac app or browser" cards: one Lucide outline icon each, same size. */
 .home-feature-visual {
   display: flex;
-  align-items: flex-end;
-  height: 72px;
   margin-bottom: 16px;
+  color: var(--accent-text);
 }
 
 .home-feature-visual .card-icon {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
 }
 
 /* edge-front.webp has a transparent screen, like the watch drawing. */
@@ -4449,15 +4387,15 @@ a.chip {
   background: var(--product-photo-surface);
 }
 
-.home-feature--edge .home-edge-screen {
-  width: 48px;
-  margin: 0;
+/* The Edge preview sits in the card body, with its own map switch (as on live). */
+.home-feature--edge .home-edge-figure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0 16px;
 }
 
-.home-way .home-way-note {
-  color: var(--muted-text);
-  font-size: 15px;
-}
 
 /* Mac app and web installer cards: same height, actions at the bottom. */
 .home-way .home-way-actions {
@@ -4475,11 +4413,6 @@ a.chip {
 /* Compatibility (scripts/build-compatibility-pages.py). */
 .compatibility-hero.page-hero {
   padding: clamp(16px, 2.5vw, 32px) 0 clamp(24px, 3vw, 40px);
-}
-
-.compatibility-hero-copy.card {
-  max-width: none;
-  padding: clamp(24px, 4vw, 56px);
 }
 
 #main-content .compatibility-hero-copy .hero-lede {
@@ -4623,9 +4556,6 @@ a.chip {
   border-top: 0;
 }
 
-.guide-cta-band {
-  margin: clamp(48px, 6vw, 72px) 0 clamp(56px, 8vw, 96px);
-}
 
 .steps--compact {
   gap: 8px;
@@ -4787,43 +4717,21 @@ a.chip {
   padding-top: clamp(16px, 2.5vw, 32px);
 }
 
-.about-story-card {
-  padding: clamp(28px, 4.5vw, 64px);
-}
-
-#main-content .about-story-card h1 {
-  margin: 0 0 clamp(20px, 2.5vw, 28px);
-}
-
 .about-maker {
   display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: clamp(24px, 3vw, 32px);
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
 }
 
-.about-maker-photo {
-  flex: none;
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-#main-content .about-maker-text {
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-}
 
 .about-maker-name {
   color: var(--graphite);
-  font: 600 17px/1.4 var(--font-ui);
+  font-weight: 600;
 }
 
 .about-maker-role {
   color: var(--muted-text);
-  font: 400 15px/1.4 var(--font-ui);
 }
 
 .about-story-copy {
@@ -4938,9 +4846,6 @@ a.chip {
   line-height: 1.45;
 }
 
-.about-download-link {
-  margin: 32px 0 0;
-}
 
 @media (prefers-reduced-motion: reduce) {
   .download-action--store {
@@ -4951,4 +4856,499 @@ a.chip {
 #main-content .about-social-label {
   margin: 0;
   color: var(--graphite);
+}
+
+/* Site refresh round 4 (2026-11-19). One hero on every page: H1, one lead and the actions on the
+   canvas, left-aligned in a 720px column, the same top padding and the same gap to the next
+   section. No card, border or tile behind any hero. H1 64px on Home, 52px elsewhere. */
+:root {
+  --hero-top: clamp(32px, 5vw, 64px);
+  --hero-gap: clamp(40px, 5vw, 64px);
+}
+
+.download-main.download-v2 {
+  padding-top: 0;
+}
+
+#main-content .page-hero {
+  padding: var(--hero-top) 0 var(--hero-gap);
+  border: 0;
+  background: none;
+}
+
+#main-content .page-hero .hero-copy {
+  max-width: 720px;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  text-align: left;
+}
+
+#main-content .page-hero h1 {
+  max-width: none;
+  margin: 0 0 20px;
+}
+
+#main-content .page-hero .hero-lede {
+  max-width: 65ch;
+  margin: 0;
+  font-size: var(--type-lede);
+  line-height: 1.5;
+}
+
+#main-content .page-hero .guide-v2-switch {
+  margin-bottom: 24px;
+}
+
+/* The section after a hero starts at the hero's gap, never with its own extra space. */
+#main-content .page-hero + :is(.block, .section, .home-trust, .guide-content, .troubleshooting-picker, .map-styles-v2-picker) {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+#main-content .page-hero + .guide-content > :first-child {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+/* Hero actions: one row, 12px apart, wrapping on narrow screens. */
+#main-content .page-hero .hero-actions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  margin: 32px 0 0;
+}
+
+/* Secondary button: same size and type as the primary one, outlined. */
+.button-secondary {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--interactive);
+  border-radius: var(--control-radius);
+  background: transparent;
+  color: var(--link-text);
+  font: 600 15px/20px var(--font-ui);
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background-color 200ms ease, border-color 200ms ease;
+}
+
+.button-secondary::after {
+  content: "";
+  position: absolute;
+  inset: -2px 0;
+}
+
+.button-secondary:hover {
+  border-color: var(--interactive-hover);
+  background: var(--tile);
+  color: var(--link-text-hover);
+}
+
+#main-content .button-secondary:hover {
+  text-decoration: none;
+}
+
+.button-secondary:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.button-secondary svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .button-secondary {
+    border-color: var(--link-text);
+  }
+}
+
+/* Home hero: computer actions on a computer, "send this link" on a phone or tablet. */
+#main-content .page-hero .home-actions--phone {
+  display: none;
+}
+
+@media (max-width: 760px), (hover: none) and (pointer: coarse) {
+  #main-content .page-hero .home-actions--computer {
+    display: none;
+  }
+
+  #main-content .page-hero .home-actions--phone {
+    display: flex;
+  }
+}
+
+.home-actions--phone .text-link {
+  min-height: 44px;
+}
+
+/* Home numbers: a long date on wide screens, a short one on phones; each fact on one line. */
+.home-trust .trust-strip-item {
+  white-space: nowrap;
+}
+
+.date-short {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .date-long {
+    display: none;
+  }
+
+  .date-short {
+    display: inline;
+  }
+}
+
+/* Home "Mac app or browser": icon, title, one line, one button; buttons line up at the bottom. */
+.home-ways .card {
+  height: 100%;
+}
+
+.home-way .home-way-actions {
+  margin-top: auto;
+}
+
+/* Map providers on Home: three per row on desktop, one on phones (scripts/normalize-home-ia.py
+   makes every card col-4), equal heights; "Compare map styles live" is a full-width row under it. */
+@media (max-width: 639px) {
+  .home-provider-grid > .provider-card {
+    grid-column: span 12;
+  }
+}
+
+.home-providers .home-provider-grid > .provider-card {
+  height: 100%;
+}
+
+.home-providers .provider-compare {
+  display: flex;
+  align-items: center;
+  max-width: none;
+  margin: var(--grid-gap) 0 0;
+  padding: 6px var(--card-pad);
+  border-radius: var(--card-radius);
+  background: var(--tile);
+  text-align: left;
+}
+
+/* Navigation: the current page is 600 in the link colour (the text-safe interactive colour). */
+.primary-nav a[aria-current="page"]:not(.download-action) {
+  color: var(--link-text);
+  font-weight: 600;
+}
+
+.mobile-nav-links a[aria-current="page"] {
+  color: var(--link-text);
+  font-weight: 600;
+}
+
+/* Closing call to action: the same band on every page except Download. */
+.end-cta {
+  margin: 0 0 var(--block-space);
+  border-radius: var(--panel-radius);
+}
+
+/* Guides and Troubleshooting end with plain content, not a padded block. */
+.guide-article .end-cta {
+  margin-top: var(--block-space);
+}
+
+.download-v2-hero.page-hero {
+  align-items: start;
+}
+
+.end-cta .cta-band__title {
+  margin: 0;
+}
+
+/* Download: release line under "What you need", the checksum folded away. */
+.download-v2 .download-release {
+  margin: 0 0 20px;
+}
+
+.download-sha {
+  margin-top: 20px;
+}
+
+.download-sha summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--link-text);
+  font: 600 15px/1.3 var(--font-ui);
+  cursor: pointer;
+}
+
+.download-sha p {
+  margin: 4px 0 0;
+}
+
+.download-sha code {
+  display: block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  color: var(--muted-text);
+  font: 13px/1.5 var(--font-mono);
+}
+
+/* Guide screenshots open full size in a new tab on tap. */
+.guide-screenshot-link {
+  display: block;
+  cursor: zoom-in;
+}
+
+/* About: the story is a normal section under the plain hero; the contact card follows it. */
+.about-story .about-socials {
+  margin-top: clamp(32px, 4vw, 48px);
+}
+
+/* Compatibility: one fill per card, the photo on its own inner panel, the model name as the
+   largest line, one "Last install" line at the bottom, equal heights. */
+.watch-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--grid-gap);
+}
+
+@media (max-width: 960px) {
+  .watch-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.watch-card.card {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--card-radius);
+  background: var(--tile);
+  box-shadow: none;
+}
+
+.watch-card .watch-card-image {
+  height: 160px;
+  aspect-ratio: auto;
+  padding: 12px;
+  border-radius: var(--control-radius);
+  background: var(--photo-tile);
+}
+
+.watch-card .watch-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.watch-card .watch-card-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  padding: 14px 12px 8px;
+}
+
+#main-content .watch-card h3 {
+  margin: 0;
+  font: 600 22px/1.2 var(--font-brand);
+  letter-spacing: -0.02em;
+}
+
+.watch-card .watch-variant {
+  display: block;
+  min-height: 0;
+  margin: 4px 0 0;
+  color: var(--muted-text);
+  font: 400 15px/1.4 var(--font-ui);
+  letter-spacing: normal;
+}
+
+.watch-card .watch-install-count {
+  margin: 12px 0 4px;
+  color: var(--graphite);
+  font: 600 17px/1.4 var(--font-ui);
+  letter-spacing: normal;
+}
+
+.watch-card .watch-install-sources {
+  margin: 0 0 12px;
+  font-size: 15px;
+}
+
+.watch-card .watch-card-meta {
+  margin: auto 0 0;
+  overflow: hidden;
+  color: var(--muted-text);
+  font-size: 15px;
+  line-height: 1.4;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 640px) {
+  .watch-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .watch-card .watch-card-image {
+    height: 140px;
+    padding: 10px;
+  }
+
+  .watch-card .watch-card-body {
+    padding: 12px 6px 6px;
+  }
+
+  #main-content .watch-card h3 {
+    font-size: 20px;
+  }
+
+  .watch-card .watch-variant,
+  .watch-card .watch-install-sources,
+  .watch-card .watch-card-meta {
+    font-size: 13px;
+  }
+
+  .watch-card .watch-install-count {
+    font-size: 15px;
+  }
+
+  .watch-card .watch-install-sources {
+    gap: 2px 10px;
+  }
+}
+
+/* Compatibility filters: chips and search always visible; the rest behind "More filters". */
+.compatibility-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.compatibility-filters .compatibility-chips {
+  flex: 1 1 100%;
+}
+
+.compatibility-filters .compatibility-search {
+  flex: 1 1 280px;
+  max-width: 420px;
+}
+
+.compatibility-filters .compatibility-search input {
+  height: 44px;
+}
+
+.compatibility-more-filters {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.compatibility-more-filters > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--control-radius);
+  background: var(--surface);
+  color: var(--graphite);
+  font: 600 15px/20px var(--font-ui);
+  white-space: nowrap;
+  cursor: pointer;
+  list-style: none;
+}
+
+.compatibility-more-filters > summary::-webkit-details-marker {
+  display: none;
+}
+
+.compatibility-more-filters > summary::after {
+  width: 7px;
+  height: 7px;
+  margin: -3px 0 0 4px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  content: "";
+  transform: rotate(45deg);
+}
+
+.compatibility-more-filters[open] > summary::after {
+  margin-top: 3px;
+  transform: rotate(-135deg);
+}
+
+.compatibility-more-filters > summary:hover {
+  border-color: var(--interactive);
+}
+
+.compatibility-more-filters > summary:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.compatibility-more-filters[open] {
+  flex: 1 1 100%;
+}
+
+.compatibility-more-filters-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.compatibility-more-filters-body .compatibility-filter-control {
+  flex: 0 1 auto;
+  max-width: 100%;
+}
+
+.compatibility-filters .compatibility-more-filters-body select {
+  width: auto;
+  max-width: 100%;
+}
+
+@media (max-width: 640px) {
+  .compatibility-filters .compatibility-search {
+    flex-basis: 100%;
+    max-width: none;
+  }
+
+  .compatibility-more-filters-body .compatibility-filter-control,
+  .compatibility-filters .compatibility-more-filters-body select {
+    width: 100%;
+  }
+}
+
+/* Compatibility: "Not seeing your model?" sits in the card under the grid. */
+#main-content .compatibility-community-cta .compatibility-missing-note {
+  margin: 0 0 12px;
+  color: var(--graphite);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button-secondary {
+    transition: none;
+  }
 }

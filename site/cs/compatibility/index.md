@@ -7,8 +7,6 @@ canonical: https://terento.app/cs/compatibility/
 
 Terento funguje s hodinkami Garmin a cyklopočítači Edge, které umí zobrazit mapy. Níže jsou přesné modely, do kterých už někdo nainstaloval mapu přes Terento. Seznam roste s každou sdílenou instalací.
 
-Pokud zde svůj model nevidíte, neznamená to, že nebude fungovat. Možná z něj zatím nikdo nesdílel úspěšnou instalaci.
-
 **47** modely s úspěšnými instalacemi**463** úspěšných instalací**18. listopadu 2026** Poslední úspěšná instalace
 
 Jak tento seznam funguje
@@ -27,7 +25,7 @@ Aktuální verze zahrnuje všechny poskytovatele map v katalogu. Tato informace 
 
 App 64 Web 1
 
-fēnix · Poslední úspěšná instalace 15. listopadu 2026
+Poslední instalace 15. 11. 2026
 
 ### Forerunner 970 AMOLED
 
@@ -35,15 +33,15 @@ fēnix · Poslední úspěšná instalace 15. listopadu 2026
 
 App 59 Web 1
 
-Forerunner · Poslední úspěšná instalace 18. listopadu 2026
+Poslední instalace 18. 11. 2026
 
-### Forerunner 965 Historical
+### Forerunner 965 Hodinky
 
 32 úspěšných instalací
 
 App 29 Web 3
 
-Forerunner · Poslední úspěšná instalace 1. listopadu 2026
+Poslední instalace 1. 11. 2026
 
 ### fēnix 9 Pro 51 mm, AMOLED
 
@@ -51,7 +49,7 @@ Forerunner · Poslední úspěšná instalace 1. listopadu 2026
 
 App 26
 
-fēnix · Poslední úspěšná instalace 16. listopadu 2026
+Poslední instalace 16. 11. 2026
 
 ### epix Pro (Gen 2) 51 mm, AMOLED
 
@@ -59,15 +57,15 @@ fēnix · Poslední úspěšná instalace 16. listopadu 2026
 
 App 21 Web 1
 
-epix · Poslední úspěšná instalace 16. listopadu 2026
+Poslední instalace 16. 11. 2026
 
-### fēnix 7X Pro Solar, Historical
+### fēnix 7X Pro Solar
 
 22 úspěšných instalací
 
 App 17 Web 5
 
-fēnix · Poslední úspěšná instalace 17. listopadu 2026
+Poslední instalace 17. 11. 2026
 
 ### fēnix 8 47 mm, MIP, Solar
 
@@ -75,7 +73,7 @@ fēnix · Poslední úspěšná instalace 17. listopadu 2026
 
 App 17
 
-fēnix · Poslední úspěšná instalace 9. listopadu 2026
+Poslední instalace 9. 11. 2026
 
 ### fēnix 9 Pro 47 mm, AMOLED
 
@@ -83,15 +81,15 @@ fēnix · Poslední úspěšná instalace 9. listopadu 2026
 
 App 14 Web 2
 
-fēnix · Poslední úspěšná instalace 16. listopadu 2026
+Poslední instalace 16. 11. 2026
 
-### Forerunner 955 Solar, Historical
+### Forerunner 955 Solar
 
 15 úspěšných instalací
 
 App 15
 
-Forerunner · Poslední úspěšná instalace 16. listopadu 2026
+Poslední instalace 16. 11. 2026
 
 ### fēnix 9 Pro 51 mm, AMOLED, inReach
 
@@ -99,15 +97,15 @@ Forerunner · Poslední úspěšná instalace 16. listopadu 2026
 
 App 15
 
-fēnix · Poslední úspěšná instalace 31. října 2026
+Poslední instalace 31. 10. 2026
 
-### fēnix 7 Pro Solar, Historical
+### fēnix 7 Pro Solar
 
 14 úspěšných instalací
 
 App 14
 
-fēnix · Poslední úspěšná instalace 30. října 2026
+Poslední instalace 30. 10. 2026
 
 ### fēnix 7 47 mm, Solar
 
@@ -115,7 +113,7 @@ fēnix · Poslední úspěšná instalace 30. října 2026
 
 App 12 Web 1
 
-fēnix · Poslední úspěšná instalace 14. listopadu 2026
+Poslední instalace 14. 11. 2026
 
 ### fēnix 8 51 mm, AMOLED
 
@@ -123,7 +121,7 @@ fēnix · Poslední úspěšná instalace 14. listopadu 2026
 
 App 13
 
-fēnix · Poslední úspěšná instalace 12. listopadu 2026
+Poslední instalace 12. 11. 2026
 
 ### fēnix 8 Pro 51 mm, AMOLED, inReach
 
@@ -131,7 +129,7 @@ fēnix · Poslední úspěšná instalace 12. listopadu 2026
 
 App 11
 
-fēnix · Poslední úspěšná instalace 16. listopadu 2026
+Poslední instalace 16. 11. 2026
 
 ### epix Pro (Gen 2) 47 mm, AMOLED
 
@@ -139,7 +137,7 @@ fēnix · Poslední úspěšná instalace 16. listopadu 2026
 
 App 6 Web 4
 
-epix · Poslední úspěšná instalace 3. listopadu 2026
+Poslední instalace 3. 11. 2026
 
 ### Edge 1050 Cyklopočítač
 
@@ -147,7 +145,7 @@ epix · Poslední úspěšná instalace 3. listopadu 2026
 
 App 8
 
-Edge · Poslední úspěšná instalace 18. listopadu 2026
+Poslední instalace 18. 11. 2026
 
 ### epix (Gen 2) 47 mm
 
@@ -155,7 +153,7 @@ Edge · Poslední úspěšná instalace 18. listopadu 2026
 
 App 4 Web 4
 
-epix · Poslední úspěšná instalace 17. listopadu 2026
+Poslední instalace 17. 11. 2026
 
 ### fēnix 7X 51 mm, Solar
 
@@ -163,7 +161,7 @@ epix · Poslední úspěšná instalace 17. listopadu 2026
 
 App 8
 
-fēnix · Poslední úspěšná instalace 1. listopadu 2026
+Poslední instalace 1. 11. 2026
 
 ### fēnix 8 43 mm, AMOLED
 
@@ -171,7 +169,7 @@ fēnix · Poslední úspěšná instalace 1. listopadu 2026
 
 App 8
 
-fēnix · Poslední úspěšná instalace 7. listopadu 2026
+Poslední instalace 7. 11. 2026
 
 ### fēnix 9 Pro 47 mm, AMOLED, inReach
 
@@ -179,7 +177,7 @@ fēnix · Poslední úspěšná instalace 7. listopadu 2026
 
 App 8
 
-fēnix · Poslední úspěšná instalace 13. listopadu 2026
+Poslední instalace 13. 11. 2026
 
 ### Enduro 3 MIP, Solar
 
@@ -187,15 +185,15 @@ fēnix · Poslední úspěšná instalace 13. listopadu 2026
 
 App 6
 
-Enduro · Poslední úspěšná instalace 17. listopadu 2026
+Poslední instalace 17. 11. 2026
 
-### fēnix 6 Pro 47 mm, MIP, Historical
+### fēnix 6 Pro 47 mm, MIP
 
 6 úspěšných instalací
 
 App 3 Web 3
 
-fēnix · Poslední úspěšná instalace 26. října 2026
+Poslední instalace 26. 10. 2026
 
 ### fēnix 8 Pro 47 mm, AMOLED, inReach
 
@@ -203,7 +201,7 @@ fēnix · Poslední úspěšná instalace 26. října 2026
 
 App 6
 
-fēnix · Poslední úspěšná instalace 11. listopadu 2026
+Poslední instalace 11. 11. 2026
 
 ### Edge 540 Cyklopočítač
 
@@ -211,7 +209,7 @@ fēnix · Poslední úspěšná instalace 11. listopadu 2026
 
 App 4 Web 1
 
-Edge · Poslední úspěšná instalace 17. listopadu 2026
+Poslední instalace 17. 11. 2026
 
 ### Enduro 4 MIP, Solar
 
@@ -219,15 +217,15 @@ Edge · Poslední úspěšná instalace 17. listopadu 2026
 
 App 4
 
-Enduro · Poslední úspěšná instalace 17. listopadu 2026
+Poslední instalace 17. 11. 2026
 
-### fēnix 7S Pro Solar, Historical
+### fēnix 7S Pro Solar
 
 4 úspěšných instalací
 
 App 4
 
-fēnix · Poslední úspěšná instalace 2. října 2026
+Poslední instalace 2. 10. 2026
 
 ### fēnix 9 47 mm, AMOLED
 
@@ -235,23 +233,23 @@ fēnix · Poslední úspěšná instalace 2. října 2026
 
 App 4
 
-fēnix · Poslední úspěšná instalace 23. září 2026
+Poslední instalace 23. 9. 2026
 
-### fēnix 5 Plus Historical
-
-3 úspěšných instalací
-
-App 3
-
-fēnix · Poslední úspěšná instalace 29. října 2026
-
-### fēnix 6X Pro 51 mm, MIP, Historical
+### fēnix 5 Plus Hodinky
 
 3 úspěšných instalací
 
 App 3
 
-fēnix · Poslední úspěšná instalace 14. listopadu 2026
+Poslední instalace 29. 10. 2026
+
+### fēnix 6X Pro 51 mm, MIP
+
+3 úspěšných instalací
+
+App 3
+
+Poslední instalace 14. 11. 2026
 
 ### fēnix 9 Pro 51 mm, MIP, Solar, inReach
 
@@ -259,7 +257,7 @@ fēnix · Poslední úspěšná instalace 14. listopadu 2026
 
 App 3
 
-fēnix · Poslední úspěšná instalace 7. října 2026
+Poslední instalace 7. 10. 2026
 
 ### fēnix 9 Pro 47 mm, MIP, Solar
 
@@ -267,7 +265,7 @@ fēnix · Poslední úspěšná instalace 7. října 2026
 
 App 3
 
-fēnix · Poslední úspěšná instalace 16. října 2026
+Poslední instalace 16. 10. 2026
 
 ### Approach S72 47 mm, AMOLED
 
@@ -275,7 +273,7 @@ fēnix · Poslední úspěšná instalace 16. října 2026
 
 App 2
 
-Approach · Poslední úspěšná instalace 15. listopadu 2026
+Poslední instalace 15. 11. 2026
 
 ### Descent Mk3i 51 mm, AMOLED
 
@@ -283,7 +281,7 @@ Approach · Poslední úspěšná instalace 15. listopadu 2026
 
 App 2
 
-Descent · Poslední úspěšná instalace 14. října 2026
+Poslední instalace 14. 10. 2026
 
 ### Edge 1040 Cyklopočítač
 
@@ -291,7 +289,7 @@ Descent · Poslední úspěšná instalace 14. října 2026
 
 App 2
 
-Edge · Poslední úspěšná instalace 14. listopadu 2026
+Poslední instalace 14. 11. 2026
 
 ### Edge 840 Cyklopočítač
 
@@ -299,15 +297,15 @@ Edge · Poslední úspěšná instalace 14. listopadu 2026
 
 App 2
 
-Edge · Poslední úspěšná instalace 17. listopadu 2026
+Poslední instalace 17. 11. 2026
 
-### Enduro 2 Historical
+### Enduro 2 Hodinky
 
 2 úspěšných instalací
 
 App 2
 
-Enduro · Poslední úspěšná instalace 13. října 2026
+Poslední instalace 13. 10. 2026
 
 ### fēnix 6X 51 mm
 
@@ -315,7 +313,7 @@ Enduro · Poslední úspěšná instalace 13. října 2026
 
 App 2
 
-fēnix · Poslední úspěšná instalace 20. října 2026
+Poslední instalace 20. 10. 2026
 
 ### fēnix 9 Pro 51 mm, MIP, Solar
 
@@ -323,7 +321,7 @@ fēnix · Poslední úspěšná instalace 20. října 2026
 
 App 2
 
-fēnix · Poslední úspěšná instalace 19. října 2026
+Poslední instalace 19. 10. 2026
 
 ### fēnix 9 43 mm, AMOLED
 
@@ -331,7 +329,7 @@ fēnix · Poslední úspěšná instalace 19. října 2026
 
 App 2
 
-fēnix · Poslední úspěšná instalace 29. října 2026
+Poslední instalace 29. 10. 2026
 
 ### Venu X1 AMOLED
 
@@ -339,7 +337,7 @@ fēnix · Poslední úspěšná instalace 29. října 2026
 
 App 2
 
-Venu · Poslední úspěšná instalace 29. října 2026
+Poslední instalace 29. 10. 2026
 
 ### Edge 850 Cyklopočítač
 
@@ -347,7 +345,7 @@ Venu · Poslední úspěšná instalace 29. října 2026
 
 App 1
 
-Edge · Poslední úspěšná instalace 17. listopadu 2026
+Poslední instalace 17. 11. 2026
 
 ### fēnix 8 51 mm, MIP, Solar
 
@@ -355,7 +353,7 @@ Edge · Poslední úspěšná instalace 17. listopadu 2026
 
 Web 1
 
-fēnix · Poslední úspěšná instalace 18. října 2026
+Poslední instalace 18. 10. 2026
 
 ### fēnix 9 Pro 43 mm, AMOLED
 
@@ -363,7 +361,7 @@ fēnix · Poslední úspěšná instalace 18. října 2026
 
 App 1
 
-fēnix · Poslední úspěšná instalace 12. října 2026
+Poslední instalace 12. 10. 2026
 
 ### fēnix 9 Pro 47 mm, MIP, Solar, inReach
 
@@ -371,7 +369,7 @@ fēnix · Poslední úspěšná instalace 12. října 2026
 
 App 1
 
-fēnix · Poslední úspěšná instalace 27. září 2026
+Poslední instalace 27. 9. 2026
 
 ### fēnix E 47 mm, AMOLED
 
@@ -379,27 +377,32 @@ fēnix · Poslední úspěšná instalace 27. září 2026
 
 App 1
 
-fēnix · Poslední úspěšná instalace 17. listopadu 2026
+Poslední instalace 17. 11. 2026
 
-### quatix 7 Historical
-
-1 úspěšná instalace
-
-App 1
-
-quatix · Poslední úspěšná instalace 17. října 2026
-
-### tactix Delta Solar, Historical
+### quatix 7 Hodinky
 
 1 úspěšná instalace
 
 App 1
 
-tactix · Poslední úspěšná instalace 7. října 2026
+Poslední instalace 17. 10. 2026
+
+### tactix Delta Solar
+
+1 úspěšná instalace
+
+App 1
+
+Poslední instalace 7. 10. 2026
 
 ## Nevidíte zde svůj Garmin?
 
+Pokud zde svůj model nevidíte, neznamená to, že nebude fungovat. Možná z něj zatím nikdo nesdílel úspěšnou instalaci.
+
 Pokud vaše hodinky Garmin nebo cyklopočítač Edge podporují mapy, můžete Terento i tak vyzkoušet. Každá sdílená úspěšná instalace přidá váš model do tohoto seznamu.
 
-[Poprvé? Přečtěte si průvodce pro Mac](https://terento.app/cs/guides/install-garmin-maps-mac/) [Nemáte Mac s Apple Silicon? Použijte webový instalátor](https://terento.app/cs/install/)
-[Stáhnout](https://terento.app/cs/download/)
+[Poprvé? Přečtěte si průvodce pro Mac](https://terento.app/cs/guides/install-garmin-maps-mac/)
+
+Nahrajte do svého Garminu mapu zdarma
+
+[Stáhnout pro Mac](https://terento.app/cs/download/) [Použít webový instalátor](https://terento.app/cs/install/)

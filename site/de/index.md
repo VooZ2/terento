@@ -7,19 +7,51 @@ canonical: https://terento.app/de/
 
 Terento bringt kostenlose Karten aus OpenStreetMap-Projekten auf Garmin-Uhren und Edge-Fahrradcomputer. Mit der Mac-App oder direkt im Desktop-Browser. Kostenlos, und die Mac-App ist Open Source.
 
-[Für Mac herunterladen](https://terento.app/de/download/) [Laden im Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-home&mt=8)
+[Für Mac herunterladen](https://terento.app/de/download/) [Direkt aus dem Browser installieren](https://terento.app/de/install/)
 
-[Direkt aus dem Browser installieren](https://terento.app/de/install/) Nur Mac und Linux, nicht Windows oder Smartphones.
-
-Unsicher bei deinem Modell? [Kompatibilität prüfen](https://terento.app/de/compatibility/)
-
-[Link an deinen Computer senden](mailto:?subject=Terento%3A%20kostenlose%20Karten%20f%C3%BCr%20deinen%20Garmin&body=https%3A%2F%2Fterento.app%2Fde%2F)
+[Link an deinen Computer senden](mailto:?subject=Terento%3A%20kostenlose%20Karten%20f%C3%BCr%20deinen%20Garmin&body=https%3A%2F%2Fterento.app%2Fde%2F) [Kompatibilität prüfen](https://terento.app/de/compatibility/)
 
 Garmin-Uhr mit der OpenTopoMap-Karte vom Königssee in den Berchtesgadener Alpen
 
 - **47** Modelle mit erfolgreichen Installationen
 - **463** erfolgreiche Installationen
-- **18. November 2026** Letzte erfolgreiche Installation
+- **18. November 202618.11.2026** Letzte erfolgreiche Installation
+
+## So funktioniert es
+
+1. Verbinden
+
+Terento erkennt deine Garmin-Uhr und zeigt, wann sie bereit ist.
+
+2. Installieren
+
+Wähle Karten aus dem Katalog oder füge deine eigene kompatible .img-Karte hinzu.
+
+3. Fertig
+
+Deine Karten sind installiert und auf deinem Garmin einsatzbereit.
+
+Terento zeigt Drittanbieter-Kartenanbieter und Regionen auf macOS
+
+## Karten verwalten
+
+Sieh, was auf deinem Garmin ist, aktualisiere Karten, sobald eine neuere Version da ist, oder entferne sie. Die Original-Garmin-Karten bleiben unberührt.
+
+[Zur Mac-Anleitung](https://terento.app/de/guides/install-garmin-maps-mac/)
+
+### Sicher für deinen Garmin
+
+Terento lässt auf deinem Garmin immer mindestens 1 GB frei und prüft jede Karte nach dem Kopieren. Die Prüfung nutzt eine SHA-256-Prüfsumme.
+
+[Zum Quellcode](https://github.com/VooZ2/terento)
+
+## Auch auf dem Rad
+
+Neuere Garmin Edge Fahrradcomputer mit Kartenunterstützung, etwa Edge 540, 840 und 1050, nutzen dieselben Karten. Verbinden, Region wählen, installieren.
+
+Garmin Edge Fahrradcomputer mit der Freizeitkarte-Karte des Anstiegs nach Sa Calobra in der Serra de Tramuntana auf Mallorca
+
+[Zur Anleitung für Garmin Edge](https://terento.app/de/guides/install-garmin-maps-edge-mac/)
 
 ## Wähle die Karte, die zur Tour passt
 
@@ -69,59 +101,17 @@ Einige Kartenbeschriftungen sind auf Französisch.
 
 [Kartenstile live vergleichen](https://terento.app/de/map-styles/)
 
-## So funktioniert es
-
-1. Verbinden
-
-Terento erkennt deine Garmin-Uhr und zeigt, wann sie bereit ist.
-
-2. Installieren
-
-Wähle Karten aus dem Katalog oder füge deine eigene kompatible .img-Karte hinzu.
-
-3. Fertig
-
-Deine Karten sind installiert und auf deinem Garmin einsatzbereit.
-
-Terento zeigt Drittanbieter-Kartenanbieter und Regionen auf macOS
-
-## Karten verwalten
-
-Sieh, was auf deinem Garmin ist, aktualisiere Karten, sobald eine neuere Version da ist, oder entferne sie. Die Original-Garmin-Karten bleiben unberührt.
-
-[Zur Mac-Anleitung](https://terento.app/de/guides/install-garmin-maps-mac/)
-
-### Sicher für deinen Garmin
-
-Terento lässt auf deinem Garmin immer mindestens 1 GB frei und prüft jede Karte nach dem Kopieren. Die Prüfung nutzt eine SHA-256-Prüfsumme.
-
-[Zum Quellcode](https://github.com/VooZ2/terento)
-
-Garmin Edge Fahrradcomputer mit der Freizeitkarte-Karte des Anstiegs nach Sa Calobra in der Serra de Tramuntana auf Mallorca
-
-## Auch auf dem Rad
-
-Neuere Garmin Edge Fahrradcomputer mit Kartenunterstützung, etwa Edge 540, 840 und 1050, nutzen dieselben Karten. Verbinden, Region wählen, installieren.
-
-[Zur Anleitung für Garmin Edge](https://terento.app/de/guides/install-garmin-maps-edge-mac/)
-
 ## Mit der Mac-App oder im Browser
 
 ### Mac-App
 
 Installiere Katalogkarten oder deine eigene .img-Karte, sieh, was auf deinem Garmin ist, und aktualisiere Karten, wenn neuere Ausgaben erscheinen.
 
-macOS 13 oder neuer auf Apple Silicon.
-
 [Für Mac herunterladen](https://terento.app/de/download/)
-
-[Auch im Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-home&mt=8)
 
 ### Web-Installer
 
-Verbinde deine Garmin-Uhr per USB-Kabel, wähle Karten und installiere sie direkt aus Chrome, Microsoft Edge, Opera oder Brave. Später aktualisierst oder entfernst du sie genauso.
-
-Funktioniert auf dem Mac und, noch im Test, unter Linux. Noch nicht unter Windows, auf Smartphones oder Tablets.
+Verbinde deine Garmin-Uhr per USB-Kabel, wähle Karten und installiere sie direkt aus Chrome, Microsoft Edge, Opera oder Brave.
 
 [Web-Installer öffnen](https://terento.app/de/install/)
 
@@ -156,3 +146,7 @@ Wähle nach einer fehlgeschlagenen Installation „Report issue“. Terento öff
 Kann ich Karten installieren, ohne die App zu installieren?
 
 Ja. Der [Web-Installer](https://terento.app/de/install/) installiert, aktualisiert und entfernt Karten aus dem Katalog in Chrome, Microsoft Edge, Opera oder Brave auf dem Mac und unter Linux, wo er noch getestet wird. Unter Windows, auf Smartphones und Tablets funktioniert er noch nicht, und eigene .img-Karten kann er nicht hinzufügen.
+
+Bring eine kostenlose Karte auf dein Garmin
+
+[Für Mac herunterladen](https://terento.app/de/download/) [Web-Installer verwenden](https://terento.app/de/install/)

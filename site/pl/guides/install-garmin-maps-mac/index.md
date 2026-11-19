@@ -9,8 +9,6 @@ Terento instaluje darmowe mapy OpenStreetMap albo Twój własny plik mapy na zeg
 
 [Pobierz na Maca](https://terento.app/pl/download/)
 
-Używasz Linuksa? [Zainstaluj mapy z przeglądarki](https://terento.app/pl/guides/install-garmin-maps-linux/).
-
 ## Czego potrzebujesz
 
 - Mac z Apple Silicon i macOS 13 lub nowszym
@@ -31,7 +29,7 @@ Zamknij Garmin Express, jeśli jest otwarty. Odblokuj zegarek i podłącz go do 
 
 [Mac nie widzi zegarka Garmin](https://terento.app/pl/guides/troubleshooting/#connect-watch)
 
-Terento pokazuje podłączony zegarek Garmin i stan wykrywania
+[Terento pokazuje podłączony zegarek Garmin i stan wykrywania](https://terento.app/assets/app/optimized/your-garmin-1600.webp?v=20260912-app-screens-v2)
 Terento rozpoznaje podłączony zegarek Garmin przed instalacją.
 
 3. Wybierz mapę
@@ -46,14 +44,14 @@ Wybierz dostawcę i region z katalogu.
 
 Dodaj zgodną mapę .img z Maca.
 
-Terento pokazuje dostawców, regiony map innych firm i dostępne miejsce na Garminie
+[Terento pokazuje dostawców, regiony map innych firm i dostępne miejsce na Garminie](https://terento.app/assets/app/optimized/map-selected-1600.webp?v=20260912-app-screens-v2)
 Wybierz mapę z katalogu albo dodaj własny zgodny plik.
 
 4. Zainstaluj
 
 Rozpocznij instalację i nie odłączaj zegarka, dopóki Terento nie poinformuje, że mapa jest gotowa. Potem odłącz zegarek.
 
-Terento pokazuje ukończoną instalację mapy na zegarku Garmin
+[Terento pokazuje ukończoną instalację mapy na zegarku Garmin](https://terento.app/assets/app/optimized/maps-done-1600.webp?v=20260912-app-screens-v2)
 Pozostaw zegarek podłączony do zakończenia przesyłania i sprawdzania.
 
 ## Wyświetl mapę na zegarku
@@ -82,6 +80,6 @@ Na ekranie nieudanej instalacji wybierz „Report issue”. Terento otwiera GitH
 
 Zamknij Terento i przenieś je z folderu Aplikacje do Kosza. Mapy na zegarku zostają. Terento przechowuje informacje o zainstalowanych mapach w ~/Library/Application Support/Terento: zachowaj ten folder, jeśli możesz ponownie zainstalować Terento, aby nadal mogło aktualizować i usuwać te mapy. Aby usunąć wszystko, usuń też ten folder, ~/Library/Caches/Terento, ~/Library/Logs/Terento i ~/Library/Preferences/app.terento.mac.plist.
 
-Zainstaluj pierwszą mapę
+Wgraj darmową mapę na swojego Garmina
 
-[Pobierz na Maca](https://terento.app/pl/download/)
+[Pobierz na Maca](https://terento.app/pl/download/) [Użyj instalatora webowego](https://terento.app/pl/install/)

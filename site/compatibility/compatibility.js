@@ -66,6 +66,13 @@
     return new Intl.DateTimeFormat(locale.dateLocale, { dateStyle: "long" }).format(date);
   };
 
+  const formatShortDate = (value) => {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.valueOf())) return "";
+    return new Intl.DateTimeFormat(locale.dateLocale, { year: "numeric", month: "numeric", day: "numeric", timeZone: "UTC" }).format(date);
+  };
+
   const sourceCount = (value) => {
     const count = Number(value);
     return value !== null && value !== undefined && Number.isFinite(count) && count >= 0 ? Math.floor(count) : null;
@@ -125,9 +132,10 @@
   function createCard(row) {
     const modelName = publicModelName(row.model);
     const variantLabel = row.variants[0] || exactVariantLabel(row) || (deviceType(row) === "edge" ? locale.card.bikeComputer : locale.card.smartwatch);
-    const latestInstallation = formatDate(row.lastSuccess);
+    const latestInstallation = formatShortDate(row.lastSuccess);
+    // One short line (no family name: the filter covers it); hidden on phones.
     const latestInstallationMarkup = latestInstallation
-      ? ` · ${escapeHtml(locale.card.latest)} ${escapeHtml(latestInstallation)}`
+      ? `<p class="watch-card-meta">${escapeHtml(locale.card.last)} ${escapeHtml(latestInstallation)}</p>`
       : "";
     const installLabel = locale.successfulInstallLabel(row.successful);
     const sources = [["app", row.appSuccessful], ["web", row.webSuccessful]]
@@ -137,11 +145,11 @@
       ? `<p class="watch-install-sources">${sources.map(({ source, text }) => `<span class="watch-install-source">${SOURCE_ICONS[source]}${escapeHtml(locale.sources[source])} ${escapeHtml(text)}</span>`).join(" ")}</p>`
       : "";
     const sourcesLabel = sources.map(({ source, text }) => locale.sources[`${source}Label`](text)).join(", ");
-    const accessibleName = [modelName, variantLabel, installLabel, sourcesLabel, latestInstallation && `${locale.card.latest} ${latestInstallation}`]
+    const accessibleName = [modelName, variantLabel, installLabel, sourcesLabel, latestInstallation && `${locale.card.last} ${latestInstallation}`]
       .filter(Boolean)
       .join(", ");
     const imageUrl = row.imageUrl || FALLBACK_IMAGE_URL;
-    return `<article class="watch-card card card--media" data-device-type="${deviceType(row)}" aria-label="${escapeHtml(accessibleName)}"><div class="watch-card-image"><img data-remote-src="${escapeHtml(imageUrl)}" src="${escapeHtml(imageUrl)}" alt="" width="400" height="300" loading="lazy"></div><div class="watch-card-body"><h3>${escapeHtml(modelName)} <span class="watch-variant">${escapeHtml(variantLabel)}</span></h3><p class="watch-install-count">${escapeHtml(installLabel)}</p>${sourcesMarkup}<p class="watch-card-meta"><span class="watch-family">${escapeHtml(row.familyName || "Garmin")}</span>${latestInstallationMarkup}</p></div></article>`;
+    return `<article class="watch-card card" data-device-type="${deviceType(row)}" aria-label="${escapeHtml(accessibleName)}"><div class="watch-card-image"><img data-remote-src="${escapeHtml(imageUrl)}" src="${escapeHtml(imageUrl)}" alt="" width="400" height="300" loading="lazy"></div><div class="watch-card-body"><h3>${escapeHtml(modelName)} <span class="watch-variant">${escapeHtml(variantLabel)}</span></h3><p class="watch-install-count">${escapeHtml(installLabel)}</p>${sourcesMarkup}${latestInstallationMarkup}</div></article>`;
   }
 
   function matchesSuccessfulRange(row) {

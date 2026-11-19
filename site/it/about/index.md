@@ -65,4 +65,6 @@ Grazie ai siti e ai recensori che hanno provato, presentato o consigliato Terent
 
 [Garmin Fenix: 17 Tips I Wish I Knew Sooner](https://www.youtube.com/watch?v=szqwPHHWiTM)
 
-[Scarica Terento per Mac](https://terento.app/it/download/)
+Metti una mappa gratuita sul tuo Garmin
+
+[Scarica per Mac](https://terento.app/it/download/) [Usa l’installer web](https://terento.app/it/install/)

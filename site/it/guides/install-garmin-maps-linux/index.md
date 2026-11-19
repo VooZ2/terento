@@ -9,8 +9,6 @@ Su Linux l’installer web di Terento mette mappe gratuite sugli orologi Garmin 
 
 [Apri l’installer web](https://terento.app/it/install/)
 
-Hai un Mac? Leggi la guida per un [orologio Garmin](https://terento.app/it/guides/install-garmin-maps-mac/) o un [Garmin Edge](https://terento.app/it/guides/install-garmin-maps-edge-mac/).
-
 ## Cosa ti serve
 
 - Chrome, Microsoft Edge, Opera o Brave su un computer Linux. Firefox non può collegarsi ai dispositivi USB.
@@ -49,6 +47,6 @@ Lascia l’elenco aperto fino a due minuti. Se non appare una voce con “Garmin
 
 Un browser installato come pacchetto Snap potrebbe non avere accesso USB. Usa il browser dal suo pacchetto ufficiale .deb o .rpm.
 
-Installa la tua prima mappa
+Metti una mappa gratuita sul tuo Garmin
 
 [Apri l’installer web](https://terento.app/it/install/)

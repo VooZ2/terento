@@ -168,6 +168,6 @@ Wähle im Fehlerbildschirm „Report issue“: Terento öffnet GitHub mit dem Be
 3. Prüfe den Bericht vor dem Veröffentlichen: GitHub-Issues sind öffentlich.
 4. Kein GitHub-Konto? Schreibe an [hello@terento.app](mailto:hello@terento.app?subject=Terento%20installation%20issue) und nenne dein Uhrenmodell, die Kartenregion und was passiert ist.
 
-Neu bei Terento?
+Bring eine kostenlose Karte auf dein Garmin
 
-[Mac-Installationsanleitung lesen](https://terento.app/de/guides/install-garmin-maps-mac/)
+[Für Mac herunterladen](https://terento.app/de/download/) [Web-Installer verwenden](https://terento.app/de/install/)

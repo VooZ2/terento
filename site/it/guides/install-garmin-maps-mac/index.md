@@ -9,8 +9,6 @@ Terento installa mappe OpenStreetMap gratuite, o un tuo file di mappa, su un oro
 
 [Scarica per Mac](https://terento.app/it/download/)
 
-Usi Linux? [Installa le mappe dal browser](https://terento.app/it/guides/install-garmin-maps-linux/).
-
 ## Cosa ti serve
 
 - Mac Apple Silicon con macOS 13 o versioni successive
@@ -31,7 +29,7 @@ Chiudi Garmin Express, se è aperto. Sblocca l’orologio e collegalo al Mac con
 
 [Orologio Garmin non rilevato dal Mac](https://terento.app/it/guides/troubleshooting/#connect-watch)
 
-Terento mostra uno smartwatch Garmin collegato e lo stato del rilevamento
+[Terento mostra uno smartwatch Garmin collegato e lo stato del rilevamento](https://terento.app/assets/app/optimized/your-garmin-1600.webp?v=20260912-app-screens-v2)
 Terento riconosce lo smartwatch Garmin collegato prima dell’installazione.
 
 3. Scegli una mappa
@@ -46,14 +44,14 @@ Scegli un provider e una regione dal catalogo.
 
 Aggiungi una mappa .img compatibile dal Mac.
 
-Terento mostra i provider, le regioni delle mappe di terze parti e lo spazio disponibile sul Garmin
+[Terento mostra i provider, le regioni delle mappe di terze parti e lo spazio disponibile sul Garmin](https://terento.app/assets/app/optimized/map-selected-1600.webp?v=20260912-app-screens-v2)
 Scegli una mappa dal catalogo oppure aggiungi il tuo file compatibile.
 
 4. Installa
 
 Avvia l’installazione e lascia l’orologio collegato finché Terento non indica che la mappa è pronta. Poi scollega l’orologio.
 
-Terento mostra un’installazione della mappa completata su uno smartwatch Garmin
+[Terento mostra un’installazione della mappa completata su uno smartwatch Garmin](https://terento.app/assets/app/optimized/maps-done-1600.webp?v=20260912-app-screens-v2)
 Lascia l’orologio collegato fino al completamento del trasferimento e della verifica.
 
 ## Mostra la mappa sull’orologio
@@ -82,6 +80,6 @@ Nella schermata di installazione non riuscita, scegli “Report issue”. Terent
 
 Chiudi Terento e spostalo da Applicazioni nel Cestino. Le mappe già sull’orologio restano lì. Terento conserva le informazioni sulle mappe installate in ~/Library/Application Support/Terento: tieni questa cartella se potresti reinstallare Terento, così potrà ancora aggiornare e rimuovere quelle mappe. Per rimuovere tutto, elimina anche questa cartella, ~/Library/Caches/Terento, ~/Library/Logs/Terento e ~/Library/Preferences/app.terento.mac.plist.
 
-Installa la tua prima mappa
+Metti una mappa gratuita sul tuo Garmin
 
-[Scarica per Mac](https://terento.app/it/download/)
+[Scarica per Mac](https://terento.app/it/download/) [Usa l’installer web](https://terento.app/it/install/)

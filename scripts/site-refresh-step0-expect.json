@@ -1,18 +1,7 @@
 {
   "site/index.html": {
-    "h2": [
-      "Pick the map that fits the trip",
-      "How it works",
-      "Manage maps",
-      "On the bike, too",
-      "Use the Mac app or your browser",
-      "Questions and answers",
-      "Install",
-      "Help",
-      "Project"
-    ],
     "events_removed": [
-      "map-style-switch @ home-edge"
+      "app-store-click @ home-hero"
     ]
   },
   "site/about/index.html": {
@@ -36,19 +25,8 @@
     ]
   },
   "site/de/index.html": {
-    "h2": [
-      "Wähle die Karte, die zur Tour passt",
-      "So funktioniert es",
-      "Karten verwalten",
-      "Auch auf dem Rad",
-      "Mit der Mac-App oder im Browser",
-      "Fragen und Antworten",
-      "Installieren",
-      "Hilfe",
-      "Projekt"
-    ],
     "events_removed": [
-      "map-style-switch @ home-edge"
+      "app-store-click @ home-hero"
     ]
   },
   "site/de/about/index.html": {
@@ -72,19 +50,8 @@
     ]
   },
   "site/fr/index.html": {
-    "h2": [
-      "Choisissez la carte adaptée à votre sortie",
-      "Comment ça marche",
-      "Gérer les cartes",
-      "À vélo aussi",
-      "Avec l’app Mac ou depuis votre navigateur",
-      "Questions et réponses",
-      "Installer",
-      "Aide",
-      "Projet"
-    ],
     "events_removed": [
-      "map-style-switch @ home-edge"
+      "app-store-click @ home-hero"
     ]
   },
   "site/fr/about/index.html": {
@@ -108,19 +75,8 @@
     ]
   },
   "site/pl/index.html": {
-    "h2": [
-      "Wybierz mapę pasującą do wyprawy",
-      "Jak to działa",
-      "Zarządzaj mapami",
-      "Także na rowerze",
-      "W aplikacji na Maca lub w przeglądarce",
-      "Pytania i odpowiedzi",
-      "Instalacja",
-      "Pomoc",
-      "Projekt"
-    ],
     "events_removed": [
-      "map-style-switch @ home-edge"
+      "app-store-click @ home-hero"
     ]
   },
   "site/pl/about/index.html": {
@@ -144,19 +100,8 @@
     ]
   },
   "site/cs/index.html": {
-    "h2": [
-      "Vyberte mapu, která sedí k výletu",
-      "Jak to funguje",
-      "Spravovat mapy",
-      "I na kole",
-      "V aplikaci pro Mac nebo v prohlížeči",
-      "Otázky a odpovědi",
-      "Instalace",
-      "Nápověda",
-      "Projekt"
-    ],
     "events_removed": [
-      "map-style-switch @ home-edge"
+      "app-store-click @ home-hero"
     ]
   },
   "site/cs/about/index.html": {
@@ -180,19 +125,8 @@
     ]
   },
   "site/it/index.html": {
-    "h2": [
-      "Scegli la mappa adatta al percorso",
-      "Come funziona",
-      "Gestisci le mappe",
-      "Anche in bici",
-      "Con l’app per Mac o dal browser",
-      "Domande e risposte",
-      "Installa",
-      "Aiuto",
-      "Progetto"
-    ],
     "events_removed": [
-      "map-style-switch @ home-edge"
+      "app-store-click @ home-hero"
     ]
   },
   "site/it/about/index.html": {
@@ -213,6 +147,162 @@
       "Installa",
       "Aiuto",
       "Progetto"
+    ]
+  },
+  "site/compatibility/index.html": {
+    "events_removed": [
+      "download-cta-click @ compatibility-community-testing",
+      "web-installer-link-click @ compatibility-community-testing"
+    ]
+  },
+  "site/cs/compatibility/index.html": {
+    "events_removed": [
+      "download-cta-click @ compatibility-community-testing",
+      "web-installer-link-click @ compatibility-community-testing"
+    ]
+  },
+  "site/cs/download/index.html": {
+    "events_removed": [
+      "guide-link-click @ download-page-linux"
+    ]
+  },
+  "site/cs/guides/install-garmin-maps-linux/index.html": {
+    "events_removed": [
+      "guide-link-click @ linux-guide-other"
+    ]
+  },
+  "site/cs/guides/install-garmin-maps-mac/index.html": {
+    "events_removed": [
+      "guide-link-click @ guide-other"
+    ]
+  },
+  "site/cs/guides/troubleshooting/index.html": {
+    "events_removed": [
+      "guide-link-click @ troubleshooting-bottom"
+    ]
+  },
+  "site/de/compatibility/index.html": {
+    "events_removed": [
+      "download-cta-click @ compatibility-community-testing",
+      "web-installer-link-click @ compatibility-community-testing"
+    ]
+  },
+  "site/de/download/index.html": {
+    "events_removed": [
+      "guide-link-click @ download-page-linux"
+    ]
+  },
+  "site/de/guides/install-garmin-maps-linux/index.html": {
+    "events_removed": [
+      "guide-link-click @ linux-guide-other"
+    ]
+  },
+  "site/de/guides/install-garmin-maps-mac/index.html": {
+    "events_removed": [
+      "guide-link-click @ guide-other"
+    ]
+  },
+  "site/de/guides/troubleshooting/index.html": {
+    "events_removed": [
+      "guide-link-click @ troubleshooting-bottom"
+    ]
+  },
+  "site/download/index.html": {
+    "events_removed": [
+      "guide-link-click @ download-page-linux"
+    ]
+  },
+  "site/fr/compatibility/index.html": {
+    "events_removed": [
+      "download-cta-click @ compatibility-community-testing",
+      "web-installer-link-click @ compatibility-community-testing"
+    ]
+  },
+  "site/fr/download/index.html": {
+    "events_removed": [
+      "guide-link-click @ download-page-linux"
+    ]
+  },
+  "site/fr/guides/install-garmin-maps-linux/index.html": {
+    "events_removed": [
+      "guide-link-click @ linux-guide-other"
+    ]
+  },
+  "site/fr/guides/install-garmin-maps-mac/index.html": {
+    "events_removed": [
+      "guide-link-click @ guide-other"
+    ]
+  },
+  "site/fr/guides/troubleshooting/index.html": {
+    "events_removed": [
+      "guide-link-click @ troubleshooting-bottom"
+    ]
+  },
+  "site/guides/install-garmin-maps-linux/index.html": {
+    "events_removed": [
+      "guide-link-click @ linux-guide-other"
+    ]
+  },
+  "site/guides/install-garmin-maps-mac/index.html": {
+    "events_removed": [
+      "guide-link-click @ guide-other"
+    ]
+  },
+  "site/guides/troubleshooting/index.html": {
+    "events_removed": [
+      "guide-link-click @ troubleshooting-bottom"
+    ]
+  },
+  "site/it/compatibility/index.html": {
+    "events_removed": [
+      "download-cta-click @ compatibility-community-testing",
+      "web-installer-link-click @ compatibility-community-testing"
+    ]
+  },
+  "site/it/download/index.html": {
+    "events_removed": [
+      "guide-link-click @ download-page-linux"
+    ]
+  },
+  "site/it/guides/install-garmin-maps-linux/index.html": {
+    "events_removed": [
+      "guide-link-click @ linux-guide-other"
+    ]
+  },
+  "site/it/guides/install-garmin-maps-mac/index.html": {
+    "events_removed": [
+      "guide-link-click @ guide-other"
+    ]
+  },
+  "site/it/guides/troubleshooting/index.html": {
+    "events_removed": [
+      "guide-link-click @ troubleshooting-bottom"
+    ]
+  },
+  "site/pl/compatibility/index.html": {
+    "events_removed": [
+      "download-cta-click @ compatibility-community-testing",
+      "web-installer-link-click @ compatibility-community-testing"
+    ]
+  },
+  "site/pl/download/index.html": {
+    "events_removed": [
+      "guide-link-click @ download-page-linux"
+    ]
+  },
+  "site/pl/guides/install-garmin-maps-linux/index.html": {
+    "events_removed": [
+      "guide-link-click @ linux-guide-other"
+    ]
+  },
+  "site/pl/guides/install-garmin-maps-mac/index.html": {
+    "events_removed": [
+      "guide-link-click @ guide-other"
+    ]
+  },
+  "site/pl/guides/troubleshooting/index.html": {
+    "events_removed": [
+      "guide-link-click @ troubleshooting-bottom"
     ]
   }
 }

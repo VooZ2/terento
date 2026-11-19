@@ -12,11 +12,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SHELL_VERSION = "20261105-copy-command-v1"
 PROVIDER_SCRIPT_VERSION = "20261026-osmapa-v1"
-STYLE_VERSION = "20261119-site-refresh-v3"
+STYLE_VERSION = "20261119-site-refresh-v4"
 IMAGE_VERSION = "20260912-app-screens-v2"
 LANGUAGE_VERSION = "20260926-static-shell-v1"
-COMPATIBILITY_LOCALES_VERSION = "20261119-compatibility-labels-v2"
-COMPATIBILITY_VERSION = "20261119-compatibility-cards-v3"
+COMPATIBILITY_LOCALES_VERSION = "20261119-compatibility-labels-v3"
+COMPATIBILITY_VERSION = "20261119-compatibility-cards-v4"
 UMAMI_SCRIPT_VERSION = "20261114-umami-monitoring"
 PAGE_LANGUAGE_VERSION = "20261015-shared-page-language-v3"
 # Footer Web installer link: the public installer (launch 2026-10-29) on the
@@ -76,8 +76,11 @@ def shell(locale: str, route: str, page: str) -> tuple[str, str]:
         "download": "download-cta-click",
     }
 
+    # Header and mobile nav: every guide page (watch, Edge, Linux, Troubleshooting) marks "Guide".
+    nav_active = {**active, "guide": page in {"guide", "edge-guide", "linux-guide", "troubleshooting"}}
+
     def nav_link(key: str, variant: str = "", location: str = "header-nav") -> str:
-        current = ' aria-current="page"' if active.get(key) else ""
+        current = ' aria-current="page"' if nav_active.get(key) else ""
         class_attribute = f' class="{variant}"' if variant else ""
         return f'<a{class_attribute} href="{nav[key]}" data-shell-copy="{key}" data-shell-route="{key}"{current}{umami_attributes(nav_events[key], location)}>{copy[key]}</a>'
     language_menu = f'''<details class="language-menu">

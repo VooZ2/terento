@@ -9,19 +9,23 @@ Une app gratuite et open source qui installe des cartes gratuites sur les montre
 
 [Télécharger pour Mac](https://github.com/VooZ2/terento/releases/download/v1.2.1-build48/Terento-1.2.1-macOS-arm64.dmg) [Télécharger dans le Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-download&mt=8)
 
-Dernière version **v1.2.1**, publiée le 14 novembre 2026. macOS 13 ou version ultérieure sur Apple Silicon. [Nouveautés](https://github.com/VooZ2/terento/releases/tag/v1.2.1-build48)
-
-Pas de Mac Apple Silicon ? [Utilisez l’installateur web](https://terento.app/fr/install/) dans Chrome, Microsoft Edge, Opera ou Brave sur Mac. Linux est encore en test : voir le [guide Linux](https://terento.app/fr/guides/install-garmin-maps-linux/).
+[Utilisez l’installateur web](https://terento.app/fr/install/)
 
 Terento affiche une montre Garmin connectée sur macOS
 
 ## Ce qu’il vous faut
+
+Dernière version **v1.2.1**, publiée le 14 novembre 2026. macOS 13 ou version ultérieure sur Apple Silicon. [Nouveautés](https://github.com/VooZ2/terento/releases/tag/v1.2.1-build48)
 
 - Un Mac avec Apple Silicon
 - macOS 13 ou version ultérieure
 - Un câble USB de données, pas un câble de charge seule
 - Une montre Garmin ou un compteur vélo Garmin Edge
 [Vérifier la compatibilité](https://terento.app/fr/compatibility/)
+
+Vérifier le téléchargement (SHA-256)
+
+`06bedd5c494b2788a6764a93aa7d7a00134c134eb052e357961881ecc021ff51`
 
 ## Après le téléchargement
 

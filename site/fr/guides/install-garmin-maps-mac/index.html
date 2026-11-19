@@ -2,7 +2,7 @@
 <html lang="fr" data-language="fr" data-page="guide">
   <head>
     <script defer src="/site-shell.js?v=20261105-copy-command-v1"></script>
-    <link rel="stylesheet" href="/styles.css?v=20261119-site-refresh-v3">
+    <link rel="stylesheet" href="/styles.css?v=20261119-site-refresh-v4">
     <script defer src="/reading-state.js?v=20260902-reading-state"></script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -63,7 +63,7 @@
       "headline": "Installer des cartes gratuites sur votre montre Garmin depuis un Mac",
       "description": "Pas à pas : installez des cartes OpenStreetMap gratuites ou votre propre fichier de carte sur une montre Garmin depuis un Mac Apple Silicon. Sans Garmin Express.",
       "datePublished": "2026-08-28T00:00:00Z",
-      "dateModified": "2026-11-18T00:00:00Z",
+      "dateModified": "2026-11-14T00:00:00Z",
       "mainEntityOfPage": {
         "@id": "https://terento.app/fr/guides/install-garmin-maps-mac/"
       },
@@ -136,19 +136,18 @@
     <main id="main-content" class="guide-main">
       <article class="guide-article guide-v2">
         <header class="guide-intro page-hero">
-          <div class="shell">
+          <div class="shell"><div class="hero-copy">
             <nav class="chips guide-v2-switch" aria-label="Choisir un guide"><a class="chip guide-v2-switch-link" href="/fr/guides/install-garmin-maps-mac/" aria-current="page" data-umami-event="guide-link-click" data-umami-event-location="guide-switch">Montre Garmin</a><a class="chip guide-v2-switch-link" href="/fr/guides/install-garmin-maps-edge-mac/" data-umami-event="guide-link-click" data-umami-event-location="guide-switch">Garmin Edge</a><a class="chip guide-v2-switch-link" href="/fr/guides/install-garmin-maps-linux/" data-umami-event="guide-link-click" data-umami-event-location="guide-switch">Linux</a></nav>
             <h1>Installer des cartes gratuites sur votre montre Garmin depuis un Mac</h1>
-            <p class="guide-lede">Terento installe des cartes OpenStreetMap gratuites, ou votre propre fichier de carte, sur une montre Garmin compatible avec les cartes. Vous ne copiez aucun fichier vous-même, et vos cartes Garmin restent intactes.</p>
-            <p class="guide-hero-action"><a class="download-action download-action--store" href="/fr/download/" data-umami-event="download-cta-click" data-umami-event-location="guide-hero"><svg class="download-action-icon" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg><span>Télécharger pour Mac</span></a></p>
-            <p class="guide-v2-other">Sous Linux ? <a href="/fr/guides/install-garmin-maps-linux/" data-umami-event="guide-link-click" data-umami-event-location="guide-other">Installez des cartes depuis le navigateur</a>.</p>
-          </div>
+            <p class="hero-lede guide-lede">Terento installe des cartes OpenStreetMap gratuites, ou votre propre fichier de carte, sur une montre Garmin compatible avec les cartes. Vous ne copiez aucun fichier vous-même, et vos cartes Garmin restent intactes.</p>
+            <p class="hero-actions guide-hero-action"><a class="download-action download-action--store" href="/fr/download/" data-umami-event="download-cta-click" data-umami-event-location="guide-hero"><svg class="download-action-icon" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg><span>Télécharger pour Mac</span></a></p>
+          </div></div>
         </header>
 
         <div class="shell guide-content">
           <section class="guide-v2-section" id="before-you-start" aria-labelledby="before-you-start-title">
             <h2 id="before-you-start-title">Ce qu’il vous faut</h2>
-            <div class="card guide-needs"><ul class="guide-checklist"><li>Mac Apple Silicon avec macOS 13 ou version ultérieure</li><li>Montre Garmin prenant en charge les cartes</li><li>Câble USB permettant le transfert de données</li></ul>
+            <div class="guide-needs"><ul class="checklist"><li>Mac Apple Silicon avec macOS 13 ou version ultérieure</li><li>Montre Garmin prenant en charge les cartes</li><li>Câble USB permettant le transfert de données</li></ul>
             <p>Après la connexion, Terento vérifie la montre et vous indique s’il peut installer des cartes. La page <a href="/fr/compatibility/" data-umami-event="compatibility-link-click" data-umami-event-location="guide-preflight">Compatibilité</a> liste les modèles avec des installations réussies ; un modèle absent n’est pas forcément incompatible.</p></div>
           </section>
 
@@ -169,11 +168,11 @@
                   <p>Quittez Garmin Express s’il est ouvert. Déverrouillez la montre et connectez-la au Mac avec un câble USB de données, pas un câble de charge seule. Si macOS demande d’autoriser la connexion de l’accessoire, choisissez Autoriser. Terento trouve la montre en 1 à 2 minutes et vérifie s’il peut installer des cartes.</p><p><a class="guide-step-link text-link" href="/fr/guides/troubleshooting/#connect-watch" data-umami-event="guide-link-click" data-umami-event-location="guide-step-connect-watch">Montre Garmin non détectée sur Mac</a></p>
                 </div>
                 <figure class="guide-screenshot">
-          <picture>
+          <a class="guide-screenshot-link" href="/assets/app/optimized/your-garmin-1600.webp?v=20260912-app-screens-v2" target="_blank" rel="noopener" data-umami-event="internal-link-click" data-umami-event-location="guide-content"><picture>
             <source type="image/avif" srcset="/assets/app/optimized/your-garmin-640.avif?v=20260912-app-screens-v2 640w, /assets/app/optimized/your-garmin-960.avif?v=20260912-app-screens-v2 960w, /assets/app/optimized/your-garmin-1280.avif?v=20260912-app-screens-v2 1280w, /assets/app/optimized/your-garmin-1600.avif?v=20260912-app-screens-v2 1600w" sizes="(max-width: 760px) 100vw, 42vw">
             <source type="image/webp" srcset="/assets/app/optimized/your-garmin-640.webp?v=20260912-app-screens-v2 640w, /assets/app/optimized/your-garmin-960.webp?v=20260912-app-screens-v2 960w, /assets/app/optimized/your-garmin-1280.webp?v=20260912-app-screens-v2 1280w, /assets/app/optimized/your-garmin-1600.webp?v=20260912-app-screens-v2 1600w" sizes="(max-width: 760px) 100vw, 42vw">
             <img src="/assets/app/optimized/your-garmin-1600.avif?v=20260912-app-screens-v2" srcset="/assets/app/optimized/your-garmin-640.avif?v=20260912-app-screens-v2 640w, /assets/app/optimized/your-garmin-960.avif?v=20260912-app-screens-v2 960w, /assets/app/optimized/your-garmin-1280.avif?v=20260912-app-screens-v2 1280w, /assets/app/optimized/your-garmin-1600.avif?v=20260912-app-screens-v2 1600w" sizes="(max-width: 760px) 100vw, 42vw" width="2358" height="1575" loading="lazy" decoding="async" alt="Terento affiche une montre Garmin connectée et son état de détection">
-          </picture>
+          </picture></a>
           <figcaption>Terento reconnaît la montre Garmin connectée avant l’installation.</figcaption>
         </figure>
               </div>
@@ -184,11 +183,11 @@
                   <p>Choisissez une carte dans le catalogue ou ajoutez votre propre fichier .img compatible. <a href="/fr/map-styles/" data-umami-event="maps-link-click" data-umami-event-location="guide-step">Comparez les styles de carte</a> pour voir comment chaque carte affiche routes et sentiers.</p><ol class="guide-substeps"><li><h4>Choisir dans le catalogue</h4><p>Choisissez un fournisseur et une région dans le catalogue.</p></li><li><h4>Ajouter votre carte</h4><p>Ajoutez une carte .img compatible depuis votre Mac.</p></li></ol>
                 </div>
                 <figure class="guide-screenshot">
-          <picture>
+          <a class="guide-screenshot-link" href="/assets/app/optimized/map-selected-1600.webp?v=20260912-app-screens-v2" target="_blank" rel="noopener" data-umami-event="internal-link-click" data-umami-event-location="guide-content"><picture>
             <source type="image/avif" srcset="/assets/app/optimized/map-selected-640.avif?v=20260912-app-screens-v2 640w, /assets/app/optimized/map-selected-960.avif?v=20260912-app-screens-v2 960w, /assets/app/optimized/map-selected-1280.avif?v=20260912-app-screens-v2 1280w, /assets/app/optimized/map-selected-1600.avif?v=20260912-app-screens-v2 1600w" sizes="(max-width: 760px) 100vw, 42vw">
             <source type="image/webp" srcset="/assets/app/optimized/map-selected-640.webp?v=20260912-app-screens-v2 640w, /assets/app/optimized/map-selected-960.webp?v=20260912-app-screens-v2 960w, /assets/app/optimized/map-selected-1280.webp?v=20260912-app-screens-v2 1280w, /assets/app/optimized/map-selected-1600.webp?v=20260912-app-screens-v2 1600w" sizes="(max-width: 760px) 100vw, 42vw">
             <img src="/assets/app/optimized/map-selected-1600.avif?v=20260912-app-screens-v2" srcset="/assets/app/optimized/map-selected-640.avif?v=20260912-app-screens-v2 640w, /assets/app/optimized/map-selected-960.avif?v=20260912-app-screens-v2 960w, /assets/app/optimized/map-selected-1280.avif?v=20260912-app-screens-v2 1280w, /assets/app/optimized/map-selected-1600.avif?v=20260912-app-screens-v2 1600w" sizes="(max-width: 760px) 100vw, 42vw" width="2358" height="1575" loading="lazy" decoding="async" alt="Terento affiche les fournisseurs, les régions de cartes tierces et l’espace Garmin disponible">
-          </picture>
+          </picture></a>
           <figcaption>Choisissez une carte dans le catalogue ou ajoutez votre propre fichier compatible.</figcaption>
         </figure>
               </div>
@@ -199,11 +198,11 @@
                   <p>Lancez l’installation et gardez la montre connectée jusqu’à ce que Terento indique que la carte est prête. Déconnectez ensuite la montre.</p>
                 </div>
                 <figure class="guide-screenshot">
-          <picture>
+          <a class="guide-screenshot-link" href="/assets/app/optimized/maps-done-1600.webp?v=20260912-app-screens-v2" target="_blank" rel="noopener" data-umami-event="internal-link-click" data-umami-event-location="guide-content"><picture>
             <source type="image/avif" srcset="/assets/app/optimized/maps-done-640.avif?v=20260912-app-screens-v2 640w, /assets/app/optimized/maps-done-960.avif?v=20260912-app-screens-v2 960w, /assets/app/optimized/maps-done-1280.avif?v=20260912-app-screens-v2 1280w, /assets/app/optimized/maps-done-1600.avif?v=20260912-app-screens-v2 1600w" sizes="(max-width: 760px) 100vw, 42vw">
             <source type="image/webp" srcset="/assets/app/optimized/maps-done-640.webp?v=20260912-app-screens-v2 640w, /assets/app/optimized/maps-done-960.webp?v=20260912-app-screens-v2 960w, /assets/app/optimized/maps-done-1280.webp?v=20260912-app-screens-v2 1280w, /assets/app/optimized/maps-done-1600.webp?v=20260912-app-screens-v2 1600w" sizes="(max-width: 760px) 100vw, 42vw">
             <img src="/assets/app/optimized/maps-done-1600.avif?v=20260912-app-screens-v2" srcset="/assets/app/optimized/maps-done-640.avif?v=20260912-app-screens-v2 640w, /assets/app/optimized/maps-done-960.avif?v=20260912-app-screens-v2 960w, /assets/app/optimized/maps-done-1280.avif?v=20260912-app-screens-v2 1280w, /assets/app/optimized/maps-done-1600.avif?v=20260912-app-screens-v2 1600w" sizes="(max-width: 760px) 100vw, 42vw" width="2358" height="1575" loading="lazy" decoding="async" alt="Terento affiche une installation de carte terminée sur une montre Garmin">
-          </picture>
+          </picture></a>
           <figcaption>Gardez la montre connectée jusqu’à la fin du transfert et de la vérification.</figcaption>
         </figure>
               </div>
@@ -239,7 +238,7 @@
             <h2 id="uninstall-title">Désinstaller Terento</h2>
             <p>Quittez Terento et placez-le dans la Corbeille depuis Applications. Les cartes déjà sur votre montre y restent. Terento conserve les informations sur les cartes qu’il a installées dans ~/Library/Application Support/Terento : gardez ce dossier si vous comptez réinstaller Terento, pour qu’il puisse encore mettre à jour et supprimer ces cartes. Pour tout supprimer, effacez aussi ce dossier, ~/Library/Caches/Terento, ~/Library/Logs/Terento et ~/Library/Preferences/app.terento.mac.plist.</p>
           </section>
-          <div class="cta-band guide-cta-band"><div class="cta-band__copy"><p class="cta-band__title">Installez votre première carte</p></div><div class="cta-band__actions"><a class="download-action download-action--store" href="/fr/download/" data-umami-event="download-cta-click" data-umami-event-location="guide-bottom"><svg class="download-action-icon" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg><span>Télécharger pour Mac</span></a></div></div>
+          <div class="cta-band end-cta"><div class="cta-band__copy"><p class="cta-band__title">Installez une carte gratuite sur votre Garmin</p></div><div class="cta-band__actions"><a class="download-action download-action--store" href="/fr/download/" data-umami-event="download-cta-click" data-umami-event-location="guide-bottom"><svg class="download-action-icon" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg><span>Télécharger pour Mac</span></a><a class="text-link" href="/fr/install/" data-umami-event="web-installer-link-click" data-umami-event-location="guide-bottom">Utiliser l’installateur web</a></div></div>
         </div>
       </article>
     </main>

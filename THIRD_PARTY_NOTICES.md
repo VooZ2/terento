@@ -242,10 +242,12 @@ or Go dependency or source code is incorporated. Reference:
   `circle-minus`, `clock`, in `scripts/build-map-style-pages.py` and
   `site/map-styles/map-styles.js`) and `heart` (footer Support link, in
   `scripts/normalize-public-shell.py`) and the shared page components
-  (`shield-check` and `layers` for the Home feature cards, `mountain` beside
-  the About heading, `download` for the Download button beside the Mac App
-  Store badge, `info` and `triangle-alert` for `.callout` notes
-  and warnings, in `scripts/site_components.py`).
+  (`shield-check`, `layers` and `bike` for the Home feature cards, `laptop`
+  and `globe` for the Home "Mac app or browser" cards and the secondary
+  web-installer button, `send` for the Home "Send this link to your computer"
+  button, `download` for the primary Download button, `info` and
+  `triangle-alert` for `.callout` notes and warnings, in
+  `scripts/site_components.py`).
 - Each SVG carries the `@license lucide-static v0.460.0 - ISC` comment
   (except the footer heart and the Download button icon, which also appear on
   the Download page whose HTML must carry only the release version).

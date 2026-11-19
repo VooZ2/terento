@@ -61,17 +61,31 @@ preserve the same meaning in each locale.
 
 - Indexed pages use one component layer in `styles.css`: `.grid`
   (12 columns, one on phones, `col-4|6|8|12`, `row-2`), `.card`
-  (`--media`, `--lift`), `.bento-hero`, `.page-hero`, `.section-head`,
-  `.trust-strip`, `.steps`, `.callout` and `.cta-band`. Markup helpers live in
+  (`--media`), `.page-hero`, `.section-head`, `.trust-strip`, `.steps`,
+  `.callout` and `.cta-band`. Markup helpers live in
   `scripts/site_components.py`. Reuse them instead of page-specific variants.
+- One hero on every page (round 4, 2026-11-19): `section.page-hero >
+  .shell > .hero-copy` with the H1, one `.hero-lede` and optional
+  `.hero-actions`, on the canvas, left-aligned in a 720px column, never in a
+  card. Same top padding (`--hero-top`) and gap to the next section
+  (`--hero-gap`) everywhere; H1 64px on Home, 52px elsewhere; lead 21/18px,
+  max 65ch. Nothing goes under the hero buttons.
 - Bento surfaces: the Off-White canvas carries the page; `.card` tiles use
-  `--tile` (backgroundSecondary) without borders; `.card--lift` (white) only
-  where a card needs lift. Card and step titles use `--type-item`, one step
-  below the section H2. Product photos sit on `--photo-tile` in both modes.
-- The Download button beside Apple's badge is `store_download()` /
-  `.download-action--store` on both the Home hero and /download/: 40px tall,
-  natural width, 12px gap, stacked and centred at 560px and below. Never
-  change the badge.
+  `--tile` (backgroundSecondary) without borders. Radii: controls
+  `--control-radius` 10px, cards `--card-radius` 14px, large panels
+  `--panel-radius` 18px. Card and step titles use `--type-item` (Instrument
+  Sans 22px). Product photos sit on `--photo-tile` in both modes.
+- Buttons: `primary_action()` (one primary button, "Download for Mac" with
+  the Lucide download icon, 40px, 15/20 at 600) and `secondary_action()`
+  (outlined, same size). `store_download()` adds Apple's badge and is used
+  only on /download/: at most one App Store badge per page. Never change the
+  badge.
+- Every page except Download ends with `end_cta(locale, location)`: "Put a
+  free map on your Garmin", "Download for Mac" and a "Use the web installer"
+  text link (the Linux guide passes `web_first=True`).
+- Header navigation marks the current item with `aria-current="page"`, 600
+  in the link colour; every guide page (watch, Edge, Linux, Troubleshooting)
+  marks "Guide".
 - Links: one style everywhere (link colour, 600, no underline; underline on
   hover). Dates: one long format per locale (`dateStyle: "long"`).
 - `.cta-band` titles are `<p class="cta-band__title">`, never headings, so

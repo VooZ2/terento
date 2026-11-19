@@ -168,6 +168,6 @@ Nella schermata di errore scegli “Report issue”: Terento apre GitHub con il 
 3. Controlla il rapporto prima di pubblicarlo: le issue su GitHub sono pubbliche.
 4. Non hai un account GitHub? Scrivi a [hello@terento.app](mailto:hello@terento.app?subject=Terento%20installation%20issue) indicando il modello dell’orologio, la regione della mappa e cosa è successo.
 
-Nuovo su Terento?
+Metti una mappa gratuita sul tuo Garmin
 
-[Leggi la guida all’installazione su Mac](https://terento.app/it/guides/install-garmin-maps-mac/)
+[Scarica per Mac](https://terento.app/it/download/) [Usa l’installer web](https://terento.app/it/install/)

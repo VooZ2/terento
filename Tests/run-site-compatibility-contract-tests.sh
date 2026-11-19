@@ -26,7 +26,7 @@ assert not any(status in js for status in ("TESTING", "TESTED", "SUPPORTED", "VE
 for path in compatibility_files:
     page = path.read_text()
     assert 'id="compatibility-snapshot"' in page, f"{path}: missing checked-in snapshot"
-    assert '<article class="watch-card card card--media" data-device-type=' in page, f"{path}: missing server-rendered cards"
+    assert '<article class="watch-card card" data-device-type=' in page, f"{path}: missing server-rendered cards"
     assert 'id="successful-install-filter"' in page, f"{path}: missing successful-install filter"
     assert 'id="compatibility-clear"' in page
     assert 'Not seeing your model' in page or 'Brak Twojego modelu' in page or 'Wenn dein Modell' in page or 'L’absence de votre modèle' in page or 'Pokud zde svůj model' in page or 'Se il tuo modello' in page
@@ -34,7 +34,7 @@ for path in compatibility_files:
     assert 'class="compatibility-status' not in page
     assert 'successful-install-filter' in page
     assert '1–2' in page and '5+' in page
-    assert 'compatibility.js?v=20261119-compatibility-cards-v3' in page
+    assert 'compatibility.js?v=20261119-compatibility-cards-v4' in page
     assert '<noscript class="compatibility-noscript">' in page
 
     assert 'class="watch-install-sources"' in page, f"{path}: missing app/web install split"
@@ -62,7 +62,7 @@ for count, label in ((1, "1 successful install"), (99, "99 successful installs")
     assert generator["install_label"](count, "en") == label, (count, generator["install_label"](count, "en"))
 app_only = card({**model, "successfulInstallations": 7, "appSuccessfulInstallations": 7, "webSuccessfulInstallations": 0}, "en")
 assert "</svg>App 7</span>" in app_only and "Web" not in app_only.split("watch-install-sources", 1)[1].split("</p>", 1)[0]
-assert "7 with the app, Latest" in app_only and "web installer" not in app_only
+assert "7 with the app, Last install" in app_only and "web installer" not in app_only
 web_only = card({**model, "successfulInstallations": 2, "appSuccessfulInstallations": 0, "webSuccessfulInstallations": 2}, "en")
 assert "</svg>Web 2</span>" in web_only and "with the app" not in web_only and "</svg>App" not in web_only
 legacy = {key: value for key, value in model.items() if not key.endswith("SuccessfulInstallations") or key == "successfulInstallations"}

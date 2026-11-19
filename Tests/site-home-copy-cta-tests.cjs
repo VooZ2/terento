@@ -119,7 +119,7 @@ const anchorFor = (page, className) => {
 
 for (const [locale, expected] of locales) {
   const page = pageFor(locale);
-  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20261119-site-refresh-v3">/, `${locale}: Home stylesheet cache bust`);
+  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20261119-site-refresh-v4">/, `${locale}: Home stylesheet cache bust`);
   assert.match(page, /<script defer src="\/home-features\.js\?v=20261105-home-map-switch-v4"><\/script>/, `${locale}: Home feature script cache bust`);
   assert.match(page, /installing-maps-1600\.png\?v=20260912-app-screens-v2/, `${locale}: installation screenshot cache bust`);
   const heroDevice = page.match(/<figure class="home-device" data-map-switch>[\s\S]*?<\/figure>/)?.[0];
@@ -153,7 +153,7 @@ for (const [locale, expected] of locales) {
   assert.equal(steps[2][1].match(/<h3>([^<]+)<\/h3>/)?.[1], expected.doneLabel);
   assert.equal(steps[2][1].match(/<p>([^<]+)<\/p>\s*$/)?.[1], expected.doneStep);
   // Features: one row of three compact cards (icon or small image, title, 1–2 lines, one link).
-  const features = page.match(/<div class="block home-features">[\s\S]*?<\/div>\s*<\/div>\s*(?=<section class="block home-ways")/)?.[0];
+  const features = page.match(/<div class="block home-features">[\s\S]*?<\/div>\s*<\/div>\s*(?=<section class="block home-providers")/)?.[0];
   assert.ok(features, `${locale}: feature cards`);
   assert.equal((features.match(/class="card col-4 home-feature/g) || []).length, 3, `${locale}: three equal feature cards`);
   const manage = features.match(/<section class="card col-4 home-feature" aria-labelledby="manage-title">[\s\S]*?<\/section>/)?.[0];
@@ -170,17 +170,19 @@ for (const [locale, expected] of locales) {
   const edge = features.match(/<section class="card col-4 home-feature home-feature--edge" id="edge"[\s\S]*?<\/section>/)?.[0];
   assert.ok(edge, `${locale}: Garmin Edge section`);
   assert.match(edge, /Edge 540, 840/);
-  assert.doesNotMatch(edge, /home-switch|data-map-style/, `${locale}: the hero keeps the only map switch`);
+  // Round 4 (owner): the Edge preview is back at min(280px, 60vw) with its own map switch.
+  assert.match(edge, /<figure class="home-device home-edge-figure" data-map-switch>[\s\S]*?class="home-switch"/, `${locale}: the Edge preview has its own map switch`);
   assert.match(edge, new RegExp(`href="${locale === "en" ? "" : `/${locale}`}/guides/install-garmin-maps-edge-mac/" data-umami-event="guide-link-click" data-umami-event-location="home-edge"`));
-  // Mac App Store listing: Apple's official badge, once, after the primary Download button, with the site-home campaign.
-  const heroActions = page.match(/<div class="home-actions store-actions">[\s\S]*?<\/div>/)?.[0];
-  assert.ok(heroActions, `${locale}: hero actions`);
-  assert.equal((page.match(/class="app-store-badge /g) || []).length, 1, `${locale}: one App Store badge`);
-  const badge = appStoreBadge.badges[locale];
-  const badgeLang = badge.artwork === locale ? "" : ` lang="${badge.artwork}"`;
-  const badgeMarkup = `<a class="app-store-badge home-app-store" href="https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&amp;ct=site-home&amp;mt=8" data-umami-event="app-store-click" data-umami-event-location="home-hero"><img src="/assets/app-store/download-on-the-mac-app-store-${badge.artwork}.svg?v=${appStoreBadge.asset_version}" width="156" height="40" alt="${badge.alt}"${badgeLang}></a>`;
-  assert.ok(heroActions.includes(badgeMarkup), `${locale}: App Store badge keeps its Umami event and campaign link`);
-  assert.ok(heroActions.indexOf('class="download-action download-action--store hero-download-action"') < heroActions.indexOf(badgeMarkup), `${locale}: App Store badge follows Download`);
+  // Round 4 (owner): computer actions are "Download for Mac" + "Install from your browser"; phones get
+  // "Send this link to your computer" + "Check compatibility". No App Store badge on Home (Download only).
+  const computerActions = page.match(/<div class="hero-actions home-actions home-actions--computer">[\s\S]*?<\/div>/)?.[0];
+  assert.ok(computerActions, `${locale}: computer hero actions`);
+  assert.match(computerActions, /^<div[^>]*><a class="download-action download-action--store hero-download-action"[^>]*data-umami-event="download-cta-click" data-umami-event-location="home-hero">[\s\S]*?<\/a><a class="button-secondary hero-web-installer-link" href="[^"]*\/install\/" data-umami-event="web-installer-link-click" data-umami-event-location="home-hero">/);
+  const phoneActions = page.match(/<div class="hero-actions home-actions home-actions--phone">[\s\S]*?<\/div>/)?.[0];
+  assert.ok(phoneActions, `${locale}: phone hero actions`);
+  assert.match(phoneActions, /data-umami-event="send-to-computer-click" data-umami-event-location="home-hero"[\s\S]*?<a class="text-link hero-compatibility-link"/);
+  assert.equal((page.match(/class="app-store-badge/g) || []).length, 0, `${locale}: no App Store badge on Home`);
+  assert.doesNotMatch(page, /home-hero-note|home-hero-browser|home-send-link/, `${locale}: no text under the hero buttons`);
   const providerSection = page.match(/<section class="block home-providers"[\s\S]*?<\/section>/)?.[0];
   assert.ok(providerSection, `${locale}: missing provider cards section`);
   assert.match(providerSection, new RegExp(`<h2 id="providers-title">${expected.providerTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/h2>`));
@@ -231,7 +233,6 @@ for (const [locale, expected] of locales) {
   assert.equal(heroCompatibility.href, locale === "en" ? "/compatibility/" : `/${locale}/compatibility/`, `${locale}: Hero Compatibility CTA href`);
   assert.match(heroCompatibility.attributes, /data-umami-event="compatibility-link-click"/);
   assert.match(heroCompatibility.attributes, /data-umami-event-location="home-hero"/);
-  assert.match(page, /<div class="home-actions store-actions"><a class="download-action download-action--store hero-download-action"[\s\S]*?<a class="text-link hero-compatibility-link"/);
   assert.doesNotMatch(page, /<p class="hero-lede">[^<]*Freizeitkarte/i, `${locale}: hero copy is provider-neutral`);
   assert.doesNotMatch(page, /back up|backup|sauvegarder|zálohovat|wykonać kopię|eseguire il backup/i, `${locale}: no backup marketing copy`);
   assert.doesNotMatch(page, /beta[ .]?8|bêta 8/i, `${locale}: no stale beta.8 copy`);
@@ -324,13 +325,18 @@ assert.match(styles, /grid-auto-columns: min\(90%, 420px\)/);
 assert.match(styles, /\.provider-cards\s*\{[^}]*max-width: 1300px/s);
 assert.match(styles, /overflow-x: auto/);
 
-// Round 3 (owner 2026-11-19): one App Store badge per layout. The Mac app card uses the shared
-// primary button plus a text link to the listing; both cards keep their actions at the bottom.
+// Round 4 (owner 2026-11-19): no App Store badge on Home. The two "Mac app or browser" cards are
+// symmetric: icon, title, one line, one button; the buttons sit at the bottom.
 for (const [locale] of locales) {
   const html = pageFor(locale);
-  assert.equal((html.match(/class="app-store-badge /g) || []).length, 1, `${locale}: one App Store badge on Home`);
-  const macCard = html.match(/<article class="card col-6 home-way">[\s\S]*?<\/article>/)[0];
-  assert.match(macCard, /<div class="card-action home-way-actions"><a class="download-action download-action--store" href="[^"]+" data-umami-event="download-cta-click" data-umami-event-location="home-section">/);
-  assert.match(macCard, /<a class="text-link" href="https:\/\/apps\.apple\.com\/[^"]+ct=site-home[^"]*" data-umami-event="app-store-click" data-umami-event-location="home-mac-card">[^<]+<\/a>/);
+  assert.equal((html.match(/class="app-store-badge/g) || []).length, 0, `${locale}: no App Store badge on Home`);
+  const ways = [...html.matchAll(/<article class="card col-6 home-way">([\s\S]*?)<\/article>/g)].map(match => match[1]);
+  assert.equal(ways.length, 2, `${locale}: two ways`);
+  for (const way of ways) {
+    assert.match(way, /^\s*<div class="home-feature-visual"><svg[\s\S]*?<\/svg><\/div>\s*<h3>[^<]+<\/h3>\s*<p>[^<]+<\/p>\s*<div class="card-action home-way-actions"><a class="[^"]+"[^>]*>[\s\S]*?<\/a><\/div>\s*$/, `${locale}: symmetric way card`);
+  }
+  assert.match(ways[0], /<a class="download-action download-action--store" href="[^"]+" data-umami-event="download-cta-click" data-umami-event-location="home-section">/);
+  assert.match(ways[1], /<a class="button-secondary" href="[^"]*\/install\/" data-umami-event="web-installer-link-click" data-umami-event-location="home-section">/);
+  assert.doesNotMatch(html, /home-mac-card/, `${locale}: the Mac card has no App Store link`);
 }
-assert.match(styles, /\.home-actions\.store-actions\s*\{\s*align-items:\s*flex-start;/, "Home hero buttons line up with the text on phones");
+assert.match(styles, /\.home-way \.home-way-actions\s*\{\s*margin-top:\s*auto;/, "Way card buttons line up at the bottom");

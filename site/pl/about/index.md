@@ -65,4 +65,6 @@ Dziękuję serwisom i recenzentom, którzy wypróbowali, opisali lub polecili Te
 
 [Garmin Fenix: 17 Tips I Wish I Knew Sooner](https://www.youtube.com/watch?v=szqwPHHWiTM)
 
-[Pobierz Terento na Maca](https://terento.app/pl/download/)
+Wgraj darmową mapę na swojego Garmina
+
+[Pobierz na Maca](https://terento.app/pl/download/) [Użyj instalatora webowego](https://terento.app/pl/install/)

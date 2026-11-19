@@ -133,7 +133,7 @@ Kartendaten © OpenStreetMap-Mitwirkende (ODbL). OSMapaPL von OSMapa-Freiwillige
 
 Terento ist kostenlos. Nutze die Mac-App auf einem Mac mit Apple Silicon oder den Web-Installer in Chrome, Microsoft Edge, Opera oder Brave.
 
-[Für Mac laden](https://terento.app/de/download/) [Web-Installer öffnen](https://terento.app/de/install/)
+[Für Mac herunterladen](https://terento.app/de/download/) [Web-Installer öffnen](https://terento.app/de/install/)
 
 Schritt für Schritt: die [Anleitung für Garmin-Uhren](https://terento.app/de/guides/install-garmin-maps-mac/) und die [Anleitung für Garmin Edge](https://terento.app/de/guides/install-garmin-maps-edge-mac/).
 
@@ -158,3 +158,7 @@ Freizeitkarte enthält sie. OpenTopoMap bietet sie als optionales Extra an, OSMa
 Wie installiere ich eine Karte?
 
 [Lade](https://terento.app/de/download/) Terento für einen Mac mit Apple Silicon herunter oder nutze den [Web-Installer](https://terento.app/de/install/) in einem Chromium-Browser. Verbinde deine Uhr oder deinen Edge, wähle Karte und Region und installiere. Die [Anleitung für Garmin-Uhren](https://terento.app/de/guides/install-garmin-maps-mac/) und die [Anleitung für Garmin Edge](https://terento.app/de/guides/install-garmin-maps-edge-mac/) führen dich durch.
+
+Bring eine kostenlose Karte auf dein Garmin
+
+[Für Mac herunterladen](https://terento.app/de/download/) [Web-Installer verwenden](https://terento.app/de/install/)

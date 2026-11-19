@@ -88,6 +88,17 @@ def app_store_badge(locale: str, css_class: str, campaign: str, location: str) -
     )
 
 
+# Collapsed by default; the hash only, no claim about what the check proves.
+SHA_LABEL = {
+    "en": "Check the download (SHA-256)",
+    "de": "Download prüfen (SHA-256)",
+    "fr": "Vérifier le téléchargement (SHA-256)",
+    "pl": "Sprawdź pobrany plik (SHA-256)",
+    "cs": "Ověřit stažený soubor (SHA-256)",
+    "it": "Verifica il download (SHA-256)",
+}
+
+
 def render_main(locale: str, release: dict[str, object], dmg_url: str, notes_url: str) -> str:
     c = COPY[locale]
     root = "/" if locale == "en" else f"/{locale}/"
@@ -108,29 +119,31 @@ def render_main(locale: str, release: dict[str, object], dmg_url: str, notes_url
     shot = (f'<figure class="app-shot app-shot--download download-v2-shot"><picture>{sources}'
             f'<img src="{SHOT.format(width=1600, fmt="png")}" width="2358" height="1575" sizes="{SHOT_SIZES}" '
             f'alt="{html.escape(c["shot_alt"])}" decoding="async"></picture></figure>')
-    web = fill(c["web_text"],
-               web=link(c["web_label"], f"{root}install/", "web-installer-link-click", "download-page"),
-               linux=link(c["linux_label"], f"{root}guides/install-garmin-maps-linux/", "guide-link-click", "download-page-linux"))
+    web = link(c["web_label"], f"{root}install/", "web-installer-link-click", "download-page")
     needs = "".join(f"<li>{html.escape(item)}</li>" for item in c["needs"])
     steps = "".join(f"<li><h3>{html.escape(title)}</h3><p>{html.escape(body)}</p></li>" for title, body in c["steps"])
     guides = fill(c["guides_text"],
                   watch=link(c["watch_label"], f"{root}guides/install-garmin-maps-mac/", "guide-link-click", "download-page"),
                   edge=link(c["edge_label"], f"{root}guides/install-garmin-maps-edge-mac/", "guide-link-click", "download-page-edge"))
     button = COMPONENTS["store_download"](dmg_url, html.escape(c["download"]), "download-v2-primary", 'rel="noopener noreferrer"')
+    # Hero (round 4): H1, lead, Download for Mac beside Apple's badge, one text link. The release
+    # line (matches softwareVersion) and the SHA-256 move to "What you need" below.
     return (
         '<main id="main-content" class="download-main download-v2"><div class="shell">'
-        '<section class="download-v2-hero page-hero page-hero-grid"><div class="download-v2-copy">'
+        '<section class="download-v2-hero page-hero page-hero-grid"><div class="hero-copy download-v2-copy">'
         f'<h1>{html.escape(c["h1"])}</h1>'
-        f'<p class="download-intro">{html.escape(c["intro"])}</p>'
-        f'<div class="download-v2-actions store-actions">{button}{store}</div>'
-        f'<p class="download-release">{release_text} {html.escape(HOME_COPY[locale]["app_requirements"])} '
-        f'<a class="text-link" href="{notes_url}" rel="noopener noreferrer">{html.escape(c["notes"])}</a></p>'
-        f'<p class="download-v2-web">{web}</p>'
+        f'<p class="hero-lede download-intro">{html.escape(c["intro"])}</p>'
+        f'<div class="hero-actions download-v2-actions store-actions">{button}{store}</div>'
+        f'<p class="hero-secondary download-v2-web">{web}</p>'
         f'</div>{shot}</section>'
         '<div class="grid download-v2-info">'
         '<section class="col-6 download-v2-needs" aria-labelledby="download-needs-title">'
-        f'<h2 id="download-needs-title">{html.escape(c["needs_title"])}</h2><ul class="checklist">{needs}</ul>'
+        f'<h2 id="download-needs-title">{html.escape(c["needs_title"])}</h2>'
+        f'<p class="download-release">{release_text} {html.escape(HOME_COPY[locale]["app_requirements"])} '
+        f'<a class="text-link" href="{notes_url}" rel="noopener noreferrer">{html.escape(c["notes"])}</a></p>'
+        f'<ul class="checklist">{needs}</ul>'
         + link(c["compat_label"], f"{root}compatibility/", "compatibility-link-click", "download-page", " download-info-link")
+        + f'<details class="download-sha"><summary>{html.escape(SHA_LABEL[locale])}</summary><p><code>{sha}</code></p></details>'
         + '</section>'
         '<section class="col-6 download-v2-after" aria-labelledby="download-steps-title">'
         f'<h2 id="download-steps-title">{html.escape(c["steps_title"])}</h2><ol class="steps">{steps}</ol>'

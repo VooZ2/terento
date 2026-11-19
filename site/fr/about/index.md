@@ -65,4 +65,6 @@ Merci aux sites et aux testeurs qui ont essayé, présenté ou recommandé Teren
 
 [Garmin Fenix: 17 Tips I Wish I Knew Sooner](https://www.youtube.com/watch?v=szqwPHHWiTM)
 
-[Télécharger Terento pour Mac](https://terento.app/fr/download/)
+Installez une carte gratuite sur votre Garmin
+
+[Télécharger pour Mac](https://terento.app/fr/download/) [Utiliser l’installateur web](https://terento.app/fr/install/)

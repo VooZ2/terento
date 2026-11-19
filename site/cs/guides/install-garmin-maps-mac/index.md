@@ -9,8 +9,6 @@ Terento nainstaluje bezplatné mapy OpenStreetMap nebo váš vlastní mapový so
 
 [Stáhnout pro Mac](https://terento.app/cs/download/)
 
-Používáte Linux? [Nainstalujte mapy z prohlížeče](https://terento.app/cs/guides/install-garmin-maps-linux/).
-
 ## Co potřebujete
 
 - Mac s Apple Silicon a macOS 13 nebo novějším
@@ -31,7 +29,7 @@ Ukončete Garmin Express, pokud je otevřený. Odemkněte hodinky a připojte je
 
 [Mac nevidí hodinky Garmin](https://terento.app/cs/guides/troubleshooting/#connect-watch)
 
-Terento zobrazuje připojené hodinky Garmin a stav rozpoznání
+[Terento zobrazuje připojené hodinky Garmin a stav rozpoznání](https://terento.app/assets/app/optimized/your-garmin-1600.webp?v=20260912-app-screens-v2)
 Terento před instalací rozpozná připojené hodinky Garmin.
 
 3. Vyberte mapu
@@ -46,14 +44,14 @@ Vyberte poskytovatele a oblast z katalogu.
 
 Přidejte kompatibilní mapu .img z Macu.
 
-Terento zobrazuje poskytovatele, oblasti map třetích stran a dostupné místo v Garminu
+[Terento zobrazuje poskytovatele, oblasti map třetích stran a dostupné místo v Garminu](https://terento.app/assets/app/optimized/map-selected-1600.webp?v=20260912-app-screens-v2)
 Vyberte mapu z katalogu nebo přidejte vlastní kompatibilní soubor.
 
 4. Instalujte
 
 Spusťte instalaci a nechte hodinky připojené, dokud Terento neoznámí, že je mapa připravená. Potom hodinky odpojte.
 
-Terento zobrazuje dokončenou instalaci mapy do hodinek Garmin
+[Terento zobrazuje dokončenou instalaci mapy do hodinek Garmin](https://terento.app/assets/app/optimized/maps-done-1600.webp?v=20260912-app-screens-v2)
 Nechte hodinky připojené do dokončení přenosu a kontroly.
 
 ## Zobrazení mapy v hodinkách
@@ -82,6 +80,6 @@ Na obrazovce neúspěšné instalace zvolte „Report issue“. Terento otevře 
 
 Ukončete Terento a přesuňte ho ze složky Aplikace do koše. Mapy v hodinkách zůstanou. Terento si údaje o nainstalovaných mapách ukládá do ~/Library/Application Support/Terento: tuto složku si ponechte, pokud budete Terento instalovat znovu, aby tyto mapy mohlo dál aktualizovat a odstraňovat. Chcete-li odstranit vše, smažte i tuto složku, ~/Library/Caches/Terento, ~/Library/Logs/Terento a ~/Library/Preferences/app.terento.mac.plist.
 
-Nainstalujte svou první mapu
+Nahrajte do svého Garminu mapu zdarma
 
-[Stáhnout pro Mac](https://terento.app/cs/download/)
+[Stáhnout pro Mac](https://terento.app/cs/download/) [Použít webový instalátor](https://terento.app/cs/install/)

@@ -158,3 +158,7 @@ Freizeitkarte je obsahuje. OpenTopoMap je nabízí jako volitelný doplněk a OS
 Jak mapu nainstaluji?
 
 [Stáhněte](https://terento.app/cs/download/) si Terento pro Mac s Apple Silicon, nebo použijte [webový instalátor](https://terento.app/cs/install/) v prohlížeči Chromium. Připojte hodinky nebo Edge, vyberte mapu a region a nainstalujte. Krok za krokem vás provedou [návod pro hodinky Garmin](https://terento.app/cs/guides/install-garmin-maps-mac/) a [návod pro Garmin Edge](https://terento.app/cs/guides/install-garmin-maps-edge-mac/).
+
+Nahrajte do svého Garminu mapu zdarma
+
+[Stáhnout pro Mac](https://terento.app/cs/download/) [Použít webový instalátor](https://terento.app/cs/install/)

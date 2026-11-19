@@ -7,19 +7,51 @@ canonical: https://terento.app/pl/
 
 Terento wgrywa darmowe mapy z projektów OpenStreetMap na zegarki Garmin i liczniki rowerowe Edge. W aplikacji na Maca albo prosto z przeglądarki na komputerze. Za darmo, a aplikacja na Maca jest open source.
 
-[Pobierz na Maca](https://terento.app/pl/download/) [Download on the Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-home&mt=8)
+[Pobierz na Maca](https://terento.app/pl/download/) [Zainstaluj z przeglądarki](https://terento.app/pl/install/)
 
-[Zainstaluj z przeglądarki](https://terento.app/pl/install/) Tylko Mac i Linux, nie Windows ani telefony.
-
-Nie wiesz, czy Twój model działa? [Sprawdź kompatybilność](https://terento.app/pl/compatibility/)
-
-[Wyślij link na swój komputer](mailto:?subject=Terento%3A%20darmowe%20mapy%20na%20Twojego%20Garmina&body=https%3A%2F%2Fterento.app%2Fpl%2F)
+[Wyślij link na swój komputer](mailto:?subject=Terento%3A%20darmowe%20mapy%20na%20Twojego%20Garmina&body=https%3A%2F%2Fterento.app%2Fpl%2F) [Sprawdź kompatybilność](https://terento.app/pl/compatibility/)
 
 Zegarek Garmin z mapą OpenTopoMap okolic jeziora Königssee w Alpach Bawarskich
 
 - **47** modele z udanymi instalacjami
 - **463** udane instalacje
-- **18 listopada 2026** Ostatnia udana instalacja
+- **18 listopada 202618.11.2026** Ostatnia udana instalacja
+
+## Jak to działa
+
+1. Połącz
+
+Terento rozpoznaje zegarek Garmin i pokazuje, kiedy jest gotowy.
+
+2. Zainstaluj
+
+Wybierz mapy z katalogu albo dodaj własną zgodną mapę .img.
+
+3. Gotowe
+
+Twoje mapy są zainstalowane i gotowe do użycia na Twoim Garminie.
+
+Terento pokazuje dostawców i regiony map innych firm na macOS
+
+## Zarządzaj mapami
+
+Zobacz, co jest na Twoim Garminie, aktualizuj mapy, gdy pojawi się nowsza wersja, albo je usuń. Oryginalne mapy Garmina pozostają nietknięte.
+
+[Przeczytaj poradnik dla Maca](https://terento.app/pl/guides/install-garmin-maps-mac/)
+
+### Bezpiecznie dla Twojego Garmina
+
+Terento zawsze zostawia na Garminie co najmniej 1 GB wolnego miejsca i sprawdza każdą mapę po skopiowaniu. Do sprawdzenia służy suma kontrolna SHA-256.
+
+[Zobacz kod źródłowy](https://github.com/VooZ2/terento)
+
+## Także na rowerze
+
+Nowsze liczniki rowerowe Garmin Edge z obsługą map, takie jak Edge 540, 840 i 1050, korzystają z tych samych map. Podłącz, wybierz region, zainstaluj.
+
+Licznik rowerowy Garmin Edge z mapą Freizeitkarte podjazdu Sa Calobra w górach Serra de Tramuntana na Majorce
+
+[Przeczytaj poradnik dla Garmin Edge](https://terento.app/pl/guides/install-garmin-maps-edge-mac/)
 
 ## Wybierz mapę pasującą do wyprawy
 
@@ -69,59 +101,17 @@ Niektóre opisy na mapie są po francusku.
 
 [Porównaj style map na żywo](https://terento.app/pl/map-styles/)
 
-## Jak to działa
-
-1. Połącz
-
-Terento rozpoznaje zegarek Garmin i pokazuje, kiedy jest gotowy.
-
-2. Zainstaluj
-
-Wybierz mapy z katalogu albo dodaj własną zgodną mapę .img.
-
-3. Gotowe
-
-Twoje mapy są zainstalowane i gotowe do użycia na Twoim Garminie.
-
-Terento pokazuje dostawców i regiony map innych firm na macOS
-
-## Zarządzaj mapami
-
-Zobacz, co jest na Twoim Garminie, aktualizuj mapy, gdy pojawi się nowsza wersja, albo je usuń. Oryginalne mapy Garmina pozostają nietknięte.
-
-[Przeczytaj poradnik dla Maca](https://terento.app/pl/guides/install-garmin-maps-mac/)
-
-### Bezpiecznie dla Twojego Garmina
-
-Terento zawsze zostawia na Garminie co najmniej 1 GB wolnego miejsca i sprawdza każdą mapę po skopiowaniu. Do sprawdzenia służy suma kontrolna SHA-256.
-
-[Zobacz kod źródłowy](https://github.com/VooZ2/terento)
-
-Licznik rowerowy Garmin Edge z mapą Freizeitkarte podjazdu Sa Calobra w górach Serra de Tramuntana na Majorce
-
-## Także na rowerze
-
-Nowsze liczniki rowerowe Garmin Edge z obsługą map, takie jak Edge 540, 840 i 1050, korzystają z tych samych map. Podłącz, wybierz region, zainstaluj.
-
-[Przeczytaj poradnik dla Garmin Edge](https://terento.app/pl/guides/install-garmin-maps-edge-mac/)
-
 ## W aplikacji na Maca lub w przeglądarce
 
 ### Aplikacja na Maca
 
 Instaluj mapy z katalogu lub własną mapę .img, sprawdzaj, co jest na Garminie, i aktualizuj mapy, gdy pojawią się nowsze wydania.
 
-macOS 13 lub nowszy na Apple Silicon.
-
 [Pobierz na Maca](https://terento.app/pl/download/)
-
-[Także w Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-home&mt=8)
 
 ### Instalator w przeglądarce
 
-Podłącz zegarek Garmin kablem USB, wybierz mapy i zainstaluj je prosto z Chrome, Microsoft Edge, Opery lub Brave. Później tak samo je zaktualizujesz lub usuniesz.
-
-Działa na Macu oraz, jeszcze w fazie testów, na Linuksie. Jeszcze nie na Windowsie, telefonach ani tabletach.
+Podłącz zegarek Garmin kablem USB, wybierz mapy i zainstaluj je prosto z Chrome, Microsoft Edge, Opery lub Brave.
 
 [Otwórz instalator webowy](https://terento.app/pl/install/)
 
@@ -156,3 +146,7 @@ Na ekranie nieudanej instalacji wybierz „Report issue”. Terento otwiera GitH
 Czy mogę zainstalować mapy bez instalowania aplikacji?
 
 Tak. [Instalator webowy](https://terento.app/pl/install/) instaluje, aktualizuje i usuwa mapy z katalogu w Chrome, Microsoft Edge, Operze lub Brave na Macu oraz na Linuksie, gdzie jest jeszcze testowany. Nie działa jeszcze na Windowsie, telefonach ani tabletach i nie dodaje własnych map .img.
+
+Wgraj darmową mapę na swojego Garmina
+
+[Pobierz na Maca](https://terento.app/pl/download/) [Użyj instalatora webowego](https://terento.app/pl/install/)

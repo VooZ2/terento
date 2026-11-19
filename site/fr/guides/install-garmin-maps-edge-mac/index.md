@@ -31,14 +31,14 @@ Quittez Garmin Express s’il est ouvert. Connectez l’Edge directement au Mac 
 
 Choisissez un fournisseur et une région dans le catalogue, ou ajoutez depuis votre Mac votre propre fichier de carte .img compatible. [Comparez les styles de carte](https://terento.app/fr/map-styles/) pour voir comment chaque carte affiche routes et sentiers.
 
-Terento affiche les fournisseurs, les régions de cartes tierces et l’espace Garmin disponible
+[Terento affiche les fournisseurs, les régions de cartes tierces et l’espace Garmin disponible](https://terento.app/assets/app/optimized/map-selected-1600.webp?v=20260912-app-screens-v2)
 Choisissez une carte dans le catalogue ou ajoutez votre propre fichier compatible.
 
 4. Installer
 
 Lancez l’installation et gardez l’Edge connecté jusqu’à ce que Terento indique que l’installation est terminée. Déconnectez ensuite l’Edge.
 
-Terento affiche une installation de carte terminée
+[Terento affiche une installation de carte terminée](https://terento.app/assets/app/optimized/maps-done-1600.webp?v=20260912-app-screens-v2)
 Gardez l’Edge connecté jusqu’à ce que Terento indique que la carte est prête.
 
 ## Afficher la carte sur votre Edge
@@ -69,6 +69,6 @@ Les Edge récents, comme les Edge 540, 840 et 1050, échangent des fichiers en U
 
 Les modèles plus anciens, comme l’Edge 1030 Plus et les précédents, apparaissent généralement sur un Mac comme un disque USB. Sur ceux-ci, vous pouvez copier vous-même un fichier de carte .img compatible dans le dossier Garmin du disque, sans Terento. Terento n’est pas conçu pour ces modèles.
 
-Installez votre première carte
+Installez une carte gratuite sur votre Garmin
 
-[Télécharger pour Mac](https://terento.app/fr/download/)
+[Télécharger pour Mac](https://terento.app/fr/download/) [Utiliser l’installateur web](https://terento.app/fr/install/)

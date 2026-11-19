@@ -14,7 +14,7 @@ for (const language of ["en", "de", "fr", "pl", "cs", "it"]) {
   const prefix = language === "en" ? "" : `${language}/`;
   const page = read(`site/${prefix}compatibility/index.html`);
   assert.match(page, /id="compatibility-snapshot"/, `${language}: snapshot is checked in`);
-  assert.match(page, /class="watch-card card card--media" data-device-type="(?:watch|edge)"/, `${language}: cards are server-rendered`);
+  assert.match(page, /class="watch-card card" data-device-type="(?:watch|edge)"/, `${language}: cards are server-rendered`);
   assert.match(page, /id="successful-install-filter"/, `${language}: successful-install filter`);
   assert.equal((page.match(/id="compatibility-clear"/g) || []).length, 1);
   assert.equal((page.match(/id="compatibility-snapshot"/g) || []).length, 1);
@@ -103,7 +103,7 @@ async function checkSnapshotFirstAndRefresh() {
   const grid = node("#watch-grid").innerHTML;
   assert.match(grid, />1,200\+ successful installs<\/p>/);
   assert.match(grid, /<\/svg>App 1,100\+<\/span> <span class="watch-install-source"><svg[^>]*viewBox="0 0 24 24"[^>]*>(?:<!--[^>]*-->)?<circle[\s\S]*?<\/svg>Web 54<\/span>/);
-  assert.match(grid, /aria-label="Forerunner 970, AMOLED, 1,200\+ successful installs, 1,100\+ with the app, 54 with the web installer, Latest successful install/);
+  assert.match(grid, /aria-label="Forerunner 970, AMOLED, 1,200\+ successful installs, 1,100\+ with the app, 54 with the web installer, Last install/);
   assert.match(grid, /11 successful installs<\/p><p class="watch-install-sources"><span class="watch-install-source"><svg[^>]*>[\s\S]*?<\/svg>App 11<\/span><\/p>/, "older rows count every success as app");
   assert.equal((grid.match(/class="watch-install-source-icon"/g) || []).length, 4);
   assert.ok(!node("#watch-grid").innerHTML.includes("TESTING-only row"));

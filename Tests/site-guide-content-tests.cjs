@@ -76,7 +76,7 @@ for (const locale of locales) {
   assert.match(source, /Apple Silicon/);
   assert.match(source, /macOS 13/);
   assert.match(source, /USB/);
-  const needs = source.match(/<ul class="guide-checklist">([\s\S]*?)<\/ul>/)?.[1];
+  const needs = source.match(/<div class="guide-needs"><ul class="checklist">([\s\S]*?)<\/ul>/)?.[1];
   assert.ok(needs, locale + ": what-you-need checklist");
   assert.ok((needs.match(/<li>/g) || []).length >= 3, locale + ": at least three requirements");
   assert.doesNotMatch(source, /class="guide-actions"|class="guide-meta"|Last reviewed|Zuletzt geprüft|Dernière vérification|Ostatni przegląd|Naposledy ověřeno|Ultima verifica/);
@@ -115,10 +115,10 @@ for (const locale of locales) {
   const downloadButtons = [...source.matchAll(/<a class="download-action download-action--store"[^>]*data-umami-event-location="guide-hero"><svg class="download-action-icon"[\s\S]*?<\/svg><span>([^<]+)<\/span><\/a>/g)];
   assert.equal(downloadButtons.length, 1, locale + ": one rendered download button");
   for (const button of downloadButtons) assert.equal(button[1].trim(), downloadLabels[locale], locale + ": download button label");
-  assert.match(source, /<p class="guide-hero-action"><a class="download-action download-action--store"[^>]*data-umami-event-location="guide-hero"/, locale + ": download CTA in the guide intro");
+  assert.match(source, /<p class="hero-actions guide-hero-action"><a class="download-action download-action--store"[^>]*data-umami-event-location="guide-hero"/, locale + ": download CTA in the guide intro");
   // Site refresh (owner spec 2026-11-18): one closing .cta-band; its title is a <p>, never a heading.
-  assert.equal((source.match(/data-umami-event-location="guide-bottom"/g) || []).length, 1, locale + ": one closing call to action");
-  assert.match(source, /<div class="cta-band guide-cta-band"><div class="cta-band__copy"><p class="cta-band__title">/, locale + ": closing band title is a paragraph");
+  assert.equal((source.match(/data-umami-event="download-cta-click" data-umami-event-location="guide-bottom"/g) || []).length, 1, locale + ": one closing call to action");
+  assert.match(source, /<div class="cta-band end-cta"><div class="cta-band__copy"><p class="cta-band__title">/, locale + ": closing band title is a paragraph");
   assert.doesNotMatch(source, /guide-bottom-title/);
   assert.match(source, /data-umami-event="compatibility-link-click" data-umami-event-location="guide-preflight"/);
   assert.doesNotMatch(source, /guide-support-actions/);
@@ -485,7 +485,9 @@ for (const locale of locales) {
 
   const primary = source.match(/<nav class="primary-nav"[^>]*>([\s\S]*?)<\/nav>/)?.[1];
   assert.ok(primary, `${locale}: troubleshooting static shell`);
-  assert.doesNotMatch(primary.split('<span class="language-switcher">')[0], /aria-current="page"/, `${locale}: no nav item claims the troubleshooting page`);
+  // Owner, round 4: every guide page (watch, Edge, Linux, Troubleshooting) marks "Guide" as current.
+  assert.equal((primary.split('<span class="language-switcher">')[0].match(/aria-current="page"/g) || []).length, 1, `${locale}: one nav item is current`);
+  assert.match(primary, /data-shell-route="guide" aria-current="page"/, `${locale}: Guide is the current nav item on Troubleshooting`);
   const languageOptions = source.match(/<div class="language-options">([\s\S]*?)<\/div>/)?.[1];
   for (const candidate of locales) assert.ok(languageOptions.includes(`href="${localePath(candidate, troubleshootingSlug)}"`), `${locale}: troubleshooting language route`);
 

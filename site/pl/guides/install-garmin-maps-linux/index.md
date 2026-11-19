@@ -9,8 +9,6 @@ W Linuksie instalator webowy Terento wgrywa darmowe mapy na zegarki Garmin obsł
 
 [Otwórz instalator webowy](https://terento.app/pl/install/)
 
-Masz Maca? Przeczytaj poradnik dla [zegarka Garmin](https://terento.app/pl/guides/install-garmin-maps-mac/) lub [Garmin Edge](https://terento.app/pl/guides/install-garmin-maps-edge-mac/).
-
 ## Czego potrzebujesz
 
 - Chrome, Microsoft Edge, Opery lub Brave na komputerze z Linuksem. Firefox nie łączy się z urządzeniami USB.
@@ -49,6 +47,6 @@ Nie zamykaj listy przez maksymalnie dwie minuty. Jeśli nie pojawi się pozycja 
 
 Przeglądarka zainstalowana jako pakiet Snap może nie mieć dostępu do USB. Użyj przeglądarki z jej oficjalnego pakietu .deb lub .rpm.
 
-Zainstaluj pierwszą mapę
+Wgraj darmową mapę na swojego Garmina
 
 [Otwórz instalator webowy](https://terento.app/pl/install/)

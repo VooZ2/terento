@@ -13,13 +13,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA = runpy.run_path(str(ROOT / "scripts/page_schema.py"))
 COMPONENTS = runpy.run_path(str(ROOT / "scripts/site_components.py"))
-DOWNLOAD_COPY = json.loads((ROOT / "scripts/templates/download-copy.json").read_text(encoding="utf-8"))
 LINKEDIN_URL = "https://www.linkedin.com/in/gediminasc/"
 REDDIT_URL = "https://www.reddit.com/user/MrDonas/"
 BASE_URL = "https://terento.app"
 ABOUT_SLUG = "about/"
 SHELL_VERSION = "20260905-in-page-language-v1"
-STYLE_VERSION = "20261119-site-refresh-v3"
+STYLE_VERSION = "20261119-site-refresh-v4"
 UMAMI_SCRIPT_VERSION = "20261114-umami-monitoring"
 SOCIAL_IMAGE = "/assets/social/terento-og.png"
 EMAIL_ADDRESS = "hello@terento.app"
@@ -357,17 +356,9 @@ def mention_card(locale: str, copy: dict[str, object], mention: dict[str, str]) 
             f'<a class="text-link" href="{esc(mention["url"])}"{language}>{esc(mention["title"])}</a></li>')
 
 
-# Optional round portrait: rendered only when the owner adds this file (no placeholder).
-PORTRAIT = ROOT / "site/assets/about/gediminas.jpg"
-
-
 def maker_row(copy: dict[str, object]) -> str:
-    photo = ""
-    if PORTRAIT.is_file():
-        photo = ('<img class="about-maker-photo" src="/assets/about/gediminas.jpg" alt="Gediminas" '
-                 'width="96" height="96" loading="eager" decoding="async">')
-    return (f'<div class="about-maker">{photo}<p class="about-maker-text"><span class="about-maker-name">Gediminas</span>'
-            f'<span class="about-maker-role">{esc(copy["role"])}</span></p></div>')
+    return (f'<p class="hero-lede about-maker"><span class="about-maker-name">Gediminas</span>'
+            f'<span class="about-maker-role">{esc(copy["role"])}</span></p>')
 
 
 def about_json_ld(locale: str) -> str:
@@ -457,14 +448,16 @@ def render(locale: str, copy: dict[str, object]) -> str:
     <a class="skip-link" href="#main-content">{esc(copy["skip"])}</a>
     <header class="site-header"></header>
     <main id="main-content" class="about-v3">
-      <section class="block about-hero" aria-labelledby="about-title">
-        <div class="shell grid">
-          <div class="card about-story-card">
-            <h1 id="about-title">{esc(copy["h1"])}</h1>
-            {maker_row(copy)}
-            <div class="about-story-copy">
+      <section class="page-hero about-hero" aria-labelledby="about-title">
+        <div class="shell"><div class="hero-copy">
+          <h1 id="about-title">{esc(copy["h1"])}</h1>
+          {maker_row(copy)}
+        </div></div>
+      </section>
+      <section class="block about-story">
+        <div class="shell">
+          <div class="about-story-copy">
 {story}
-            </div>
           </div>
 {social}
         </div>
@@ -488,9 +481,9 @@ def render(locale: str, copy: dict[str, object]) -> str:
           <ul class="grid about-mentions">
 {mentions}
           </ul>
-          <p class="about-download-link"><a class="text-link" href="{localized_path(locale, 'download/')}" data-umami-event="download-cta-click" data-umami-event-location="about-bottom">{esc(DOWNLOAD_COPY[locale]["h1"])}</a></p>
         </div>
       </section>
+      <div class="shell">{COMPONENTS["end_cta"](locale, "about-bottom")}</div>
     </main>
     <footer class="site-footer"></footer>
   </body>

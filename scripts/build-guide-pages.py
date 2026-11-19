@@ -25,27 +25,27 @@ RELEASE = json.loads((ROOT / "site/updates/macos-arm64.json").read_text())
 # dateModified: the later of the release date and the last content review of
 # the guide. Bump GUIDE_CONTENT_REVIEWED when the guide text changes; the site
 # tests compare it with the sitemap lastmod (2026-11-02 SEO review, A6).
-GUIDE_CONTENT_REVIEWED = "2026-11-18"
+GUIDE_CONTENT_REVIEWED = "2026-11-14"
 REVIEWED = max(RELEASE["publishedAt"], GUIDE_CONTENT_REVIEWED) + "T00:00:00Z"
 IMAGE_VERSION = "20260912-app-screens-v2"
 READING_STATE_VERSION = "20260902-reading-state"
 UMAMI_SCRIPT_VERSION = "20261114-umami-monitoring"
 SHELL_VERSION = "20260905-in-page-language-v1"
-STYLE_VERSION = "20261119-site-refresh-v3"
+STYLE_VERSION = "20261119-site-refresh-v4"
 LANGUAGE_VERSION = "20260905-language-selector-full-name-v1"
 SOCIAL_IMAGE = "/assets/social/terento-og.png"
 EMAIL_ADDRESS = "hello@terento.app"
 TROUBLESHOOTING_SLUG = "guides/troubleshooting/"
 TROUBLESHOOTING_PUBLISHED = "2026-10-06T00:00:00Z"
-TROUBLESHOOTING_REVIEWED = "2026-11-18T00:00:00Z"
+TROUBLESHOOTING_REVIEWED = "2026-11-14T00:00:00Z"
 TROUBLESHOOTING_COPY = json.loads((ROOT / "scripts/templates/troubleshooting-copy.json").read_text(encoding="utf-8"))
 LINUX_SLUG = "guides/install-garmin-maps-linux/"
 LINUX_PUBLISHED = "2026-11-02T00:00:00Z"
-LINUX_REVIEWED = "2026-11-18T00:00:00Z"
+LINUX_REVIEWED = "2026-11-14T00:00:00Z"
 LINUX_COPY = json.loads((ROOT / "scripts/templates/linux-guide-copy.json").read_text(encoding="utf-8"))
 EDGE_SLUG = "guides/install-garmin-maps-edge-mac/"
 EDGE_PUBLISHED = "2026-11-05T00:00:00Z"
-EDGE_REVIEWED = "2026-11-18T00:00:00Z"
+EDGE_REVIEWED = "2026-11-14T00:00:00Z"
 EDGE_COPY = json.loads((ROOT / "scripts/templates/edge-guide-copy.json").read_text(encoding="utf-8"))
 WATCH_COPY = json.loads((ROOT / "scripts/templates/watch-guide-copy.json").read_text(encoding="utf-8"))
 LOCALES = ("en", "de", "fr", "pl", "cs", "it")
@@ -161,12 +161,14 @@ def image_markup(asset: str, width: int, height: int, alt: str, caption: str) ->
         for size in responsive_widths
     )
     fallback_width = responsive_widths[-1]
+    # On phones the screenshot is small: a tap opens the full-size image.
+    full = f"/assets/app/optimized/{stem}-{fallback_width}.webp{version}"
     return f'''<figure class="guide-screenshot">
-          <picture>
+          <a class="guide-screenshot-link" href="{full}" target="_blank" rel="noopener"><picture>
             <source type="image/avif" srcset="{sources}" sizes="(max-width: 760px) 100vw, 42vw">
             <source type="image/webp" srcset="{webp_sources}" sizes="(max-width: 760px) 100vw, 42vw">
             <img src="/assets/app/optimized/{stem}-{fallback_width}.avif{version}" srcset="{sources}" sizes="(max-width: 760px) 100vw, 42vw" width="{width}" height="{height}" loading="lazy" decoding="async" alt="{esc(alt)}">
-          </picture>
+          </picture></a>
           <figcaption>{esc(caption)}</figcaption>
         </figure>'''
 
@@ -276,7 +278,9 @@ def render_troubleshooting(locale: str) -> str:
     # Not a troubleshooting-item: the app's 15 anchors stay the only topics.
     edge = copy["edge"]
     # Symptom picker: one card per H2 section, with its problems as direct links.
-    picker_cards = [f'<div class="card troubleshooting-pick"><p class="troubleshooting-pick-title"><a href="#garmin-edge">{esc(edge["title"])}</a></p></div>']
+    # Same structure for every card: the title, then its links (Edge: the Edge guide).
+    picker_cards = [f'<div class="card troubleshooting-pick"><p class="troubleshooting-pick-title"><a href="#garmin-edge">{esc(edge["title"])}</a></p>'
+                    f'<ul><li><a href="{localized_path(locale, EDGE_SLUG)}">{esc(edge["link"])}</a></li></ul></div>']
     picker_cards += [
         f'<div class="card troubleshooting-pick"><p class="troubleshooting-pick-title"><a href="#{group["id"]}">{esc(group["title"])}</a></p><ul>'
         + "".join(f'<li><a href="#{item["anchor"]}">{esc(item["title"])}</a></li>' for item in group["items"])
@@ -313,10 +317,10 @@ def render_troubleshooting(locale: str) -> str:
     <main id="main-content" class="guide-main">
       <article class="guide-article">
         <header class="guide-intro page-hero">
-          <div class="shell">
+          <div class="shell"><div class="hero-copy">
             <h1>{esc(copy["h1"])}</h1>
-            <p class="guide-lede">{esc(copy["intro"])}</p>
-          </div>
+            <p class="hero-lede guide-lede">{esc(copy["intro"])}</p>
+          </div></div>
         </header>
 
         <nav class="troubleshooting-toc troubleshooting-picker shell" aria-label="{esc(copy["toc_label"])}">{toc}</nav>
@@ -331,7 +335,7 @@ def render_troubleshooting(locale: str) -> str:
 
           {groups_markup}
 
-          {COMPONENTS["cta_band"](esc(copy["guide_eyebrow"]), "", f'<a class="text-link" href="{localized_path(locale, GUIDE_SLUG)}" data-umami-event="guide-link-click" data-umami-event-location="troubleshooting-bottom">{esc(copy["guide_link"])}</a>', "troubleshooting-guide-link")}
+          {COMPONENTS["end_cta"](locale, "troubleshooting-bottom")}
         </div>
       </article>
     </main>
@@ -342,16 +346,6 @@ def render_troubleshooting(locale: str) -> str:
 
 
 COMPONENTS = runpy.run_path(str(ROOT / "scripts/site_components.py"))
-# Closing .cta-band title on the install guides (a <p>, never a heading).
-GUIDE_CTA_TITLE = {
-    "en": "Install your first map",
-    "de": "Installiere deine erste Karte",
-    "fr": "Installez votre première carte",
-    "pl": "Zainstaluj pierwszą mapę",
-    "cs": "Nainstalujte svou první mapu",
-    "it": "Installa la tua prima mappa",
-}
-
 GUIDE_LINK_RE = re.compile(r"\[([^\]]+)\]\(([a-z0-9/#-]+)\)")
 # Guide switch (same pill chips as the Compatibility filters): real links to the three
 # install guides, never tabs. Linux has the same label everywhere.
@@ -525,13 +519,9 @@ def render_guide(page: str, locale: str) -> str:
           </section>'''
         for item in copy.get("more", ())
     )
-    cta_band = COMPONENTS["cta_band"](
-        esc(GUIDE_CTA_TITLE[locale]), "",
-        guide_action(page, locale, "bottom"),
-        "guide-cta-band",
-    )
+    # Shared end-of-page CTA; on Linux the web installer is the primary (the Mac app can't run there).
+    cta_band = COMPONENTS["end_cta"](locale, f"{page}-bottom", web_first=page == "linux-guide")
     needs_note = f'\n            <p>{guide_text(locale, copy["needs_note"], f"{page}-preflight")}</p>' if copy.get("needs_note") else ""
-    other = f'\n            <p class="guide-v2-other">{guide_text(locale, copy["other"], f"{page}-other")}</p>' if copy.get("other") else ""
     return f'''<!doctype html>
 <html lang="{locale}" data-language="{locale}" data-page="{page}">
   <head>
@@ -563,18 +553,18 @@ def render_guide(page: str, locale: str) -> str:
     <main id="main-content" class="guide-main">
       <article class="guide-article guide-v2">
         <header class="guide-intro page-hero">
-          <div class="shell">
+          <div class="shell"><div class="hero-copy">
             {guide_switch(page, locale)}
             <h1>{esc(copy["h1"])}</h1>
-            <p class="guide-lede">{esc(copy["intro"])}</p>
-            <p class="guide-hero-action">{guide_action(page, locale, "hero")}</p>{other}
-          </div>
+            <p class="hero-lede guide-lede">{esc(copy["intro"])}</p>
+            <p class="hero-actions guide-hero-action">{guide_action(page, locale, "hero")}</p>
+          </div></div>
         </header>
 
         <div class="shell guide-content">
           <section class="guide-v2-section" id="before-you-start" aria-labelledby="before-you-start-title">
             <h2 id="before-you-start-title">{esc(copy["needs_title"])}</h2>
-            <div class="card guide-needs"><ul class="guide-checklist">{"".join(f"<li>{esc(need)}</li>" for need in copy["needs"])}</ul>{needs_note}</div>
+            <div class="guide-needs"><ul class="checklist">{"".join(f"<li>{esc(need)}</li>" for need in copy["needs"])}</ul>{needs_note}</div>
           </section>
 
           <section class="guide-v2-section" id="steps" aria-labelledby="steps-title">

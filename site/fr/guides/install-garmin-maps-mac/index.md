@@ -9,8 +9,6 @@ Terento installe des cartes OpenStreetMap gratuites, ou votre propre fichier de 
 
 [Télécharger pour Mac](https://terento.app/fr/download/)
 
-Sous Linux ? [Installez des cartes depuis le navigateur](https://terento.app/fr/guides/install-garmin-maps-linux/).
-
 ## Ce qu’il vous faut
 
 - Mac Apple Silicon avec macOS 13 ou version ultérieure
@@ -31,7 +29,7 @@ Quittez Garmin Express s’il est ouvert. Déverrouillez la montre et connectez-
 
 [Montre Garmin non détectée sur Mac](https://terento.app/fr/guides/troubleshooting/#connect-watch)
 
-Terento affiche une montre Garmin connectée et son état de détection
+[Terento affiche une montre Garmin connectée et son état de détection](https://terento.app/assets/app/optimized/your-garmin-1600.webp?v=20260912-app-screens-v2)
 Terento reconnaît la montre Garmin connectée avant l’installation.
 
 3. Choisir une carte
@@ -46,14 +44,14 @@ Choisissez un fournisseur et une région dans le catalogue.
 
 Ajoutez une carte .img compatible depuis votre Mac.
 
-Terento affiche les fournisseurs, les régions de cartes tierces et l’espace Garmin disponible
+[Terento affiche les fournisseurs, les régions de cartes tierces et l’espace Garmin disponible](https://terento.app/assets/app/optimized/map-selected-1600.webp?v=20260912-app-screens-v2)
 Choisissez une carte dans le catalogue ou ajoutez votre propre fichier compatible.
 
 4. Installer
 
 Lancez l’installation et gardez la montre connectée jusqu’à ce que Terento indique que la carte est prête. Déconnectez ensuite la montre.
 
-Terento affiche une installation de carte terminée sur une montre Garmin
+[Terento affiche une installation de carte terminée sur une montre Garmin](https://terento.app/assets/app/optimized/maps-done-1600.webp?v=20260912-app-screens-v2)
 Gardez la montre connectée jusqu’à la fin du transfert et de la vérification.
 
 ## Afficher la carte sur votre montre
@@ -82,6 +80,6 @@ Sur l’écran d’échec de l’installation, choisissez « Report issue ». Te
 
 Quittez Terento et placez-le dans la Corbeille depuis Applications. Les cartes déjà sur votre montre y restent. Terento conserve les informations sur les cartes qu’il a installées dans ~/Library/Application Support/Terento : gardez ce dossier si vous comptez réinstaller Terento, pour qu’il puisse encore mettre à jour et supprimer ces cartes. Pour tout supprimer, effacez aussi ce dossier, ~/Library/Caches/Terento, ~/Library/Logs/Terento et ~/Library/Preferences/app.terento.mac.plist.
 
-Installez votre première carte
+Installez une carte gratuite sur votre Garmin
 
-[Télécharger pour Mac](https://terento.app/fr/download/)
+[Télécharger pour Mac](https://terento.app/fr/download/) [Utiliser l’installateur web](https://terento.app/fr/install/)

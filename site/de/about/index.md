@@ -65,4 +65,6 @@ Danke an die Websites und Tester, die Terento ausprobiert, vorgestellt oder empf
 
 [Garmin Fenix: 17 Tips I Wish I Knew Sooner](https://www.youtube.com/watch?v=szqwPHHWiTM)
 
-[Terento für Mac herunterladen](https://terento.app/de/download/)
+Bring eine kostenlose Karte auf dein Garmin
+
+[Für Mac herunterladen](https://terento.app/de/download/) [Web-Installer verwenden](https://terento.app/de/install/)
