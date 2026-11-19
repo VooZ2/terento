@@ -62,13 +62,13 @@ separate confirmation.
 
 <p align="center">
   <img src="site/assets/app/masters/map-selected.png"
-       alt="Terento showing a search for Lithuania, a selected BBBike map, and projected storage before installation"
+       alt="Terento showing a search for Iceland, a selected BBBike map, and projected storage before installation"
        width="100%">
 </p>
 
 <p align="center">
   <img src="site/assets/app/masters/maps-done.png"
-       alt="Terento confirming that the BBBike Lithuania map is installed and verified"
+       alt="Terento confirming that the BBBike Iceland map is installed on the Garmin"
        width="100%">
 </p>
 

@@ -27,7 +27,7 @@ RELEASE = json.loads((ROOT / "site/updates/macos-arm64.json").read_text())
 # tests compare it with the sitemap lastmod (2026-11-02 SEO review, A6).
 GUIDE_CONTENT_REVIEWED = "2026-11-19"
 REVIEWED = max(RELEASE["publishedAt"], GUIDE_CONTENT_REVIEWED) + "T00:00:00Z"
-IMAGE_VERSION = "20260912-app-screens-v2"
+IMAGE_VERSION = "20261120-app-screens-v3"
 READING_STATE_VERSION = "20260902-reading-state"
 UMAMI_SCRIPT_VERSION = "20261114-umami-monitoring"
 SHELL_VERSION = "20260905-in-page-language-v1"
