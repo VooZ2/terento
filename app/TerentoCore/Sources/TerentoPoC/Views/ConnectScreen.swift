@@ -1197,7 +1197,11 @@ struct ConnectScreen: View {
                         Text(provider.title).tag(provider.id)
                     }
                 }
-                .toolbarMenuPicker(width: 175)
+                .toolbarMenuPicker(
+                    width: 175,
+                    title: managedPresentationIndex?.providerOptions
+                        .first { $0.id == managedProviderID }?.title ?? "All providers"
+                )
                 .accessibilityLabel("Installed map provider")
             }
             HStack {
@@ -1651,7 +1655,7 @@ struct ConnectScreen: View {
                     Text(group.title).tag(group)
                 }
             }
-            .toolbarMenuPicker(width: 190)
+            .toolbarMenuPicker(width: 190, title: selectedGeography.title)
             .accessibilityLabel("Geographic region")
 
             Picker("Map provider", selection: $selectedMapProviderID) {
@@ -1660,7 +1664,10 @@ struct ConnectScreen: View {
                     Text(provider.title).tag(provider.id)
                 }
             }
-            .toolbarMenuPicker(width: 175)
+            .toolbarMenuPicker(
+                width: 175,
+                title: mapProviderOptions.first { $0.id == selectedMapProviderID }?.title ?? "All providers"
+            )
             .accessibilityLabel("Map provider")
             .accessibilityHint("Filters maps without choosing a default provider.")
         }
@@ -2493,17 +2500,7 @@ struct ConnectScreen: View {
                     .fixedSize(horizontal: false, vertical: true)
 
                 if state == .active {
-                    if let progress {
-                        ProgressView(value: progress)
-                            .progressViewStyle(.linear)
-                            .tint(TerentoColors.interactive)
-                            .frame(height: InstallationTimelineLayout.progressBarHeight)
-                    } else {
-                        ProgressView()
-                            .progressViewStyle(.linear)
-                            .tint(TerentoColors.interactive)
-                            .frame(height: InstallationTimelineLayout.progressBarHeight)
-                    }
+                    TerentoProgressBar(value: progress, label: title)
 
                     if title == "Finishing" {
                         Text(finishingProgressDetail)
@@ -4361,7 +4358,7 @@ struct DeviceCard: View {
                         .font(.terentoUI(size: 13, weight: .medium))
                         .foregroundStyle(canEject ? TerentoColors.interactive : TerentoColors.secondaryText)
                         .padding(.horizontal, 10)
-                        .frame(minHeight: 40)
+                        .frame(minHeight: 44) // page action: 44 like Install/Manage maps; 40 is for dialogs
                         .background(
                             canEject
                                 ? TerentoColors.canvas
@@ -4792,22 +4789,16 @@ private struct ManageOperationProgress: View {
 
                 Spacer()
 
+                // Same rule as the install steps: % only for a measured value.
                 if let progress {
                     Text("\(Int(progress.fractionCompleted * 100))%")
-                        .font(.terentoUI(size: 13, weight: .semibold))
-                        .foregroundStyle(TerentoColors.graphite)
-                } else {
-                    Text("0%")
                         .font(.terentoUI(size: 13, weight: .semibold))
                         .foregroundStyle(TerentoColors.graphite)
                 }
             }
 
             if let progress {
-                ProgressView(value: progress.fractionCompleted)
-                    .progressViewStyle(.linear)
-                    .tint(TerentoColors.interactive)
-                    .frame(height: InstallationTimelineLayout.progressBarHeight)
+                TerentoProgressBar(value: progress.fractionCompleted, label: operation.phase.userLabel)
 
                 if isRemoval {
                     Text(progress.detail ?? "Verifying map removal")
@@ -4830,20 +4821,14 @@ private struct ManageOperationProgress: View {
                     .foregroundStyle(TerentoColors.secondaryText)
                 }
             } else if isRemoval {
-                ProgressView(value: 0)
-                    .progressViewStyle(.linear)
-                    .tint(TerentoColors.interactive)
-                    .frame(height: InstallationTimelineLayout.progressBarHeight)
+                TerentoProgressBar(value: 0, label: operation.phase.userLabel)
 
                 Text("Verifying map removal")
                     .font(.terentoUI(size: 10, weight: .medium))
                     .foregroundStyle(TerentoColors.secondaryText)
                     .lineLimit(1)
             } else {
-                ProgressView(value: 0)
-                    .progressViewStyle(.linear)
-                    .tint(TerentoColors.interactive)
-                    .frame(height: InstallationTimelineLayout.progressBarHeight)
+                TerentoProgressBar(value: 0, label: operation.phase.userLabel)
                 Text(operation.message)
                     .font(.terentoUI(size: 10, weight: .medium))
                     .foregroundStyle(TerentoColors.secondaryText)
@@ -4857,7 +4842,7 @@ private struct ManageOperationProgress: View {
 
     private var accessibilityValue: String {
         guard let progress else {
-            return "0 percent, \(operation.message)"
+            return operation.message
         }
         if isRemoval || progress.phaseFraction != nil {
             return "\(Int(progress.fractionCompleted * 100)) percent, \(progress.detail ?? operation.message)"
@@ -4969,6 +4954,59 @@ private struct TerentoMapRow<LeadingContent: View, TrailingContent: View>: View 
     }
 }
 
+/// The one Terento progress bar: 6 pt, capsule ends, border-colour track.
+/// Activity fills with interactive; storage with lichen plus an optional sky
+/// segment for the selected maps. A nil value is indeterminate.
+struct TerentoProgressBar: View {
+    let value: Double?
+    var selectedValue: Double = 0
+    var fill: Color = TerentoColors.interactive
+    var label: String = "Progress"
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var sweeping = false
+
+    var body: some View {
+        GeometryReader { proxy in
+            let width = proxy.size.width
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(TerentoColors.border)
+                if let value {
+                    let filled = width * Self.clamped(value)
+                    if selectedValue > 0 {
+                        Capsule()
+                            .fill(TerentoColors.sky)
+                            .frame(width: min(width, filled + width * Self.clamped(selectedValue)))
+                    }
+                    Capsule()
+                        .fill(fill)
+                        .frame(width: filled)
+                } else {
+                    Capsule()
+                        .fill(fill)
+                        .frame(width: width * 0.3)
+                        .offset(x: sweeping ? width * 0.7 : 0)
+                }
+            }
+            .clipShape(Capsule())
+        }
+        .frame(height: InstallationTimelineLayout.progressBarHeight)
+        .onAppear {
+            guard value == nil, !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true)) {
+                sweeping = true
+            }
+        }
+        .accessibilityElement()
+        .accessibilityLabel(label)
+        .accessibilityValue(value.map { "\(Int(Self.clamped($0) * 100)) percent" } ?? "In progress")
+    }
+
+    static func clamped(_ value: Double) -> Double {
+        value.isFinite ? min(1, max(0, value)) : 0
+    }
+}
+
 struct StorageCard: View {
     let total: String
     let available: String
@@ -4984,17 +5022,7 @@ struct StorageCard: View {
                 .font(.terentoUI(size: 15, weight: .medium))
                 .foregroundStyle(TerentoColors.graphite)
 
-            GeometryReader { proxy in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(TerentoColors.border)
-
-                    Capsule()
-                        .fill(TerentoColors.lichen)
-                        .frame(width: proxy.size.width * normalizedFillRatio)
-                }
-            }
-            .frame(height: 7)
+            TerentoProgressBar(value: normalizedFillRatio, fill: TerentoColors.lichen, label: "Storage")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
@@ -5810,34 +5838,16 @@ struct MapSelectionStorageSummary: View {
                     .multilineTextAlignment(.trailing)
             }
 
-            GeometryReader { proxy in
-                let projection = StorageBarProjection(
-                    plan: plan.storagePlan,
-                    totalCapacity: totalCapacity
-                )
-                let existingWidth = proxy.size.width * projection.fraction(
-                    for: projection.existingUsedBytes
-                )
-                let selectedWidth = proxy.size.width * projection.fraction(
-                    for: projection.selectedMapBytes
-                )
-
-                HStack(spacing: 0) {
-                    Rectangle()
-                        .fill(TerentoColors.lichen)
-                        .frame(width: existingWidth)
-
-                    Rectangle()
-                        .fill(TerentoColors.sky)
-                        .frame(width: selectedWidth)
-
-                    Rectangle()
-                        .fill(TerentoColors.border)
-                        .frame(maxWidth: .infinity)
-                }
-                .clipShape(Capsule())
-            }
-            .frame(height: 8)
+            let projection = StorageBarProjection(
+                plan: plan.storagePlan,
+                totalCapacity: totalCapacity
+            )
+            TerentoProgressBar(
+                value: projection.fraction(for: projection.existingUsedBytes),
+                selectedValue: projection.fraction(for: projection.selectedMapBytes),
+                fill: TerentoColors.lichen,
+                label: "Storage"
+            )
             .accessibilityHidden(true)
 
             HStack(alignment: .firstTextBaseline, spacing: 12) {
@@ -5972,16 +5982,35 @@ private extension View {
         modifier(ToolbarControlChrome(isFocused: isFocused))
     }
 
-    /// Borderless native pop-up, left-aligned inside the toolbar chrome.
-    func toolbarMenuPicker(width: CGFloat) -> some View {
-        self
-            .labelsHidden()
-            .pickerStyle(.menu)
-            .buttonStyle(.borderless)
-            .fixedSize()
-            .frame(maxWidth: .infinity, alignment: .leading)
+    /// Filter pop-up drawn in the toolbar chrome: the selected title on the
+    /// left, the chevron 12 pt from the right edge, the whole field clickable.
+    /// The options stay a native Picker inside the menu (checkmark, keyboard).
+    func toolbarMenuPicker(width: CGFloat, title: String) -> some View {
+        Menu {
+            self
+                .labelsHidden()
+                .pickerStyle(.inline)
+        } label: {
+            HStack(spacing: 8) {
+                Text(title)
+                    .foregroundStyle(TerentoColors.graphite)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(TerentoColors.secondaryText)
+                    .padding(.trailing, 2) // chrome pads 10; chevron sits 12 from the edge
+                    .accessibilityHidden(true)
+            }
             .toolbarControlChrome()
             .frame(width: width)
+            .contentShape(Rectangle())
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        .accessibilityValue(title)
     }
 }
 

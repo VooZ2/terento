@@ -373,8 +373,10 @@ percentage belongs to its displayed stage, not the whole update or time remainin
 Stage weights allocate work; they do not predict duration. ZIP extraction, device
 inventory and the deletion command itself do not expose intermediate completion, so
 progress holds at the last completed checkpoint with an action description until
-the call returns. Unknown download lengths remain at 0% until a total is known;
-no timer fabricates progress. Device safety checks and mutation order are unchanged.
+the call returns. Unknown download lengths show an empty bar without a
+percentage until a total is known; no timer fabricates progress. Install steps,
+Manage rows and the storage meters share one 6 pt capsule bar
+(`TerentoProgressBar`); a percentage appears only for a measured value. Device safety checks and mutation order are unchanged.
 Remove and Update's old-map removal reserve 20–90% for the content check
 immediately before deletion (the recorded sampled proof of a managed map, which
 usually ends before the 5-second estimate warm-up, so no time estimate appears,

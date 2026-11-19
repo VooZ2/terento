@@ -64,6 +64,7 @@ component = source.split("private struct ManageOperationProgress: View {", 1)[1]
 assert "ProgressView()" not in component, "Manage operations must not use an indeterminate bar"
 assert "progress.phaseFraction != nil" in component, "non-byte checking progress must reach the bar"
 assert "progress.detail ?? operation.message" in component, "checking needs an action description"
-assert 'Text("0%")' in component, "initial operations must show a percentage"
+assert 'Text("0%")' not in component, "an unmeasured operation must not show a percentage (same rule as install steps)"
+assert "TerentoProgressBar(value: 0" in component, "initial operations must still show an empty determinate bar"
 print("PASS: determinate Manage maps progress, description and initial state")
 PYTEST
