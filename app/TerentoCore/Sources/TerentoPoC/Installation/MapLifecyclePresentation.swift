@@ -359,13 +359,17 @@ enum DeviceOperationActivityPolicy {
     /// True while quitting could leave an incomplete map on the watch.
     static func writesToDevice(
         mapInstallActive: Bool,
-        lifecyclePhases: [MapLifecycleOperationPhase]
+        lifecycleOperations: [(action: MapLifecycleAction, phase: MapLifecycleOperationPhase)]
     ) -> Bool {
-        mapInstallActive || lifecyclePhases.contains { phase in
+        mapInstallActive || lifecycleOperations.contains { action, phase in
             switch phase {
             case .removing, .updating, .verifying, .installing, .removingOld, .finishing:
                 return true
-            case .idle, .awaitingConfirmation, .downloading, .preparing, .checking, .completed, .failed:
+            case .checking:
+                // Remove's Checking comes after the delete (post-check and
+                // manifest); Update's Checking is before anything is written.
+                return action == .remove
+            case .idle, .awaitingConfirmation, .downloading, .preparing, .completed, .failed:
                 return false
             }
         }

@@ -65,5 +65,26 @@ for needle in ['case .error: return TerentoColors.error', 'case .warning: return
 
 screen = sources['ConnectScreen.swift']
 assert 'MapLifecycleConfirmationCopy.removeTitle(' in screen and 'MapLifecycleConfirmationCopy.removeMessage(' in screen
-print(f'PASS: {len(presented)} sheets use the shared dialog standard')
+
+def check(ok, message):
+    if not ok:
+        print(f'FAIL: {message}')
+        sys.exit(1)
+
+def branch(body, label):
+    check('if isDestructive {' in body, f'{label} has no destructive branch')
+    start = body.index('if isDestructive {')
+    return body[start:body.index('} else {', start)]
+
+# Remove map: presentation -> destructive sheet branch -> destructive confirm button.
+call_start = screen.find('MapLifecycleConfirmationSheet(')
+check(call_start >= 0, 'the map Remove confirmation sheet is not presented')
+call = screen[call_start:screen.index('onConfirm:', call_start)]
+check('"Remove map"' in call and 'isDestructive: confirmation.action == .remove' in call,
+      'the map Remove confirmation is not presented as destructive')
+check('isDestructive: true' in branch(struct_body('MapLifecycleConfirmationSheet'), 'MapLifecycleConfirmationSheet'),
+      'the map Remove sheet does not open the shared dialog as destructive')
+check('TerentoDialogButton(primaryLabel, kind: .destructive' in destructive,
+      'the destructive dialog confirm button is not the destructive kind')
+print(f'PASS: {len(presented)} sheets use the shared dialog standard; map Remove uses the destructive dialog')
 PY

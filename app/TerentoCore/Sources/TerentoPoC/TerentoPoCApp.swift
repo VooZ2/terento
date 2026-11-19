@@ -192,7 +192,7 @@ final class DeviceOperationActivityMonitor {
         let lifecyclePhases = lifecycle.operations.values.map(\.phase)
         isDeviceWriteActive = DeviceOperationActivityPolicy.writesToDevice(
             mapInstallActive: mapEngine.state == .installing,
-            lifecyclePhases: lifecyclePhases
+            lifecycleOperations: lifecycle.operations.values.map { (action: $0.action, phase: $0.phase) }
         )
         let keepAwake = DeviceOperationActivityPolicy.keepsMacAwake(
             installationPhase: mapEngine.installationPhase,

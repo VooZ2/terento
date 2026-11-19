@@ -71,7 +71,10 @@ if ! grep -Fq 'return selectedGeography == .all ? "No maps are available." : "No
     || ! grep -Fq '.labelsHidden()' "$connect_screen" \
     || ! grep -Fq '.accessibilityLabel("Map provider")' "$connect_screen" \
     || grep -Fq 'Button("Manage maps")' "$connect_screen" \
-    || ! grep -Fq 'baseDetail = item.alreadyInstalledDetail' "$connect_screen" \
+    || ! grep -Fq 'baseDetail = item.alreadyInstalledDetail(updateOffered: updateOfferedInManage)' "$connect_screen" \
+    || ! grep -Fq 'updateOfferedInManage: isUpdateOfferedInManage(item)' "$connect_screen" \
+    || ! grep -Fq 'lifecycleViewModel.availability(for: lifecycleItem).allows(.update)' "$connect_screen" \
+    || grep -Fq 'return installed.managementState == .managedByTerento' "$project_root/Sources/TerentoPoC/MapCatalog/MapSelectionPlanner.swift" \
     || ! grep -Fq 'return "Already installed"' "$project_root/Sources/TerentoPoC/MapCatalog/MapSelectionPlanner.swift" \
     || grep -Fq 'row.item.comparison.installedMap == nil' \
         "$project_root/Sources/TerentoPoC/MapCatalog/MapSelectionPresentation.swift"; then

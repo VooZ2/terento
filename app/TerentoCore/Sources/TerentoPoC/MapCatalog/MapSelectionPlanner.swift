@@ -52,13 +52,14 @@ struct MapSelectionItem: Identifiable, Equatable, Sendable {
     }
 
     /// Install-list status of a catalog row that is already on the device.
-    /// Update itself stays in Manage maps; an unowned copy cannot be updated.
-    var alreadyInstalledDetail: String {
+    /// Update itself stays in Manage maps. `updateOffered` is true only when
+    /// Manage maps really offers a safe Update for this map.
+    func alreadyInstalledDetail(updateOffered: Bool) -> String {
         guard comparison.status == .updateAvailable, let installed = comparison.installedMap else {
             return "Already installed"
         }
         let installedLabel = installed.version.map { "Installed \($0.description)" } ?? "Installed"
-        return installed.managementState == .managedByTerento
+        return updateOffered
             ? "\(installedLabel) · Update in Manage maps"
             : "\(installedLabel) · Newer release available"
     }

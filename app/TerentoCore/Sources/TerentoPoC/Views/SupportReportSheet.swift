@@ -185,3 +185,143 @@ struct SupportReportWindow: View {
             .onAppear { session = UUID() }
     }
 }
+
+// Shared dialog standard. It lives here, outside ConnectScreen.swift, because
+// test harnesses that compile the app without ConnectScreen also build this sheet.
+/// One dialog standard for every custom sheet. Sizes live here so a dialog
+/// cannot drift from the others; `SupportReportSheet` is the wide variant.
+enum TerentoDialogMetrics {
+    static let iconSize: CGFloat = 20
+    static let iconCircle: CGFloat = 36
+    static let iconTintOpacity: Double = 0.12
+    static let iconTitleGap: CGFloat = 12
+    static let titleSize: CGFloat = 20
+    static let bodySize: CGFloat = 14
+    static let supportingSize: CGFloat = 13
+    static let padding: CGFloat = 24
+    static let width: CGFloat = 440
+    static let wideWidth: CGFloat = 560
+    static let buttonHeight: CGFloat = 40
+    static let buttonGap: CGFloat = 8
+    static let sheetRadius: CGFloat = TerentoGeneratedTokens.Radius.large
+    static let buttonRadius: CGFloat = TerentoGeneratedTokens.Radius.control
+}
+
+/// The icon colour follows what the dialog is about, never the screen it is on.
+enum TerentoDialogRole {
+    case error, warning, success, info
+
+    var color: Color {
+        switch self {
+        case .error: return TerentoColors.error
+        case .warning: return TerentoColors.warning
+        case .success: return TerentoColors.lichenDark
+        case .info: return TerentoColors.interactive
+        }
+    }
+}
+
+struct TerentoDialogHeader: View {
+    let icon: String
+    var iconIsAsset = false
+    let role: TerentoDialogRole
+    let title: String
+    var subtitle: String = ""
+
+    var body: some View {
+        HStack(alignment: .center, spacing: TerentoDialogMetrics.iconTitleGap) {
+            ZStack {
+                Circle().fill(role.color.opacity(TerentoDialogMetrics.iconTintOpacity))
+                iconImage
+                    .foregroundStyle(role.color)
+            }
+            .frame(width: TerentoDialogMetrics.iconCircle, height: TerentoDialogMetrics.iconCircle)
+            .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.terentoHeading(size: TerentoDialogMetrics.titleSize, weight: .semibold))
+                    .foregroundStyle(TerentoColors.graphite)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityAddTraits(.isHeader)
+                if !subtitle.isEmpty {
+                    Text(subtitle)
+                        .font(.terentoUI(size: TerentoDialogMetrics.supportingSize, weight: .semibold))
+                        .foregroundStyle(TerentoColors.secondaryText)
+                        .lineLimit(2)
+                        .truncationMode(.middle)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private var iconImage: some View {
+        if iconIsAsset {
+            Image(icon)
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .frame(width: TerentoDialogMetrics.iconSize, height: TerentoDialogMetrics.iconSize)
+        } else {
+            Image(systemName: icon)
+                .font(.system(size: TerentoDialogMetrics.iconSize - 2, weight: .semibold))
+                .frame(width: TerentoDialogMetrics.iconSize, height: TerentoDialogMetrics.iconSize)
+        }
+    }
+}
+
+/// The only dialog button. Primary is Interactive Primary, destructive is the
+/// error colour, secondary is outlined.
+struct TerentoDialogButton: View {
+    enum Kind { case primary, secondary, destructive }
+
+    let label: String
+    var kind: Kind = .secondary
+    var assetIcon: String? = nil
+    let action: () -> Void
+
+    init(_ label: String, kind: Kind = .secondary, assetIcon: String? = nil, action: @escaping () -> Void) {
+        self.label = label
+        self.kind = kind
+        self.assetIcon = assetIcon
+        self.action = action
+    }
+
+    var body: some View {
+        Button(role: kind == .destructive ? .destructive : nil, action: action) {
+            HStack(spacing: 7) {
+                if let assetIcon {
+                    Image(assetIcon)
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 15, height: 15)
+                        .accessibilityHidden(true)
+                }
+                Text(label)
+                    .font(.terentoUI(size: TerentoDialogMetrics.bodySize, weight: .semibold))
+            }
+            .foregroundStyle(kind == .secondary ? TerentoColors.graphite : .white)
+            .padding(.horizontal, 16)
+            .frame(minHeight: TerentoDialogMetrics.buttonHeight)
+            .background(background, in: RoundedRectangle(cornerRadius: TerentoDialogMetrics.buttonRadius, style: .continuous))
+            .overlay {
+                if kind == .secondary {
+                    RoundedRectangle(cornerRadius: TerentoDialogMetrics.buttonRadius, style: .continuous)
+                        .strokeBorder(TerentoColors.border, lineWidth: 1)
+                }
+            }
+            .contentShape(RoundedRectangle(cornerRadius: TerentoDialogMetrics.buttonRadius, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+    }
+
+    private var background: Color {
+        switch kind {
+        case .primary: return TerentoColors.interactive
+        case .destructive: return TerentoColors.error
+        case .secondary: return TerentoColors.canvas
+        }
+    }
+}

@@ -384,7 +384,7 @@ completion is not deletion success: hash or target mismatch still prevents the
 destructive call. Remove reads “Removing” through the content check and the
 deletion, then “Checking” while it confirms the map is gone, with the same
 Interactive Primary bar as Install; a confirmed removal shows “<Map> removed.”
-for 4 seconds above the list. At 93%, the UI says “Confirming the map was removed”; repeated
+for 4 seconds above the list, and VoiceOver announces it. At 93%, the UI says “Confirming the map was removed”; repeated
 inventory checks hold that value rather than increasing it for each retry. Only
 confirmed absence completes removal. The existing settle delays and retry limits
 are unchanged. No watchdog, shortened timeout or new USB recovery is introduced.
@@ -733,8 +733,9 @@ give the next step from the install guides: disconnect, turn the new map on in
 the device's map settings, restart the device if it is not listed.
 A map from an unrecognized provider is named by its whole IMG header
 description (20 bytes at 0x49 joined with the 31-byte continuation at 0x65,
-decoded as UTF-8). Recognized providers keep their own parsing and catalog
-matching never uses this name.
+decoded as UTF-8). Recognized providers keep their own parsing. For an
+unrecognized provider this whole name is also what the last-resort catalog name
+match compares (it used to compare the 20-byte prefix).
 The public beta.15 build 37 passes the connected-device authorization state into
 the map engine and shows pending or blocked authorization on the Install review
 screen. It also removes obsolete internal installation/update paths while

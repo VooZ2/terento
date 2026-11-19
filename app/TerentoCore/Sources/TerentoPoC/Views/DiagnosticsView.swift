@@ -98,7 +98,7 @@ struct DiagnosticsView: View {
                         sharingToggle(
                             isOn: mapStatisticsSharingBinding,
                             title: "Send privacy-minimized map usage diagnostics",
-                            detail: "Which maps are installed and removed. Never device identity."
+                            detail: "Which maps are downloaded, installed and updated. Never device identity."
                         )
 
                         #if TERENTO_APP_STORE

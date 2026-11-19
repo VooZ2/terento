@@ -39,5 +39,7 @@ assert_contains 'return "Checking"' "$phase_source"
 # A confirmed removal leaves a short "<Map> removed." line for a few seconds.
 assert_contains 'showRemovalNotice(context.item.title)' "$lifecycle_view_model"
 assert_contains 'if let notice = lifecycleViewModel.removalNotice {' "$connect_screen"
+assert_contains '.onChange(of: lifecycleViewModel.removalNotice) { notice in' "$connect_screen"
+assert_contains '.announcement: notice,' "$connect_screen"
 
 print "PASS: Manage map removal reuses the installation progress pattern"

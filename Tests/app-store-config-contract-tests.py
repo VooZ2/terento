@@ -416,7 +416,8 @@ class AppStoreConfigurationContract(unittest.TestCase):
         self.assertIn("if mapStatisticsController.store.consent() == nil {\n                        mapStatisticsController.decideConsent(share ? .accepted : .declined)", app_store)
         self.assertIn("if share { evidenceController.shareOperation(evidenceOperationID) }", app_store)
         self.assertIn("mayRequest: !asksAboutSharing", app_store)
-        self.assertIn('Image("CircleCheck")', app_store)
+        # The shared dialog header draws the bundled asset icon.
+        self.assertIn('icon: "CircleCheck",\n            iconIsAsset: true,', app_store)
         icon = (ROOT / "app/Terento/Assets.xcassets/CircleCheck.imageset/circle-check.svg").read_text(encoding="utf-8")
         self.assertIn("Font Awesome Free 7.3.1", icon)
         self.assertIn("CircleCheck.imageset/circle-check.svg", (ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8"))
