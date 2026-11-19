@@ -44,8 +44,8 @@ if grep -Eq 'case maps|\.maps\b|showingManagedMaps' "$connect_screen" "$sidebar"
     exit 1
 fi
 
-if ! grep -Fq 'return "arrow.down.circle"' "$connect_screen" \
-    || ! grep -Fq 'return "square.stack.3d.up"' "$connect_screen"; then
+if ! grep -Fq 'return Image(systemName: "arrow.down.circle")' "$connect_screen" \
+    || ! grep -Fq 'return Image(systemName: "square.stack.3d.up")' "$connect_screen"; then
     print -u2 "FAIL: Install maps and Manage maps do not use distinct sidebar icons"
     exit 1
 fi

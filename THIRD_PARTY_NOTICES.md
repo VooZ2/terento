@@ -225,9 +225,9 @@ or Go dependency or source code is incorporated. Reference:
   2013-2022 as part of Feather (MIT). All other copyright (c) for Lucide are
   held by Lucide Contributors 2022.
 - One icon system for the public website, the web installer and Admin (owner
-  decision 2026-11-05). Path data is unchanged; only the stroke width
-  (1.75 px, the brand icon spec) and presentation and accessibility attributes
-  are set. No Lucide font, package or runtime and no external icon origin is
+  decision 2026-11-05), and the Mac app's sidebar Device icon. Path data is
+  unchanged; only the stroke width (1.75 px, the brand icon spec) and
+  presentation and accessibility attributes are set. No Lucide font, package or runtime and no external icon origin is
   used.
 
 ### Public website
@@ -273,6 +273,14 @@ from the page CSS, and each use sets `aria-hidden="true"` and
 - The child elements are copied unchanged into `_LUCIDE_ICONS` in
   `backend/catalog-api/src/terento_catalog/admin.py` under the Lucide licence
   comment and rendered as inline SVG or as outline `data:` CSS masks.
+
+### Mac app
+
+- Icon used: `watch` (the sidebar Device row; SF Symbols has no round watch
+  for macOS 13). The SVG, with the Lucide licence comment, is
+  `app/Terento/Assets.xcassets/Watch.imageset/watch.svg`; path data is
+  unchanged, the stroke is set to 1.75 px and a solid colour so the asset
+  catalog can render it as a template image that the app tints.
 
 Permission to use, copy, modify, and/or distribute this software for any
 purpose with or without fee is hereby granted, provided that the above

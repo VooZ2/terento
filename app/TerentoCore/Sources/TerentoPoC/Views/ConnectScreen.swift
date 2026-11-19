@@ -3099,7 +3099,7 @@ struct TerentoSidebar: View {
                     } label: {
                         SidebarSectionRow(
                             title: section.rawValue,
-                            systemImage: systemImage(for: section),
+                            icon: icon(for: section),
                             isSelected: selectedSection == section
                         )
                     }
@@ -3135,14 +3135,15 @@ struct TerentoSidebar: View {
         .background(TerentoColors.sidebar)
     }
 
-    private func systemImage(for section: TerentoSection) -> String {
+    // Lucide `watch` (bundled asset): SF Symbols has no round watch before macOS 14.
+    private func icon(for section: TerentoSection) -> Image {
         switch section {
         case .device:
-            return "applewatch"
+            return Image("Watch")
         case .installMaps:
-            return "arrow.down.circle"
+            return Image(systemName: "arrow.down.circle")
         case .manageMaps:
-            return "square.stack.3d.up"
+            return Image(systemName: "square.stack.3d.up")
         }
     }
 }
@@ -3985,22 +3986,23 @@ private enum ConnectionStatusPresentation {
 
 private struct SidebarSectionRow: View {
     let title: String
-    let systemImage: String
+    let icon: Image
     let isSelected: Bool
 
     var body: some View {
         HStack(spacing: 13) {
-            Image(systemName: systemImage)
+            icon
                 .font(.system(size: 17, weight: .regular))
-                .foregroundStyle(isSelected ? TerentoColors.lichenDark : TerentoColors.secondaryText)
+                .foregroundStyle(isSelected ? TerentoColors.interactive : TerentoColors.secondaryText)
                 .frame(width: 24)
                 .accessibilityHidden(true)
 
             Text(title)
                 .font(.terentoUI(size: 15, weight: isSelected ? .medium : .regular))
-                .foregroundStyle(isSelected ? TerentoColors.lichenDark : TerentoColors.secondaryText)
-
-            Spacer()
+                .foregroundStyle(isSelected ? TerentoColors.interactive : TerentoColors.secondaryText)
+                .lineLimit(1)
+                // Fill the row instead of a Spacer, whose own gap left "Manage maps" too little width.
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, 14)
         .frame(height: 50)

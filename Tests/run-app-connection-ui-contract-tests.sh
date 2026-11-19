@@ -163,5 +163,13 @@ assert_absent 'Identity unavailable' "$map_lifecycle"
 assert_absent 'Installed · Garmin system map' "$map_lifecycle"
 assert_absent 'Other maps are shown for reference and left unchanged.' "$connect_screen"
 assert_absent 'Garmin system maps are not included in this list.' "$connect_screen"
+# Sidebar: round Lucide watch for Device (SF Symbols has none on macOS 13),
+# Interactive Primary for the selected row (lichen stays a success colour),
+# and one-line labels.
+assert_contains 'return Image("Watch")' "$connect_screen"
+assert_contains '@license lucide-static v0.460.0 - ISC' "$repo_root/app/Terento/Assets.xcassets/Watch.imageset/watch.svg"
+assert_contains 'Watch.imageset/watch.svg' "$repo_root/THIRD_PARTY_NOTICES.md"
+assert_contains '.foregroundStyle(isSelected ? TerentoColors.interactive : TerentoColors.secondaryText)' "$connect_screen"
+assert_absent 'isSelected ? TerentoColors.lichenDark' "$connect_screen"
 
 print "PASS: connection activity, timeout recovery, shared layout, and Manage maps copy checks"
