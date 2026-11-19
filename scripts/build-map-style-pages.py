@@ -21,6 +21,7 @@ AREAS = json.loads((ROOT / "contracts/map-preview-areas.json").read_text(encodin
 HOME = runpy.run_path(str(ROOT / "scripts/normalize-home-ia.py"))
 SHELL = runpy.run_path(str(ROOT / "scripts/normalize-public-shell.py"))
 SCHEMA = runpy.run_path(str(ROOT / "scripts/page_schema.py"))
+COMPONENTS = runpy.run_path(str(ROOT / "scripts/site_components.py"))
 PROVIDER_COPY = HOME["PROVIDER_CARD_COPY"]
 # Crawlable per-map guide below the viewer (v2, 2026-11-05). Facts come from the
 # live catalog (coverage, contour packages, release dates) and provider notes;
@@ -484,11 +485,15 @@ def table_markup(locale: str) -> str:
 
 def install_markup(locale: str) -> str:
     v2 = GUIDE_COPY[locale]
+    # The shared primary button, with the same "Download for Mac" words as every other page.
+    download_button = COMPONENTS["primary_action"](
+        ("" if locale == "en" else f"/{locale}") + "/download/", esc(COMPONENTS["END_CTA"][locale][1]), "",
+        'data-umami-event="download-cta-click" data-umami-event-location="map-styles-install"')
     return (
         f'<section class="shell map-styles-v2-install" aria-labelledby="map-styles-install-title">'
         f'<h2 id="map-styles-install-title">{esc(v2["install_title"])}</h2>'
         f'<p>{esc(v2["install_text"])}</p>'
-        f'<div class="map-styles-v2-actions">{link(locale, "download/", v2["install_button"], "download-cta-click", "map-styles-install", "download-action")}'
+        f'<div class="map-styles-v2-actions">{download_button}'
         f'{link(locale, "install/", v2["install_web"], "web-installer-link-click", "map-styles-install")}</div>'
         f'<p class="map-styles-v2-guides">{fill_links(locale, v2["install_guides"], "map-styles-install")}</p></section>'
     )
@@ -576,11 +581,11 @@ def render(locale: str) -> str:
     <a class="skip-link" href="#main-content">{esc(copy["skip"])}</a>
     <header class="site-header"></header>
     <main id="main-content" class="map-styles-main">
-      <section class="map-styles-hero" aria-labelledby="map-styles-title">
-        <div class="shell">
+      <section class="map-styles-hero page-hero" aria-labelledby="map-styles-title">
+        <div class="shell"><div class="hero-copy">
           <h1 id="map-styles-title">{esc(GUIDE_COPY[locale]["h1"])}</h1>
           <p class="hero-lede map-styles-lead">{esc(GUIDE_COPY[locale]["lead"])}</p>
-        </div>
+        </div></div>
       </section>
       {picker_markup(locale)}
 
@@ -655,6 +660,7 @@ def render(locale: str) -> str:
       <div class="shell map-styles-v2-maps">{map_sections(locale)}</div>
       {install_markup(locale)}
       {faq_markup(locale)}
+      <div class="shell">{COMPONENTS["end_cta"](locale, "map-styles-bottom")}</div>
     </main>
     <footer class="site-footer"></footer>
     <script type="application/json" id="map-styles-data">{page_data(locale, copy, styles)}</script>

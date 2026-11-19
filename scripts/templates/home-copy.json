@@ -13,8 +13,6 @@
     "step_3_title": "Done",
     "step_3_body": "Your maps are installed and ready to use on your Garmin.",
     "install_shot_alt": "Terento showing third-party map providers and regions on macOS",
-    "manage_title": "Manage maps",
-    "manage_body": "See what's installed, update maps when newer releases are available, and remove third-party maps managed by Terento. Original Garmin maps remain protected.",
     "manage_shot_alt": "Terento showing installed third-party maps grouped by provider",
     "browser_body": "Connect your Garmin with a USB cable, choose maps and install them straight from Chrome, Microsoft Edge, Opera or Brave. Update or remove them later the same way.",
     "browser_limits": "Works on a Mac and, still in testing, on Linux. Not on Windows, phones or tablets yet.",
@@ -29,6 +27,7 @@
     "faq_questions": [
       "Which Garmin watches and Edge bike computers work with Terento?",
       "Can I install third-party maps on a Garmin watch from a Mac without Garmin Express or BaseCamp?",
+      "Is it safe for my Garmin?",
       "Can I add my own .img map?",
       "Can I update maps later?",
       "Why isn’t my Garmin watch showing up on my Mac?",
@@ -57,7 +56,11 @@
     "app_body": "Install catalog maps or your own .img map, see what is on your Garmin and update maps when newer releases come out.",
     "app_requirements": "macOS 13 or later on Apple Silicon.",
     "browser_title": "Web installer",
-    "faq_title": "Questions and answers"
+    "faq_title": "Questions and answers",
+    "send_to_computer": "Send this link to your computer",
+    "send_to_computer_subject": "Terento: free maps for your Garmin",
+    "trust_label": "Terento in numbers",
+    "garmin_safety_answer": "Yes. Terento always leaves at least 1 GB free on your Garmin, checks each map after copying, and never touches the maps Garmin installed."
   },
   "de": {
     "hero_download": "Für Mac herunterladen",
@@ -73,8 +76,6 @@
     "step_3_title": "Fertig",
     "step_3_body": "Deine Karten sind installiert und auf deinem Garmin einsatzbereit.",
     "install_shot_alt": "Terento zeigt Drittanbieter-Kartenanbieter und Regionen auf macOS",
-    "manage_title": "Karten verwalten",
-    "manage_body": "Sieh, was installiert ist, aktualisiere Karten, wenn neuere Versionen verfügbar sind, und entferne von Terento verwaltete Drittanbieter-Karten. Originale Garmin-Karten bleiben geschützt.",
     "manage_shot_alt": "Terento zeigt installierte Drittanbieter-Karten nach Anbieter gruppiert",
     "browser_body": "Verbinde deine Garmin-Uhr per USB-Kabel, wähle Karten und installiere sie direkt aus Chrome, Microsoft Edge, Opera oder Brave. Später aktualisierst oder entfernst du sie genauso.",
     "browser_limits": "Funktioniert auf dem Mac und, noch im Test, unter Linux. Noch nicht unter Windows, auf Smartphones oder Tablets.",
@@ -87,15 +88,16 @@
     "provider_list_label": "Kartenanbieter",
     "web_installer_href": "/de/install/",
     "faq_questions": [
-      "Welche Garmin-Uhren und Edge-Radcomputer funktionieren mit Terento?",
+      "Welche Garmin-Uhren und Edge-Fahrradcomputer funktionieren mit Terento?",
       "Kann ich Drittanbieter-Karten von einem Mac ohne Garmin Express oder BaseCamp auf einer Garmin-Uhr installieren?",
+      "Ist das sicher für mein Garmin?",
       "Kann ich meine eigene .img-Karte hinzufügen?",
       "Kann ich Karten später aktualisieren?",
       "Warum wird meine Garmin-Uhr am Mac nicht erkannt?",
       "Was soll ich tun, wenn die Installation fehlschlägt?",
       "Kann ich Karten installieren, ohne die App zu installieren?"
     ],
-    "compatibility_answer": "Auf der <a href=\"/de/compatibility/\" data-umami-event=\"compatibility-link-click\" data-umami-event-location=\"home-faq-compatibility\">Kompatibilitätsseite</a> findest du genaue Garmin-Modelle und Varianten mit mindestens einer erfolgreich geteilten Installation. Ein fehlendes Modell ist nicht unbedingt ununterstützt. Auch neuere Garmin-Edge-Radcomputer mit Kartenunterstützung wie Edge 540, 840 und 1050 funktionieren. <a href=\"/de/guides/install-garmin-maps-edge-mac/\" data-umami-event=\"guide-link-click\" data-umami-event-location=\"home-faq-compatibility-edge\">Zur Edge-Anleitung.</a>",
+    "compatibility_answer": "Auf der <a href=\"/de/compatibility/\" data-umami-event=\"compatibility-link-click\" data-umami-event-location=\"home-faq-compatibility\">Kompatibilitätsseite</a> findest du genaue Garmin-Modelle und Varianten mit mindestens einer erfolgreich geteilten Installation. Fehlt ein Modell in der Liste, heißt das nicht, dass es nicht unterstützt wird. Auch neuere Garmin-Edge-Fahrradcomputer mit Kartenunterstützung wie Edge 540, 840 und 1050 funktionieren. <a href=\"/de/guides/install-garmin-maps-edge-mac/\" data-umami-event=\"guide-link-click\" data-umami-event-location=\"home-faq-compatibility-edge\">Zur Edge-Anleitung.</a>",
     "basecamp_answer": "Ja. Terento erledigt alles auf deinem Mac: Karte und Region wählen, auf deinem Garmin installieren und später aktualisieren oder entfernen. Garmin Express oder BaseCamp brauchst du nicht. <a href=\"/de/guides/install-garmin-maps-mac/\" data-umami-event=\"guide-link-click\" data-umami-event-location=\"home-faq-basecamp\">Lies die Installationsanleitung.</a>",
     "safety_answer": "Ja. Füge eine kompatible .img-Karte von deinem Mac hinzu und installiere sie auf deiner verbundenen Garmin-Uhr.",
     "update_answer": "Ja. Terento zeigt dir, wenn es eine neuere Version einer installierten Karte gibt, und aktualisiert sie für dich.",
@@ -117,7 +119,11 @@
     "app_body": "Installiere Katalogkarten oder deine eigene .img-Karte, sieh, was auf deinem Garmin ist, und aktualisiere Karten, wenn neuere Ausgaben erscheinen.",
     "app_requirements": "macOS 13 oder neuer auf Apple Silicon.",
     "browser_title": "Web-Installer",
-    "faq_title": "Fragen und Antworten"
+    "faq_title": "Fragen und Antworten",
+    "send_to_computer": "Link an deinen Computer senden",
+    "send_to_computer_subject": "Terento: kostenlose Karten für deinen Garmin",
+    "trust_label": "Terento in Zahlen",
+    "garmin_safety_answer": "Ja. Terento lässt auf deinem Garmin immer mindestens 1 GB frei, prüft jede Karte nach dem Kopieren und rührt die von Garmin installierten Karten nie an."
   },
   "fr": {
     "hero_download": "Télécharger pour Mac",
@@ -133,8 +139,6 @@
     "step_3_title": "Terminé",
     "step_3_body": "Vos cartes sont installées et prêtes à être utilisées sur votre Garmin.",
     "install_shot_alt": "Terento affiche les fournisseurs et les régions de cartes tierces sur macOS",
-    "manage_title": "Gérer les cartes",
-    "manage_body": "Consultez les cartes installées, mettez-les à jour lorsqu’une version plus récente est disponible et supprimez les cartes tierces gérées par Terento. Les cartes Garmin d’origine restent protégées.",
     "manage_shot_alt": "Terento affiche les cartes tierces installées, regroupées par fournisseur",
     "browser_body": "Branchez votre Garmin avec un câble USB, choisissez des cartes et installez-les directement depuis Chrome, Microsoft Edge, Opera ou Brave. Mettez-les à jour ou supprimez-les plus tard de la même façon.",
     "browser_limits": "Fonctionne sur Mac et, encore en test, sous Linux. Pas encore sous Windows, ni sur téléphone ou tablette.",
@@ -149,6 +153,7 @@
     "faq_questions": [
       "Quelles montres Garmin et quels compteurs Edge fonctionnent avec Terento ?",
       "Puis-je installer des cartes tierces sur une montre Garmin depuis un Mac sans Garmin Express ni BaseCamp ?",
+      "Est-ce sans risque pour mon Garmin ?",
       "Puis-je ajouter ma propre carte .img ?",
       "Puis-je mettre les cartes à jour plus tard ?",
       "Pourquoi ma montre Garmin n’apparaît-elle pas sur mon Mac ?",
@@ -177,7 +182,11 @@
     "app_body": "Installez les cartes du catalogue ou votre propre carte .img, voyez ce qui se trouve sur votre Garmin et mettez à jour les cartes quand de nouvelles éditions paraissent.",
     "app_requirements": "macOS 13 ou version ultérieure sur Apple Silicon.",
     "browser_title": "Installateur web",
-    "faq_title": "Questions et réponses"
+    "faq_title": "Questions et réponses",
+    "send_to_computer": "Envoyer le lien vers votre ordinateur",
+    "send_to_computer_subject": "Terento : cartes gratuites pour votre Garmin",
+    "trust_label": "Terento en chiffres",
+    "garmin_safety_answer": "Oui. Terento laisse toujours au moins 1 Go libre sur votre Garmin, vérifie chaque carte après la copie et ne touche jamais aux cartes installées par Garmin."
   },
   "pl": {
     "hero_download": "Pobierz na Maca",
@@ -193,8 +202,6 @@
     "step_3_title": "Gotowe",
     "step_3_body": "Twoje mapy są zainstalowane i gotowe do użycia na Twoim Garminie.",
     "install_shot_alt": "Terento pokazuje dostawców i regiony map innych firm na macOS",
-    "manage_title": "Zarządzaj mapami",
-    "manage_body": "Sprawdź, co jest zainstalowane, aktualizuj mapy, gdy dostępne są nowsze wydania, i usuwaj mapy innych firm zarządzane przez Terento. Oryginalne mapy Garmin pozostają chronione.",
     "manage_shot_alt": "Terento pokazuje zainstalowane mapy innych firm pogrupowane według dostawcy",
     "browser_body": "Podłącz zegarek Garmin kablem USB, wybierz mapy i zainstaluj je prosto z Chrome, Microsoft Edge, Opery lub Brave. Później tak samo je zaktualizujesz lub usuniesz.",
     "browser_limits": "Działa na Macu oraz, jeszcze w fazie testów, na Linuksie. Jeszcze nie na Windowsie, telefonach ani tabletach.",
@@ -209,6 +216,7 @@
     "faq_questions": [
       "Jakie zegarki Garmin i liczniki Edge działają z Terento?",
       "Czy mogę instalować mapy innych firm na zegarku Garmin z Maca bez Garmin Express i BaseCamp?",
+      "Czy to bezpieczne dla mojego Garmina?",
       "Czy mogę dodać własną mapę .img?",
       "Czy mogę później aktualizować mapy?",
       "Dlaczego Mac nie widzi mojego zegarka Garmin?",
@@ -237,7 +245,11 @@
     "app_body": "Instaluj mapy z katalogu lub własną mapę .img, sprawdzaj, co jest na Garminie, i aktualizuj mapy, gdy pojawią się nowsze wydania.",
     "app_requirements": "macOS 13 lub nowszy na Apple Silicon.",
     "browser_title": "Instalator w przeglądarce",
-    "faq_title": "Pytania i odpowiedzi"
+    "faq_title": "Pytania i odpowiedzi",
+    "send_to_computer": "Wyślij link na swój komputer",
+    "send_to_computer_subject": "Terento: darmowe mapy na Twojego Garmina",
+    "trust_label": "Terento w liczbach",
+    "garmin_safety_answer": "Tak. Terento zawsze zostawia na Garminie co najmniej 1 GB wolnego miejsca, sprawdza każdą mapę po skopiowaniu i nigdy nie rusza map zainstalowanych przez Garmin."
   },
   "cs": {
     "hero_download": "Stáhnout pro Mac",
@@ -253,8 +265,6 @@
     "step_3_title": "Hotovo",
     "step_3_body": "Vaše mapy jsou nainstalované a připravené k použití ve vašem Garminu.",
     "install_shot_alt": "Terento zobrazuje poskytovatele a oblasti map třetích stran v macOS",
-    "manage_title": "Spravovat mapy",
-    "manage_body": "Prohlédněte si nainstalované mapy, aktualizujte je, když je k dispozici novější vydání, a odstraňte mapy třetích stran spravované aplikací Terento. Původní mapy Garmin zůstávají chráněné.",
     "manage_shot_alt": "Terento zobrazuje nainstalované mapy třetích stran seskupené podle poskytovatele",
     "browser_body": "Připojte hodinky Garmin kabelem USB, vyberte mapy a nainstalujte je přímo z Chrome, Microsoft Edge, Opery nebo Brave. Později je stejně aktualizujete nebo odeberete.",
     "browser_limits": "Funguje na Macu a, zatím ve zkušebním provozu, na Linuxu. Zatím ne ve Windows, na telefonech ani tabletech.",
@@ -269,6 +279,7 @@
     "faq_questions": [
       "Které hodinky Garmin a cyklopočítače Edge fungují s Terento?",
       "Mohu instalovat mapy třetích stran do hodinek Garmin z Macu bez Garmin Express a BaseCamp?",
+      "Je to pro můj Garmin bezpečné?",
       "Mohu přidat vlastní mapu .img?",
       "Mohu mapy aktualizovat později?",
       "Proč Mac nevidí moje hodinky Garmin?",
@@ -297,7 +308,11 @@
     "app_body": "Instalujte mapy z katalogu nebo vlastní mapu .img, podívejte se, co je ve vašem Garminu, a aktualizujte mapy, když vyjdou novější vydání.",
     "app_requirements": "macOS 13 nebo novější na Apple Silicon.",
     "browser_title": "Webový instalátor",
-    "faq_title": "Otázky a odpovědi"
+    "faq_title": "Otázky a odpovědi",
+    "send_to_computer": "Poslat odkaz do počítače",
+    "send_to_computer_subject": "Terento: mapy zdarma pro váš Garmin",
+    "trust_label": "Terento v číslech",
+    "garmin_safety_answer": "Ano. Terento v Garminu vždy nechá aspoň 1 GB volného místa, každou mapu po zkopírování zkontroluje a mapy nainstalované Garminem nikdy nemění."
   },
   "it": {
     "hero_download": "Scarica per Mac",
@@ -313,8 +328,6 @@
     "step_3_title": "Fatto",
     "step_3_body": "Le tue mappe sono installate e pronte per essere usate sul tuo Garmin.",
     "install_shot_alt": "Terento mostra provider e regioni di mappe di terze parti su macOS",
-    "manage_title": "Gestisci le mappe",
-    "manage_body": "Visualizza le mappe installate, aggiornatele quando è disponibile una versione più recente e rimuovi le mappe di terze parti gestite da Terento. Le mappe Garmin originali restano protette.",
     "manage_shot_alt": "Terento mostra le mappe di terze parti installate raggruppate per provider",
     "browser_body": "Collega il tuo Garmin con un cavo USB, scegli le mappe e installale direttamente da Chrome, Microsoft Edge, Opera o Brave. In seguito le aggiorni o le rimuovi allo stesso modo.",
     "browser_limits": "Funziona su Mac e, ancora in fase di test, su Linux. Non ancora su Windows, telefoni o tablet.",
@@ -329,6 +342,7 @@
     "faq_questions": [
       "Quali smartwatch Garmin e ciclocomputer Edge funzionano con Terento?",
       "Posso installare mappe di terze parti su uno smartwatch Garmin da un Mac senza Garmin Express né BaseCamp?",
+      "È sicuro per il mio Garmin?",
       "Posso aggiungere la mia mappa .img?",
       "Posso aggiornare le mappe in un secondo momento?",
       "Perché il Mac non rileva il mio orologio Garmin?",
@@ -357,6 +371,10 @@
     "app_body": "Installa le mappe del catalogo o la tua mappa .img, vedi cosa c’è sul tuo Garmin e aggiorna le mappe quando escono nuove edizioni.",
     "app_requirements": "macOS 13 o successivo su Apple Silicon.",
     "browser_title": "Installer web",
-    "faq_title": "Domande e risposte"
+    "faq_title": "Domande e risposte",
+    "send_to_computer": "Invia il link al tuo computer",
+    "send_to_computer_subject": "Terento: mappe gratuite per il tuo Garmin",
+    "trust_label": "Terento in numeri",
+    "garmin_safety_answer": "Sì. Terento lascia sempre almeno 1 GB libero sul tuo Garmin, controlla ogni mappa dopo la copia e non tocca mai le mappe installate da Garmin."
   }
 }

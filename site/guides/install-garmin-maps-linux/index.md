@@ -9,13 +9,11 @@ On Linux, the Terento web installer puts free maps on Garmin watches with map su
 
 [Open the web installer](https://terento.app/install/)
 
-On a Mac? Read the guide for a [Garmin watch](https://terento.app/guides/install-garmin-maps-mac/) or a [Garmin Edge](https://terento.app/guides/install-garmin-maps-edge-mac/).
-
 ## What you need
 
-- Chrome, Microsoft Edge, Opera or Brave on a Linux computer. Firefox can’t connect to USB devices.
-- A USB data cable, not a charge-only cable.
-- A Garmin watch that supports maps, unlocked.
+- Chrome, Microsoft Edge, Opera or Brave on Linux (Firefox can’t connect to USB)
+- Garmin watch with map support
+- USB cable that supports data transfer
 
 ## Install a map from your browser
 
@@ -48,3 +46,7 @@ Leave the list open for up to two minutes. If no entry with “Garmin” in its 
 ### The browser has no USB access
 
 A browser installed as a Snap package may not get USB access. Use the browser from its official .deb or .rpm package.
+
+Put a free map on your Garmin
+
+[Open the web installer](https://terento.app/install/)

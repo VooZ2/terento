@@ -149,7 +149,7 @@ class DiscoverabilityTests(unittest.TestCase):
         for locale in CONFIG['locales']:
             path = ROOT / 'site' / ('' if locale == 'en' else locale) / 'compatibility/index.html'
             source = path.read_text()
-            self.assertEqual(source.count('class="watch-card"'), len(snapshot['models']))
+            self.assertEqual(source.count('class="watch-card card"'), len(snapshot['models']))
             for model in snapshot['models']:
                 self.assertIn(generator.card_markup(model, locale), source)
 

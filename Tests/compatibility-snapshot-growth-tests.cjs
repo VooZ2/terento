@@ -9,6 +9,11 @@ const { spawnSync } = require("node:child_process");
 const repositoryRoot = path.resolve(__dirname, "..");
 const sourceFiles = [
   "site/index.html",
+  "site/de/index.html",
+  "site/fr/index.html",
+  "site/pl/index.html",
+  "site/cs/index.html",
+  "site/it/index.html",
   "site/metadata.json",
   "site/compatibility/index.html",
   "site/de/compatibility/index.html",
@@ -21,6 +26,7 @@ const sourceFiles = [
   "site/compatibility/compatibility.js",
   "scripts/build-compatibility-pages.py",
   "scripts/page_schema.py",
+  "scripts/site_components.py",
   "scripts/normalize-public-shell.py",
   "scripts/build-markdown-pages.py",
   "scripts/update-compatibility-snapshot.py",

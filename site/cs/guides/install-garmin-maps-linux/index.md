@@ -9,13 +9,11 @@ V Linuxu webový instalátor Terento nahraje bezplatné mapy do hodinek Garmin s
 
 [Otevřít webový instalátor](https://terento.app/cs/install/)
 
-Máte Mac? Přečtěte si průvodce pro [hodinky Garmin](https://terento.app/cs/guides/install-garmin-maps-mac/) nebo [Garmin Edge](https://terento.app/cs/guides/install-garmin-maps-edge-mac/).
-
 ## Co potřebujete
 
-- Chrome, Microsoft Edge, Operu nebo Brave na počítači s Linuxem. Firefox se nemůže připojit k zařízením USB.
-- Datový kabel USB, ne kabel jen pro nabíjení.
-- Odemčené hodinky Garmin s podporou map.
+- Chrome, Microsoft Edge, Opera nebo Brave na Linuxu (Firefox se k USB nepřipojí)
+- Hodinky Garmin s podporou map
+- USB kabel pro přenos dat
 
 ## Instalace mapy z prohlížeče
 
@@ -48,3 +46,7 @@ Nechte seznam otevřený až dvě minuty. Pokud se neobjeví položka se slovem 
 ### Prohlížeč nemá přístup k USB
 
 Prohlížeč nainstalovaný jako balíček Snap nemusí dostat přístup k USB. Použijte prohlížeč z jeho oficiálního balíčku .deb nebo .rpm.
+
+Nahrajte do svého Garminu mapu zdarma
+
+[Otevřít webový instalátor](https://terento.app/cs/install/)

@@ -6,20 +6,22 @@ from __future__ import annotations
 import html
 import json
 import re
+import runpy
 from string import Template
+from urllib.parse import quote
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCALES = ("en", "de", "fr", "pl", "cs", "it")
-PROVIDER_SCRIPT_VERSION = "20261026-osmapa-v1"
+PROVIDER_SCRIPT_VERSION = "20261119-compare-card-v1"
 FEATURE_SCRIPT_VERSION = "20261105-home-map-switch-v4"
+NUMBERS_SCRIPT_VERSION = "20261119-home-numbers-v2"
 ASSET_VERSION = "20261106-home-watch-srcset"
 # Apple's official "Download on the Mac App Store" badge beside the hero Download button.
-# Listing URL, campaign token, artwork and alt text per locale: scripts/templates/app-store-badge.json.
-APP_STORE = json.loads((ROOT / "scripts" / "templates" / "app-store-badge.json").read_text(encoding="utf-8"))
 # Hero watch map styles (Königssee previews), self-hosted in site/assets/home/.
 # Owner decision 2026-11-05: no visible map credit on the hero.
+APP_STORE = json.loads((ROOT / "scripts" / "templates" / "app-store-badge.json").read_text(encoding="utf-8"))
 HERO_MAP_STYLES = (
     ("opentopomap", "OpenTopoMap"),
     ("freizeitkarte", "Freizeitkarte"),
@@ -39,6 +41,23 @@ EDGE_IMAGE = ROOT / "site/assets/home/edge-front.webp"
 EMAIL_URL = "mailto:hello@terento.app?subject=Terento%20installation%20issue"
 EMAIL_URL_HTML = EMAIL_URL.replace("@", "&#64;")
 HOME_COPY = json.loads((ROOT / "scripts/templates/home-copy.json").read_text())
+# The Compare card's one line is the last sentence of the Map styles lead (no new copy, owner round 6).
+MAP_STYLES_COPY = json.loads((ROOT / "scripts/templates/map-styles-copy.json").read_text())
+
+
+def compare_line(locale: str) -> str:
+    return re.split(r"(?<=[.!?])\s+", MAP_STYLES_COPY[locale]["lead"])[-1]
+
+
+def compare_span(visible_cards: int) -> int:
+    """Columns (of 3) the Compare card takes so the last row has no empty slot; provider-list.js
+    recomputes this when the catalog shows or hides cards."""
+    return 3 - visible_cards % 3
+COMPATIBILITY = runpy.run_path(str(ROOT / "scripts/build-compatibility-pages.py"))
+COMPONENTS = runpy.run_path(str(ROOT / "scripts/site_components.py"))
+SITE_URL = "https://terento.app"
+# Map cards: two wide, then three narrow (12-column grid).
+PROVIDER_CARD_COLUMNS: dict[str, str] = {}  # one grid: three per row (round 4)
 
 PROVIDER_CARD_COPY = {
     "en": {
@@ -231,7 +250,7 @@ PROVIDER_CARD_COPY = {
         "contours": {
             "badge": "Volitelný doplněk pro OpenTopoMap",
             "name": "Vrstevnice",
-            "description": "Přidejte výškové čáry, které pomáhají rozpoznat svahy. Tento doplněk vyberte při instalaci regionu OpenTopoMap v Terento.",
+            "description": "Přidejte vrstevnice, které pomáhají rozpoznat svahy. Tento doplněk vyberte při instalaci regionu OpenTopoMap v Terento.",
             "count_template": "Dostupné pro {count} mapových balíčků · Zabírají další místo."
         },
         "compare_styles": "Porovnat styly map naživo"
@@ -270,7 +289,7 @@ PROVIDER_CARD_COPY = {
         "contours": {
             "badge": "Componente aggiuntivo opzionale per OpenTopoMap",
             "name": "Curve di livello",
-            "description": "Aggiungi linee altimetriche per leggere meglio le pendenze. Scegli questo componente durante l’installazione di una regione OpenTopoMap in Terento.",
+            "description": "Aggiungi curve di livello per leggere meglio le pendenze. Scegli questo componente durante l’installazione di una regione OpenTopoMap in Terento.",
             "count_template": "Disponibile per {count} pacchetti di mappe · Occupa spazio aggiuntivo."
         },
         "compare_styles": "Confronta gli stili dal vivo"
@@ -285,6 +304,7 @@ def home_path(locale: str) -> Path:
 FAQ_ANSWER_KEYS = (
     "compatibility_answer",
     "basecamp_answer",
+    "garmin_safety_answer",
     "safety_answer",
     "update_answer",
     "connection_answer",
@@ -595,10 +615,11 @@ def provider_cards_markup(locale: str, copy: dict[str, str]) -> str:
         if provider_id == "osmapa":
             type_attributes = " hidden"
         thumb = CARD_THUMBNAILS.get(provider_id)
-        thumb_markup = f'''<img class="home-card-map" src="/assets/home/maps-{thumb}.webp?v={ASSET_VERSION}" width="640" height="400" alt="{html.escape(copy["card_map_alt"].replace("{name}", provider["name"]))}" loading="lazy" decoding="async">
+        thumb_markup = f'''<div class="card-media"><img src="/assets/home/maps-{thumb}.webp?v={ASSET_VERSION}" width="640" height="400" alt="{html.escape(copy["card_map_alt"].replace("{name}", provider["name"]))}" loading="lazy" decoding="async"></div>
               ''' if thumb else ""
+        columns = PROVIDER_CARD_COLUMNS.get(provider_id, "col-4")
         cards.append(
-            f'''<article class="provider-card" data-provider-card="{catalog_provider_id}"{type_attributes}>
+            f'''<article class="provider-card card card--media {columns}" data-provider-card="{catalog_provider_id}"{type_attributes}>
               {thumb_markup}<div class="provider-card-header">
                 <h3>{provider["name"]}</h3>
                 <p class="provider-count" data-provider-count data-count-template="{provider["count_template"]}"{count_hidden}>{count_markup}</p>
@@ -611,29 +632,25 @@ def provider_cards_markup(locale: str, copy: dict[str, str]) -> str:
     return "\n".join(cards).replace("\n              \n", "\n")
 
 
-def app_store_badge(locale: str, css_class: str, campaign: str, location: str) -> str:
-    """Link Apple's unmodified badge artwork to the listing with an App Store Connect campaign (pt, ct)."""
-    badge = APP_STORE["badges"][locale]
-    href = f'{APP_STORE["listing_url"]}?pt={APP_STORE["provider_token"]}&ct={campaign}&mt=8'
-    # Apple has no Polish or Czech Mac App Store badge: those pages show the English artwork.
-    lang = "" if badge["artwork"] == locale else f' lang="{badge["artwork"]}"'
-    return (
-        f'<a class="app-store-badge {css_class}" href="{html.escape(href)}" data-umami-event="app-store-click" data-umami-event-location="{location}">'
-        f'<img src="/assets/app-store/download-on-the-mac-app-store-{badge["artwork"]}.svg?v={APP_STORE["asset_version"]}" '
-        f'width="{APP_STORE["width"]}" height="{APP_STORE["height"]}" alt="{html.escape(badge["alt"])}"{lang}></a>'
-    )
-
-
 def normalize_home(source: str, path: Path, locale: str) -> str:
     copy = HOME_COPY[locale]
     provider_cards = provider_cards_markup(locale, copy)
-    provider_section = f'''<section class="provider-section section" id="providers" aria-labelledby="providers-title">
+    visible_cards = len(re.findall(r'<article class="provider-card[^"]*" data-provider-card="[^"]+"(?![^>]*\bhidden)[^>]*>', provider_cards))
+    compare_href = "/map-styles/" if locale == "en" else f"/{locale}/map-styles/"
+    compare_card = f'''<article class="card card--media home-compare-card" data-compare-card data-span="{compare_span(visible_cards)}">
+              <div class="card-media home-compare-media"><img src="/assets/home/maps-opentopomap.webp?v={ASSET_VERSION}" width="640" height="400" alt="" loading="lazy" decoding="async"><img src="/assets/home/maps-freizeitkarte.webp?v={ASSET_VERSION}" width="640" height="400" alt="" loading="lazy" decoding="async"></div>
+              <div class="home-compare-copy">
+                <h3><a class="home-compare-link" href="{compare_href}" data-umami-event="maps-link-click" data-umami-event-location="home-providers">{PROVIDER_CARD_COPY[locale]["compare_styles"]}</a></h3>
+                <p class="home-compare-line">{html.escape(compare_line(locale), quote=False)}</p>
+              </div>
+            </article>'''
+    provider_section = f'''<section class="block home-providers" id="providers" aria-labelledby="providers-title">
         <div class="shell">
-          <div class="section-heading provider-intro"><h2 id="providers-title">{copy["provider_title"]}</h2><p class="provider-copy">{copy["provider_copy"]}</p></div>
-          <div class="provider-cards" id="provider-cards" data-provider-cards role="region" tabindex="0" aria-label="{copy["provider_list_label"]}">
+          <div class="section-head"><h2 id="providers-title">{copy["provider_title"]}</h2><p class="provider-copy">{copy["provider_copy"]}</p></div>
+          <div class="grid home-provider-grid" id="provider-cards" data-provider-cards>
             {provider_cards}
+            {compare_card}
           </div>
-          <p class="provider-compare"><a class="text-link" href="{"/map-styles/" if locale == "en" else f"/{locale}/map-styles/"}" data-umami-event="maps-link-click" data-umami-event-location="home-providers">{PROVIDER_CARD_COPY[locale]["compare_styles"]}</a></p>
         </div>
       </section>'''
     values = {**copy, "provider_section": provider_section, "asset_version": ASSET_VERSION}
@@ -644,9 +661,50 @@ def normalize_home(source: str, path: Path, locale: str) -> str:
         )
     values["hero_map_alt"] = html.escape(copy["hero_map_alt"].replace("{name}", HERO_MAP_STYLES[0][1]))
     values["hero_switch_buttons"] = map_switch(copy["hero_map_alt"], 0, "home-hero")
-    values["app_store_hero"] = app_store_badge(locale, "home-app-store", "site-home", "home-hero")
+    # Hero (round 4): on a computer, Download for Mac + Install from your browser; on a phone,
+    # where neither runs, Send this link to your computer + Check compatibility. No badge here:
+    # Apple's badge appears once, on the Download page.
+    prefix = "" if locale == "en" else f"/{locale}"
+    send_body = f"{SITE_URL}{prefix}/"
+    values["send_to_computer_href"] = html.escape(
+        "mailto:?subject=" + quote(copy["send_to_computer_subject"]) + "&body=" + quote(send_body, safe="")
+    )
+    values["hero_download_button"] = COMPONENTS["primary_action"](
+        copy["download_href"], html.escape(copy["hero_download"]), "hero-download-action",
+        'data-umami-event="download-cta-click" data-umami-event-location="home-hero"')
+    values["hero_browser_button"] = COMPONENTS["secondary_action"](
+        copy["web_installer_href"], html.escape(copy["hero_browser"]), "hero-web-installer-link",
+        'data-umami-event="web-installer-link-click" data-umami-event-location="home-hero"', "globe")
+    values["hero_send_button"] = COMPONENTS["primary_action"](
+        values["send_to_computer_href"], html.escape(copy["send_to_computer"]), "",
+        'data-umami-event="send-to-computer-click" data-umami-event-location="home-hero"', "send")
+    values["mac_card_download_button"] = COMPONENTS["primary_action"](
+        copy["download_href"], html.escape(copy["hero_download"]), "",
+        'data-umami-event="download-cta-click" data-umami-event-location="home-section"')
+    # The page's one App Store badge: in the Mac app card, under its Download button (round 5).
+    badge = APP_STORE["badges"][locale]
+    store_href = f'{APP_STORE["listing_url"]}?pt={APP_STORE["provider_token"]}&ct=site-home&mt=8'
+    badge_lang = "" if badge["artwork"] == locale else f' lang="{badge["artwork"]}"'
+    values["mac_card_store_badge"] = (
+        f'<a class="app-store-badge home-app-store" href="{html.escape(store_href)}" data-umami-event="app-store-click" data-umami-event-location="home-section">'
+        f'<img src="/assets/app-store/download-on-the-mac-app-store-{badge["artwork"]}.svg?v={APP_STORE["asset_version"]}" '
+        f'width="{APP_STORE["width"]}" height="{APP_STORE["height"]}" alt="{html.escape(badge["alt"])}"{badge_lang}></a>'
+    )
+    values["browser_card_button"] = COMPONENTS["secondary_action"](
+        copy["web_installer_href"], html.escape(copy["browser_action"]), "",
+        'data-umami-event="web-installer-link-click" data-umami-event-location="home-section"', "globe")
+    # One line per card: the first sentence of the browser copy (browsers named there).
+    values["browser_line"] = copy["browser_body"].split(". ")[0].rstrip(".") + "."
+    values["app_icon"] = COMPONENTS["icon"]("laptop", "card-icon")
+    values["browser_icon"] = COMPONENTS["icon"]("globe", "card-icon")
+    values["trust_strip_section"] = (
+        '<div class="home-trust"><div class="shell">'
+        + COMPATIBILITY["home_trust_strip"](COMPATIBILITY["load_snapshot"](), locale, copy["trust_label"])
+        + "</div></div>"
+    )
     values["edge_guide_href"] = "/guides/install-garmin-maps-edge-mac/" if locale == "en" else f"/{locale}/guides/install-garmin-maps-edge-mac/"
-    # Freizeitkarte first on the Edge so the two devices open on different maps.
+    # Edge section (round 5): the Edge on the left, the text on the right, mirroring the hero; the
+    # map switch is the hero's component.
     values["edge_visual"] = (
         f'<figure class="home-device home-edge-figure" data-map-switch><div class="home-edge-screen">'
         f'<img class="home-edge-map" data-map-image src="/assets/home/edge-freizeitkarte.webp?v={ASSET_VERSION}" width="520" height="520" alt="{html.escape(copy["edge_map_alt"].replace("{name}", HERO_MAP_STYLES[1][1]))}" loading="lazy" decoding="async">'
@@ -657,6 +715,9 @@ def normalize_home(source: str, path: Path, locale: str) -> str:
     values.update({f"faq_question_{i}": question for i, question in enumerate(copy["faq_questions"])})
     template = Template((ROOT / "scripts/templates/home.html").read_text())
     source = re.sub(r'/home-features\.js\?v=[^"]+', f"/home-features.js?v={FEATURE_SCRIPT_VERSION}", source)
+    if "/home-numbers.js" not in source:
+        source = source.replace(f'<script defer src="/home-features.js?v={FEATURE_SCRIPT_VERSION}"></script>',
+                                f'<script defer src="/home-features.js?v={FEATURE_SCRIPT_VERSION}"></script>\n    <script defer src="/home-numbers.js?v={NUMBERS_SCRIPT_VERSION}"></script>', 1)
     source, count = re.subn(r"<main\b[\s\S]*?</main>", lambda _: template.substitute(values).rstrip(), source, count=1)
     if count != 1:
         raise ValueError(f"{path}: expected one Home main element")

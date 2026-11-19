@@ -7,9 +7,7 @@ canonical: https://terento.app/guides/install-garmin-maps-mac/
 
 Terento puts free OpenStreetMap maps, or your own map file, on a Garmin watch with map support. You don’t copy any files yourself, and your Garmin maps stay as they are.
 
-[Download](https://terento.app/download/)
-
-Using Linux? [Install maps from your browser](https://terento.app/guides/install-garmin-maps-linux/).
+[Download for Mac](https://terento.app/download/)
 
 ## What you need
 
@@ -17,7 +15,7 @@ Using Linux? [Install maps from your browser](https://terento.app/guides/install
 - Garmin watch with map support
 - USB cable that supports data transfer
 
-After you connect, Terento checks the watch and tells you whether it can install maps. [Compatibility](https://terento.app/compatibility/) lists the models with successful installations; a missing model isn’t necessarily unsupported.
+After you connect, Terento checks the watch and tells you whether it can install maps. Not on the [Compatibility](https://terento.app/compatibility/) list? It can still work: the list only shows models where someone has already installed a map.
 
 ## Install a map
 
@@ -31,7 +29,7 @@ Quit Garmin Express if it’s open. Unlock the watch and connect it to your Mac 
 
 [Garmin watch not showing up on Mac](https://terento.app/guides/troubleshooting/#connect-watch)
 
-Terento showing a connected Garmin watch and device detection status
+[Terento showing a connected Garmin watch and device detection status](https://terento.app/assets/app/optimized/your-garmin-1600.webp?v=20260912-app-screens-v2)
 Terento recognizes the connected Garmin watch before installation.
 
 3. Choose a map
@@ -46,14 +44,14 @@ Choose a provider and a region from the catalog.
 
 Add a compatible .img map from your Mac.
 
-Terento showing third-party map providers, regions and available Garmin storage
+[Terento showing third-party map providers, regions and available Garmin storage](https://terento.app/assets/app/optimized/map-selected-1600.webp?v=20260912-app-screens-v2)
 Choose a map from the catalog or add your own compatible file.
 
 4. Install
 
 Start the installation and keep the watch connected until Terento says the map is ready. Then disconnect the watch.
 
-Terento showing a completed map installation on a Garmin watch
+[Terento showing a completed map installation on a Garmin watch](https://terento.app/assets/app/optimized/maps-done-1600.webp?v=20260912-app-screens-v2)
 Keep the watch connected until transfer and verification are complete.
 
 ## Show the map on your watch
@@ -81,3 +79,7 @@ On the failed installation screen, choose “Report issue”. Terento opens GitH
 ## Uninstall Terento
 
 Quit Terento and move it from Applications to the Trash. Maps already on your watch stay there. Terento keeps its records of the maps it installed in ~/Library/Application Support/Terento: keep that folder if you may install Terento again, so it can still update and remove those maps. To remove everything, also delete that folder, ~/Library/Caches/Terento, ~/Library/Logs/Terento and ~/Library/Preferences/app.terento.mac.plist.
+
+Put a free map on your Garmin
+
+[Download for Mac](https://terento.app/download/) [Use the web installer](https://terento.app/install/)

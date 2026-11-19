@@ -3,9 +3,9 @@
     "h1": "Download Terento for Mac",
     "intro": "A free, open-source app that installs free maps on Garmin watches and Edge bike computers with map support.",
     "download": "Download for Mac",
-    "release_stable": "Latest version {version}, released {date}.",
-    "release_rc": "Release candidate {version}, released {date}.",
-    "release_beta": "Beta {version}, released {date}.",
+    "release_stable": "Latest version {version}, {date}.",
+    "release_rc": "Release candidate {version}, {date}.",
+    "release_beta": "Beta {version}, {date}.",
     "notes": "What’s new",
     "web_text": "No Apple Silicon Mac? {web} in Chrome, Microsoft Edge, Opera or Brave on a Mac. Linux is still in testing: read the {linux}.",
     "web_label": "Use the web installer",
@@ -31,7 +31,7 @@
       ],
       [
         "Pick a map",
-        "Choose a map and a region, then install it."
+        "Choose a map and a region and install it. Then turn the map on in your Garmin’s map settings (restart the Garmin if the map isn’t listed)."
       ]
     ],
     "guides_text": "Step by step: the {watch} and the {edge}.",
@@ -40,11 +40,11 @@
   },
   "de": {
     "h1": "Terento für Mac herunterladen",
-    "intro": "Eine kostenlose Open-Source-App, die freie Karten auf Garmin-Uhren und Edge-Radcomputer mit Kartenunterstützung installiert.",
+    "intro": "Eine kostenlose Open-Source-App, die freie Karten auf Garmin-Uhren und Edge-Fahrradcomputer mit Kartenunterstützung installiert.",
     "download": "Für Mac herunterladen",
-    "release_stable": "Neueste Version {version}, veröffentlicht am {date}.",
-    "release_rc": "Release Candidate {version}, veröffentlicht am {date}.",
-    "release_beta": "Beta {version}, veröffentlicht am {date}.",
+    "release_stable": "Neueste Version {version}, {date}.",
+    "release_rc": "Release Candidate {version}, {date}.",
+    "release_beta": "Beta {version}, {date}.",
     "notes": "Was ist neu",
     "web_text": "Kein Mac mit Apple Silicon? {web} in Chrome, Microsoft Edge, Opera oder Brave auf dem Mac. Linux ist noch im Test: siehe {linux}.",
     "web_label": "Nutze den Web-Installer",
@@ -70,7 +70,7 @@
       ],
       [
         "Karte wählen",
-        "Wähle eine Karte und eine Region und installiere sie."
+        "Wähle eine Karte und eine Region und installiere sie. Schalte die Karte dann in den Karteneinstellungen deines Garmin ein (fehlt sie in der Liste, starte das Gerät neu)."
       ]
     ],
     "guides_text": "Schritt für Schritt: {watch} und {edge}.",
@@ -81,9 +81,9 @@
     "h1": "Télécharger Terento pour Mac",
     "intro": "Une app gratuite et open source qui installe des cartes gratuites sur les montres Garmin et les compteurs vélo Edge compatibles avec les cartes.",
     "download": "Télécharger pour Mac",
-    "release_stable": "Dernière version {version}, publiée le {date}.",
-    "release_rc": "Version candidate {version}, publiée le {date}.",
-    "release_beta": "Bêta {version}, publiée le {date}.",
+    "release_stable": "Dernière version {version}, {date}.",
+    "release_rc": "Version candidate {version}, {date}.",
+    "release_beta": "Bêta {version}, {date}.",
     "notes": "Nouveautés",
     "web_text": "Pas de Mac Apple Silicon ? {web} dans Chrome, Microsoft Edge, Opera ou Brave sur Mac. Linux est encore en test : voir le {linux}.",
     "web_label": "Utilisez l’installateur web",
@@ -109,7 +109,7 @@
       ],
       [
         "Choisissez une carte",
-        "Choisissez une carte et une région, puis installez-la."
+        "Choisissez une carte et une région, puis installez-la. Activez ensuite la carte dans les réglages de carte de votre Garmin (redémarrez-le si elle n’est pas listée)."
       ]
     ],
     "guides_text": "Pas à pas : le {watch} et le {edge}.",
@@ -120,9 +120,9 @@
     "h1": "Pobierz Terento na Maca",
     "intro": "Darmowa aplikacja open source, która instaluje darmowe mapy na zegarkach Garmin i licznikach rowerowych Edge z obsługą map.",
     "download": "Pobierz na Maca",
-    "release_stable": "Najnowsza wersja {version}, wydana {date}.",
-    "release_rc": "Wersja kandydująca {version}, wydana {date}.",
-    "release_beta": "Beta {version}, wydana {date}.",
+    "release_stable": "Najnowsza wersja {version}, {date}.",
+    "release_rc": "Wersja kandydująca {version}, {date}.",
+    "release_beta": "Beta {version}, {date}.",
     "notes": "Co nowego",
     "web_text": "Nie masz Maca z Apple Silicon? {web} w Chrome, Microsoft Edge, Operze lub Brave na Macu. Linux jest jeszcze w fazie testów: zobacz {linux}.",
     "web_label": "Użyj instalatora webowego",
@@ -148,7 +148,7 @@
       ],
       [
         "Wybierz mapę",
-        "Wybierz mapę i region, a potem ją zainstaluj."
+        "Wybierz mapę i region, a potem ją zainstaluj. Następnie włącz mapę w ustawieniach map Garmina (jeśli nie ma jej na liście, uruchom urządzenie ponownie)."
       ]
     ],
     "guides_text": "Krok po kroku: {watch} i {edge}.",
@@ -159,9 +159,9 @@
     "h1": "Stáhnout Terento pro Mac",
     "intro": "Bezplatná open-source aplikace, která instaluje bezplatné mapy do hodinek Garmin a cyklopočítačů Edge s podporou map.",
     "download": "Stáhnout pro Mac",
-    "release_stable": "Nejnovější verze {version}, vydáno {date}.",
-    "release_rc": "Kandidát na vydání {version}, vydáno {date}.",
-    "release_beta": "Beta {version}, vydáno {date}.",
+    "release_stable": "Nejnovější verze {version}, {date}.",
+    "release_rc": "Kandidát na vydání {version}, {date}.",
+    "release_beta": "Beta {version}, {date}.",
     "notes": "Co je nového",
     "web_text": "Nemáte Mac s Apple Silicon? {web} v Chrome, Microsoft Edge, Opeře nebo Brave na Macu. Linux je zatím ve zkušebním provozu: viz {linux}.",
     "web_label": "Použijte webový instalátor",
@@ -187,7 +187,7 @@
       ],
       [
         "Vyberte mapu",
-        "Vyberte mapu a region a nainstalujte ji."
+        "Vyberte mapu a region a nainstalujte ji. Pak mapu zapněte v nastavení map v Garminu (pokud v seznamu není, Garmin restartujte)."
       ]
     ],
     "guides_text": "Krok za krokem: {watch} a {edge}.",
@@ -198,9 +198,9 @@
     "h1": "Scarica Terento per Mac",
     "intro": "Un’app gratuita e open source che installa mappe gratuite su smartwatch Garmin e ciclocomputer Edge con supporto mappe.",
     "download": "Scarica per Mac",
-    "release_stable": "Ultima versione {version}, pubblicata {date}.",
-    "release_rc": "Release candidate {version}, pubblicata {date}.",
-    "release_beta": "Beta {version}, pubblicata {date}.",
+    "release_stable": "Ultima versione {version}, {date}.",
+    "release_rc": "Release candidate {version}, {date}.",
+    "release_beta": "Beta {version}, {date}.",
     "notes": "Novità",
     "web_text": "Niente Mac con Apple Silicon? {web} in Chrome, Microsoft Edge, Opera o Brave su Mac. Linux è ancora in fase di test: vedi la {linux}.",
     "web_label": "Usa l’installer web",
@@ -226,7 +226,7 @@
       ],
       [
         "Scegli una mappa",
-        "Scegli una mappa e una regione, poi installala."
+        "Scegli una mappa e una regione, poi installala. Quindi attiva la mappa nelle impostazioni mappe del Garmin (se non è elencata, riavvia il dispositivo)."
       ]
     ],
     "guides_text": "Passo dopo passo: la {watch} e la {edge}.",

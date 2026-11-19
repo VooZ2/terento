@@ -37,7 +37,6 @@
   const exactVariantLabel = (row, fallbackVariants = []) => {
     const raw = clean(row.variant);
     const model = clean(row.model);
-    if (/\bHistorical\s*$/i.test(model)) return "Historical";
     const source = `${raw} ${model}`;
     const size = Number(row.caseSizeMm ?? row.case_size_mm);
     const sizes = source.match(sizePattern) || [];
@@ -55,7 +54,8 @@
       if (present) parts.push(name);
     }
     const extras = raw.replace(sizePattern, "").replace(featurePattern, "");
-    for (const extra of extras.split(/[,·•|/]/).map(trimSeparators).filter(Boolean)) {
+    // "Historical" is a catalog flag, not a variant a visitor can recognise: never shown.
+    for (const extra of extras.split(/[,·•|/]/).map(trimSeparators).filter((part) => part && !/^historical$/i.test(part))) {
       if (!parts.includes(extra)) parts.push(extra);
     }
     return parts.length ? parts.join(", ") : fallbackVariants.map(clean).filter(Boolean).join(" · ");

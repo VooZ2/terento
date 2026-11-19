@@ -7,11 +7,15 @@ canonical: https://terento.app/fr/
 
 Terento installe des cartes gratuites issues de projets OpenStreetMap sur les montres Garmin et les compteurs vélo Edge. Avec l’app Mac ou directement dans le navigateur de votre ordinateur. Gratuit, et l’app Mac est open source.
 
-[Télécharger pour Mac](https://terento.app/fr/download/) [Télécharger dans le Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-home&mt=8) [Installer depuis votre navigateur](https://terento.app/fr/install/)
+[Télécharger pour Mac](https://terento.app/fr/download/) [Installer depuis votre navigateur](https://terento.app/fr/install/)
 
-Vous hésitez pour votre modèle ? [Vérifier la compatibilité](https://terento.app/fr/compatibility/)
+[Envoyer le lien vers votre ordinateur](mailto:?subject=Terento%20%3A%20cartes%20gratuites%20pour%20votre%20Garmin&body=https%3A%2F%2Fterento.app%2Ffr%2F) [Vérifier la compatibilité](https://terento.app/fr/compatibility/)
 
 Montre Garmin affichant la carte OpenTopoMap du lac Königssee, dans les Alpes bavaroises
+
+- **47** modèles avec des installations réussies
+- **463** installations réussies
+- **18 novembre 202618 nov. 2026** Dernière installation réussie
 
 ## Comment ça marche
 
@@ -28,12 +32,6 @@ Choisissez des cartes dans le catalogue ou ajoutez votre propre carte .img compa
 Vos cartes sont installées et prêtes à être utilisées sur votre Garmin.
 
 Terento affiche les fournisseurs et les régions de cartes tierces sur macOS
-
-## Gérer les cartes
-
-Consultez les cartes installées, mettez-les à jour lorsqu’une version plus récente est disponible et supprimez les cartes tierces gérées par Terento. Les cartes Garmin d’origine restent protégées.
-
-Terento affiche les cartes tierces installées, regroupées par fournisseur
 
 Compteur vélo Garmin Edge affichant la carte Freizeitkarte de la montée de Sa Calobra, dans la Serra de Tramuntana à Majorque
 
@@ -89,7 +87,9 @@ Pour explorer les petits sentiers à pied.
 
 Certains libellés de la carte sont en français.
 
-[Comparer les styles en direct](https://terento.app/fr/map-styles/)
+### [Comparer les styles en direct](https://terento.app/fr/map-styles/)
+
+Voyez comment chacune représente le même lieu, puis installez celle qui convient à vos sorties.
 
 ## Avec l’app Mac ou depuis votre navigateur
 
@@ -97,15 +97,11 @@ Certains libellés de la carte sont en français.
 
 Installez les cartes du catalogue ou votre propre carte .img, voyez ce qui se trouve sur votre Garmin et mettez à jour les cartes quand de nouvelles éditions paraissent.
 
-macOS 13 ou version ultérieure sur Apple Silicon.
-
-[Télécharger pour Mac](https://terento.app/fr/download/)
+[Télécharger pour Mac](https://terento.app/fr/download/) [Télécharger dans le Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-home&mt=8)
 
 ### Installateur web
 
-Branchez votre Garmin avec un câble USB, choisissez des cartes et installez-les directement depuis Chrome, Microsoft Edge, Opera ou Brave. Mettez-les à jour ou supprimez-les plus tard de la même façon.
-
-Fonctionne sur Mac et, encore en test, sous Linux. Pas encore sous Windows, ni sur téléphone ou tablette.
+Branchez votre Garmin avec un câble USB, choisissez des cartes et installez-les directement depuis Chrome, Microsoft Edge, Opera ou Brave.
 
 [Ouvrir l’installateur web](https://terento.app/fr/install/)
 
@@ -118,6 +114,10 @@ Consultez la [page Compatibilité](https://terento.app/fr/compatibility/) pour v
 Puis-je installer des cartes tierces sur une montre Garmin depuis un Mac sans Garmin Express ni BaseCamp ?
 
 Oui. Terento fait tout depuis votre Mac : choisissez une carte et une région, installez-la sur votre Garmin, puis mettez-la à jour ou supprimez-la plus tard. Garmin Express et BaseCamp ne sont pas nécessaires. [Lisez le guide d’installation.](https://terento.app/fr/guides/install-garmin-maps-mac/)
+
+Est-ce sans risque pour mon Garmin ?
+
+Oui. Terento laisse toujours au moins 1 Go libre sur votre Garmin, vérifie chaque carte après la copie et ne touche jamais aux cartes installées par Garmin.
 
 Puis-je ajouter ma propre carte .img ?
 

@@ -56,3 +56,46 @@ preserve the same meaning in each locale.
 - Initial HTML must contain the current published snapshot; JavaScript may refresh
   it live. The generator/source is canonical; do not hand-edit divergent locale
   HTML, and preserve the same semantics in all six locales.
+
+## Shared page components (site refresh, 2026-11)
+
+- Indexed pages use one component layer in `styles.css`: `.grid`
+  (12 columns, one on phones, `col-4|6|8|12`, `row-2`), `.card`
+  (`--media`), `.page-hero`, `.section-head`, `.trust-strip`, `.steps`,
+  `.callout` and `.cta-band`. Markup helpers live in
+  `scripts/site_components.py`. Reuse them instead of page-specific variants.
+- One hero on every page (round 4, 2026-11-19): `section.page-hero >
+  .shell > .hero-copy` with the H1, one `.hero-lede` and optional
+  `.hero-actions`, on the canvas, left-aligned in a 720px column, never in a
+  card. Same top padding (`--hero-top`) and gap to the next section
+  (`--hero-gap`) everywhere; H1 64px on Home, 52px elsewhere; lead 21/18px,
+  max 65ch. Nothing goes under the hero buttons.
+- Bento surfaces: the Off-White canvas carries the page; `.card` tiles use
+  `--tile` (backgroundSecondary) without borders. Radii: controls
+  `--control-radius` 10px, cards `--card-radius` 14px, large panels
+  `--panel-radius` 18px. Card and step titles use `--type-item` (Instrument
+  Sans 22px). Product photos sit on `--photo-tile` in both modes.
+- Buttons: `primary_action()` (one primary button, "Download for Mac" with
+  the Lucide download icon, 40px, 15/20 at 600) and `secondary_action()`
+  (outlined, same size). `store_download()` adds Apple's badge on /download/;
+  Home shows it once, in the Mac app card under "Download for Mac". At most one
+  App Store badge per page. Never change the badge.
+- Only Compatibility, Map styles and the guides end with
+  `end_cta(locale, location)`: "Put a free map on your Garmin", "Download for
+  Mac" and a "Use the web installer" text link (the Linux guide passes
+  `web_first=True`), on the canvas with the normal section gap above it. Home
+  ends with the FAQ; About and Download have no closing call to action.
+- Header navigation marks the current item with `aria-current="page"`, 600
+  in the link colour; every guide page (watch, Edge, Linux, Troubleshooting)
+  marks "Guide".
+- Links: one style everywhere (link colour, 600, no underline; underline on
+  hover). Dates: `dateStyle: "long"` in running text ("November 15, 2026"),
+  `dateStyle: "medium"` in dense places such as cards ("Nov 15, 2026"); never
+  numeric US dates.
+- `.cta-band` titles are `<p class="cta-band__title">`, never headings, so
+  the H2 list does not change.
+- Run `python3 scripts/check-site-refresh.py` for any layout change (pass the
+  intended changes with `--expect`, e.g. `scripts/site-refresh-step0-expect.json`): it
+  compares title, H1, meta description, canonical, hreflang, robots, the H2
+  list, JSON-LD types, Umami events and FAQPage questions against
+  `origin/main` for every page and locale.

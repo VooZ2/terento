@@ -5,11 +5,11 @@ canonical: https://terento.app/de/guides/troubleshooting/
 
 # Probleme mit Garmin-Uhr und Karten am Mac lösen
 
-Finde dein Problem – von einer Garmin-Uhr, die der Mac nicht erkennt, bis zu einem fehlgeschlagenen Karten-Download – und folge den kurzen Schritten. Wenn nichts hilft, sende einen Bericht, damit wir es uns ansehen können.
+Finde dein Problem – von einer Garmin-Uhr, die der Mac nicht erkennt, bis zu einem fehlgeschlagenen Karten-Download – und folge den kurzen Schritten. Wenn nichts hilft, sende einen Bericht und ich sehe es mir an.
 
 ## Garmin Edge wird am Mac nicht erkannt
 
-Neuere Garmin-Edge-Radcomputer mit Kartenunterstützung verbinden sich mit dem Mac genauso wie aktuelle Garmin-Uhren. Die meisten Schritte auf dieser Seite gelten deshalb auch für einen Edge: USB-Datenkabel nutzen, Garmin Express beenden und bis zu 2 Minuten warten. Ältere Edge-Modelle, die im Finder als Laufwerk erscheinen, funktionieren anders.
+Neuere Garmin-Edge-Fahrradcomputer mit Kartenunterstützung verbinden sich mit dem Mac genauso wie aktuelle Garmin-Uhren. Die meisten Schritte auf dieser Seite gelten deshalb auch für einen Edge: USB-Datenkabel nutzen, Garmin Express beenden und bis zu 2 Minuten warten. Ältere Edge-Modelle, die im Finder als Laufwerk erscheinen, funktionieren anders.
 
 [Anleitung für Garmin Edge lesen](https://terento.app/de/guides/install-garmin-maps-edge-mac/)
 
@@ -44,19 +44,27 @@ Trenne alle Garmin-Geräte außer der Uhr, die du verwenden möchtest: Terento a
 
 ### Garmin-Uhr nicht erkannt: USB-Modus (MTP)
 
-Wenn Terento meldet, dass die Uhr nicht für die Dateiübertragung bereit ist, stelle den USB-Modus der Uhr auf MTP, sofern dein Modell diese Einstellung hat. Über MTP (Media Transfer Protocol) teilen die meisten aktuellen Garmin-Uhren Dateien per USB, so wie Android-Smartphones. macOS unterstützt MTP nicht von Haus aus, daher erscheint die Uhr nicht als Laufwerk; Terento nutzt MTP selbst, du brauchst also weder Android File Transfer noch OpenMTP.
+Wenn Terento meldet, dass die Uhr nicht für die Dateiübertragung bereit ist, stelle den USB-Modus der Uhr auf MTP, sofern dein Modell diese Einstellung hat.
 
 1. Öffne auf der Uhr den USB-Modus, meist unter Einstellungen › System. Nicht jedes Modell hat diese Einstellung.
 2. Wähle MTP.
 3. Trenne die Uhr und verbinde sie erneut.
 
+Mehr Details
+
+Über MTP (Media Transfer Protocol) teilen die meisten aktuellen Garmin-Uhren Dateien per USB, so wie Android-Smartphones. macOS unterstützt MTP nicht von Haus aus, daher erscheint die Uhr nicht als Laufwerk; Terento nutzt MTP selbst, du brauchst also weder Android File Transfer noch OpenMTP.
+
 ### Garmin-Uhr erkannt, aber nicht bereit
 
-Findet Terento die Uhr, wird die Verbindung aber nicht innerhalb von 2 Minuten bereit, trenne die Uhr und verbinde sie erneut. Gelegentlich hängende Verbindungen sind eine bekannte Einschränkung der aktuellen Version.
+Findet Terento die Uhr, wird die Verbindung aber nicht innerhalb von 2 Minuten bereit, trenne die Uhr und verbinde sie erneut.
 
 1. Beende andere Programme, die die Uhr verwenden könnten. Siehe [Garmin Express oder eine andere App blockiert die Uhr](https://terento.app/de/guides/troubleshooting/#garmin-busy).
 2. Versuche einen anderen USB-Anschluss oder ein anderes Kabel.
 3. Wenn es weiter passiert, starte die Uhr neu und verbinde sie erneut.
+
+Mehr Details
+
+Gelegentlich hängende Verbindungen sind eine bekannte Einschränkung der aktuellen Version.
 
 ### Garmin-Uhr reagiert nicht mehr
 
@@ -69,11 +77,15 @@ Trenne die Uhr, warte ein paar Sekunden und verbinde sie erneut: Die Verbindung 
 
 ### Karteninstallation für dieses Garmin-Modell nicht verfügbar
 
-Terento installiert Karten nur auf Garmin-Uhren mit Kartenunterstützung, die in Terento freigegeben sind. Du kannst die Uhr trotzdem verbinden und die Karten durchsuchen.
+Terento installiert Karten nur auf Garmin-Uhren mit Kartenunterstützung, die in Terento freigegeben sind.
 
 1. Prüfe, ob dein Uhrenmodell Karten unterstützt.
 2. Terento prüft bei jedem Verbinden seine aktuelle Liste. Wird dein Modell später freigegeben, verbinde die Uhr erneut.
 3. Nenne uns dein genaues Modell, damit wir es prüfen können. Siehe [Problem mit Terento melden](https://terento.app/de/guides/troubleshooting/#send-report).
+
+Mehr Details
+
+Du kannst die Uhr trotzdem verbinden und die Karten durchsuchen.
 
 ### Terento konnte deine Garmin-Uhr nicht prüfen
 
@@ -85,10 +97,14 @@ Prüfe, ob dein Mac online ist, und verbinde die Uhr erneut: Terento braucht ein
 
 ### Garmin-Kartenliste lädt nicht oder Terento braucht ein Update
 
-Kann Terento die aktuelle Kartenliste nicht laden, prüfe deine Internetverbindung und versuche es in ein paar Minuten erneut. Karten, die bereits auf deiner Uhr sind, sind nicht betroffen.
+Kann Terento die aktuelle Kartenliste nicht laden, prüfe deine Internetverbindung und versuche es in ein paar Minuten erneut.
 
 1. Ist diese Terento-Version für die aktuelle Kartenliste zu alt und meldet Terento eine neuere Version, installiere das Update.
 2. Solange Terento eine ältere gespeicherte Kartenliste zeigt, bleiben Installation und Aktualisierung von Katalogkarten nicht verfügbar, bis die aktuelle Liste geprüft werden kann.
+
+Mehr Details
+
+Karten, die bereits auf deiner Uhr sind, sind nicht betroffen.
 
 ## Karten-Downloads und freier Speicher
 
@@ -118,20 +134,28 @@ Wähle eine kleinere Region oder entferne eine Karte, die du nicht mehr brauchst
 
 ### Karteninstallation fehlgeschlagen: Kartenrest auf der Uhr
 
-Entferne den Kartenrest in „Manage maps“ und installiere die Karte dann erneut. Bricht eine Installation nach Beginn des Kopierens ab, kann ein Teil der Karte auf der Uhr bleiben, und Terento entfernt ihn nicht automatisch.
+Entferne den Kartenrest in „Manage maps“ und installiere die Karte dann erneut.
 
 1. Verbinde die Uhr erneut und warte, bis Terento bereit ist.
 2. Öffne „Manage maps“ und prüfe die Liste.
 3. Wenn die Karte aus der fehlgeschlagenen Installation aufgeführt ist, entferne sie und installiere sie dann erneut.
 4. Wenn es wieder fehlschlägt, [sende einen Bericht](https://terento.app/de/guides/troubleshooting/#send-report).
 
+Mehr Details
+
+Bricht eine Installation nach Beginn des Kopierens ab, kann ein Teil der Karte auf der Uhr bleiben, und Terento entfernt ihn nicht automatisch.
+
 ### Karten-Update oder Entfernen dauert lange
 
-Das ist in der aktuellen Version zu erwarten: Beim Aktualisieren oder Entfernen einer Karte kann die Anzeige eine Weile bei einem hohen Prozentwert stehen bleiben, bevor der Vorgang endet. Lass die Uhr verbunden und deinen Mac wach.
+Das ist in der aktuellen Version zu erwarten: Beim Aktualisieren oder Entfernen einer Karte kann die Anzeige eine Weile bei einem hohen Prozentwert stehen bleiben, bevor der Vorgang endet.
 
 1. Trenne die Uhr nicht, solange Terento arbeitet.
 2. Warte, bis Terento den Abschluss meldet.
 3. Wenn Terento einen Fehler meldet, verbinde die Uhr erneut und prüfe „Manage maps“, bevor du es erneut versuchst.
+
+Mehr Details
+
+Lass die Uhr verbunden und deinen Mac wach.
 
 ## Hilfe bekommen
 
@@ -144,4 +168,6 @@ Wähle im Fehlerbildschirm „Report issue“: Terento öffnet GitHub mit dem Be
 3. Prüfe den Bericht vor dem Veröffentlichen: GitHub-Issues sind öffentlich.
 4. Kein GitHub-Konto? Schreibe an [hello@terento.app](mailto:hello@terento.app?subject=Terento%20installation%20issue) und nenne dein Uhrenmodell, die Kartenregion und was passiert ist.
 
-Neu bei Terento? [Mac-Installationsanleitung lesen](https://terento.app/de/guides/install-garmin-maps-mac/)
+Bring eine kostenlose Karte auf dein Garmin
+
+[Für Mac herunterladen](https://terento.app/de/download/) [Web-Installer verwenden](https://terento.app/de/install/)

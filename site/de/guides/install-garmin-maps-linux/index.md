@@ -9,13 +9,11 @@ Unter Linux installiert der Terento-Web-Installer kostenlose Karten auf Garmin-U
 
 [Web-Installer öffnen](https://terento.app/de/install/)
 
-Am Mac? Lies die Anleitung für eine [Garmin-Uhr](https://terento.app/de/guides/install-garmin-maps-mac/) oder einen [Garmin Edge](https://terento.app/de/guides/install-garmin-maps-edge-mac/).
-
 ## Das brauchst du
 
-- Chrome, Microsoft Edge, Opera oder Brave auf einem Linux-Computer. Firefox kann keine USB-Geräte verbinden.
-- Ein USB-Datenkabel, kein reines Ladekabel.
-- Eine entsperrte Garmin-Uhr mit Kartenunterstützung.
+- Chrome, Microsoft Edge, Opera oder Brave unter Linux (Firefox kann nicht per USB verbinden)
+- Garmin-Smartwatch mit Kartenunterstützung
+- USB-Kabel mit Datenübertragung
 
 ## Eine Karte aus dem Browser installieren
 
@@ -48,3 +46,7 @@ Lass die Liste bis zu zwei Minuten offen. Wenn kein Eintrag mit „Garmin“ im 
 ### Der Browser hat keinen USB-Zugriff
 
 Ein als Snap-Paket installierter Browser bekommt möglicherweise keinen USB-Zugriff. Verwende den Browser aus seinem offiziellen .deb- oder .rpm-Paket.
+
+Bring eine kostenlose Karte auf dein Garmin
+
+[Web-Installer öffnen](https://terento.app/de/install/)

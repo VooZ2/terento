@@ -55,7 +55,7 @@ function visibleFaq(source, file) {
   assert(section, `${file}: visible FAQ section is required`);
   const entries = [...section[1].matchAll(/<details>\s*<summary>([\s\S]*?)<\/summary>\s*<p>([\s\S]*?)<\/p>\s*(?:<div class="faq-support-actions">[\s\S]*?<\/div>\s*)?<\/details>/gi)]
     .map((match) => ({ question: visibleText(match[1]), answer: visibleText(match[2]) }));
-  assert.equal(entries.length, 7, `${file}: expected seven visible FAQ entries`);
+  assert.equal(entries.length, 8, `${file}: expected eight visible FAQ entries`);
   return entries;
 }
 
@@ -121,17 +121,18 @@ for (const locale of locales) {
   assert.equal(faq["@id"], `${homeUrl}#faq`, `${home}: FAQ ID`);
   assert.equal(faq.url, `${homeUrl}#faq`, `${home}: FAQ URL`);
   assert.equal(faq.inLanguage, locale, `${home}: FAQ language`);
-  assert.equal(faq.mainEntity.length, 7, `${home}: FAQ count`);
-  assert.match(faq.mainEntity[4].acceptedAnswer.text, /Garmin Express[\s\S]*Android File Transfer[\s\S]*OpenMTP/, `${home}: connection schema answer names the apps that can hold the watch`);
+  assert.equal(faq.mainEntity.length, 8, `${home}: FAQ count`);
+  assert.match(faq.mainEntity[2].acceptedAnswer.text, /1 (?:GB|Go)/, `${home}: Garmin safety schema answer (round 5)`);
+  assert.match(faq.mainEntity[5].acceptedAnswer.text, /Garmin Express[\s\S]*Android File Transfer[\s\S]*OpenMTP/, `${home}: connection schema answer names the apps that can hold the watch`);
   assert.deepEqual(
     faq.mainEntity.map((question) => ({ question: question.name, answer: question.acceptedAnswer.text })),
     visibleFaq(homeData.source, home),
     `${home}: FAQ JSON-LD must match visible FAQ exactly`
   );
   assert.match(faq.mainEntity[1].acceptedAnswer.text, /BaseCamp/, `${home}: BaseCamp schema answer says neither Garmin app is needed`);
-  assert.doesNotMatch(faq.mainEntity[3].acceptedAnswer.text, /beta|bêta|betę|betu/i, `${home}: update schema answer avoids beta-specific wording`);
-  assert.match(faq.mainEntity[2].acceptedAnswer.text, /\.img|compatible|kompatib|zgodn|kompatibil|support/i, `${home}: own-map schema answer explains compatible local import`);
-  assert.match(faq.mainEntity[3].name, /update|aktual|mise à jour|à jour|nowsz|novější|più recent|aggiorn/i, `${home}: update FAQ question`);
+  assert.doesNotMatch(faq.mainEntity[4].acceptedAnswer.text, /beta|bêta|betę|betu/i, `${home}: update schema answer avoids beta-specific wording`);
+  assert.match(faq.mainEntity[3].acceptedAnswer.text, /\.img|compatible|kompatib|zgodn|kompatibil|support/i, `${home}: own-map schema answer explains compatible local import`);
+  assert.match(faq.mainEntity[4].name, /update|aktual|mise à jour|à jour|nowsz|novější|più recent|aggiorn/i, `${home}: update FAQ question`);
   assert.match(homeData.source, /data-provider-card="freizeitkarte"[\s\S]*Freizeitkarte[\s\S]*data-provider-card="opentopomap"[\s\S]*OpenTopoMap[\s\S]*data-provider-card="maprando"[\s\S]*MapRando/, `${home}: provider cards name current providers`);
   assert.doesNotMatch(homeData.source, /back up|backup|sauvegarder|zálohovat|wykonać kopię|eseguire il backup/i, `${home}: no backup promise in source`);
 

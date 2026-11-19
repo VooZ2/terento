@@ -161,6 +161,11 @@ for path in sorted((root / "site").rglob("*.html")):
     email_tags = re.findall(r'<a\b[^>]*href="mailto:[^"]+"[^>]*>', html, flags=re.IGNORECASE)
     for tag in email_tags:
         attributes = dict(re.findall(r'([\w:-]+)="([^"]*)"', tag))
+        if 'href="mailto:?' in tag:
+            # "Send to computer" (Home, phones): an email to yourself with the page link, no address.
+            assert attributes.get("data-umami-event") == "send-to-computer-click", f"{path}: send-to-computer link event"
+            assert attributes.get("data-umami-event-location") == "home-hero", f"{path}: send-to-computer link location"
+            continue
         assert "&#64;" in tag, f"{path}: email href must use HTML address obfuscation"
         assert attributes.get("data-umami-event") == "support-link-click", f"{path}: email link must use support-link-click"
         assert attributes.get("data-umami-event-location"), f"{path}: email link has no Umami location"
@@ -187,13 +192,15 @@ download_files = [
 
 for path in home_files:
     html = path.read_text(encoding="utf-8")
-    assert html.count('class="home-steps section"') == 1, f"{path}: expected the how-it-works section"
-    assert html.count('class="home-manage section"') == 1, f"{path}: expected the manage maps section"
+    assert html.count('class="block home-how"') == 1, f"{path}: expected the how-it-works section"
+    assert 'aria-labelledby="manage-title"' not in html, f"{path}: the manage maps card was removed (owner round 5)"
+    assert html.count('<section class="block home-edge" id="edge"') == 1, f"{path}: expected the Garmin Edge section"
+    assert html.count('data-umami-event="app-store-click" data-umami-event-location="home-section"') == 1, f"{path}: expected the App Store badge in the Mac app card"
     assert html.count('data-umami-event="guide-link-click" data-umami-event-location="home-edge"') == 1, f"{path}: expected the Garmin Edge guide link"
     assert 'class="scope-section"' not in html, f"{path}: Beta scope section must be removed"
     assert html.count('data-provider-card=') == 5, f"{path}: expected one card per provider"
     assert html.count('class="provider-benefits"') == 5, f"{path}: expected one benefits list per map card"
-    assert html.count("<details>") == 7, f"{path}: expected seven FAQ answers"
+    assert html.count("<details>") == 8, f"{path}: expected eight FAQ answers"
     assert 'final-cta' not in html, f"{path}: the closing download block was removed (owner 2026-11-13)"
     assert "/assets/home/hero-opentopomap.webp" in html, f"{path}: expected the drawn watch hero map"
     assert "/assets/app/optimized/install-maps-640.avif" in html, f"{path}: expected responsive install screenshot"

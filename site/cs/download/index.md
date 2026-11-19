@@ -9,13 +9,13 @@ Bezplatná open-source aplikace, která instaluje bezplatné mapy do hodinek Gar
 
 [Stáhnout pro Mac](https://github.com/VooZ2/terento/releases/download/v1.2.1-build48/Terento-1.2.1-macOS-arm64.dmg) [Download on the Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-download&mt=8)
 
-Nejnovější verze **v1.2.1**, vydáno 14. listopadu 2026. [Co je nového](https://github.com/VooZ2/terento/releases/tag/v1.2.1-build48)
-
-Nemáte Mac s Apple Silicon? [Použijte webový instalátor](https://terento.app/cs/install/) v Chrome, Microsoft Edge, Opeře nebo Brave na Macu. Linux je zatím ve zkušebním provozu: viz [návod pro Linux](https://terento.app/cs/guides/install-garmin-maps-linux/).
+[Použijte webový instalátor](https://terento.app/cs/install/)
 
 Terento zobrazuje připojené hodinky Garmin v macOS
 
 ## Co budete potřebovat
+
+Nejnovější verze **v1.2.1**, 14. listopadu 2026. [Co je nového](https://github.com/VooZ2/terento/releases/tag/v1.2.1-build48)
 
 - Mac s Apple Silicon
 - macOS 13 nebo novější
@@ -35,6 +35,6 @@ Použijte datový kabel USB a odemkněte hodinky nebo Edge.
 
 3. Vyberte mapu
 
-Vyberte mapu a region a nainstalujte ji.
+Vyberte mapu a region a nainstalujte ji. Pak mapu zapněte v nastavení map v Garminu (pokud v seznamu není, Garmin restartujte).
 
 Krok za krokem: [průvodce pro hodinky Garmin](https://terento.app/cs/guides/install-garmin-maps-mac/) a [průvodce pro Garmin Edge](https://terento.app/cs/guides/install-garmin-maps-edge-mac/).
