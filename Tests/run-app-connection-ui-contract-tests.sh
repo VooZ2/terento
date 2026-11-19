@@ -27,6 +27,10 @@ assert_absent() {
 }
 
 assert_contains 'ProgressView()' "$connect_screen"
+# The Device card shows no Testing/Tested/Supported/Verified pill: the tier
+# counts shared installs and is not a public support badge.
+assert_absent 'CompatibilityStatusView' "$connect_screen"
+assert_absent 'presentation.compatibility' "$connect_screen"
 assert_contains 'ResourceImage(name: connectionIllustrationName' "$connect_screen"
 assert_contains 'return "connect-illustration-connecting"' "$connect_screen"
 assert_contains 'return "connect-illustration"' "$connect_screen"

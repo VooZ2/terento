@@ -713,6 +713,17 @@ five-minute catalog timer re-resolves an unavailable policy. A decision fetched
 at download time is applied to `DeviceEngine`, so a rejection is shown on the
 review page instead of silently returning to it. These are presentation and
 retry changes only; the authorization rules are unchanged.
+The Device page shows no public compatibility tier (Testing, Tested, Supported,
+Verified): the tier counts shared successful installations, which proves write
+and read-back but not that the device shows the map, and it is not a support
+badge. The tier stays in the Compatibility API, Admin and diagnostics logs.
+The Done page and the App Store sharing dialog say "installed and checked" and
+give the next step from the install guides: disconnect, turn the new map on in
+the device's map settings, restart the device if it is not listed.
+A map from an unrecognized provider is named by its whole IMG header
+description (20 bytes at 0x49 joined with the 31-byte continuation at 0x65,
+decoded as UTF-8). Recognized providers keep their own parsing and catalog
+matching never uses this name.
 The public beta.15 build 37 passes the connected-device authorization state into
 the map engine and shows pending or blocked authorization on the Install review
 screen. It also removes obsolete internal installation/update paths while
