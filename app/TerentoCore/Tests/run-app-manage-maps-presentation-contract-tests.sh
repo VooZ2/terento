@@ -53,6 +53,21 @@ require_text 'return action == .update ? .white : TerentoColors.graphite' "$conn
 require_text 'return TerentoColors.interactive' "$connect_screen" "Update does not use the Terento primary fill"
 
 require_text '.accessibilityLabel("\(title) \(mapTitle)")' "$connect_screen" "visible actions lack map-specific accessibility labels"
+# VoiceOver names the provider ("Remove Lithuania, MapRando"), as the provider filter labels it.
+require_text 'mapTitle: providerLabel.isEmpty ? item.title : "\(item.title), \(providerLabel)"' "$connect_screen" "action labels do not name the provider"
+require_text 'managedMapRow(item, provider: group.title)' "$connect_screen" "provider rows do not pass their provider"
+# A running Remove disables the other actions and Refresh, with a visible disabled colour.
+require_text 'return TerentoGeneratedTokens.Light.textDisabled' "$connect_screen" "disabled Manage actions still look active"
+require_text '.disabled(mapManagementActionsBusy)
+                    .help("Refresh map information")' "$connect_screen" "Manage Refresh is not disabled during an operation"
+# After Remove the list stays on screen and refreshes in place; the reading card is only for no list.
+require_text 'if inventory == nil, managedInventory != nil, isReadingDeviceMaps { return }' "$connect_screen" "rescan replaces the list with the reading card"
+require_text 'removedManagedMapIDs.insert(itemID)' "$connect_screen" "removed row is not hidden from the kept list"
+require_text '.transition(.opacity)' "$connect_screen" "removed row does not fade out"
+require_text '.animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: lifecycleInventory.allItems.map(\.id))' "$connect_screen" "row fade ignores reduced motion"
+require_text '? "This can take a minute."' "$connect_screen" "reading card lacks its one detail line"
+reject_text 'Map information will appear here when your device is ready.' "$connect_screen" "reading card repeats itself"
+require_text 'TextField("Search installed maps", text: $managedSearchText)' "$connect_screen" "Manage search placeholder differs from its label"
 
 print "PASS: Manage maps simplified action contract"
 

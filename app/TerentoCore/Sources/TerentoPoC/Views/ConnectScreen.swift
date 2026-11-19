@@ -59,6 +59,9 @@ struct ConnectScreen: View {
     @State private var managedInventory: MapLifecycleInventory?
     @State private var managedPresentationIndex: MapInventoryListPresentationIndex?
     @State private var filteredManagedInventory: MapLifecycleInventory?
+    // The map in the last Remove dialog, and maps removed since the last fresh list.
+    @State private var removingManagedMapID: String?
+    @State private var removedManagedMapIDs: Set<String> = []
     @State private var managedSearchText = ""
     @State private var managedProviderID = ""
     @FocusState private var managedSearchFocused: Bool
@@ -235,6 +238,8 @@ struct ConnectScreen: View {
                 isInstalling: installationOperationIsActive,
                 navigationLocked: installationOperationIsActive,
                 mapNavigationEnabled: canOpenMapSections,
+                // The Device page has its own "Eject device" button.
+                showsEject: selectedSection != .device || snapshot == nil,
                 onNavigate: navigate,
                 onEject: performSafeEject
             )
@@ -295,6 +300,8 @@ struct ConnectScreen: View {
         }
         .onChange(of: mapEngine.state) { newState in
             updatePresenceMonitoring(for: newState)
+            // A rescan that ends without a list replaces the kept list.
+            if mapEngine.result == nil, managedInventory != nil { refreshManagedPresentation() }
             continueRetryAfterScanIfReady(newState)
             continueWatchReconnectWaitIfReady()
         }
@@ -343,6 +350,10 @@ struct ConnectScreen: View {
         .onChange(of: selectedGeography) { _ in refreshSearchPresentation() }
         .onChange(of: managedSearchText) { _ in refreshManagedFilters() }
         .onChange(of: managedProviderID) { _ in refreshManagedFilters() }
+        .onChange(of: lifecycleViewModel.pendingConfirmation) { confirmation in
+            guard let confirmation, confirmation.action == .remove else { return }
+            removingManagedMapID = confirmation.itemID
+        }
         .onChange(of: selectedMapIDs) { _ in refreshDisplayedInstallationPlan() }
         .onChange(of: selectedOptionalArtifactIDs) { _ in refreshDisplayedInstallationPlan() }
         .onChange(of: mapEngine.customMapImportReadyForInstallation) { _ in
@@ -947,7 +958,8 @@ struct ConnectScreen: View {
         case .detecting:
             switch deviceEngine.detectionPhase {
             case .waitingForWatch:
-                return ("cable.connector", TerentoColors.secondaryText)
+                // After an unplug the title and the plug-in line say it all.
+                return disconnectExplanation == nil ? ("cable.connector", TerentoColors.secondaryText) : nil
             case .connecting:
                 return ("arrow.triangle.2.circlepath", TerentoColors.interactive)
             case .needsAttention:
@@ -960,8 +972,10 @@ struct ConnectScreen: View {
         }
     }
 
+    /// First-connection tips; a watch that was just unplugged needs none.
     private var showsConnectChecklist: Bool {
         deviceEngine.state == .detecting && deviceEngine.detectionPhase == .waitingForWatch
+            && disconnectExplanation == nil
     }
 
     private var connectChecklist: some View {
@@ -1148,7 +1162,12 @@ struct ConnectScreen: View {
     }
 
     private func refreshManagedPresentation() {
-        managedInventory = mapEngine.mapLifecycleInventory()
+        let inventory = mapEngine.mapLifecycleInventory()
+        // A rescan of the same watch (after Remove, Refresh or opening the
+        // page) keeps the current list; the reading card is only for no list.
+        if inventory == nil, managedInventory != nil, isReadingDeviceMaps { return }
+        removedManagedMapIDs = []
+        managedInventory = inventory
         managedPresentationIndex = managedInventory.map(MapInventoryListPresentationIndex.init)
         if !managedProviderID.isEmpty,
            !(managedPresentationIndex?.providerOptions.contains { $0.id == managedProviderID } ?? false) {
@@ -1158,9 +1177,9 @@ struct ConnectScreen: View {
     }
 
     private func refreshManagedFilters() {
-        filteredManagedInventory = managedPresentationIndex?.filtered(
-            query: managedSearchText, providerID: managedProviderID
-        )
+        filteredManagedInventory = managedPresentationIndex.map {
+            withoutRemovedMaps($0.filtered(query: managedSearchText, providerID: managedProviderID))
+        }
         if managedFiltersAreActive, let inventory = filteredManagedInventory {
             expandedProviderMapGroups.formUnion(inventory.providerGroups.map(\.id))
             importedMapsExpanded = true
@@ -1168,11 +1187,25 @@ struct ConnectScreen: View {
         }
     }
 
+    /// Hides a removed map from the kept list until the rescan replaces it.
+    private func withoutRemovedMaps(_ inventory: MapLifecycleInventory) -> MapLifecycleInventory {
+        guard !removedManagedMapIDs.isEmpty else { return inventory }
+        let kept = { (item: MapLifecycleItem) in !removedManagedMapIDs.contains(item.id) }
+        return MapLifecycleInventory(
+            providerGroups: inventory.providerGroups.compactMap { group in
+                let items = group.items.filter(kept)
+                return items.isEmpty ? nil : MapLifecycleProviderGroup(id: group.id,
+                    providerId: group.providerId, title: group.title, items: items)
+            },
+            otherMaps: inventory.otherMaps.filter(kept)
+        )
+    }
+
     private var managedCatalogToolbar: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
                 HStack(spacing: 6) {
-                    TextField("Search countries and regions", text: $managedSearchText)
+                    TextField("Search installed maps", text: $managedSearchText)
                         .textFieldStyle(.plain)
                         .focused($managedSearchFocused)
                         .accessibilityLabel("Search installed maps")
@@ -1241,6 +1274,7 @@ struct ConnectScreen: View {
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(TerentoColors.secondaryText)
+                    .disabled(mapManagementActionsBusy)
                     .help("Refresh map information")
                     .accessibilityLabel("Refresh map information")
                 }
@@ -1271,6 +1305,12 @@ struct ConnectScreen: View {
                 // VoiceOver hears "<Map> removed." even when focus is elsewhere.
                 .onChange(of: lifecycleViewModel.removalNotice) { notice in
                     guard let notice else { return }
+                    if let itemID = removingManagedMapID,
+                       let operation = lifecycleViewModel.operation(for: itemID),
+                       operation.action == .remove, operation.phase == .completed {
+                        removedManagedMapIDs.insert(itemID)
+                        refreshManagedFilters()
+                    }
                     NSAccessibility.post(element: NSApp as Any, notification: .announcementRequested, userInfo: [
                         .announcement: notice,
                         .priority: NSAccessibilityPriorityLevel.high.rawValue
@@ -1293,7 +1333,7 @@ struct ConnectScreen: View {
                         : "Map information is not available",
                     detail: deviceEngine.hasConnectedDevice
                         ? (mapEngine.state == .loadingCatalog || mapEngine.state == .scanning
-                            ? "Checking your Garmin device…"
+                            ? "This can take a minute."
                             : "Refresh the connected Garmin device to try again.")
                         : "Connect your Garmin device first",
                     status: deviceEngine.hasConnectedDevice
@@ -1302,10 +1342,6 @@ struct ConnectScreen: View {
                             : "Pending")
                         : "Pending",
                     note: mapEngine.userErrorMessage
-                        ?? (deviceEngine.hasConnectedDevice
-                            && (mapEngine.state == .loadingCatalog || mapEngine.state == .scanning)
-                            ? "Map information will appear here when your device is ready."
-                            : nil)
                 )
                 .padding(.top, 18)
             }
@@ -1355,7 +1391,7 @@ struct ConnectScreen: View {
                         isExpanded: providerGroupExpansionBinding(for: group.id)
                     ) {
                         ForEach(group.items) { item in
-                            managedMapRow(item)
+                            managedMapRow(item, provider: group.title)
                         }
                     }
                     .padding(
@@ -1416,6 +1452,8 @@ struct ConnectScreen: View {
                     .padding(.top, 30)
                 }
         }
+        // A removed row fades out when the list refreshes in place.
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: lifecycleInventory.allItems.map(\.id))
     }
 
     private func confirmationItem(for confirmation: MapLifecycleConfirmation) -> (item: MapLifecycleItem, provider: String?)? {
@@ -1435,7 +1473,7 @@ struct ConnectScreen: View {
             : "Update this map?"
     }
 
-    /// "BBBike Ontrail · 2026-11-18 · 483 KB" for the Remove dialog.
+    /// "BBBike (Ontrail) · 2026-11-18 · 483 KB" for the Remove dialog.
     private func mapConfirmationMetadata(for confirmation: MapLifecycleConfirmation) -> String {
         guard let (item, provider) = confirmationItem(for: confirmation) else {
             return lifecycleViewModel.confirmationSubtitle
@@ -1559,9 +1597,11 @@ struct ConnectScreen: View {
     }
 
     @ViewBuilder
-    private func managedMapRow(_ item: MapLifecycleItem) -> some View {
+    private func managedMapRow(_ item: MapLifecycleItem, provider: String? = nil) -> some View {
         ManageMapRow(
             item: item,
+            providerLabel: item.sourceKind == .custom ? "" : MapProviderDisplay.title(providerID: item.provider ?? "",
+                regionID: item.region, fallback: provider ?? item.provider ?? ""),
             availability: lifecycleViewModel.availability(for: item),
             operation: lifecycleViewModel.operation(for: item.id),
             timeRemaining: lifecycleViewModel.timeRemaining(for: item.id),
@@ -1569,6 +1609,7 @@ struct ConnectScreen: View {
             onRemove: { lifecycleViewModel.requestRemove(itemID: item.id) },
             onUpdate: { lifecycleViewModel.requestUpdate(itemID: item.id) }
         )
+        .transition(.opacity)
     }
 
     private func deviceVariantLine(_ snapshot: DeviceSnapshot) -> String {
@@ -1846,9 +1887,9 @@ struct ConnectScreen: View {
                     if mapEngine.state == .loadingCatalog || mapEngine.state == .scanning {
                         MapStatusRow(
                             title: "Reading your maps",
-                            detail: "Checking your Garmin device…",
+                            detail: "This can take a minute.",
                             status: "Checking",
-                            note: "Map information will appear here when your device is ready."
+                            note: nil
                         )
                         .padding(.top, 18)
                     } else if mapEngine.mapScanFailed && deviceEngine.hasConnectedDevice {
@@ -3112,6 +3153,7 @@ struct TerentoSidebar: View {
     let isInstalling: Bool
     let navigationLocked: Bool
     let mapNavigationEnabled: Bool
+    var showsEject = true
     let onNavigate: (TerentoSection) -> Void
     let onEject: () -> Void
 
@@ -3161,6 +3203,7 @@ struct TerentoSidebar: View {
                 detectionPhase: detectionPhase,
                 canEject: canEject,
                 isInstalling: isInstalling,
+                showsEject: showsEject,
                 onEject: onEject
             )
                 .padding(.top, 7)
@@ -3695,6 +3738,7 @@ private struct SidebarConnectionStatus: View {
     let detectionPhase: DeviceDetectionPhase
     let canEject: Bool
     let isInstalling: Bool
+    let showsEject: Bool
     let onEject: () -> Void
 
     private var label: String {
@@ -3735,7 +3779,7 @@ private struct SidebarConnectionStatus: View {
 
             Spacer(minLength: 8)
 
-            if ejectPresentation != .hidden {
+            if showsEject, ejectPresentation != .hidden {
                 Button(action: onEject) {
                     Image(systemName: "eject")
                         .font(.system(size: 11, weight: .regular))
@@ -4537,6 +4581,8 @@ private struct DeviceAssetImage: View {
 
 private struct ManageMapRow: View {
     let item: MapLifecycleItem
+    /// Names the provider for VoiceOver, as the provider filter does.
+    let providerLabel: String
     let availability: MapLifecycleActionAvailability
     let operation: MapLifecycleOperationState?
     var timeRemaining: RemainingTimeEstimate? = nil
@@ -4589,7 +4635,7 @@ private struct ManageMapRow: View {
                 .frame(width: InstallationTimelineLayout.manageProgressWidth, alignment: .leading)
             } else if !availableActions.isEmpty {
                 ManageActionGroup(
-                    mapTitle: item.title,
+                    mapTitle: providerLabel.isEmpty ? item.title : "\(item.title), \(providerLabel)",
                     primaryActions: primaryActions,
                     updateBlocked: availability.updateBlocked,
                     isEnabled: !isLifecycleBusy,
@@ -4748,8 +4794,9 @@ private struct ManageActionButton: View {
     }
 
     private var foregroundColor: Color {
+        // Disabled text token: plain grey Remove text read as still active.
         guard isInteractive else {
-            return TerentoColors.secondaryText
+            return TerentoGeneratedTokens.Light.textDisabled
         }
         return action == .update ? .white : TerentoColors.graphite
     }

@@ -384,7 +384,14 @@ completion is not deletion success: hash or target mismatch still prevents the
 destructive call. Remove reads “Removing” through the content check and the
 deletion, then “Checking” while it confirms the map is gone, with the same
 Interactive Primary bar as Install; a confirmed removal shows “<Map> removed.”
-for 4 seconds above the list, and VoiceOver announces it. At 93%, the UI says “Confirming the map was removed”; repeated
+for 4 seconds above the list, and VoiceOver announces it. The list stays on
+screen during the rescan that follows: the removed row fades out (no animation
+with Reduce Motion), and "Reading your maps" appears only while there is no
+list yet. While Remove or Update runs, the other Update/Remove buttons and
+Refresh are disabled. The Remove dialog body is one line: provider (as the
+provider filter names it, e.g. "BBBike (Ontrail)"), release and size, then
+"Other maps stay. This can't be undone." VoiceOver names each row action with
+the map and provider ("Remove Lithuania, MapRando"). At 93%, the UI says “Confirming the map was removed”; repeated
 inventory checks hold that value rather than increasing it for each retry. Only
 confirmed absence completes removal. The existing settle delays and retry limits
 are unchanged. No watchdog, shortened timeout or new USB recovery is introduced.
@@ -1116,3 +1123,8 @@ disconnected" and, when Remove or Update was running, states what the safety
 order guarantees at that point: before the removal content check finished
 nothing was removed; an interrupted update keeps the current map until the new
 one is verified; later phases point to Manage maps to check the result.
+Otherwise it says only "Plug it back in. Terento reconnects automatically."
+(detection restarts by itself); the cable icon and the first-connection tips
+(USB data cable, unlock, quit Garmin Express) are shown only before a first
+connection. The Device page has one Eject: "Eject device" beside the watch; the
+sidebar eject icon appears on the other pages.

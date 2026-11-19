@@ -738,14 +738,14 @@ private func testQARowPresentation() throws {
 
     // D21: the Remove dialog names the map and gives one plain body line.
     let removeMeta = MapLifecycleConfirmationCopy.metadata(item: openTopo, provider: "BBBike")
-    try require(removeMeta.hasPrefix("BBBike OpenTopoMap · ") && !removeMeta.contains("Lithuania"),
-        "Remove metadata names provider and style, not the map again: \(removeMeta)")
+    try require(removeMeta.hasPrefix("BBBike (OpenTopoMap) · ") && !removeMeta.contains("Lithuania"),
+        "Remove metadata uses the list provider label, not the map again: \(removeMeta)")
     try require(MapLifecycleConfirmationCopy.metadata(item: plain, provider: "BBBike").hasPrefix("BBBike · "),
         "standard BBBike has no style suffix")
     try require(MapLifecycleConfirmationCopy.removeTitle(mapName: "Liechtenstein") == "Remove Liechtenstein?"
         && MapLifecycleConfirmationCopy.removeTitle(mapName: nil) == "Remove this map?",
         "Remove title is a question with the map name")
-    try require(MapLifecycleConfirmationCopy.removeMessage(metadata: "BBBike Ontrail · 2026-11-18 · 483 KB")
-        == "BBBike Ontrail · 2026-11-18 · 483 KB. It will be deleted from your Garmin; other maps stay as they are. There is no backup.",
+    try require(MapLifecycleConfirmationCopy.removeMessage(metadata: "BBBike (Ontrail) · 2026-11-18 · 483 KB")
+        == "BBBike (Ontrail) · 2026-11-18 · 483 KB. Other maps stay. This can't be undone.",
         "Remove body is one line")
 }
