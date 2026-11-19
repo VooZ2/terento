@@ -139,15 +139,18 @@ struct SupportReportTests {
         expect(report.writeStarted == nil && report.transferProgressPercent == nil && report.device == nil
             && report.message == nil && report.maps?.first?.plannedBytes == nil,
             "facts the GitHub report marks Unavailable are omitted")
-        expect(draft.supportReport?.summaryLine?.hasPrefix("Updating the map failed on ") == true,
+        expect(draft.supportReport?.summaryLine?.hasPrefix("Last saved report: updating the map failed · ") == true,
             "without a map name the report window still says what failed and when")
         let removal = InstallationIssueReport.generate(identity: nil, mapName: "Andalucía",
             maps: [InstallationIssueMap(provider: "bbbike", region: "EUROPE-SPAIN-ANDALUCIA", package: "andalucia",
                                         release: nil, artifactSizeBytes: nil)],
             stage: "failedVerification", operation: .removal, error: nil, operationID: nil,
             timestamp: Date(timeIntervalSince1970: 1_795_000_000))
-        let expectedWhen = Date(timeIntervalSince1970: 1_795_000_000).formatted(date: .abbreviated, time: .shortened)
-        expect(removal.supportReport?.summaryLine == "Removing Andalucía failed on \(expectedWhen).",
+        let localTime = DateFormatter()
+        localTime.locale = Locale(identifier: "en_US_POSIX")
+        localTime.dateFormat = "yyyy-MM-dd HH:mm"
+        let expectedWhen = localTime.string(from: Date(timeIntervalSince1970: 1_795_000_000))
+        expect(removal.supportReport?.summaryLine == "Last saved report: removing Andalucía failed · \(expectedWhen)",
             "the report window names the map and the failure time, not the time it opened")
         expect(!(try! String(decoding: JSONEncoder().encode(SupportReportPayload(category: .removeFailed, operationID: nil,
             userMessage: nil, report: removal.supportReport!.report)), as: UTF8.self)).contains("Andalucía"),
@@ -215,7 +218,7 @@ struct SupportReportTests {
         expect(source.payload.category == .connection && source.payload.operationId == nil
             && source.payload.report == draft.supportReport?.report && !source.allowsCategoryChoice,
             "Help > Send Report to Terento offers the saved map scan report, not an empty one")
-        expect(source.summary?.hasPrefix("\(draft.title). It happened on ") == true,
+        expect(source.summary?.hasPrefix("Last saved report: \(draft.title) · ") == true,
             "the Help menu report says what failed and when")
         return source.payload
     }

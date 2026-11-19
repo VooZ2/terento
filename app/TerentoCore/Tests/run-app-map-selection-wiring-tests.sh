@@ -40,7 +40,7 @@ if grep -Fq 'Help improve Garmin compatibility' "$connect_screen" \
 fi
 
 if ! grep -Fq 'Terento sends privacy-minimized diagnostics by default' "$project_root/Sources/TerentoPoC/Views/AboutTerentoView.swift" \
-    || ! grep -Fq 'AboutSecondaryButton(title: "Manage diagnostics")' "$project_root/Sources/TerentoPoC/Views/AboutTerentoView.swift"; then
+    || ! grep -Fq 'AboutSecondaryButton(title: "Diagnostics")' "$project_root/Sources/TerentoPoC/Views/AboutTerentoView.swift"; then
     print -u2 "FAIL: About diagnostics disclosure or settings entry point is missing"
     exit 1
 fi

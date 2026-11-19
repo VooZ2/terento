@@ -7,12 +7,15 @@ struct SupportReportSheet: View {
     @StateObject private var controller: SupportReportController
     /// What failed and when, in plain words, above the JSON.
     let summary: String?
+    /// The Send report window aligns with About and Diagnostics (28).
+    let padding: CGFloat
     let onClose: () -> Void
 
     init(controller: @autoclosure @escaping () -> SupportReportController, summary: String? = nil,
-         onClose: @escaping () -> Void) {
+         padding: CGFloat = TerentoDialogMetrics.padding, onClose: @escaping () -> Void) {
         _controller = StateObject(wrappedValue: controller())
         self.summary = summary
+        self.padding = padding
         self.onClose = onClose
     }
 
@@ -106,7 +109,7 @@ struct SupportReportSheet: View {
             }
             .padding(.top, 14)
         }
-        .padding(TerentoDialogMetrics.padding)
+        .padding(padding)
         .frame(width: TerentoDialogMetrics.wideWidth)
         .background(TerentoColors.canvas)
         .preferredColorScheme(.light)
@@ -166,7 +169,7 @@ enum SupportReportSource {
                                          userMessage: nil, report: saved.report), false, saved.summaryLine)
         }
         return (SupportReportPayload(category: .other, operationID: nil, userMessage: nil,
-                                     report: .minimal()), true, nil)
+                                     report: .minimal()), true, SavedSupportReport.noSavedReportLine)
     }
 }
 
@@ -180,6 +183,7 @@ struct SupportReportWindow: View {
         SupportReportSheet(controller: SupportReportController(payload: source.payload,
                                                                allowsCategoryChoice: source.allowsCategoryChoice),
                            summary: source.summary,
+                           padding: 28,
                            onClose: { dismiss() })
             .id(session)
             .onAppear { session = UUID() }
