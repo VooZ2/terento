@@ -542,9 +542,11 @@ a download start without a received outcome is not proof of a failed download.
   account, local path, raw log or file content; the Diagnostic ID and
   `Transport: MTP` line are not sent) plus an optional description of at most
   2000 characters. One plain line above the JSON says what failed and when
-  ("Removing Andalucía failed on …"); it comes from the map name and failure
-  time kept in `failure-report.json` and is not part of the payload, whose
-  `createdAt` is when the window opened. Nothing is sent before Send, and sending does not depend on
+  ("Last saved report: removing Andalucía failed · 2026-11-19 20:35", local
+  time), or "No saved report."; it comes from the map name and failure time kept
+  in `failure-report.json` (older reports without a time use the file's save
+  time) and is not part of the payload, whose `createdAt` is when the window
+  opened. Nothing is sent before Send, and sending does not depend on
   the sharing toggles. The reply's reference is shown ("Report TR-XXXXXX sent");
   409 resends once under a new id; 429, 503 and network failures keep the report
   in `Application Support/Terento/support-report-unsent.json` and offer Try

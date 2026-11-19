@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct DiagnosticsView: View {
@@ -7,6 +8,7 @@ struct DiagnosticsView: View {
     @State private var isSending = false
     @State private var actionMessage: String?
     @State private var failureReportMessage: String?
+    @State private var contentHeight: CGFloat?
     @Environment(\.openWindow) private var openWindow
 
     private var pendingCompatibilityCount: Int {
@@ -39,7 +41,7 @@ struct DiagnosticsView: View {
                             .foregroundStyle(TerentoColors.graphite)
 
                         Text("Privacy-minimized diagnostics help improve the Terento app and its services.")
-                            .font(.terentoBody(size: 15, weight: .regular))
+                            .font(.terentoBody(size: 13, weight: .regular))
                             .foregroundStyle(TerentoColors.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -53,7 +55,7 @@ struct DiagnosticsView: View {
                                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                                     Text([compatibility.displayName, identity.screenTechnology]
                                         .compactMap { $0 }.joined(separator: ", "))
-                                        .font(.terentoUI(size: 14, weight: .semibold))
+                                        .font(.terentoUI(size: 13, weight: .semibold))
                                         .foregroundStyle(TerentoColors.graphite)
                                     Label("Connected", systemImage: "checkmark.circle.fill")
                                         .font(.terentoUI(size: 13, weight: .medium))
@@ -92,12 +94,12 @@ struct DiagnosticsView: View {
                     diagnosticsSection(title: "Sharing") {
                         sharingToggle(
                             isOn: compatibilitySharingBinding,
-                            title: "Send privacy-minimized compatibility diagnostics",
+                            title: "Send compatibility diagnostics",
                             detail: "Device model, firmware and install result. Never your serial number or files."
                         )
                         sharingToggle(
                             isOn: mapStatisticsSharingBinding,
-                            title: "Send privacy-minimized map usage diagnostics",
+                            title: "Send map usage diagnostics",
                             detail: "Which maps are downloaded, installed and updated. Never device identity."
                         )
 
@@ -132,7 +134,7 @@ struct DiagnosticsView: View {
 
                     diagnosticsSection(title: "Problem with a map?") {
                         Text("If an install, update or removal failed, send us the saved report.")
-                            .font(.terentoUI(size: 14, weight: .regular))
+                            .font(.terentoUI(size: 13, weight: .regular))
                             .foregroundStyle(TerentoColors.graphite)
                             .fixedSize(horizontal: false, vertical: true)
 
@@ -200,11 +202,18 @@ struct DiagnosticsView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(28)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
             }
         }
-        .frame(minWidth: 520, minHeight: 600)
+        // The window fits its content; it scrolls only on a screen too short for it.
+        .frame(minWidth: 520, minHeight: fittedHeight, idealHeight: fittedHeight, maxHeight: fittedHeight)
         .background(TerentoColors.canvas)
         .preferredColorScheme(.light)
+    }
+
+    private var fittedHeight: CGFloat? {
+        // 28 pt leaves room for the title bar.
+        contentHeight.map { min($0, (NSScreen.main?.visibleFrame.height ?? $0 + 28) - 28) }
     }
 
     private static let gitHubTip = "Copies the report and opens GitHub. If the form is empty, click its report field and press ⌘A, then ⌘V."
@@ -219,7 +228,7 @@ struct DiagnosticsView: View {
         Toggle(isOn: isOn) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.terentoUI(size: 14, weight: .semibold))
+                    .font(.terentoUI(size: 13, weight: .semibold))
                 Text(detail)
                     .font(.terentoUI(size: 12, weight: .regular))
                     .foregroundStyle(TerentoColors.secondaryText)

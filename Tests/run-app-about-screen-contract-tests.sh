@@ -27,7 +27,7 @@ done
 if grep -Fq 'aboutSection(title: "Updates")' <<<"$about_content" \
     || ! grep -Fq 'AboutPrimaryButton(title: "Update", action: updateAction)' <<<"$about_content" \
     || ! grep -Fq 'AboutSecondaryButton(title: "Check for updates", action: updateAction)' <<<"$about_content" \
-    || ! grep -Fq 'AboutSecondaryButton(title: "Manage diagnostics")' <<<"$about_content" \
+    || ! grep -Fq 'AboutSecondaryButton(title: "Diagnostics")' <<<"$about_content" \
     || ! grep -Fq 'private func updateAction()' <<<"$about_content"; then
     print -u2 "FAIL: About does not expose the adjacent Update and diagnostics actions"
     exit 1
@@ -118,7 +118,7 @@ if grep -Fq 'deleteUploadedReportsLink' <<<"$about_content" \
     exit 1
 fi
 
-if ! grep -Fq 'AboutSecondaryButton(title: "Manage diagnostics")' <<<"$about_content" \
+if ! grep -Fq 'AboutSecondaryButton(title: "Diagnostics")' <<<"$about_content" \
     || ! grep -Fq 'openWindow(id: "diagnostics")' <<<"$about_content"; then
     print -u2 "FAIL: About does not expose the Diagnostics settings entry point"
     exit 1
