@@ -93,6 +93,14 @@ assert_contains 'Use a USB data cable, not a charge-only cable' "$connect_screen
 assert_contains 'Quit Garmin Express' "$connect_screen"
 assert_contains 'case .needsAttention(let outcome):' "$connect_screen"
 assert_contains 'private var connectionStatusIcon: (name: String, color: Color)?' "$connect_screen"
+# Just unplugged: the title and "Plug it back in…" only; tips and the plug icon are for first connection.
+assert_contains '"Plug it back in. Terento reconnects automatically."' "$device_engine"
+assert_contains 'self.readDevice()' "$device_engine"
+assert_contains '            && disconnectExplanation == nil' "$connect_screen"
+assert_contains 'return disconnectExplanation == nil ? ("cable.connector", TerentoColors.secondaryText) : nil' "$connect_screen"
+# One Eject on the Device page: the sidebar icon hides while the page shows "Eject device".
+assert_contains 'showsEject: selectedSection != .device || snapshot == nil' "$connect_screen"
+assert_contains 'if showsEject, ejectPresentation != .hidden {' "$connect_screen"
 # A failed map read on a connected watch says so, shows an error icon and offers Try again.
 if [[ "$(rg -Fc "title: \"Couldn't read your maps\"" "$connect_screen")" -ne 2 \
     || "$(rg -Fc 'onRetry: refreshMapInventory' "$connect_screen")" -ne 2 ]]; then
