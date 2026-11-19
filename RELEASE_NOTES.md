@@ -1,3 +1,37 @@
+# Terento v1.2.2 (build 49)
+<!-- DRAFT: staged 1.2.2 build 49; not published until the signed, notarized DMG is on GitHub. -->
+
+Terento 1.2.2 is an update to Terento 1.2.1, the free, open-source app for installing community maps on map-capable Garmin smartwatches and Edge bike computers from Apple Silicon Macs running macOS 13 or later. Compatibility is still evaluated model by model.
+
+This release makes the app clearer to use, tells you how to turn a new map on, and lets the check after writing a map recover from one short read error. The new screens were tried on a real watch with a test build. The repeated check after writing can't be triggered on purpose and has not yet been seen on a real watch. Installed 1.2.1 and earlier builds are offered it by the in-app update check. The Mac App Store version is updated separately.
+
+## WHAT'S NEW?
+
+- After an installation, the Done page shows the next step: disconnect your Garmin, open its map settings and turn the new map on. If the map isn't listed, restart the device.
+- Install maps also recommends each provider's whole-country map for your Mac's country.
+- Search in Install maps lists the exact name first, then names that contain your text, then maps that only cover the place.
+- Install maps shows when a map is already installed and whether an update for it is waiting in Manage maps. Manage maps says why Update isn't offered for a map.
+- When there isn't enough space, the message shows how much space is needed and how much is free, including the 1 GiB that Terento keeps free.
+- Waiting for the device to reconnect, the app update offer and the question about sharing an installation now appear on the page instead of in a separate window. Separate windows are used only for errors and confirmations.
+- Remove shows Removing, then Checking, and says when the map is removed. Other map actions wait until a removal or update has finished.
+- Buttons, corners, progress bars and dialogs match the Terento website, and the sidebar shows a round watch icon.
+- The Diagnostics and Send report windows are easier to read. Send report says which saved report it holds.
+- The app says "device" instead of "watch", because Edge bike computers are supported too.
+- The Device page no longer shows a Testing, Tested, Supported or Verified label.
+
+## WHAT'S FIXED?
+
+- If part of a map can't be read back right after it was written, Terento waits 5 seconds and repeats the same check once over a new connection instead of stopping. A second failure stops the installation as before.
+- Maps from other sources, for example MapForge, no longer have their names cut after 20 characters.
+- The failure message keeps its reason when the device is unplugged while the message is open.
+- "Reading your maps…" is shown while the maps on the device are being read, instead of only greyed-out buttons.
+- Terento notices a connected Garmin as soon as macOS reports it. The busy message names Garmin Express when it is running in the background.
+- The installation steps no longer jump back to Downloading, the Finishing step no longer goes backwards, and no "0%" is shown before anything is measured.
+- Manage maps shows the Update and Remove buttons together with the rows, and the list stays on screen while it is refreshed after a removal.
+- Progress bars no longer turn grey when the window is in the background.
+- Removing a map whose ownership was imported from a file no longer reads the whole map again.
+- A ZIP file that is too large to unpack on the Mac is refused before it is unpacked.
+
 # Terento v1.2.1 (build 48)
 
 Terento 1.2.1 is a fix release for Terento 1.2.0, the free, open-source app for installing community maps on map-capable Garmin smartwatches and Edge bike computers from Apple Silicon Macs running macOS 13 or later. Compatibility is still evaluated model by model.

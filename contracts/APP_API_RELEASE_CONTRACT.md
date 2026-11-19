@@ -1,5 +1,14 @@
 # App–API compatibility and release contract
 
+## 1.2.2 build 49 — no server-first change
+
+The 1.2.2 build 49 candidate (#735, #744, #745) is app-only. It requests
+`catalog-v5.json` and adds no route, payload field or migration, so no API
+deploy precedes it. The read-back repeat reports `retryCount` 1 in the existing
+failure context. App-made download stops are sent as the existing
+`DOWNLOAD_INTERRUPTED` value, and `DOWNLOAD_CANCELLED` only when the person
+presses Cancel; the API already accepts both values.
+
 ## Stable release 1.2.1 build 48 — published
 
 Published on 2026-11-14 from GitHub-verified source
