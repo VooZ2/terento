@@ -194,6 +194,7 @@ enum TerentoDiagnosticLog {
         append(lines.joined(separator: "\n"))
         saveFailureReport(InstallationIssueReport.generate(
             identity: identity,
+            mapName: maps.count == 1 ? maps[0].name : nil,
             maps: maps.map { InstallationIssueMap(provider: $0.sourceKind == .custom ? "custom" : $0.providerId,
                 region: $0.sourceKind == .custom ? "custom" : $0.name,
                 package: $0.sourceKind == .custom ? "custom-map" : $0.id,

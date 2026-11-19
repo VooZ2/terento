@@ -810,7 +810,7 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
         if let label = releaseMetadata?.versionLabel?.trimmingCharacters(
             in: .whitespacesAndNewlines
         ), Self.isUserFacingReleaseLabel(label) {
-            return label
+            return Self.isoMonthLabel(label) ?? label
         }
 
         // 2000-01 was the historical API serializer fallback. It is not a
@@ -819,6 +819,15 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
             return nil
         }
         return version.description
+    }
+
+    /// One style for month-only releases: provider "3/2026" reads "2026-03",
+    /// like the other dates in the list. Other labels stay provider-native.
+    private static func isoMonthLabel(_ value: String) -> String? {
+        let parts = value.split(separator: "/")
+        guard parts.count == 2, let month = Int(parts[0]), (1...12).contains(month),
+              parts[0].count <= 2, parts[1].count == 4, let year = Int(parts[1]) else { return nil }
+        return String(format: "%04d-%02d", year, month)
     }
 
     private static func isUserFacingReleaseLabel(_ value: String) -> Bool {

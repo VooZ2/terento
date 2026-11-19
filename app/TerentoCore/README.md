@@ -220,11 +220,15 @@ writing. OpenTopoMap
 contours are optional source-validated components, not a Debug-only feature.
 Compatible local IMG imports have no automatic provider update path.
 
-Install Maps provides geographic and provider/type filtering, local search,
-retained selections and one-provider batches. Filtering uses a cached
+Install Maps provides geographic and provider/type filtering, local search
+(an exact name first, then names containing the text, then maps that only
+cover it), retained selections and one-provider batches. Month-only provider
+releases read "2026-03", like the other dates. Filtering uses a cached
 presentation index and does not rescan the device. Manage Maps exposes current
 owned-map lifecycle actions and exact valid external-map removal with
 separate confirmation. About is opened through `Terento → About Terento`;
+it offers a secondary "Check for updates" and a primary "Update" only once an
+update is found;
 Diagnostics contains sharing settings. The sidebar remains Device, Install
 maps, Manage maps. UI layout and exact copy are reviewed visually; tests should
 protect actions, state transitions, accessibility and data contracts.
@@ -377,7 +381,10 @@ usually ends before the 5-second estimate warm-up, so no time estimate appears,
 or the full SHA-256 read otherwise). The internal C bridge reports bytes read
 without changing read sizes, content/identity checks or authorization. Read
 completion is not deletion success: hash or target mismatch still prevents the
-destructive call. At 93%, the UI says “Confirming the map was removed”; repeated
+destructive call. Remove reads “Removing” through the content check and the
+deletion, then “Checking” while it confirms the map is gone, with the same
+Interactive Primary bar as Install; a confirmed removal shows “<Map> removed.”
+for 4 seconds above the list. At 93%, the UI says “Confirming the map was removed”; repeated
 inventory checks hold that value rather than increasing it for each retry. Only
 confirmed absence completes removal. The existing settle delays and retry limits
 are unchanged. No watchdog, shortened timeout or new USB recovery is introduced.
@@ -532,7 +539,10 @@ a download start without a received outcome is not proof of a failed download.
   GitHub report (unknown values omitted, never "Unavailable"; no serial, Unit ID,
   account, local path, raw log or file content; the Diagnostic ID and
   `Transport: MTP` line are not sent) plus an optional description of at most
-  2000 characters. Nothing is sent before Send, and sending does not depend on
+  2000 characters. One plain line above the JSON says what failed and when
+  ("Removing Andalucía failed on …"); it comes from the map name and failure
+  time kept in `failure-report.json` and is not part of the payload, whose
+  `createdAt` is when the window opened. Nothing is sent before Send, and sending does not depend on
   the sharing toggles. The reply's reference is shown ("Report TR-XXXXXX sent");
   409 resends once under a new id; 429, 503 and network failures keep the report
   in `Application Support/Terento/support-report-unsent.json` and offer Try
@@ -567,8 +577,9 @@ a download start without a received outcome is not proof of a failed download.
   only) or a conservative 1 MB/s. While no map on the watch is managed by
   Terento (first map selection only), the locale recommendation is also
   highlighted with "Recommended for your region" (never selected
-  automatically), and "Keep the watch connected and the Mac awake until Terento
-  finishes." appears once a map is selected. The recommendation is every
+  automatically). The keep-connected line appears only on the Installing
+  screen, and "Choose maps from one provider at a time." sits in the map count
+  row under the provider filter. The recommendation is every
   provider's map of the whole country of the Mac's locale region
   (`MapRegionRecommendation`), listed first: a catalog row with country codes
   must be a `country` row for exactly that country, and a row without codes

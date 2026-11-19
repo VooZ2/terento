@@ -5,10 +5,14 @@ import SwiftUI
 /// JSON that Send uploads; nothing is sent until the user presses Send.
 struct SupportReportSheet: View {
     @StateObject private var controller: SupportReportController
+    /// What failed and when, in plain words, above the JSON.
+    let summary: String?
     let onClose: () -> Void
 
-    init(controller: @autoclosure @escaping () -> SupportReportController, onClose: @escaping () -> Void) {
+    init(controller: @autoclosure @escaping () -> SupportReportController, summary: String? = nil,
+         onClose: @escaping () -> Void) {
         _controller = StateObject(wrappedValue: controller())
+        self.summary = summary
         self.onClose = onClose
     }
 
@@ -60,6 +64,13 @@ struct SupportReportSheet: View {
                 .font(.terentoUI(size: 13, weight: .semibold))
                 .foregroundStyle(TerentoColors.graphite)
                 .padding(.top, 14)
+            if let summary {
+                Text(summary)
+                    .font(.terentoUI(size: 13, weight: .regular))
+                    .foregroundStyle(TerentoColors.graphite)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 6)
+            }
             ScrollView {
                 Text(controller.payload.previewText)
                     .font(Self.diagnosticFont)
@@ -142,18 +153,20 @@ struct SupportReportSheet: View {
 enum SupportReportSource {
     @MainActor
     static func latest(outbox: SupportReportOutbox = SupportReportOutbox())
-        -> (payload: SupportReportPayload, allowsCategoryChoice: Bool) {
+        -> (payload: SupportReportPayload, allowsCategoryChoice: Bool, summary: String?) {
+        let saved = TerentoDiagnosticLog.latestSavedSupportReport()
         // An unsent report is offered again first; its id is unchanged, so a
         // report that did arrive is not stored twice.
         if let unsent = outbox.load() {
-            return (unsent, false)
+            let matches = unsent.report == saved?.report && unsent.category == saved?.category
+            return (unsent, false, matches ? saved?.summaryLine : nil)
         }
-        if let saved = TerentoDiagnosticLog.latestSavedSupportReport() {
+        if let saved {
             return (SupportReportPayload(category: saved.category, operationID: saved.operationID,
-                                         userMessage: nil, report: saved.report), false)
+                                         userMessage: nil, report: saved.report), false, saved.summaryLine)
         }
         return (SupportReportPayload(category: .other, operationID: nil, userMessage: nil,
-                                     report: .minimal()), true)
+                                     report: .minimal()), true, nil)
     }
 }
 
@@ -166,6 +179,7 @@ struct SupportReportWindow: View {
         let source = SupportReportSource.latest()
         SupportReportSheet(controller: SupportReportController(payload: source.payload,
                                                                allowsCategoryChoice: source.allowsCategoryChoice),
+                           summary: source.summary,
                            onClose: { dismiss() })
             .id(session)
             .onAppear { session = UUID() }

@@ -14,6 +14,7 @@ struct RemainingTimeEstimatorTests {
         testRestartAndUnmeasurableProgress()
         testText()
         testLifecycleUnits()
+        testLifecyclePhases()
         testProgressThrottle()
         await testRelayDeliversLastValueWithUnknownTotal()
         print("PASS: measured time-remaining estimates, warm-up, smoothing, stall and lifecycle units")
@@ -152,6 +153,22 @@ struct RemainingTimeEstimatorTests {
             progress: progress(.committing, fraction: 0.95)) == nil, "removal confirmation is not estimated")
         expect(LifecycleRemainingTimeUnits.units(action: .update, phase: .verifying, progress: nil) == nil,
             "no progress is not measurable")
+        expect(LifecycleRemainingTimeUnits.units(action: .remove, phase: .checking,
+            progress: progress(.postVerifying, fraction: 0.93)) == nil, "confirming a removal is not estimated")
+    }
+
+    static func testLifecyclePhases() {
+        func phase(_ state: SafeUpdateState, _ action: MapLifecycleAction, fraction: Double? = 0.5) -> MapLifecycleOperationPhase {
+            MapLifecycleOperationPhase.forProgress(
+                SafeUpdateProgress(state: state, bytesCompleted: 0, totalBytes: 100, bytesPerSecond: 0, phaseFraction: fraction),
+                action: action, current: nil)
+        }
+        expect(phase(.verifying, .remove) == .removing, "Remove reads Removing while it checks and deletes")
+        expect(phase(.postVerifying, .remove) == .checking, "Remove reads Checking while it confirms the map is gone")
+        expect(phase(.verifying, .remove, fraction: nil) == .verifying,
+            "an external map's measured read before confirmation keeps its label")
+        expect(phase(.verifying, .update) == .verifying && phase(.postVerifying, .update) == .finishing,
+            "Update labels are unchanged")
     }
 
     static func fail(_ message: String) {

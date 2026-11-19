@@ -403,6 +403,7 @@ struct MapCatalogPresentationIndex: Sendable {
         let item: MapSelectionItem
         let provider: String
         let text: String
+        let title: String
         let groups: Set<MapGeographyGroup>
     }
     private let rows: [Row]
@@ -414,6 +415,7 @@ struct MapCatalogPresentationIndex: Sendable {
             let geography = CatalogGeography.resolve(item)
             return Row(item: item, provider: MapProviderDisplay.filterID(providerID: item.package.providerId, regionID: item.package.canonicalRegionId),
                        text: CatalogGeography.fold(geography.terms.joined(separator: " ")),
+                       title: CatalogGeography.fold(item.title),
                        groups: geography.groups)
         }.sorted { lhs, rhs in
             if lhs.item.isRecommended != rhs.item.isRecommended { return lhs.item.isRecommended }
@@ -426,12 +428,22 @@ struct MapCatalogPresentationIndex: Sendable {
     func filtered(query: String, providerID: String = "", geography: MapGeographyGroup = .all) -> [MapSelectionItem] {
         let terms = CatalogGeography.fold(query).split(whereSeparator: { $0.isWhitespace }).map(String.init)
         let provider = MapIdentity.normalizeProvider(providerID)
-        return rows.compactMap { row in
-            guard (providerID.isEmpty || row.provider == provider),
-                  (geography == .all || row.groups.contains(geography)),
-                  terms.allSatisfy({ row.text.contains($0) }) else { return nil }
-            return row.item
+        let matches = rows.filter { row in
+            (providerID.isEmpty || row.provider == provider)
+                && (geography == .all || row.groups.contains(geography))
+                && terms.allSatisfy({ row.text.contains($0) })
         }
+        guard !terms.isEmpty else { return matches.map(\.item) }
+        // Exact name first, then names containing the text, then maps that
+        // only cover it (e.g. "Alps" for Liechtenstein). Stable within a rank.
+        let phrase = terms.joined(separator: " ")
+        func rank(_ row: Row) -> Int {
+            if row.title == phrase { return 0 }
+            return terms.allSatisfy({ row.title.contains($0) }) ? 1 : 2
+        }
+        return matches.enumerated()
+            .sorted { (rank($0.element), $0.offset) < (rank($1.element), $1.offset) }
+            .map(\.element.item)
     }
 }
 

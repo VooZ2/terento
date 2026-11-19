@@ -44,6 +44,7 @@ struct InstallationIssueVerification: Sendable {
 enum InstallationIssueReport {
     static func generate(
         identity: DeviceIdentity?,
+        mapName: String? = nil,
         maps: [InstallationIssueMap],
         stage: String,
         operation: DiagnosticMapOperation = .installation,
@@ -200,7 +201,9 @@ enum InstallationIssueReport {
                 cleanupAttempted: cleanupAttempted, cleanupSucceeded: cleanupSucceeded,
                 verification: verification, failureContext: failureContext,
                 originalFailureContext: originalFailureContext,
-                finishingTrace: FinishingTrace.failureReport, operatingSystem: operatingSystem))
+                finishingTrace: FinishingTrace.failureReport, operatingSystem: operatingSystem),
+            mapName: mapName.map { sanitizedLine($0, fallback: "the map") },
+            failedAt: timestamp)
         return result
     }
 
@@ -279,7 +282,7 @@ enum InstallationIssueReport {
         report.cleanupSucceeded = nil
         report.transferProgressPercent = nil
         result.supportReport = SavedSupportReport(title: result.title, category: .connection,
-                                                  operationID: nil, report: report)
+                                                  operationID: nil, report: report, failedAt: timestamp)
         return result
     }
 

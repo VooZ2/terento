@@ -165,7 +165,7 @@ if [[ "$finish_content" != *'TerentoPageHeader'* \
     || "$finish_content" != *'InstallationMapsList'* \
     || "$finish_content" != *'InstalledMapsSectionHeader'* \
     || "$finish_content" != *'Back to device'* \
-    || "$finish_content" != *'Your map is installed and checked'* \
+    || "$finish_content" != *'InstallationResultCallout('* \
     || "$finish_content" == *'Installation was verified successfully'* \
     || "$finish_content" == *'.padding(.top, 14)'* ]]; then
     print -u2 "FAIL: completion screen is not using the shared header, map row, and calm completion copy"

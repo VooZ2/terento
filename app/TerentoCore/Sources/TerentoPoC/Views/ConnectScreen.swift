@@ -76,6 +76,7 @@ struct ConnectScreen: View {
     @Environment(\.requestReview) private var requestReview
     #endif
     @State private var supportReportPayload: SupportReportPayload?
+    @State private var supportReportSummary: String?
     @State private var installationFailureFollowUp: InstallationFailureFollowUp = .backToDevice
     @State private var retryInstallationAfterScan = false
     @State private var watchReconnectWait: WatchReconnectWait?
@@ -471,6 +472,7 @@ struct ConnectScreen: View {
             )
             .sheet(item: $supportReportPayload) { payload in
                 SupportReportSheet(controller: SupportReportController(payload: payload),
+                                   summary: supportReportSummary,
                                    onClose: { supportReportPayload = nil })
             }
             .interactiveDismissDisabled(false)
@@ -1169,31 +1171,33 @@ struct ConnectScreen: View {
     private var managedCatalogToolbar: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
-                TextField("Search countries and regions", text: $managedSearchText)
-                    .textFieldStyle(.roundedBorder)
-                    .focused($managedSearchFocused)
-                    .accessibilityLabel("Search installed maps")
-                    .accessibilityHint("Search a country, region or imported map name.")
-                if !managedSearchText.isEmpty {
-                    Button {
-                        managedSearchText = ""
-                        managedSearchFocused = true
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(TerentoColors.secondaryText)
+                HStack(spacing: 6) {
+                    TextField("Search countries and regions", text: $managedSearchText)
+                        .textFieldStyle(.plain)
+                        .focused($managedSearchFocused)
+                        .accessibilityLabel("Search installed maps")
+                        .accessibilityHint("Search a country, region or imported map name.")
+                    if !managedSearchText.isEmpty {
+                        Button {
+                            managedSearchText = ""
+                            managedSearchFocused = true
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(TerentoColors.secondaryText)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Clear installed map search")
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Clear installed map search")
                 }
+                .toolbarControlChrome(isFocused: managedSearchFocused)
+                .frame(minWidth: 240, maxWidth: .infinity)
                 Picker("Map provider", selection: $managedProviderID) {
                     Text("All providers").tag("")
                     ForEach(managedPresentationIndex?.providerOptions ?? []) { provider in
                         Text(provider.title).tag(provider.id)
                     }
                 }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .frame(width: 175)
+                .toolbarMenuPicker(width: 175)
                 .accessibilityLabel("Installed map provider")
             }
             HStack {
@@ -1219,13 +1223,14 @@ struct ConnectScreen: View {
     private var managedMapsContent: some View {
         TerentoFooterPageShell(bodyScrolls: false) {
             VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top, spacing: 16) {
+            // Same header row as Install maps, so Refresh sits in the same place.
+            HStack(alignment: .firstTextBaseline, spacing: 16) {
                 TerentoPageHeader(
                     title: "Manage maps",
                     subtitle: "Maps on your Garmin."
                 )
 
-                Spacer(minLength: 12)
+                Spacer(minLength: 20)
 
                 if mapEngine.state == .scanned {
                     Button {
@@ -1246,6 +1251,18 @@ struct ConnectScreen: View {
                     managedCatalogToolbar
                         .padding(.top, TerentoPageLayout.firstSectionTopPadding)
                 }
+                if let notice = lifecycleViewModel.removalNotice {
+                    Label {
+                        Text(notice)
+                            .font(.terentoUI(size: 13, weight: .medium))
+                            .foregroundStyle(TerentoColors.secondaryText)
+                    } icon: {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(TerentoColors.lichenDark)
+                    }
+                    .padding(.top, 10)
+                    .accessibilityElement(children: .combine)
+                }
                 ScrollView {
                     managedMapGroups(lifecycleInventory)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -1260,7 +1277,7 @@ struct ConnectScreen: View {
                     isError: true,
                     onRetry: refreshMapInventory
                 )
-                .padding(.top, 30)
+                .padding(.top, 18)
             } else {
                 MapStatusRow(
                     title: mapEngine.state == .loadingCatalog || mapEngine.state == .scanning
@@ -1277,17 +1294,20 @@ struct ConnectScreen: View {
                             : "Pending")
                         : "Pending",
                     note: mapEngine.userErrorMessage
+                        ?? (deviceEngine.hasConnectedDevice
+                            && (mapEngine.state == .loadingCatalog || mapEngine.state == .scanning)
+                            ? "Map information will appear here when your device is ready."
+                            : nil)
                 )
-                .padding(.top, 30)
+                .padding(.top, 18)
             }
 
             }
         } footer: {
             TerentoPageFooter(
                 leading: {
-                    TerentoBackButton {
-                        selectedSection = .device
-                    }
+                    // The sidebar already navigates back to Device.
+                    EmptyView()
                 },
                 trailing: {
                     EmptyView()
@@ -1566,6 +1586,8 @@ struct ConnectScreen: View {
                 let count = filteredAvailableSelectionItems.count
                 Text("\(count) \(count == 1 ? "map" : "maps")")
                     .foregroundStyle(TerentoColors.secondaryText)
+                // Next to the provider filter: the rule is about providers.
+                catalogSelectionNotice
                 Spacer()
                 if catalogFiltersAreActive {
                     Button("Clear filters") { clearCatalogFilters() }
@@ -1581,7 +1603,7 @@ struct ConnectScreen: View {
     private var catalogSearchField: some View {
         HStack(spacing: 6) {
             TextField("Search countries and regions", text: $mapSearchText)
-                .textFieldStyle(.roundedBorder)
+                .textFieldStyle(.plain)
                 .focused($mapSearchFieldFocused)
                 .accessibilityLabel("Search countries and regions")
                 .accessibilityHint("\(filteredAvailableSelectionItems.count) matching maps. Search by country or region.")
@@ -1598,6 +1620,7 @@ struct ConnectScreen: View {
                 .accessibilityLabel("Clear search")
             }
         }
+        .toolbarControlChrome(isFocused: mapSearchFieldFocused)
         .frame(minWidth: 240, maxWidth: .infinity)
     }
 
@@ -1608,9 +1631,7 @@ struct ConnectScreen: View {
                     Text(group.title).tag(group)
                 }
             }
-            .labelsHidden()
-            .pickerStyle(.menu)
-            .frame(width: 190)
+            .toolbarMenuPicker(width: 190)
             .accessibilityLabel("Geographic region")
 
             Picker("Map provider", selection: $selectedMapProviderID) {
@@ -1619,9 +1640,7 @@ struct ConnectScreen: View {
                     Text(provider.title).tag(provider.id)
                 }
             }
-            .labelsHidden()
-            .pickerStyle(.menu)
-            .frame(width: 175)
+            .toolbarMenuPicker(width: 175)
             .accessibilityLabel("Map provider")
             .accessibilityHint("Filters maps without choosing a default provider.")
         }
@@ -1630,13 +1649,6 @@ struct ConnectScreen: View {
 
     private var isFirstMapSelection: Bool {
         mapEngine.isFirstMapSelection
-    }
-
-    private var firstMapKeepConnectedNotice: some View {
-        Label(FirstMapGuidance.keepConnectedLine, systemImage: "cable.connector")
-            .font(.terentoUI(size: 12, weight: .medium))
-            .foregroundStyle(TerentoColors.secondaryText)
-            .fixedSize(horizontal: false, vertical: true)
     }
 
     @ViewBuilder
@@ -1853,10 +1865,6 @@ struct ConnectScreen: View {
             } storageRegion: {
                 if let plan = displayedInstallationPlan {
                     VStack(alignment: .leading, spacing: 6) {
-                        catalogSelectionNotice
-                        if isFirstMapSelection, !plan.selectedItems.isEmpty {
-                            firstMapKeepConnectedNotice
-                        }
                         MapSelectionStorageSummary(
                             plan: plan,
                             totalCapacity: snapshot?.totalCapacity ?? 0,
@@ -1872,9 +1880,8 @@ struct ConnectScreen: View {
             }
         } footer: {
             TerentoPageFooter {
-                TerentoBackButton {
-                    selectedSection = .device
-                }
+                // First Install step: the sidebar already navigates back.
+                EmptyView()
             } trailing: {
                 PrimaryButton(title: "Continue") {
                     guard let plan = currentInstallationPlan, plan.canContinue else {
@@ -2892,6 +2899,7 @@ struct ConnectScreen: View {
     private func sendInstallationSupportReport(for plan: InstallationPlan?) {
         let draft = retainedInstallationFailure?.issueDraft ?? installationIssueDraft(for: plan)
         guard let saved = draft.supportReport else { return }
+        supportReportSummary = saved.summaryLine
         supportReportPayload = SupportReportPayload(category: saved.category, operationID: saved.operationID,
                                                     userMessage: nil, report: saved.report)
     }
@@ -2901,6 +2909,7 @@ struct ConnectScreen: View {
         let verification = result?.verification
         return InstallationIssueReport.generate(
             identity: identity,
+            mapName: plan?.installItems.count == 1 ? plan?.installItems.first?.title : nil,
             maps: (plan?.installItems ?? []).map { item in
                 InstallationIssueMap(
                     provider: item.package.sourceKind == .custom ? "Custom import" : item.comparison.providerName,
@@ -3609,7 +3618,7 @@ struct TerentoDialogButton: View {
             .overlay {
                 if kind == .secondary {
                     RoundedRectangle(cornerRadius: TerentoDialogMetrics.buttonRadius, style: .continuous)
-                        .stroke(TerentoColors.border, lineWidth: 1)
+                        .strokeBorder(TerentoColors.border, lineWidth: 1)
                 }
             }
             .contentShape(RoundedRectangle(cornerRadius: TerentoDialogMetrics.buttonRadius, style: .continuous))
@@ -4478,7 +4487,7 @@ struct DeviceCard: View {
                         )
                         .overlay {
                             RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control)
-                                .stroke(
+                                .strokeBorder(
                                     canEject
                                         ? TerentoColors.border
                                         : TerentoColors.inactiveBorder,
@@ -6050,6 +6059,45 @@ struct MapSelectionStorageSummary: View {
     }
 }
 
+/// One look for the Install and Manage search field and filter pop-ups:
+/// 38 pt tall, control radius, surface fill, and a focus border.
+private struct ToolbarControlChrome: ViewModifier {
+    var isFocused = false
+
+    func body(content: Content) -> some View {
+        content
+            .font(.terentoUI(size: 13, weight: .regular))
+            .padding(.horizontal, 10)
+            .frame(height: 38)
+            .background(
+                RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control, style: .continuous)
+                    .fill(TerentoColors.surface)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control, style: .continuous)
+                    .strokeBorder(isFocused ? TerentoColors.interactive : TerentoColors.border, lineWidth: isFocused ? 2 : 1)
+            )
+    }
+}
+
+private extension View {
+    func toolbarControlChrome(isFocused: Bool = false) -> some View {
+        modifier(ToolbarControlChrome(isFocused: isFocused))
+    }
+
+    /// Borderless native pop-up, left-aligned inside the toolbar chrome.
+    func toolbarMenuPicker(width: CGFloat) -> some View {
+        self
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .buttonStyle(.borderless)
+            .fixedSize()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .toolbarControlChrome()
+            .frame(width: width)
+    }
+}
+
 private struct SecondaryButton: View {
     let title: String
     let action: () -> Void
@@ -6068,7 +6116,7 @@ private struct SecondaryButton: View {
                 )
                 .overlay {
                     RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control)
-                        .stroke(
+                        .strokeBorder(
                             isEnabled ? TerentoColors.border : TerentoColors.inactiveBorder,
                             lineWidth: 1
                         )

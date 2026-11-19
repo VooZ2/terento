@@ -4,6 +4,7 @@ set -euo pipefail
 repo_root="${0:A:h:h}"
 connect_screen="$repo_root/app/TerentoCore/Sources/TerentoPoC/Views/ConnectScreen.swift"
 phase_source="$repo_root/app/TerentoCore/Sources/TerentoPoC/Installation/MapLifecyclePresentation.swift"
+lifecycle_view_model="$repo_root/app/TerentoCore/Sources/TerentoPoC/Installation/MapLifecycleViewModel.swift"
 
 assert_contains() {
     local needle="$1"
@@ -34,5 +35,9 @@ assert_contains 'static let progressBarHeight: CGFloat = 6' "$connect_screen"
 assert_contains 'static let manageProgressWidth: CGFloat = 220' "$connect_screen"
 assert_contains 'Text(operation.phase.userLabel)' "$connect_screen"
 assert_contains 'return "Removing"' "$phase_source"
+assert_contains 'return "Checking"' "$phase_source"
+# A confirmed removal leaves a short "<Map> removed." line for a few seconds.
+assert_contains 'showRemovalNotice(context.item.title)' "$lifecycle_view_model"
+assert_contains 'if let notice = lifecycleViewModel.removalNotice {' "$connect_screen"
 
 print "PASS: Manage map removal reuses the installation progress pattern"

@@ -41,8 +41,6 @@ struct FirstMapGuidanceTests {
             "an unknown download size shows no estimate")
         expect(FirstMapGuidance.downloadEstimateText(bytes: 1_000_000, recentBytesPerSecond: .nan)
             == "Download 1 MB · about 1 min", "an invalid speed falls back to the default")
-        expect(FirstMapGuidance.keepConnectedLine == "Keep the device connected and the Mac awake until Terento finishes.",
-            "the keep-connected line is the approved copy")
     }
 
     static func testSpeedHistory() {

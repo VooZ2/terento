@@ -26,6 +26,7 @@ done
 
 if grep -Fq 'aboutSection(title: "Updates")' <<<"$about_content" \
     || ! grep -Fq 'AboutPrimaryButton(title: "Update", action: updateAction)' <<<"$about_content" \
+    || ! grep -Fq 'AboutSecondaryButton(title: "Check for updates", action: updateAction)' <<<"$about_content" \
     || ! grep -Fq 'AboutSecondaryButton(title: "Manage diagnostics")' <<<"$about_content" \
     || ! grep -Fq 'private func updateAction()' <<<"$about_content"; then
     print -u2 "FAIL: About does not expose the adjacent Update and diagnostics actions"

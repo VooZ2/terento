@@ -139,6 +139,19 @@ struct SupportReportTests {
         expect(report.writeStarted == nil && report.transferProgressPercent == nil && report.device == nil
             && report.message == nil && report.maps?.first?.plannedBytes == nil,
             "facts the GitHub report marks Unavailable are omitted")
+        expect(draft.supportReport?.summaryLine?.hasPrefix("Updating the map failed on ") == true,
+            "without a map name the report window still says what failed and when")
+        let removal = InstallationIssueReport.generate(identity: nil, mapName: "Andalucía",
+            maps: [InstallationIssueMap(provider: "bbbike", region: "EUROPE-SPAIN-ANDALUCIA", package: "andalucia",
+                                        release: nil, artifactSizeBytes: nil)],
+            stage: "failedVerification", operation: .removal, error: nil, operationID: nil,
+            timestamp: Date(timeIntervalSince1970: 1_795_000_000))
+        let expectedWhen = Date(timeIntervalSince1970: 1_795_000_000).formatted(date: .abbreviated, time: .shortened)
+        expect(removal.supportReport?.summaryLine == "Removing Andalucía failed on \(expectedWhen).",
+            "the report window names the map and the failure time, not the time it opened")
+        expect(!(try! String(decoding: JSONEncoder().encode(SupportReportPayload(category: .removeFailed, operationID: nil,
+            userMessage: nil, report: removal.supportReport!.report)), as: UTF8.self)).contains("Andalucía"),
+            "the summary line stays local; the sent payload is unchanged")
         return SupportReportPayload(category: .updateFailed, operationID: nil, userMessage: "   ", report: report)
     }
 
@@ -202,6 +215,8 @@ struct SupportReportTests {
         expect(source.payload.category == .connection && source.payload.operationId == nil
             && source.payload.report == draft.supportReport?.report && !source.allowsCategoryChoice,
             "Help > Send Report to Terento offers the saved map scan report, not an empty one")
+        expect(source.summary?.hasPrefix("\(draft.title). It happened on ") == true,
+            "the Help menu report says what failed and when")
         return source.payload
     }
 

@@ -106,6 +106,8 @@ enum LifecycleRemainingTimeUnits {
             guard progress.phaseFraction == nil, progress.totalBytes > 0 else { return nil }
             return (Double(progress.bytesCompleted), Double(progress.totalBytes))
         case .checking:
+            // Remove: confirming the map is gone is not estimated.
+            guard action != .remove else { return nil }
             // Content check of the installed map (recorded sampled regions, or
             // the full read and hash without a proof): 25–95 % of Checking.
             // A short sampled check ends inside the warm-up, so no estimate.
@@ -131,5 +133,36 @@ enum LifecycleRemainingTimeUnits {
     private static func band(_ fraction: Double?, lower: Double, upper: Double) -> (completed: Double, total: Double)? {
         guard let fraction, fraction.isFinite, fraction >= lower, fraction < upper else { return nil }
         return (fraction - lower, upper - lower)
+    }
+}
+
+extension MapLifecycleOperationPhase {
+    /// Row label for a lifecycle progress report. Remove reads "Removing"
+    /// while it checks and deletes, then "Checking" while it confirms.
+    static func forProgress(
+        _ progress: SafeUpdateProgress,
+        action: MapLifecycleAction,
+        current: MapLifecycleOperationPhase?
+    ) -> MapLifecycleOperationPhase {
+        switch progress.state {
+        case .acquiring:
+            return action == .update ? .downloading : .updating
+        case .preparing:
+            return .preparing
+        case .validating, .revalidating:
+            return action == .update ? .checking : .verifying
+        case .writing:
+            return action == .update ? .installing : .updating
+        case .verifying:
+            // Remove reports its own fractions; an external map's measured
+            // read before confirmation has none and stays "Verifying".
+            return action == .remove && progress.phaseFraction != nil ? .removing : .verifying
+        case .committing:
+            return action == .update ? .removingOld : .verifying
+        case .postVerifying, .reconcilingManifest:
+            return action == .update ? .finishing : (action == .remove ? .checking : .verifying)
+        case .idle, .completed, .failed:
+            return current ?? .updating
+        }
     }
 }

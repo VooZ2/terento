@@ -48,8 +48,13 @@ struct AboutTerentoView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(spacing: 12) {
                         #if !TERENTO_APP_STORE
-                        AboutPrimaryButton(title: "Update", action: updateAction)
-                            .disabled(appUpdateController.isChecking)
+                        // Primary only when there is an update to get.
+                        if case .available = appUpdateController.state {
+                            AboutPrimaryButton(title: "Update", action: updateAction)
+                        } else {
+                            AboutSecondaryButton(title: "Check for updates", action: updateAction)
+                                .disabled(appUpdateController.isChecking)
+                        }
                         #endif
                         AboutSecondaryButton(title: "Manage diagnostics") {
                             openWindow(id: "diagnostics")
@@ -95,10 +100,10 @@ struct AboutTerentoView: View {
                     // App Store builds share diagnostics only after an opt-in and
                     // compile out the update check.
                     Text("Terento sends privacy-minimized diagnostics only if you choose to share them, to help improve the app and its services. Device state, maps, manifests, Unit IDs, serial numbers, and local paths stay on this Mac.")
-                        .font(.terentoUI(size: 15, weight: .medium))
+                        .font(.terentoUI(size: 13, weight: .regular))
                     #else
                     Text("Terento sends privacy-minimized diagnostics by default to help improve the app and its services. Device state, maps, manifests, Unit IDs, serial numbers, and local paths stay on this Mac.")
-                        .font(.terentoUI(size: 15, weight: .medium))
+                        .font(.terentoUI(size: 13, weight: .regular))
                     Text("Terento may contact terento.app when the app starts to check whether a newer version is available. This request is not used for analytics or user tracking.")
                         .font(.terentoUI(size: 13, weight: .regular))
                     #endif
@@ -206,7 +211,7 @@ private struct AboutSecondaryButton: View {
                 )
                 .overlay {
                     RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control)
-                        .stroke(
+                        .strokeBorder(
                             isEnabled ? TerentoColors.border : TerentoColors.inactiveBorder,
                             lineWidth: 1
                         )

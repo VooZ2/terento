@@ -37,8 +37,16 @@ private final class MapLifecycleProgressRelay: @unchecked Sendable {
     }
 
     func sendRemoval(_ progress: SafeDeleteProgress) {
+        let state: SafeUpdateState
+        switch progress.state {
+        case .completed: state = .completed
+        // Shown as "Checking": the rescan that confirms the map is gone.
+        case .postVerifying: state = .postVerifying
+        // Shown as "Removing": the content check and the delete itself.
+        case .verifying, .checkingContent: state = .verifying
+        }
         send(SafeUpdateProgress(
-            state: progress.state == .completed ? .completed : .verifying,
+            state: state,
             bytesCompleted: progress.bytesCompleted,
             totalBytes: progress.totalBytes,
             bytesPerSecond: progress.bytesPerSecond,
@@ -130,7 +138,26 @@ final class MapLifecycleViewModel: ObservableObject {
     /// the user starts another operation.
     @Published private(set) var interruptedOperationNotice: String?
 
+    /// "<Map> removed." for a few seconds after a removal is confirmed; the
+    /// row itself leaves the list on the refresh.
+    @Published private(set) var removalNotice: String?
+    private var removalNoticeTask: Task<Void, Never>?
+    static let removalNoticeSeconds: UInt64 = 4
+
+    private func showRemovalNotice(_ title: String) {
+        let notice = "\(title) removed."
+        removalNotice = notice
+        removalNoticeTask?.cancel()
+        removalNoticeTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: Self.removalNoticeSeconds * 1_000_000_000)
+            guard !Task.isCancelled, self?.removalNotice == notice else { return }
+            self?.removalNotice = nil
+        }
+    }
+
     func resetForDisconnectedDevice() {
+        removalNoticeTask?.cancel()
+        removalNotice = nil
         interruptedOperationNotice = operations.values.lazy.compactMap { state in
             MapLifecycleInterruption.notice(action: state.action, phase: state.phase,
                 fraction: state.progress?.fractionCompleted ?? 0)
@@ -523,25 +550,9 @@ final class MapLifecycleViewModel: ObservableObject {
     ) {
         guard epoch == lifecycleEpoch, operationTasks[itemID] != nil else { return }
 
-        let phase: MapLifecycleOperationPhase
-        switch progress.state {
-        case .acquiring:
-            phase = action == .update ? .downloading : .updating
-        case .preparing:
-            phase = .preparing
-        case .validating, .revalidating:
-            phase = action == .update ? .checking : .verifying
-        case .writing:
-            phase = action == .update ? .installing : .updating
-        case .verifying:
-            phase = .verifying
-        case .committing:
-            phase = action == .update ? .removingOld : .verifying
-        case .postVerifying, .reconcilingManifest:
-            phase = action == .update ? .finishing : .verifying
-        case .idle, .completed, .failed:
-            phase = operations[itemID]?.phase ?? .updating
-        }
+        let phase = MapLifecycleOperationPhase.forProgress(
+            progress, action: action, current: operations[itemID]?.phase
+        )
 
         let message: String
         switch phase {
@@ -776,6 +787,7 @@ final class MapLifecycleViewModel: ObservableObject {
                 FinishingTrace.freezeFailure()
                 TerentoDiagnosticLog.saveFailureReport(InstallationIssueReport.generate(
                     identity: context.identity,
+                    mapName: context.item.title,
                     maps: [InstallationIssueMap(provider: mapIdentity.provider,
                         region: mapIdentity.provider == "custom" ? "custom" : mapIdentity.region,
                         package: mapIdentity.provider == "custom" ? "custom-map" : mapIdentity.region,
@@ -805,6 +817,7 @@ final class MapLifecycleViewModel: ObservableObject {
                     progress: nil,
                     message: "The map was removed and verified."
                 )
+                showRemovalNotice(context.item.title)
                 mapEngine.refreshCurrentDeviceMaps()
             } else {
                 setOperation(
@@ -943,6 +956,7 @@ final class MapLifecycleViewModel: ObservableObject {
                 FinishingTrace.freezeFailure()
                 TerentoDiagnosticLog.saveFailureReport(InstallationIssueReport.generate(
                     identity: context.identity,
+                    mapName: context.item.title,
                     maps: [InstallationIssueMap(provider: mapIdentity.provider, region: mapIdentity.region,
                         package: selectedMap.id, release: selectedMap.displayVersionLabel,
                         artifactSizeBytes: result.storagePlan?.selectedMapBytes)],

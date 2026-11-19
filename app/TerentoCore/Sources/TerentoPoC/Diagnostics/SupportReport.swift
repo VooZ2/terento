@@ -329,4 +329,22 @@ struct SavedSupportReport: Codable, Equatable, Sendable {
     let category: SupportReportCategory
     let operationID: UUID?
     let report: SupportReportBody
+    // Local only, for the report window's first line; never in the sent payload.
+    var mapName: String? = nil
+    var failedAt: Date? = nil
+
+    /// "Removing Andalucía failed on 19 Nov 2026 at 20:35." The window's
+    /// payload createdAt is when the window opened, so the failure time is kept here.
+    var summaryLine: String? {
+        let when = failedAt.map { " on " + $0.formatted(date: .abbreviated, time: .shortened) } ?? ""
+        let verb: String?
+        switch report.operation {
+        case .installation: verb = "Installing"
+        case .update: verb = "Updating"
+        case .removal: verb = "Removing"
+        case nil: verb = nil
+        }
+        if let verb { return "\(verb) \(mapName ?? "the map") failed\(when)." }
+        return when.isEmpty ? nil : "\(title). It happened\(when)."
+    }
 }
