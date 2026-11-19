@@ -345,7 +345,8 @@ struct SavedSupportReport: Codable, Equatable, Sendable {
         case .removal: verb = "removing"
         case nil: verb = nil
         }
-        if let verb { return "Last saved report: \(verb) \(mapName ?? "the map") failed\(when)" }
+        // Older reports have no map name; "a map" never suggests a specific one.
+        if let verb { return "Last saved report: \(verb) \(mapName ?? "a map") failed\(when)" }
         return "Last saved report: \(title)\(when)"
     }
 

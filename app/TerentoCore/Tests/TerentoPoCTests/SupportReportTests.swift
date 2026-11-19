@@ -139,7 +139,7 @@ struct SupportReportTests {
         expect(report.writeStarted == nil && report.transferProgressPercent == nil && report.device == nil
             && report.message == nil && report.maps?.first?.plannedBytes == nil,
             "facts the GitHub report marks Unavailable are omitted")
-        expect(draft.supportReport?.summaryLine?.hasPrefix("Last saved report: updating the map failed · ") == true,
+        expect(draft.supportReport?.summaryLine?.hasPrefix("Last saved report: updating a map failed · ") == true,
             "without a map name the report window still says what failed and when")
         let removal = InstallationIssueReport.generate(identity: nil, mapName: "Andalucía",
             maps: [InstallationIssueMap(provider: "bbbike", region: "EUROPE-SPAIN-ANDALUCIA", package: "andalucia",

@@ -384,7 +384,10 @@ Manage rows and the storage meters share one 6 pt capsule bar
 (`TerentoProgressBar`); a percentage appears only for a measured value above zero,
 so a step that has measured nothing yet shows the bar without "0%". The install
 Finishing step chains several waits and only one of them is measured, so it shows
-one indeterminate bar for the whole step and never moves backwards. Device safety checks and mutation order are unchanged.
+one indeterminate bar for the whole step and never moves backwards. While a
+provider package is being resolved, before its download starts, the install step
+list shows Downloading as the current step; it is never drawn as complete and then
+current again. The engine's reported phase is unchanged. Device safety checks and mutation order are unchanged.
 Remove and Update's old-map removal reserve 20–90% for the content check
 immediately before deletion (the recorded sampled proof of a managed map, which
 usually ends before the 5-second estimate warm-up, so no time estimate appears,
@@ -561,8 +564,8 @@ a download start without a received outcome is not proof of a failed download.
   2000 characters. One plain line above the JSON says what failed and when
   ("Last saved report: removing Andalucía failed · 2026-11-19 20:35", local
   time), or "No saved report."; it comes from the map name and failure time kept
-  in `failure-report.json` (older reports without a time use the file's save
-  time) and is not part of the payload, whose `createdAt` is when the window
+  in `failure-report.json` (older reports without a name say "a map"; without a
+  time they use the file's save time, which is when that failure was saved) and is not part of the payload, whose `createdAt` is when the window
   opened. Nothing is sent before Send, and sending does not depend on
   the sharing toggles. The reply's reference is shown ("Report TR-XXXXXX sent");
   409 resends once under a new id; 429, 503 and network failures keep the report

@@ -117,6 +117,17 @@ enum InstallationDownloadStepPresentation {
         return "Waiting to download the selected map"
     }
 
+    /// The phase the step list shows. Before a provider package downloads, the
+    /// engine reports `.preparing` while it resolves the package, which drew
+    /// Downloading as complete and then stepped back to it. While resolving, the
+    /// list shows the Downloading step as current. The engine phase is unchanged.
+    static func displayedPhase(_ phase: InstallationProcessPhase,
+                               resolvingPackage: Bool,
+                               customOnly: Bool) -> InstallationProcessPhase {
+        guard !customOnly, phase == .preparing, resolvingPackage else { return phase }
+        return .downloading
+    }
+
     /// The byte line appears once bytes have arrived; ByteCountFormatter
     /// writes zero as "Zero KB".
     static func showsByteLine(current: UInt64, total: UInt64) -> Bool {

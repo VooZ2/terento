@@ -54,6 +54,8 @@ finishing_block="$(awk '/title: "Finishing",/ { capture = 1 } capture { print } 
 [[ "$finishing_block" == *'progress: nil,'* && "$finishing_block" != *'installationPhaseProgress'* ]] \
     || { print -u2 "FAIL: Finishing must use one indeterminate bar"; exit 1; }
 assert_contains '.onChange(of: value == nil) { _ in startSweepIfNeeded() }' "$connect_screen"
+# Install start: the step list shows Downloading as current while the package is resolved.
+assert_contains 'let current = InstallationDownloadStepPresentation.displayedPhase(mapEngine.installationPhase,' "$connect_screen"
 assert_contains 'TerentoProgressBar(value: normalizedFillRatio, fill: TerentoColors.lichen' "$connect_screen"
 assert_contains 'selectedValue: projection.fraction(for: projection.selectedMapBytes)' "$connect_screen"
 

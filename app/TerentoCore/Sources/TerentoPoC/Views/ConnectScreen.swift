@@ -2664,8 +2664,9 @@ struct ConnectScreen: View {
     }
 
     private func installationStepState(for phase: InstallationProcessPhase) -> InstallationStepState {
-        let current = mapEngine.installationPhase
         let customOnly = planContainsOnlyCustomMaps
+        let current = InstallationDownloadStepPresentation.displayedPhase(mapEngine.installationPhase,
+            resolvingPackage: mapEngine.acquisitionState == .resolvingPackage, customOnly: customOnly)
 
         if phase == .downloading, customOnly {
             return .complete

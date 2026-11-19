@@ -696,6 +696,21 @@ private func testQARowPresentation() throws {
         && !InstallationDownloadStepPresentation.showsByteLine(current: 0, total: 4_000)
         && InstallationDownloadStepPresentation.showsByteLine(current: 1, total: 4_000),
         "the byte line never shows Zero KB")
+    // Install start: resolving the package shows Downloading as current, not complete then back.
+    try require(InstallationDownloadStepPresentation.displayedPhase(.preparing,
+        resolvingPackage: true, customOnly: false) == .downloading,
+        "resolving a provider package keeps the Downloading step current")
+    try require(InstallationDownloadStepPresentation.displayedPhase(.preparing,
+        resolvingPackage: true, customOnly: true) == .preparing,
+        "a custom-only plan has no download, so Preparing stays current")
+    try require(InstallationDownloadStepPresentation.displayedPhase(.preparing,
+        resolvingPackage: false, customOnly: false) == .preparing,
+        "after the download (validating, extracting, hashing, validated), Preparing is current")
+    try require(InstallationDownloadStepPresentation.displayedPhase(.downloading,
+        resolvingPackage: false, customOnly: false) == .downloading
+        && InstallationDownloadStepPresentation.displayedPhase(.failed,
+            resolvingPackage: true, customOnly: false) == .failed,
+        "other phases are shown as reported")
 
     // A2: a file written outside this Mac's manifest gets Remove only, with the reason in the row.
     let resolver = MapLifecyclePresentationResolver()
