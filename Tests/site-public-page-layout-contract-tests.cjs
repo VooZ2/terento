@@ -8,7 +8,7 @@ const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "u
 const styles = read("site/styles.css");
 const shellSource = read("site/site-shell.js");
 const languageSource = read("site/language.js");
-const styleVersion = "20261119-site-refresh-v8";
+const styleVersion = "20261119-site-refresh-v9";
 const mobileLanguageNames = { en: "English", de: "Deutsch", fr: "Français", pl: "Polski", cs: "Čeština", it: "Italiano" };
 
 const cssBlock = (selector) => {
@@ -47,15 +47,6 @@ assert.match(styles, /\.text-link\s*\{[^}]*font-size:\s*15px/);
 assert.match(styles, /\.text-link\s*\{[^}]*font-weight:\s*600/);
 assert.match(cssBlock(".download-info-link:visited"), /color:\s*var\(--link-text\)/);
 assert.match(cssBlock(".download-info-link:hover,\n.download-info-link:focus-visible,\n.download-info-link:active"), /color:\s*var\(--link-text-hover\)/);
-assert.doesNotMatch(cssBlock(".download-info-link-label"), /underline/);
-assert.match(cssBlock(".download-info-link-tail"), /white-space:\s*nowrap/);
-assert.match(cssBlock(".download-info-link-arrow"), /text-decoration:\s*none/);
-assert.match(styles, /\.download-detail a:not\(\.text-link\)\s*\{/);
-assert.match(cssBlock(".download-hero"), /grid-template-columns:\s*minmax\(0, 1fr\) minmax\(0, 400px\)/);
-assert.match(cssBlock(".download-details-list"), /grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
-assert.match(cssBlock(".download-details"), /border-top:\s*1px solid var\(--border\)/);
-assert.match(cssBlock(".download-detail"), /background:\s*var\(--surface\)/);
-assert.match(cssBlock(".download-detail"), /border-radius:\s*16px/);
 assert.match(styles, /a:focus-visible,[\s\S]*?outline:\s*3px solid var\(--focus-ring\)/);
 assert.match(styles, /h1,\s*\nh2,\s*\nh3\s*\{[\s\S]*?text-wrap:\s*balance;/, "marketing headings must balance their lines");
 assert.match(styles, /\.hero-lede,\s*\n\.download-intro,\s*\n\.provider-summary,\s*\n\.provider-addon-copy\s*\{[\s\S]*?text-wrap:\s*pretty;/, "short supporting copy should avoid awkward final lines");
@@ -183,9 +174,6 @@ assert.match(cssBlock(".about-social-link"), /min-height:\s*40px/);
 assert.match(cssBlock(".about-social-link"), /padding:\s*7px 11px/);
 assert.match(cssBlock(".about-social-link"), /border-radius:\s*var\(--control-radius\)/);
 assert.match(cssBlock(".about-bullet-list"), /gap:\s*12px/);
-assert.match(styles, /@media \(min-width: 1100px\)\s*\{\s*\.app-shot--hero\s*\{[^}]*width:\s*115%/s);
-assert.match(cssBlock(".problem-statement p"), /font-family:\s*var\(--font-ui\)/);
-assert.match(cssBlock(".problem-statement p"), /font-size:\s*clamp\(18px, 2vw, 21px\)/);
 assert.match(cssBlock(".faq.section"), /padding:\s*clamp\(64px, 8vw, 96px\) 0/);
 assert.match(cssBlock('.primary-nav .download-action[aria-current="page"]'), /background:\s*var\(--interactive\)/);
 assert.match(cssBlock(".mobile-language-menu .language-trigger"), /border:\s*1px solid var\(--border\)/);
@@ -280,4 +268,3 @@ for (const locale of Object.keys(locales)) {
 
 console.log("Public page intro and Download link layout contracts passed for all six locales.");
 
-assert.match(styles, /\.guide-facts span,\s*\.download-badges li\s*\{[^}]*border-radius:\s*999px/);

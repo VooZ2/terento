@@ -119,7 +119,7 @@ const anchorFor = (page, className) => {
 
 for (const [locale, expected] of locales) {
   const page = pageFor(locale);
-  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20261119-site-refresh-v8">/, `${locale}: Home stylesheet cache bust`);
+  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20261119-site-refresh-v9">/, `${locale}: Home stylesheet cache bust`);
   assert.match(page, /<script defer src="\/home-features\.js\?v=20261105-home-map-switch-v4"><\/script>/, `${locale}: Home feature script cache bust`);
   assert.match(page, /installing-maps-1600\.png\?v=20260912-app-screens-v2/, `${locale}: installation screenshot cache bust`);
   const heroDevice = page.match(/<figure class="home-device" data-map-switch>[\s\S]*?<\/figure>/)?.[0];
@@ -305,17 +305,8 @@ const heroCompatibilityLink = styles.match(/\.hero-compatibility-link\s*\{([^}]*
 assert.ok(heroCompatibilityLink, "missing Hero Compatibility CTA touch target block");
 assert.match(heroCompatibilityLink[1], /min-height:\s*44px/);
 assert.match(styles, /a:focus-visible,\s*button:focus-visible,\s*summary:focus-visible\s*\{[^}]*outline: 3px solid var\(--focus-ring\)/s);
-assert.match(styles, /\.experience\.section\s*\{[^}]*padding:\s*clamp\(72px, 9vw, 116px\) 0 clamp\(40px, 5vw, 64px\)/s);
-assert.match(styles, /\.product-showcase\s*\{[^}]*padding:\s*clamp\(68px, 7\.5vw, 100px\) 0/s);
-assert.match(styles, /\.product-showcase-panel\s*\{[^}]*border:\s*1px solid var\(--border\)[^}]*border-radius:\s*24px[^}]*background:\s*var\(--surface\)/s);
 assert.match(styles, /\.steps > li::before\s*\{[^}]*content:\s*counter\(steps\)/s);
-assert.match(styles, /\.map-feature-tabs\s*\{[^}]*border-radius:\s*14px/s);
-assert.match(styles, /\.map-feature-tab\s*\{[^}]*border-radius:\s*10px/s);
 assert.match(styles, /\.section-heading h2 span\s*\{[^}]*color:\s*var\(--sky\)[^}]*font-family:\s*var\(--font-ui\)/s);
-assert.match(styles, /\.section-heading h2 \.workflow-title-bullet\s*\{[^}]*display:\s*none/s);
-assert.match(styles, /\.section-heading h2 \.workflow-title-bullet\s*\{[^}]*display:\s*inline-block[^}]*font-size:\s*\.72em/s);
-assert.match(styles, /\.section-heading h2 \.workflow-title-arrow\s*\{[^}]*display:\s*none/s);
-assert.match(styles, /\.map-feature-panel\[hidden\]\s*\{[^}]*display:\s*none/s);
 assert.match(styles, /\.provider-cards\s*\{[^}]*grid-auto-flow:\s*column/s);
 assert.match(styles, /\.provider-card\s*\{[^}]*background:\s*var\(--surface\)/s);
 assert.match(styles, /\.provider-addon\s*\{[^}]*border-top:\s*1px solid var\(--border\)/s);
