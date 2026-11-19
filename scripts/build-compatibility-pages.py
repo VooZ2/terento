@@ -66,10 +66,10 @@ def device_type(model: dict[str, object]) -> str:
 def chips_markup(locale: str) -> str:
     chip = DEVICE_CHIPS[locale]
     buttons = "".join(
-        f'<button type="button" class="chip" data-device-filter="{value}" aria-pressed="{str(value == "ALL").lower()}">{esc(chip[value])}</button>'
+        f'<button type="button" class="segmented-option" data-device-filter="{value}" aria-pressed="{str(value == "ALL").lower()}">{esc(chip[value])}</button>'
         for value in ("ALL", "watch", "edge")
     )
-    return f'<div class="chips compatibility-chips" role="group" aria-label="{esc(chip["label"])}">{buttons}</div>'
+    return f'<div class="segmented compatibility-chips" role="group" aria-label="{esc(chip["label"])}">{buttons}</div>'
 
 
 def page_path(locale: str) -> Path:
@@ -156,17 +156,31 @@ def date_text(value: object, locale: str) -> str:
     return f"{day} {month} {year}"
 
 
-# Short numeric dates (Intl year/month/day "numeric" per locale) for phones and the model cards.
+# Medium dates (Intl dateStyle "medium", UTC) for dense places: model cards and the Home numbers on
+# phones. English reads "Nov 15, 2026", never "11/15/2026" (owner, round 5).
+MEDIUM_MONTHS = {
+    "en": ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"),
+    "fr": ("janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."),
+    "pl": ("sty", "lut", "mar", "kwi", "maj", "cze", "lip", "sie", "wrz", "paź", "lis", "gru"),
+    "it": ("gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"),
+}
+
+
 def short_date_text(value: object, locale: str) -> str:
     if not value:
         return ""
     try:
-        date = dt.datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        date = dt.datetime.fromisoformat(str(value).replace("Z", "+00:00")).astimezone(dt.timezone.utc)
     except ValueError:
         return ""
     d, m, y = date.day, date.month, date.year
-    return {"en": f"{m}/{d}/{y}", "de": f"{d}.{m}.{y}", "fr": f"{d:02}/{m:02}/{y}", "pl": f"{d}.{m:02}.{y}",
-            "cs": f"{d}. {m}. {y}", "it": f"{d}/{m}/{y}"}[locale]
+    if locale == "en":
+        return f"{MEDIUM_MONTHS['en'][m - 1]} {d}, {y}"
+    if locale == "de":
+        return f"{d:02}.{m:02}.{y}"
+    if locale == "cs":
+        return f"{d}. {m}. {y}"
+    return f"{d} {MEDIUM_MONTHS[locale][m - 1]} {y}"
 
 
 # Card counts below 100 are exact; from 100 they round down to the hundred with
@@ -269,24 +283,44 @@ def load_snapshot() -> dict:
 def card_markup(model: dict[str, object], locale: str) -> str:
     copy = COPY[locale]
     display_model = public_model_name(model["model"])
-    # No variant facts: name the device type (Edge rows are bike computers, never "Smartwatch").
-    variant = exact_variant(model) or copy["card_bike_computer" if device_type(model) == "edge" else "card_smartwatch"]
+    # A real variant name or nothing (owner, round 5): no "Smartwatch" or "Bike computer" filler.
+    variant = exact_variant(model)
     count, latest = int(model["successfulInstallations"]), short_date_text(model.get("lastSuccessfulInstallation"), locale)
     # One short line (no family name: the filter covers it); hidden on phones.
     latest_markup = f'<p class="watch-card-meta">{esc(copy["card_last"])} {esc(latest)}</p>' if latest else ""
     image = model.get("imageUrl") or FALLBACK_IMAGE_URL
     accessible = ", ".join(filter(None, (display_model, variant, install_label(count, locale), sources_accessible(model, locale), f'{copy["card_last"]} {latest}' if latest else "")))
-    return f'''<article class="watch-card card" data-device-type="{device_type(model)}" aria-label="{esc(accessible)}"><div class="watch-card-image"><img data-remote-src="{esc(image)}" src="{esc(image)}" alt="" width="400" height="300" loading="lazy"></div><div class="watch-card-body"><h3>{esc(display_model)} <span class="watch-variant">{esc(variant)}</span></h3><p class="watch-install-count">{esc(install_label(count, locale))}</p>{sources_markup(model, locale)}{latest_markup}</div></article>'''
+    return f'''<article class="watch-card card" data-device-type="{device_type(model)}" aria-label="{esc(accessible)}"><div class="watch-card-image"><img data-remote-src="{esc(image)}" src="{esc(image)}" alt="" width="400" height="300" loading="lazy"></div><div class="watch-card-body"><h3>{esc(display_model)}{f' <span class="watch-variant">{esc(variant)}</span>' if variant else ""}</h3><p class="watch-install-count">{esc(install_label(count, locale))}</p>{sources_markup(model, locale)}{latest_markup}</div></article>'''
+
+
+# One quiet sentence under the lead (owner, round 5). {successes}, {models}, {model_label} and {date}
+# keep the live data hooks; compatibility.js refreshes them. Keep in sync with compatibility-locales.js.
+SUMMARY_COPY = {
+    "en": {"lead": "{successes} successful installs on {models} {model_label}.", "latest": "Latest install {date}.", "one": "model", "many": "models"},
+    "de": {"lead": "{successes} erfolgreiche Installationen auf {models} {model_label}.", "latest": "Letzte Installation am {date}.", "one": "Modell", "many": "Modellen"},
+    "fr": {"lead": "{successes} installations réussies sur {models} {model_label}.", "latest": "Dernière installation le {date}.", "one": "modèle", "many": "modèles"},
+    "pl": {"lead": "Udane instalacje: {successes} na {models} {model_label}.", "latest": "Ostatnia instalacja: {date}.", "one": "modelu", "many": "modelach"},
+    "cs": {"lead": "Úspěšné instalace: {successes} na {models} {model_label}.", "latest": "Poslední instalace: {date}.", "one": "modelu", "many": "modelech"},
+    "it": {"lead": "{successes} installazioni riuscite su {models} {model_label}.", "latest": "Ultima installazione: {date}.", "one": "modello", "many": "modelli"},
+}
 
 
 def summary_markup(snapshot: dict, locale: str) -> str:
     copy, models = COPY[locale], snapshot["models"]
+    words = SUMMARY_COPY[locale]
     total = sum(int(row["successfulInstallations"]) for row in models)
     latest = max((row.get("lastSuccessfulInstallation") for row in models if row.get("lastSuccessfulInstallation")), default=None)
     latest_text = date_text(latest, locale)
-    label = copy["model_one"] if len(models) == 1 else copy["model_many"]
-    updated = f'<span class="compatibility-summary-item trust-strip-item compatibility-summary-updated" data-summary-updated><strong><time data-summary="updated" datetime="{esc(latest or "")}">{esc(latest_text)}</time></strong> {esc(copy["latest"])}</span>' if latest_text else ""
-    return f'''<div class="compatibility-summary" id="compatibility-summary" aria-live="polite" aria-busy="false"><p class="compatibility-summary-line trust-strip" data-summary-content><span class="compatibility-summary-item trust-strip-item"><strong data-summary="models">{len(models)}</strong> <span data-summary-model-label>{esc(label)}</span><span class="compatibility-summary-separator" aria-hidden="true">&nbsp;&nbsp;</span></span><span class="compatibility-summary-item trust-strip-item"><strong data-summary="successes">{total}</strong> {esc(copy["successes"])}<span class="compatibility-summary-separator" aria-hidden="true">&nbsp;&nbsp;</span></span>{updated}</p><p class="compatibility-freshness" role="status" hidden><span id="compatibility-freshness"></span> <button type="button" id="compatibility-retry" hidden>{esc(copy["retry"])}</button></p></div>'''
+    lead = esc(words["lead"]).format(
+        successes=f'<span data-summary="successes">{esc(format_number(total, locale))}</span>',
+        models=f'<span data-summary="models">{esc(format_number(len(models), locale))}</span>',
+        model_label=f'<span data-summary-model-label>{esc(words["one"] if len(models) == 1 else words["many"])}</span>',
+    )
+    updated = (" <span data-summary-updated>" + esc(words["latest"]).format(
+        date=f'<time data-summary="updated" datetime="{esc(latest or "")}">{esc(latest_text)}</time>') + "</span>") if latest_text else ""
+    return (f'<div class="compatibility-summary" id="compatibility-summary" aria-live="polite" aria-busy="false">'
+            f'<p class="compatibility-summary-line" data-summary-content>{lead}{updated}</p>'
+            f'<p class="compatibility-freshness" role="status" hidden><span id="compatibility-freshness"></span> <button type="button" id="compatibility-retry" hidden>{esc(copy["retry"])}</button></p></div>')
 
 
 HOME_TRUST_RE = re.compile(r'<ul class="trust-strip home-trust-strip"[^>]*>[\s\S]*?</ul>')
@@ -326,13 +360,14 @@ def update_home_trust_strip(snapshot: dict, locale: str) -> None:
 
 
 def how_markup(locale: str) -> str:
+    """The full "How this list works" text (indexed), as a card under the grid next to the community card."""
     copy = COPY[locale]
-    return f'''<details class="compatibility-how"><summary>{esc(copy["how_summary"])}</summary><div class="compatibility-how-body"><p>{esc(copy["how_text"])}</p><p class="compatibility-evidence-note" data-compatibility-evidence-note>{esc(copy["certification"])}</p><p class="compatibility-provider-note">{esc(copy["providers"])}</p></div></details>'''
+    return f'''<div class="compatibility-how card"><h2>{esc(copy["how_summary"])}</h2><div class="compatibility-how-body"><p>{esc(copy["how_text"])}</p><p class="compatibility-evidence-note" data-compatibility-evidence-note>{esc(copy["certification"])}</p><p class="compatibility-provider-note">{esc(copy["providers"])}</p></div></div>'''
 
 
 def filters_markup(locale: str) -> str:
     copy = COPY[locale]
-    return f'''<form class="compatibility-filters" id="compatibility-filters" role="search">{chips_markup(locale)}<label class="compatibility-filter-control compatibility-search"><span class="sr-only">{esc(copy["search"])}</span><input id="watch-search" type="search" placeholder="{esc(copy["search"])}" autocomplete="off"></label><details class="compatibility-more-filters"><summary>{esc(copy["more_filters"])}</summary><div class="compatibility-more-filters-body"><label class="compatibility-filter-control compatibility-filter-select"><span class="sr-only">{esc(copy["filter_successful"])}</span><select id="successful-install-filter"><option value="ALL">{esc(copy["all_successful"])}</option><option value="1_2">{esc(copy["one_two"])}</option><option value="3_4">{esc(copy["three_four"])}</option><option value="5_PLUS">{esc(copy["five_plus"])}</option></select></label><label class="compatibility-filter-control compatibility-filter-select"><span class="sr-only">{esc(copy["filter_family"])}</span><select id="family-filter"><option value="ALL">{esc(copy["all_families"])}</option></select></label><label class="compatibility-filter-control compatibility-filter-select"><span class="sr-only">{esc(copy["sort"])}</span><select id="sort-filter"><option value="successful">{esc(copy["most_successful"])}</option><option value="name">{esc(copy["name"])}</option></select></label></div></details><button type="button" class="compatibility-clear" id="compatibility-clear" disabled><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><!-- @license lucide-static v0.460.0 - ISC --><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>{esc(copy["clear"])}</button></form>'''
+    return f'''<form class="compatibility-filters" id="compatibility-filters" role="search">{chips_markup(locale)}<div class="compatibility-filter-control compatibility-search"><input id="watch-search" type="search" placeholder="{esc(copy["search"])}" aria-label="{esc(copy["search"])}" autocomplete="off"></div><details class="compatibility-more-filters"><summary>{esc(copy["more_filters"])}</summary><div class="compatibility-more-filters-body"><label class="compatibility-filter-control compatibility-filter-select"><span class="sr-only">{esc(copy["filter_successful"])}</span><select id="successful-install-filter"><option value="ALL">{esc(copy["all_successful"])}</option><option value="1_2">{esc(copy["one_two"])}</option><option value="3_4">{esc(copy["three_four"])}</option><option value="5_PLUS">{esc(copy["five_plus"])}</option></select></label><label class="compatibility-filter-control compatibility-filter-select"><span class="sr-only">{esc(copy["filter_family"])}</span><select id="family-filter"><option value="ALL">{esc(copy["all_families"])}</option></select></label><label class="compatibility-filter-control compatibility-filter-select"><span class="sr-only">{esc(copy["sort"])}</span><select id="sort-filter"><option value="successful">{esc(copy["most_successful"])}</option><option value="name">{esc(copy["name"])}</option></select></label></div></details><button type="button" class="compatibility-clear" id="compatibility-clear" disabled><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><!-- @license lucide-static v0.460.0 - ISC --><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>{esc(copy["clear"])}</button></form>'''
 
 
 def results_markup(snapshot: dict, locale: str) -> str:
@@ -348,19 +383,22 @@ def community_markup(locale: str) -> str:
     The shared end-of-page CTA follows with Download for Mac and the web installer."""
     copy, prefix = COPY[locale], "" if locale == "en" else f"/{locale}"
     guide = f"{prefix}/guides/install-garmin-maps-mac/"
-    return (f'''<div class="compatibility-community-cta card"><div class="compatibility-community-copy"><h2>{esc(copy["community_heading"])}</h2>'''
+    return (f'''<div class="compatibility-after grid"><div class="compatibility-community-cta card"><div class="compatibility-community-copy"><h2>{esc(copy["community_heading"])}</h2>'''
             f'''<p class="compatibility-missing-note">{esc(copy["missing"])}</p><p>{esc(copy["community_body"])}</p>'''
             f'''<a class="text-link compatibility-guide-link" href="{guide}" data-umami-event="guide-link-click" data-umami-event-location="compatibility-community-testing">{esc(copy["guide_link"])}</a></div></div>'''
+            + how_markup(locale) + "</div>"
             + COMPONENTS["end_cta"](locale, "compatibility-bottom"))
 
 
-def hero_markup(locale: str) -> str:
-    """Plain hero (no card): H1 and one short lead. "Not seeing your model?" sits under the grid."""
+def hero_markup(locale: str, snapshot: dict) -> str:
+    """Plain hero (no card): H1, one short lead and one quiet sentence with the live numbers.
+    "Not seeing your model?" and "How this list works" sit under the grid."""
     copy = COPY[locale]
     return f'''<section class="compatibility-hero page-hero" aria-labelledby="compatibility-title">
         <div class="shell"><div class="hero-copy compatibility-hero-copy">
           <h1 id="compatibility-title">{esc(copy["title"])}</h1>
           <p class="hero-lede">{esc(copy["hero"])}</p>
+          {summary_markup(snapshot, locale)}
         </div></div>
       </section>'''
 
@@ -370,12 +408,9 @@ def render_page(source: str, locale: str, snapshot: dict) -> str:
     source = re.sub(r'\s*<p class="eyebrow"><span class="status-dot"[^>]*></span>[^<]*</p>', "", source, count=1)
     source = re.sub(r'(<h1 id="compatibility-title">)[^<]*(</h1>)', rf'\g<1>{esc(copy["title"])}\g<2>', source, count=1)
     source = re.sub(r'(<p class="hero-lede">)[\s\S]*?(</p>)', rf'\g<1>{esc(copy["hero"])}\g<2>', source, count=1)
-    source, count = re.subn(r'<div class="compatibility-summary" id="compatibility-summary"[\s\S]*?</div>\s*(?=<details class="compatibility-how")', summary_markup(snapshot, locale) + "\n\n          ", source, count=1)
-    if count != 1:
-        raise ValueError(f"{page_path(locale)}: compatibility summary insertion point not found")
-    source, count = re.subn(r'<details class="compatibility-how">[\s\S]*?</details>', how_markup(locale), source, count=1)
-    if count != 1:
-        raise ValueError(f"{page_path(locale)}: compatibility explanation not found")
+    # The summary sentence lives in the hero; "How this list works" under the grid (round 5).
+    source = re.sub(r'\s*<div class="compatibility-summary" id="compatibility-summary"[\s\S]*?</p></div>(?=\s*(?:<details class="compatibility-how|<form class="compatibility-filters"))', "", source, count=1)
+    source = re.sub(r'\s*<details class="compatibility-how[^"]*">[\s\S]*?</details>(?=\s*<form class="compatibility-filters")', "", source, count=1)
     source, count = re.subn(r'<form class="compatibility-filters"[\s\S]*?</form>(?:\s*<button[^>]*id="compatibility-clear"[^>]*>[\s\S]*?</button>)?', filters_markup(locale), source, count=1)
     if count != 1:
         raise ValueError(f"{page_path(locale)}: compatibility filters not found")
@@ -383,13 +418,13 @@ def render_page(source: str, locale: str, snapshot: dict) -> str:
     if start < 0 or end < 0:
         raise ValueError(f"{page_path(locale)}: compatibility results insertion point not found")
     source = source[:start] + results_markup(snapshot, locale) + "\n          " + source[end:]
-    source, count = re.subn(r'<div class="compatibility-community-cta[^"]*">[\s\S]*?</section>', lambda _: community_markup(locale) + "</div></section>", source, count=1)
+    source, count = re.subn(r'<div class="(?:compatibility-after grid|compatibility-community-cta[^"]*)">[\s\S]*?</section>', lambda _: community_markup(locale) + "</div></section>", source, count=1)
     if count != 1:
         raise ValueError(f"{page_path(locale)}: compatibility community CTA not found")
     source = re.sub(r'/compatibility/compatibility-data\.js\?v=[^" ]+', f'/compatibility/compatibility-data.js?v={ASSET_VERSION}', source)
     source = re.sub(r'/compatibility/compatibility-locales\.js\?v=[^" ]+', f'/compatibility/compatibility-locales.js?v={LOCALES_ASSET_VERSION}', source)
     source = re.sub(r'/compatibility/compatibility\.js\?v=[^" ]+', f'/compatibility/compatibility.js?v={ASSET_VERSION}', source)
-    source, count = re.subn(r'<section class="compatibility-hero[\s\S]*?</section>', lambda _: hero_markup(locale), source, count=1)
+    source, count = re.subn(r'<section class="compatibility-hero[\s\S]*?</section>', lambda _: hero_markup(locale, snapshot), source, count=1)
     if count != 1:
         raise ValueError(f"{page_path(locale)}: compatibility hero not found")
     source = re.sub(r'(<p class="compatibility-error"[^>]*>)[^<]*(</p>)', rf'\g<1>{esc(copy["error"])}\g<2>', source, count=1)

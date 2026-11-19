@@ -5,7 +5,7 @@ canonical: https://terento.app/it/guides/troubleshooting/
 
 # Risolvi i problemi di orologio Garmin e mappe su Mac
 
-Trova il tuo problema, da un orologio Garmin che il Mac non rileva a un download della mappa non riuscito, e segui i brevi passaggi. Se niente funziona, invia un rapporto così possiamo dare un’occhiata.
+Trova il tuo problema, da un orologio Garmin che il Mac non rileva a un download della mappa non riuscito, e segui i brevi passaggi. Se niente funziona, invia un rapporto e ci darò un’occhiata.
 
 ## Garmin Edge non rilevato dal Mac
 

@@ -11,9 +11,9 @@ Unter Linux installiert der Terento-Web-Installer kostenlose Karten auf Garmin-U
 
 ## Das brauchst du
 
-- Chrome, Microsoft Edge, Opera oder Brave auf einem Linux-Computer. Firefox kann keine USB-Geräte verbinden.
-- Ein USB-Datenkabel, kein reines Ladekabel.
-- Eine entsperrte Garmin-Uhr mit Kartenunterstützung.
+- Chrome, Microsoft Edge, Opera oder Brave unter Linux (Firefox kann nicht per USB verbinden)
+- Garmin-Smartwatch mit Kartenunterstützung
+- USB-Kabel mit Datenübertragung
 
 ## Eine Karte aus dem Browser installieren
 

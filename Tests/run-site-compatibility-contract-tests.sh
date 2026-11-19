@@ -34,7 +34,7 @@ for path in compatibility_files:
     assert 'class="compatibility-status' not in page
     assert 'successful-install-filter' in page
     assert '1–2' in page and '5+' in page
-    assert 'compatibility.js?v=20261119-compatibility-cards-v4' in page
+    assert 'compatibility.js?v=20261119-compatibility-cards-v5' in page
     assert '<noscript class="compatibility-noscript">' in page
 
     assert 'class="watch-install-sources"' in page, f"{path}: missing app/web install split"
@@ -57,7 +57,12 @@ assert ">1200+ udanych instalacji</p>" in card(model, "pl")
 assert ">1 200+ úspěšných instalací</p>" in card(model, "cs")
 assert ">1200+ installazioni riuscite</p>" in card(model, "it")
 assert "1 100+ přes aplikaci, 54 přes webový instalátor" in card(model, "cs")
-assert 'data-summary="successes">1234</strong>' in summary({"models": [model]}, "en")
+quiet = summary({"models": [model]}, "en")
+assert '<span data-summary="successes">1,234</span> successful installs on <span data-summary="models">1</span> <span data-summary-model-label>model</span>. <span data-summary-updated>Latest install <time data-summary="updated" datetime="2026-10-11T10:00:00Z">October 11, 2026</time>.</span>' in quiet, quiet
+assert "<strong" not in quiet
+plain = card({**{k: v for k, v in model.items() if k != "caseSizeMm"}, "variant": "", "model": "fēnix 8"}, "en")
+assert "watch-variant" not in plain and "Smartwatch" not in plain, plain
+assert "Last install Oct 11, 2026" in english and "/2026" not in english
 for count, label in ((1, "1 successful install"), (99, "99 successful installs"), (100, "100+ successful installs"), (199, "100+ successful installs"), (250, "200+ successful installs")):
     assert generator["install_label"](count, "en") == label, (count, generator["install_label"](count, "en"))
 app_only = card({**model, "successfulInstallations": 7, "appSuccessfulInstallations": 7, "webSuccessfulInstallations": 0}, "en")

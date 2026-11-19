@@ -5,7 +5,7 @@ canonical: https://terento.app/guides/troubleshooting/
 
 # Fix Garmin watch and map problems on Mac
 
-Find the problem you see, from a Garmin watch that doesn’t show up on your Mac to a map download that fails, and follow the short steps. If nothing helps, send a report so we can take a look.
+Find the problem you see, from a Garmin watch that doesn’t show up on your Mac to a map download that fails, and follow the short steps. If nothing helps, send a report and I’ll take a look.
 
 ## Garmin Edge not showing up on Mac
 

@@ -37,7 +37,6 @@ APP_STORE = json.loads((ROOT / "scripts" / "templates" / "app-store-badge.json")
 SHOT = "/assets/app/optimized/your-garmin-{width}.{fmt}?v=20260912-app-screens-v2"
 SHOT_SIZES = "(max-width: 899px) min(480px, calc(100vw - 32px)), 480px"
 # "macOS 13 or later on Apple Silicon." in the Home copy's words.
-HOME_COPY = json.loads((ROOT / "scripts" / "templates" / "home-copy.json").read_text(encoding="utf-8"))
 COMPONENTS = __import__("runpy").run_path(str(ROOT / "scripts" / "site_components.py"))
 
 
@@ -88,17 +87,6 @@ def app_store_badge(locale: str, css_class: str, campaign: str, location: str) -
     )
 
 
-# Collapsed by default; the hash only, no claim about what the check proves.
-SHA_LABEL = {
-    "en": "Check the download (SHA-256)",
-    "de": "Download prüfen (SHA-256)",
-    "fr": "Vérifier le téléchargement (SHA-256)",
-    "pl": "Sprawdź pobrany plik (SHA-256)",
-    "cs": "Ověřit stažený soubor (SHA-256)",
-    "it": "Verifica il download (SHA-256)",
-}
-
-
 def render_main(locale: str, release: dict[str, object], dmg_url: str, notes_url: str) -> str:
     c = COPY[locale]
     root = "/" if locale == "en" else f"/{locale}/"
@@ -127,7 +115,8 @@ def render_main(locale: str, release: dict[str, object], dmg_url: str, notes_url
                   edge=link(c["edge_label"], f"{root}guides/install-garmin-maps-edge-mac/", "guide-link-click", "download-page-edge"))
     button = COMPONENTS["store_download"](dmg_url, html.escape(c["download"]), "download-v2-primary", 'rel="noopener noreferrer"')
     # Hero (round 4): H1, lead, Download for Mac beside Apple's badge, one text link. The release
-    # line (matches softwareVersion) and the SHA-256 move to "What you need" below.
+    # line (matches softwareVersion) sits under "What you need"; its "What's new" link opens the
+    # GitHub release page, which shows each file's SHA-256 (round 5: no checksum block here).
     return (
         '<main id="main-content" class="download-main download-v2"><div class="shell">'
         '<section class="download-v2-hero page-hero page-hero-grid"><div class="hero-copy download-v2-copy">'
@@ -139,11 +128,10 @@ def render_main(locale: str, release: dict[str, object], dmg_url: str, notes_url
         '<div class="grid download-v2-info">'
         '<section class="col-6 download-v2-needs" aria-labelledby="download-needs-title">'
         f'<h2 id="download-needs-title">{html.escape(c["needs_title"])}</h2>'
-        f'<p class="download-release">{release_text} {html.escape(HOME_COPY[locale]["app_requirements"])} '
+        f'<p class="download-release">{release_text} '
         f'<a class="text-link" href="{notes_url}" rel="noopener noreferrer">{html.escape(c["notes"])}</a></p>'
         f'<ul class="checklist">{needs}</ul>'
         + link(c["compat_label"], f"{root}compatibility/", "compatibility-link-click", "download-page", " download-info-link")
-        + f'<details class="download-sha"><summary>{html.escape(SHA_LABEL[locale])}</summary><p><code>{sha}</code></p></details>'
         + '</section>'
         '<section class="col-6 download-v2-after" aria-labelledby="download-steps-title">'
         f'<h2 id="download-steps-title">{html.escape(c["steps_title"])}</h2><ol class="steps">{steps}</ol>'

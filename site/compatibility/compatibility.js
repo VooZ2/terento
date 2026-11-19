@@ -63,14 +63,15 @@
     if (!value) return "";
     const date = new Date(value);
     if (Number.isNaN(date.valueOf())) return "";
-    return new Intl.DateTimeFormat(locale.dateLocale, { dateStyle: "long" }).format(date);
+    return new Intl.DateTimeFormat(locale.dateLocale, { dateStyle: "long", timeZone: "UTC" }).format(date);
   };
 
   const formatShortDate = (value) => {
     if (!value) return "";
     const date = new Date(value);
     if (Number.isNaN(date.valueOf())) return "";
-    return new Intl.DateTimeFormat(locale.dateLocale, { year: "numeric", month: "numeric", day: "numeric", timeZone: "UTC" }).format(date);
+    // Dense places use the medium date ("Nov 15, 2026"), never "11/15/2026" (round 5).
+    return new Intl.DateTimeFormat(locale.dateLocale, { dateStyle: "medium", timeZone: "UTC" }).format(date);
   };
 
   const sourceCount = (value) => {
@@ -131,7 +132,8 @@
 
   function createCard(row) {
     const modelName = publicModelName(row.model);
-    const variantLabel = row.variants[0] || exactVariantLabel(row) || (deviceType(row) === "edge" ? locale.card.bikeComputer : locale.card.smartwatch);
+    // A real variant name or nothing (round 5).
+    const variantLabel = row.variants[0] || exactVariantLabel(row) || "";
     const latestInstallation = formatShortDate(row.lastSuccess);
     // One short line (no family name: the filter covers it); hidden on phones.
     const latestInstallationMarkup = latestInstallation
@@ -149,7 +151,7 @@
       .filter(Boolean)
       .join(", ");
     const imageUrl = row.imageUrl || FALLBACK_IMAGE_URL;
-    return `<article class="watch-card card" data-device-type="${deviceType(row)}" aria-label="${escapeHtml(accessibleName)}"><div class="watch-card-image"><img data-remote-src="${escapeHtml(imageUrl)}" src="${escapeHtml(imageUrl)}" alt="" width="400" height="300" loading="lazy"></div><div class="watch-card-body"><h3>${escapeHtml(modelName)} <span class="watch-variant">${escapeHtml(variantLabel)}</span></h3><p class="watch-install-count">${escapeHtml(installLabel)}</p>${sourcesMarkup}${latestInstallationMarkup}</div></article>`;
+    return `<article class="watch-card card" data-device-type="${deviceType(row)}" aria-label="${escapeHtml(accessibleName)}"><div class="watch-card-image"><img data-remote-src="${escapeHtml(imageUrl)}" src="${escapeHtml(imageUrl)}" alt="" width="400" height="300" loading="lazy"></div><div class="watch-card-body"><h3>${escapeHtml(modelName)}${variantLabel ? ` <span class="watch-variant">${escapeHtml(variantLabel)}</span>` : ""}</h3><p class="watch-install-count">${escapeHtml(installLabel)}</p>${sourcesMarkup}${latestInstallationMarkup}</div></article>`;
   }
 
   function matchesSuccessfulRange(row) {

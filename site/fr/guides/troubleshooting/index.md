@@ -5,7 +5,7 @@ canonical: https://terento.app/fr/guides/troubleshooting/
 
 # Résoudre les problèmes de montre Garmin et de cartes sur Mac
 
-Trouvez votre problème, d’une montre Garmin que le Mac ne détecte pas à un téléchargement de carte qui échoue, et suivez les étapes courtes. Si rien ne fonctionne, envoyez un rapport pour que nous puissions l’examiner.
+Trouvez votre problème, d’une montre Garmin que le Mac ne détecte pas à un téléchargement de carte qui échoue, et suivez les étapes courtes. Si rien ne fonctionne, envoyez un rapport et je regarderai.
 
 ## Garmin Edge non détecté sur Mac
 

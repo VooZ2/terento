@@ -77,17 +77,21 @@ preserve the same meaning in each locale.
   Sans 22px). Product photos sit on `--photo-tile` in both modes.
 - Buttons: `primary_action()` (one primary button, "Download for Mac" with
   the Lucide download icon, 40px, 15/20 at 600) and `secondary_action()`
-  (outlined, same size). `store_download()` adds Apple's badge and is used
-  only on /download/: at most one App Store badge per page. Never change the
-  badge.
-- Every page except Download ends with `end_cta(locale, location)`: "Put a
-  free map on your Garmin", "Download for Mac" and a "Use the web installer"
-  text link (the Linux guide passes `web_first=True`).
+  (outlined, same size). `store_download()` adds Apple's badge on /download/;
+  Home shows it once, in the Mac app card under "Download for Mac". At most one
+  App Store badge per page. Never change the badge.
+- Only Compatibility, Map styles and the guides end with
+  `end_cta(locale, location)`: "Put a free map on your Garmin", "Download for
+  Mac" and a "Use the web installer" text link (the Linux guide passes
+  `web_first=True`), on the canvas with the normal section gap above it. Home
+  ends with the FAQ; About and Download have no closing call to action.
 - Header navigation marks the current item with `aria-current="page"`, 600
   in the link colour; every guide page (watch, Edge, Linux, Troubleshooting)
   marks "Guide".
 - Links: one style everywhere (link colour, 600, no underline; underline on
-  hover). Dates: one long format per locale (`dateStyle: "long"`).
+  hover). Dates: `dateStyle: "long"` in running text ("November 15, 2026"),
+  `dateStyle: "medium"` in dense places such as cards ("Nov 15, 2026"); never
+  numeric US dates.
 - `.cta-band` titles are `<p class="cta-band__title">`, never headings, so
   the H2 list does not change.
 - Run `python3 scripts/check-site-refresh.py` for any layout change (pass the

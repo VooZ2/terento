@@ -7,15 +7,7 @@ canonical: https://terento.app/cs/compatibility/
 
 Terento funguje s hodinkami Garmin a cyklopočítači Edge, které umí zobrazit mapy. Níže jsou přesné modely, do kterých už někdo nainstaloval mapu přes Terento. Seznam roste s každou sdílenou instalací.
 
-**47** modely s úspěšnými instalacemi**463** úspěšných instalací**18. listopadu 2026** Poslední úspěšná instalace
-
-Jak tento seznam funguje
-
-Tento seznam vychází ze skutečných úspěšných instalací Terento sdílených uživateli. Zobrazuje pouze konkrétní modely a varianty Garmin s alespoň jednou úspěšnou instalací mapy třetí strany. Nejde o úplný seznam všech hodinek a cyklopočítačů Garmin Edge, se kterými může Terento fungovat.
-
-Výsledky instalací sdílejí s Terento uživatelé; nejde o certifikaci Garmin.
-
-Aktuální verze zahrnuje všechny poskytovatele map v katalogu. Tato informace o produktu je oddělená od výsledků zařízení uvedených zde.
+Úspěšné instalace: 463 na 47 modelech. Poslední instalace: 18. listopadu 2026.
 
 47 modelů
 
@@ -35,7 +27,7 @@ App 59 Web 1
 
 Poslední instalace 18. 11. 2026
 
-### Forerunner 965 Hodinky
+### Forerunner 965
 
 32 úspěšných instalací
 
@@ -139,7 +131,7 @@ App 6 Web 4
 
 Poslední instalace 3. 11. 2026
 
-### Edge 1050 Cyklopočítač
+### Edge 1050
 
 8 úspěšných instalací
 
@@ -203,7 +195,7 @@ App 6
 
 Poslední instalace 11. 11. 2026
 
-### Edge 540 Cyklopočítač
+### Edge 540
 
 5 úspěšných instalací
 
@@ -235,7 +227,7 @@ App 4
 
 Poslední instalace 23. 9. 2026
 
-### fēnix 5 Plus Hodinky
+### fēnix 5 Plus
 
 3 úspěšných instalací
 
@@ -283,7 +275,7 @@ App 2
 
 Poslední instalace 14. 10. 2026
 
-### Edge 1040 Cyklopočítač
+### Edge 1040
 
 2 úspěšných instalací
 
@@ -291,7 +283,7 @@ App 2
 
 Poslední instalace 14. 11. 2026
 
-### Edge 840 Cyklopočítač
+### Edge 840
 
 2 úspěšných instalací
 
@@ -299,7 +291,7 @@ App 2
 
 Poslední instalace 17. 11. 2026
 
-### Enduro 2 Hodinky
+### Enduro 2
 
 2 úspěšných instalací
 
@@ -339,7 +331,7 @@ App 2
 
 Poslední instalace 29. 10. 2026
 
-### Edge 850 Cyklopočítač
+### Edge 850
 
 1 úspěšná instalace
 
@@ -379,7 +371,7 @@ App 1
 
 Poslední instalace 17. 11. 2026
 
-### quatix 7 Hodinky
+### quatix 7
 
 1 úspěšná instalace
 
@@ -402,6 +394,14 @@ Pokud zde svůj model nevidíte, neznamená to, že nebude fungovat. Možná z n
 Pokud vaše hodinky Garmin nebo cyklopočítač Edge podporují mapy, můžete Terento i tak vyzkoušet. Každá sdílená úspěšná instalace přidá váš model do tohoto seznamu.
 
 [Poprvé? Přečtěte si průvodce pro Mac](https://terento.app/cs/guides/install-garmin-maps-mac/)
+
+## Jak tento seznam funguje
+
+Tento seznam vychází ze skutečných úspěšných instalací Terento sdílených uživateli. Zobrazuje pouze konkrétní modely a varianty Garmin s alespoň jednou úspěšnou instalací mapy třetí strany. Nejde o úplný seznam všech hodinek a cyklopočítačů Garmin Edge, se kterými může Terento fungovat.
+
+Výsledky instalací sdílejí s Terento uživatelé; nejde o certifikaci Garmin.
+
+Aktuální verze zahrnuje všechny poskytovatele map v katalogu. Tato informace o produktu je oddělená od výsledků zařízení uvedených zde.
 
 Nahrajte do svého Garminu mapu zdarma
 

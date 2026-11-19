@@ -463,7 +463,12 @@ for (const locale of locales) {
     // The topic index repeats the section titles, including the USB-mode one.
     .replace(/<nav class="troubleshooting-toc[^"]*"[\s\S]*?<\/nav>/, ""));
   assert.doesNotMatch(outsideMtpSections, /\bMTP\b/, `${locale}: MTP only in the USB-mode and app-conflict sections`);
-  assert.equal((source.match(/<nav class="troubleshooting-toc[^"]*"[\s\S]*?<\/nav>/)?.[0].match(/<li><a href="#/g) || []).length, troubleshootingAnchors.length, `${locale}: symptom picker links every topic`);
+  // Owner, round 5: every picker card is one title (linking its section) and one line, no link lists.
+  const picker = source.match(/<nav class="troubleshooting-toc[^"]*"[\s\S]*?<\/nav>/)?.[0] || "";
+  const pickCards = [...picker.matchAll(/<div class="card troubleshooting-pick"><p class="troubleshooting-pick-title"><a href="#([a-z-]+)"[^>]*>[^<]+<\/a><\/p><p class="troubleshooting-pick-line">[^<]+<\/p><\/div>/g)];
+  assert.equal(pickCards.length, 6, `${locale}: six picker cards, each a title and one line`);
+  assert.equal((picker.match(/<a\b/g) || []).length, 6, `${locale}: one link per picker card`);
+  assert.doesNotMatch(picker, /<ul|<li/, `${locale}: no link lists in the picker`);
   assert.doesNotMatch(source, /Send report to Terento|TR-[A-Z0-9]{6}|TODO/i, `${locale}: no unreleased support-report claims`);
   assert.doesNotMatch(main, /\bresum|min left|Request support|automatic(?:ally)? reconnect/i, `${locale}: no unreleased resume, estimate or reconnect claims`);
   assert.match(main, /Report issue/, `${locale}: current GitHub report flow`);

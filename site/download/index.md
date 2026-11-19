@@ -15,17 +15,13 @@ Terento showing a connected Garmin watch on macOS
 
 ## What you need
 
-Latest version **v1.2.1**, released November 14, 2026. macOS 13 or later on Apple Silicon. [What’s new](https://github.com/VooZ2/terento/releases/tag/v1.2.1-build48)
+Latest version **v1.2.1**, November 14, 2026. [What’s new](https://github.com/VooZ2/terento/releases/tag/v1.2.1-build48)
 
 - A Mac with Apple Silicon
 - macOS 13 or later
 - A USB data cable, not a charge-only one
 - A Garmin watch or Garmin Edge bike computer
 [Check compatibility](https://terento.app/compatibility/)
-
-Check the download (SHA-256)
-
-`06bedd5c494b2788a6764a93aa7d7a00134c134eb052e357961881ecc021ff51`
 
 ## After you download
 

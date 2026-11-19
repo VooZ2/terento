@@ -11,9 +11,9 @@ W Linuksie instalator webowy Terento wgrywa darmowe mapy na zegarki Garmin obsł
 
 ## Czego potrzebujesz
 
-- Chrome, Microsoft Edge, Opery lub Brave na komputerze z Linuksem. Firefox nie łączy się z urządzeniami USB.
-- Kabla USB do transmisji danych, nie tylko do ładowania.
-- Odblokowanego zegarka Garmin obsługującego mapy.
+- Chrome, Microsoft Edge, Opera lub Brave na Linuksie (Firefox nie łączy się przez USB)
+- Zegarek Garmin z obsługą map
+- Kabel USB obsługujący przesyłanie danych
 
 ## Zainstaluj mapę z przeglądarki
 

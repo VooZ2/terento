@@ -16,11 +16,12 @@ ROOT = Path(__file__).resolve().parents[1]
 LOCALES = ("en", "de", "fr", "pl", "cs", "it")
 PROVIDER_SCRIPT_VERSION = "20261026-osmapa-v1"
 FEATURE_SCRIPT_VERSION = "20261105-home-map-switch-v4"
-NUMBERS_SCRIPT_VERSION = "20261119-home-numbers-v1"
+NUMBERS_SCRIPT_VERSION = "20261119-home-numbers-v2"
 ASSET_VERSION = "20261106-home-watch-srcset"
 # Apple's official "Download on the Mac App Store" badge beside the hero Download button.
 # Hero watch map styles (Königssee previews), self-hosted in site/assets/home/.
 # Owner decision 2026-11-05: no visible map credit on the hero.
+APP_STORE = json.loads((ROOT / "scripts" / "templates" / "app-store-badge.json").read_text(encoding="utf-8"))
 HERO_MAP_STYLES = (
     ("opentopomap", "OpenTopoMap"),
     ("freizeitkarte", "Freizeitkarte"),
@@ -291,6 +292,7 @@ def home_path(locale: str) -> Path:
 FAQ_ANSWER_KEYS = (
     "compatibility_answer",
     "basecamp_answer",
+    "garmin_safety_answer",
     "safety_answer",
     "update_answer",
     "connection_answer",
@@ -658,6 +660,15 @@ def normalize_home(source: str, path: Path, locale: str) -> str:
     values["mac_card_download_button"] = COMPONENTS["primary_action"](
         copy["download_href"], html.escape(copy["hero_download"]), "",
         'data-umami-event="download-cta-click" data-umami-event-location="home-section"')
+    # The page's one App Store badge: in the Mac app card, under its Download button (round 5).
+    badge = APP_STORE["badges"][locale]
+    store_href = f'{APP_STORE["listing_url"]}?pt={APP_STORE["provider_token"]}&ct=site-home&mt=8'
+    badge_lang = "" if badge["artwork"] == locale else f' lang="{badge["artwork"]}"'
+    values["mac_card_store_badge"] = (
+        f'<a class="app-store-badge home-app-store" href="{html.escape(store_href)}" data-umami-event="app-store-click" data-umami-event-location="home-section">'
+        f'<img src="/assets/app-store/download-on-the-mac-app-store-{badge["artwork"]}.svg?v={APP_STORE["asset_version"]}" '
+        f'width="{APP_STORE["width"]}" height="{APP_STORE["height"]}" alt="{html.escape(badge["alt"])}"{badge_lang}></a>'
+    )
     values["browser_card_button"] = COMPONENTS["secondary_action"](
         copy["web_installer_href"], html.escape(copy["browser_action"]), "",
         'data-umami-event="web-installer-link-click" data-umami-event-location="home-section"', "globe")
@@ -665,18 +676,14 @@ def normalize_home(source: str, path: Path, locale: str) -> str:
     values["browser_line"] = copy["browser_body"].split(". ")[0].rstrip(".") + "."
     values["app_icon"] = COMPONENTS["icon"]("laptop", "card-icon")
     values["browser_icon"] = COMPONENTS["icon"]("globe", "card-icon")
-    values["edge_icon"] = COMPONENTS["icon"]("bike", "card-icon")
-    values["end_cta"] = COMPONENTS["end_cta"](locale, "home-bottom")
-    values["manage_icon"] = COMPONENTS["icon"]("layers", "card-icon")
-    values["manage_href"] = "/guides/install-garmin-maps-mac/" if locale == "en" else f"/{locale}/guides/install-garmin-maps-mac/"
-    values["safety_icon"] = COMPONENTS["icon"]("shield-check", "card-icon")
     values["trust_strip_section"] = (
         '<div class="home-trust"><div class="shell">'
         + COMPATIBILITY["home_trust_strip"](COMPATIBILITY["load_snapshot"](), locale, copy["trust_label"])
         + "</div></div>"
     )
     values["edge_guide_href"] = "/guides/install-garmin-maps-edge-mac/" if locale == "en" else f"/{locale}/guides/install-garmin-maps-edge-mac/"
-    # Edge preview inside the card body, with its own map switch (as on live).
+    # Edge section (round 5): the Edge on the left, the text on the right, mirroring the hero; the
+    # map switch is the hero's component.
     values["edge_visual"] = (
         f'<figure class="home-device home-edge-figure" data-map-switch><div class="home-edge-screen">'
         f'<img class="home-edge-map" data-map-image src="/assets/home/edge-freizeitkarte.webp?v={ASSET_VERSION}" width="520" height="520" alt="{html.escape(copy["edge_map_alt"].replace("{name}", HERO_MAP_STYLES[1][1]))}" loading="lazy" decoding="async">'

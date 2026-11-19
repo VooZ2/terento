@@ -2,6 +2,16 @@
   "site/index.html": {
     "events_removed": [
       "app-store-click @ home-hero"
+    ],
+    "h2": [
+      "How it works",
+      "On the bike, too",
+      "Pick the map that fits the trip",
+      "Use the Mac app or your browser",
+      "Questions and answers",
+      "Install",
+      "Help",
+      "Project"
     ]
   },
   "site/about/index.html": {
@@ -18,6 +28,7 @@
     ],
     "h2": [
       "What Terento is, and what it isn’t",
+      "Who makes it",
       "Featured on",
       "Install",
       "Help",
@@ -27,6 +38,16 @@
   "site/de/index.html": {
     "events_removed": [
       "app-store-click @ home-hero"
+    ],
+    "h2": [
+      "So funktioniert es",
+      "Auch auf dem Rad",
+      "Wähle die Karte, die zur Tour passt",
+      "Mit der Mac-App oder im Browser",
+      "Fragen und Antworten",
+      "Installieren",
+      "Hilfe",
+      "Projekt"
     ]
   },
   "site/de/about/index.html": {
@@ -43,6 +64,7 @@
     ],
     "h2": [
       "Was Terento ist und was nicht",
+      "Wer es macht",
       "Vorgestellt auf",
       "Installieren",
       "Hilfe",
@@ -52,6 +74,16 @@
   "site/fr/index.html": {
     "events_removed": [
       "app-store-click @ home-hero"
+    ],
+    "h2": [
+      "Comment ça marche",
+      "À vélo aussi",
+      "Choisissez la carte adaptée à votre sortie",
+      "Avec l’app Mac ou depuis votre navigateur",
+      "Questions et réponses",
+      "Installer",
+      "Aide",
+      "Projet"
     ]
   },
   "site/fr/about/index.html": {
@@ -68,6 +100,7 @@
     ],
     "h2": [
       "Ce qu’est Terento, et ce qu’il n’est pas",
+      "Qui le fait",
       "Présenté sur",
       "Installer",
       "Aide",
@@ -77,6 +110,16 @@
   "site/pl/index.html": {
     "events_removed": [
       "app-store-click @ home-hero"
+    ],
+    "h2": [
+      "Jak to działa",
+      "Także na rowerze",
+      "Wybierz mapę pasującą do wyprawy",
+      "W aplikacji na Maca lub w przeglądarce",
+      "Pytania i odpowiedzi",
+      "Instalacja",
+      "Pomoc",
+      "Projekt"
     ]
   },
   "site/pl/about/index.html": {
@@ -93,6 +136,7 @@
     ],
     "h2": [
       "Czym Terento jest, a czym nie jest",
+      "Kto go tworzy",
       "Pisali o Terento",
       "Instalacja",
       "Pomoc",
@@ -102,6 +146,16 @@
   "site/cs/index.html": {
     "events_removed": [
       "app-store-click @ home-hero"
+    ],
+    "h2": [
+      "Jak to funguje",
+      "I na kole",
+      "Vyberte mapu, která sedí k výletu",
+      "V aplikaci pro Mac nebo v prohlížeči",
+      "Otázky a odpovědi",
+      "Instalace",
+      "Nápověda",
+      "Projekt"
     ]
   },
   "site/cs/about/index.html": {
@@ -118,6 +172,7 @@
     ],
     "h2": [
       "Co Terento je a co není",
+      "Kdo ho dělá",
       "Psali o Terento",
       "Instalace",
       "Nápověda",
@@ -127,6 +182,16 @@
   "site/it/index.html": {
     "events_removed": [
       "app-store-click @ home-hero"
+    ],
+    "h2": [
+      "Come funziona",
+      "Anche in bici",
+      "Scegli la mappa adatta al percorso",
+      "Con l’app per Mac o dal browser",
+      "Domande e risposte",
+      "Installa",
+      "Aiuto",
+      "Progetto"
     ]
   },
   "site/it/about/index.html": {
@@ -143,6 +208,7 @@
     ],
     "h2": [
       "Cos’è Terento, e cosa non è",
+      "Chi lo fa",
       "In evidenza su",
       "Installa",
       "Aiuto",
@@ -153,12 +219,26 @@
     "events_removed": [
       "download-cta-click @ compatibility-community-testing",
       "web-installer-link-click @ compatibility-community-testing"
+    ],
+    "h2": [
+      "Don’t see your Garmin here?",
+      "How this list works",
+      "Install",
+      "Help",
+      "Project"
     ]
   },
   "site/cs/compatibility/index.html": {
     "events_removed": [
       "download-cta-click @ compatibility-community-testing",
       "web-installer-link-click @ compatibility-community-testing"
+    ],
+    "h2": [
+      "Nevidíte zde svůj Garmin?",
+      "Jak tento seznam funguje",
+      "Instalace",
+      "Nápověda",
+      "Projekt"
     ]
   },
   "site/cs/download/index.html": {
@@ -185,6 +265,13 @@
     "events_removed": [
       "download-cta-click @ compatibility-community-testing",
       "web-installer-link-click @ compatibility-community-testing"
+    ],
+    "h2": [
+      "Dein Garmin ist nicht dabei?",
+      "So funktioniert diese Liste",
+      "Installieren",
+      "Hilfe",
+      "Projekt"
     ]
   },
   "site/de/download/index.html": {
@@ -216,6 +303,13 @@
     "events_removed": [
       "download-cta-click @ compatibility-community-testing",
       "web-installer-link-click @ compatibility-community-testing"
+    ],
+    "h2": [
+      "Votre Garmin n’apparaît pas ?",
+      "Comment fonctionne cette liste",
+      "Installer",
+      "Aide",
+      "Projet"
     ]
   },
   "site/fr/download/index.html": {
@@ -257,6 +351,13 @@
     "events_removed": [
       "download-cta-click @ compatibility-community-testing",
       "web-installer-link-click @ compatibility-community-testing"
+    ],
+    "h2": [
+      "Non vedi il tuo Garmin?",
+      "Come funziona questo elenco",
+      "Installa",
+      "Aiuto",
+      "Progetto"
     ]
   },
   "site/it/download/index.html": {
@@ -283,6 +384,13 @@
     "events_removed": [
       "download-cta-click @ compatibility-community-testing",
       "web-installer-link-click @ compatibility-community-testing"
+    ],
+    "h2": [
+      "Nie widzisz swojego Garmina?",
+      "Jak działa ta lista",
+      "Instalacja",
+      "Pomoc",
+      "Projekt"
     ]
   },
   "site/pl/download/index.html": {

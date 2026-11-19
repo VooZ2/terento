@@ -8,7 +8,7 @@ const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "u
 const styles = read("site/styles.css");
 const shellSource = read("site/site-shell.js");
 const languageSource = read("site/language.js");
-const styleVersion = "20261119-site-refresh-v4";
+const styleVersion = "20261119-site-refresh-v5";
 const mobileLanguageNames = { en: "English", de: "Deutsch", fr: "Français", pl: "Polski", cs: "Čeština", it: "Italiano" };
 
 const cssBlock = (selector) => {
@@ -115,9 +115,14 @@ for (const [locale, contract] of Object.entries(locales)) {
   assert.equal((main.match(/<h2 /g) || []).length, 2, `${locale} has one requirements and one after-download heading`);
   assert.equal((main.match(/<ol class="steps">[\s\S]*?<\/ol>/)[0].match(/<li>/g) || []).length, 3, `${locale} has three after-download steps`);
   assert.doesNotMatch(main, /\.zip"/, `${locale} keeps the ZIP off the page`);
-  // Round 4 (owner): the checksum is folded away under "What you need", nothing else is claimed.
-  assert.match(main, new RegExp(`<details class="download-sha"><summary>[^<]+</summary><p><code>${manifest.sha256}</code></p></details>`), `${locale} folded SHA-256`);
-  assert.equal((main.match(/<code>/g) || []).length, 1, `${locale} shows only the checksum as code`);
+  // Round 5 (owner): no checksum block; "What's new" opens the GitHub release page, which lists the
+  // checksum of every file. One short release line.
+  assert.doesNotMatch(main, /download-sha|<code>|SHA-256/, `${locale} no SHA-256 block`);
+  const release = main.match(/<p class="download-release">[\s\S]*?<\/p>/)?.[0];
+  assert.ok(release, `${locale} release line`);
+  assert.ok(release.includes(`<a class="text-link" href="${manifest.releaseNotesURL}" rel="noopener noreferrer">`), `${locale} "What's new" opens the GitHub release page`);
+  assert.match(manifest.releaseNotesURL, /^https:\/\/github\.com\/VooZ2\/terento\/releases\/tag\//);
+  if (locale === "en") assert.equal(release.replace(/<[^>]+>/g, ""), "Latest version v1.2.1, November 14, 2026. What’s new");
   const links = [...main.matchAll(/<a class="text-link( download-info-link)?" href="([^"]+)" data-umami-event="([^"]+)" data-umami-event-location="([^"]+)">/g)].map((m) => [m[2], m[3], m[4], Boolean(m[1])]);
   assert.deepEqual(links, [
     [`${contract.root}install/`, "web-installer-link-click", "download-page", false],
@@ -133,7 +138,12 @@ for (const locale of Object.keys(locales)) {
   const html = read(`site/${prefix}compatibility/index.html`);
   assert.equal((html.match(/ compatibility-hero-copy"/g) || []).length, 1, `${locale} must use one constrained hero copy wrapper`);
   // Round 4 (owner): plain hero (no card): H1 and one lead, no device images, no model names.
-  assert.match(html, /<section class="compatibility-hero page-hero" aria-labelledby="compatibility-title">\s*<div class="shell"><div class="hero-copy compatibility-hero-copy">\s*<h1 id="compatibility-title">[^<]+<\/h1>\s*<p class="hero-lede">[^<]+<\/p>\s*<\/div><\/div>\s*<\/section>/);
+  // Round 5: one quiet summary sentence under the lead; the grid starts right under the toolbar.
+  assert.match(html, /<section class="compatibility-hero page-hero" aria-labelledby="compatibility-title">\s*<div class="shell"><div class="hero-copy compatibility-hero-copy">\s*<h1 id="compatibility-title">[^<]+<\/h1>\s*<p class="hero-lede">[^<]+<\/p>\s*<div class="compatibility-summary" id="compatibility-summary"[^>]*><p class="compatibility-summary-line" data-summary-content>[\s\S]*?<\/p><p class="compatibility-freshness"[\s\S]*?<\/p><\/div>\s*<\/div><\/div>\s*<\/section>/);
+  assert.match(html, /<\/form>\s*<p class="compatibility-results-count" id="results-count"[^>]*>[^<]+<\/p><div class="watch-grid"/, `${locale} the grid follows the toolbar directly`);
+  assert.match(html, /<form class="compatibility-filters" id="compatibility-filters" role="search"><div class="segmented compatibility-chips" role="group" aria-label="[^"]+">(?:<button type="button" class="segmented-option" data-device-filter="[^"]+" aria-pressed="(?:true|false)">[^<]+<\/button>){3}<\/div><div class="compatibility-filter-control compatibility-search"><input id="watch-search" type="search" placeholder="[^"]+" aria-label="[^"]+" autocomplete="off"><\/div><details class="compatibility-more-filters">/, `${locale} segmented control, search without a visible label, More filters`);
+  assert.match(html, /<div class="compatibility-after grid"><div class="compatibility-community-cta card">[\s\S]*?<\/div><\/div><div class="compatibility-how card"><h2>[^<]+<\/h2><div class="compatibility-how-body">(?:<p[^>]*>[^<]+<\/p>){3}<\/div><\/div><\/div><div class="cta-band end-cta">/, `${locale} "How this list works" sits under the grid next to "Don't see your Garmin here?", full text`);
+  assert.doesNotMatch(html.match(/<div class="watch-grid"[\s\S]*?<\/div><script/)[0], /watch-variant">(?:Smartwatch|Montre connectée|Bike computer|Fahrradcomputer)<|\d{1,2}\/\d{1,2}\/\d{4}/, `${locale} no filler variant and no numeric US dates`);
   assert.doesNotMatch(html.match(/<section class="compatibility-hero[\s\S]*?<\/section>/)[0], /<img\b|130 Plus/, `${locale} compatibility hero has no images and names no models`);
 }
 
@@ -191,29 +201,28 @@ for (const locale of Object.keys(locales)) {
   const prefix = locale === "en" ? "" : `${locale}/`;
   const html = read(`site/${prefix}about/index.html`);
   assert.match(html, new RegExp(`/styles\\.css\\?v=${styleVersion}`));
-  // Round 4 (owner): plain hero (H1, name and role), the story as a normal section, then the contact card.
+  // Round 5 (owner): H1, one-line lead, "What Terento is, and what it isn't", then "Who makes it": the
+  // story at body size, then the contact links and the donation line in the same section. No panel, no CTA.
   assert.equal((html.match(/about-story-card/g) || []).length, 0, `${locale} the story is not a card`);
-  assert.match(html, /<section class="block about-story">\s*<div class="shell">\s*<div class="about-story-copy">/, `${locale} story section under the hero`);
-  assert.equal((html.match(/class="card about-socials"/g) || []).length, 1, `${locale} must have one social links and donation card`);
+  assert.equal((html.match(/class="card about-socials"|about-socials card/g) || []).length, 0, `${locale} contacts are not a panel`);
   assert.equal((html.match(/class="card col-6 about-item about-item--group"/g) || []).length, 2, `${locale} must have one Does and one Doesn't card`);
   assert.doesNotMatch(html, /class="compatibility-hero about-hero"/);
   assert.equal((html.match(/<h1\b/g) || []).length, 1, `${locale} must have one primary About heading`);
-  assert.match(html, /<section class="page-hero about-hero" aria-labelledby="about-title">\s*<div class="shell"><div class="hero-copy">\s*<h1 id="about-title">/);
-  // H1 "About Terento" (localized, owner round 3), no icon; name and role as the hero lead; no photo (round 4).
-  assert.match(html, /<h1 id="about-title">(?:About Terento|Über Terento|À propos de Terento|O Terento|Informazioni su Terento)<\/h1>\s*<p class="hero-lede about-maker"><span class="about-maker-name">Gediminas<\/span><span class="about-maker-role">[^<]+<\/span><\/p>/);
+  assert.match(html, /<section class="page-hero about-hero" aria-labelledby="about-title">\s*<div class="shell"><div class="hero-copy">\s*<h1 id="about-title">(?:About Terento|Über Terento|À propos de Terento|O Terento|Informazioni su Terento)<\/h1>\s*<p class="hero-lede">[^<]+<\/p>\s*<\/div><\/div>\s*<\/section>\s*<section class="block about-main"/, `${locale} H1, one-line lead, then what it is and isn't`);
   assert.doesNotMatch(html, /about-maker-photo/, `${locale} no photo`);
   assert.doesNotMatch(html, /about-title-icon/);
   assert.doesNotMatch(html.match(/<main[\s\S]*?<\/main>/)[0], /class="eyebrow"|about-intro-copy|data-umami-event-location="about-intro"/, `${locale} no product sentence or Download button at the top`);
-  assert.doesNotMatch(html.match(/<section class="block about-story">[\s\S]*?<div class="card about-socials">/)[0], /<img\b/, `${locale} About story is text only (no photo or avatar)`);
-  const storyCopy = html.match(/<div class="about-story-copy">[\s\S]*?<\/div>/)?.[0];
+  const story = html.match(/<section class="block about-story" aria-labelledby="about-maker-title">[\s\S]*?<\/section>/)?.[0];
+  assert.ok(story, `${locale} "Who makes it" section`);
+  assert.ok(html.indexOf('class="block about-main"') < html.indexOf('class="block about-story"'), `${locale} what it is/isn't comes first`);
+  assert.match(story, /<div class="about-story-copy">\s*<h2 id="about-maker-title">[^<]+<\/h2>\s*<p class="about-maker"><span class="about-maker-name">Gediminas<\/span><span class="about-maker-role">[^<]+<\/span><\/p>/, `${locale} heading, then name and role`);
+  assert.doesNotMatch(story.split('<div class="about-socials">')[0], /<img\b/, `${locale} About story is text only (no photo or avatar)`);
+  const storyCopy = story.match(/<div class="about-story-copy">[\s\S]*?<\/div>/)?.[0];
   assert.ok(storyCopy, `${locale} must have a story copy block`);
   assert.equal((storyCopy.match(/<p>/g) || []).length, 3, `${locale} owner-approved story in three short paragraphs`);
   assert.match(storyCopy, /Garmin fēnix/, `${locale} fēnix keeps its macron`);
-  assert.doesNotMatch(html.match(/<section class="block about-story">[\s\S]*?<div class="card about-socials">/)[0], /<h2\b/, `${locale} the story sits directly under the H1`);
-  assert.match(html, /<div class="card about-socials">\s*<p class="about-social-label">[^<]+<\/p>/, `${locale} the contact line opens the contact card`);
-  assert.ok(html.indexOf('about-story-copy') < html.indexOf('about-socials'), `${locale} contact card follows the story`);
-  assert.ok(html.indexOf('about-socials') < html.indexOf('class="block about-main"'));
-  assert.match(html, new RegExp(`<div class="cta-band end-cta">[\\s\\S]*?<a class="download-action download-action--store" href="/${prefix}download/" data-umami-event="download-cta-click" data-umami-event-location="about-bottom">`), `${locale} the shared closing call to action`);
+  assert.match(story, /<\/div>\s*<div class="about-socials">\s*<p class="about-social-label">[^<]+<\/p>[\s\S]*class="about-donate"/, `${locale} contact links and the donation line follow the story in the same section`);
+  assert.doesNotMatch(html, /cta-band|end-cta|about-bottom/, `${locale} no closing call to action on About`);
   const schema = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
   const person = schema["@graph"].find(node => node["@type"] === "Person");
   assert.deepEqual(person.sameAs, ["https://www.linkedin.com/in/gediminasc/", "https://www.reddit.com/user/MrDonas/"], `${locale} Person sameAs lists only the profiles on the page`);
@@ -252,8 +261,7 @@ for (const locale of Object.keys(locales)) {
   }
   assert.doesNotMatch(html, /vibe coding|software developer|Softwareentwickler|développeur logiciel|programistą|vývojář|sviluppatore software/i);
   const main = html.match(/<main[\s\S]*?<\/main>/)[0];
-  assert.equal((main.match(/class="download-action /g) || []).length, 1, `${locale} About has one Download button, in the closing call to action`);
-  assert.ok(main.indexOf('end-cta') > main.indexOf('about-v2-mentions'), `${locale} the closing call to action ends the page`);
+  assert.equal((main.match(/class="download-action /g) || []).length, 0, `${locale} About has no Download button`);
   assert.match(main, new RegExp(`href="/${prefix}compatibility/"`));
   assert.match(main, /\.img/);
   assert.equal((html.match(/class="about-bullet-list"/g) || []).length, 2, `${locale} must use lists for Does and Doesn't`);

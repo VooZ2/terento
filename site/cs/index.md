@@ -33,23 +33,11 @@ Vaše mapy jsou nainstalované a připravené k použití ve vašem Garminu.
 
 Terento zobrazuje poskytovatele a oblasti map třetích stran v macOS
 
-## Spravovat mapy
-
-Podívejte se, co máte v Garminu, aktualizujte mapy, když vyjde novější verze, nebo je odstraňte. Původních map Garminu se Terento nedotkne.
-
-[Přečíst návod pro Mac](https://terento.app/cs/guides/install-garmin-maps-mac/)
-
-### Bezpečné pro váš Garmin
-
-Terento v Garminu vždy nechá aspoň 1 GB volného místa a každou mapu po zkopírování zkontroluje. Kontrola používá kontrolní součet SHA-256.
-
-[Zobrazit zdrojový kód](https://github.com/VooZ2/terento)
+Cyklopočítač Garmin Edge s mapou Freizeitkarte stoupání Sa Calobra v pohoří Serra de Tramuntana na Mallorce
 
 ## I na kole
 
 Novější cyklopočítače Garmin Edge s podporou map, například Edge 540, 840 a 1050, používají stejné mapy. Připojte, vyberte region, nainstalujte.
-
-Cyklopočítač Garmin Edge s mapou Freizeitkarte stoupání Sa Calobra v pohoří Serra de Tramuntana na Mallorce
 
 [Přečíst návod pro Garmin Edge](https://terento.app/cs/guides/install-garmin-maps-edge-mac/)
 
@@ -107,7 +95,7 @@ Některé popisky mapy jsou ve francouzštině.
 
 Instalujte mapy z katalogu nebo vlastní mapu .img, podívejte se, co je ve vašem Garminu, a aktualizujte mapy, když vyjdou novější vydání.
 
-[Stáhnout pro Mac](https://terento.app/cs/download/)
+[Stáhnout pro Mac](https://terento.app/cs/download/) [Download on the Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-home&mt=8)
 
 ### Webový instalátor
 
@@ -124,6 +112,10 @@ Na stránce [Kompatibilita](https://terento.app/cs/compatibility/) najdete konkr
 Mohu instalovat mapy třetích stran do hodinek Garmin z Macu bez Garmin Express a BaseCamp?
 
 Ano. Terento zvládne vše na vašem Macu: vyberete mapu a oblast, nainstalujete ji do Garminu a později ji aktualizujete nebo odeberete. Garmin Express ani BaseCamp nepotřebujete. [Přečtěte si instalační příručku.](https://terento.app/cs/guides/install-garmin-maps-mac/)
+
+Je to pro můj Garmin bezpečné?
+
+Ano. Terento v Garminu vždy nechá aspoň 1 GB volného místa, každou mapu po zkopírování zkontroluje a mapy nainstalované Garminem nikdy nemění.
 
 Mohu přidat vlastní mapu .img?
 
@@ -146,7 +138,3 @@ Na obrazovce neúspěšné instalace zvolte „Report issue“. Terento otevře 
 Mohu instalovat mapy bez instalace aplikace?
 
 Ano. [Webový instalátor](https://terento.app/cs/install/) instaluje, aktualizuje a odebírá mapy z katalogu v Chrome, Microsoft Edge, Opeře nebo Brave na Macu a na Linuxu, kde se ještě testuje. Zatím nefunguje ve Windows, na telefonech ani tabletech a nepřidá vlastní mapy .img.
-
-Nahrajte do svého Garminu mapu zdarma
-
-[Stáhnout pro Mac](https://terento.app/cs/download/) [Použít webový instalátor](https://terento.app/cs/install/)

@@ -15,7 +15,7 @@ Terento instaluje darmowe mapy OpenStreetMap albo Twój własny plik mapy na zeg
 - Zegarek Garmin z obsługą map
 - Kabel USB obsługujący przesyłanie danych
 
-Po podłączeniu Terento sprawdza zegarek i informuje, czy może zainstalować mapy. Strona [Kompatybilność](https://terento.app/pl/compatibility/) pokazuje modele z udanymi instalacjami; brak modelu nie oznacza, że nie jest obsługiwany.
+Po podłączeniu Terento sprawdza zegarek i informuje, czy może zainstalować mapy. Nie ma go na liście [Kompatybilność](https://terento.app/pl/compatibility/)? Może i tak działać: lista pokazuje tylko modele, na których ktoś już zainstalował mapę.
 
 ## Zainstaluj mapę
 

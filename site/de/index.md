@@ -33,23 +33,11 @@ Deine Karten sind installiert und auf deinem Garmin einsatzbereit.
 
 Terento zeigt Drittanbieter-Kartenanbieter und Regionen auf macOS
 
-## Karten verwalten
-
-Sieh, was auf deinem Garmin ist, aktualisiere Karten, sobald eine neuere Version da ist, oder entferne sie. Die Original-Garmin-Karten bleiben unberührt.
-
-[Zur Mac-Anleitung](https://terento.app/de/guides/install-garmin-maps-mac/)
-
-### Sicher für deinen Garmin
-
-Terento lässt auf deinem Garmin immer mindestens 1 GB frei und prüft jede Karte nach dem Kopieren. Die Prüfung nutzt eine SHA-256-Prüfsumme.
-
-[Zum Quellcode](https://github.com/VooZ2/terento)
+Garmin Edge Fahrradcomputer mit der Freizeitkarte-Karte des Anstiegs nach Sa Calobra in der Serra de Tramuntana auf Mallorca
 
 ## Auch auf dem Rad
 
 Neuere Garmin Edge Fahrradcomputer mit Kartenunterstützung, etwa Edge 540, 840 und 1050, nutzen dieselben Karten. Verbinden, Region wählen, installieren.
-
-Garmin Edge Fahrradcomputer mit der Freizeitkarte-Karte des Anstiegs nach Sa Calobra in der Serra de Tramuntana auf Mallorca
 
 [Zur Anleitung für Garmin Edge](https://terento.app/de/guides/install-garmin-maps-edge-mac/)
 
@@ -107,7 +95,7 @@ Einige Kartenbeschriftungen sind auf Französisch.
 
 Installiere Katalogkarten oder deine eigene .img-Karte, sieh, was auf deinem Garmin ist, und aktualisiere Karten, wenn neuere Ausgaben erscheinen.
 
-[Für Mac herunterladen](https://terento.app/de/download/)
+[Für Mac herunterladen](https://terento.app/de/download/) [Laden im Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-home&mt=8)
 
 ### Web-Installer
 
@@ -124,6 +112,10 @@ Auf der [Kompatibilitätsseite](https://terento.app/de/compatibility/) findest d
 Kann ich Drittanbieter-Karten von einem Mac ohne Garmin Express oder BaseCamp auf einer Garmin-Uhr installieren?
 
 Ja. Terento erledigt alles auf deinem Mac: Karte und Region wählen, auf deinem Garmin installieren und später aktualisieren oder entfernen. Garmin Express oder BaseCamp brauchst du nicht. [Lies die Installationsanleitung.](https://terento.app/de/guides/install-garmin-maps-mac/)
+
+Ist das sicher für mein Garmin?
+
+Ja. Terento lässt auf deinem Garmin immer mindestens 1 GB frei, prüft jede Karte nach dem Kopieren und rührt die von Garmin installierten Karten nie an.
 
 Kann ich meine eigene .img-Karte hinzufügen?
 
@@ -146,7 +138,3 @@ Wähle nach einer fehlgeschlagenen Installation „Report issue“. Terento öff
 Kann ich Karten installieren, ohne die App zu installieren?
 
 Ja. Der [Web-Installer](https://terento.app/de/install/) installiert, aktualisiert und entfernt Karten aus dem Katalog in Chrome, Microsoft Edge, Opera oder Brave auf dem Mac und unter Linux, wo er noch getestet wird. Unter Windows, auf Smartphones und Tablets funktioniert er noch nicht, und eigene .img-Karten kann er nicht hinzufügen.
-
-Bring eine kostenlose Karte auf dein Garmin
-
-[Für Mac herunterladen](https://terento.app/de/download/) [Web-Installer verwenden](https://terento.app/de/install/)

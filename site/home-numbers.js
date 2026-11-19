@@ -22,7 +22,7 @@
       if (time && date && !Number.isNaN(date.getTime())) {
         time.dateTime = latest;
         time.querySelector(".date-long").textContent = date.toLocaleDateString(locale, { dateStyle: "long" });
-        time.querySelector(".date-short").textContent = date.toLocaleDateString(locale, { year: "numeric", month: "numeric", day: "numeric" });
+        time.querySelector(".date-short").textContent = date.toLocaleDateString(locale, { dateStyle: "medium", timeZone: "UTC" });
       }
     })
     .catch(() => {});

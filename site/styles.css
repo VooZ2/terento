@@ -4343,14 +4343,7 @@ a.chip {
   margin: 0;
 }
 
-/* One column below 900px: three columns at 640–899px were too narrow. */
-@media (max-width: 899px) {
-  .home-features .grid > .col-4 {
-    grid-column: span 12;
-  }
-}
-
-/* Feature and "Mac app or browser" cards: one Lucide outline icon each, same size. */
+/* "Mac app or browser" cards: one Lucide outline icon each, same size. */
 .home-feature-visual {
   display: flex;
   margin-bottom: 16px;
@@ -4387,22 +4380,70 @@ a.chip {
   background: var(--product-photo-surface);
 }
 
-/* The Edge preview sits in the card body, with its own map switch (as on live). */
-.home-feature--edge .home-edge-figure {
-  display: flex;
-  flex-direction: column;
+/* Edge section (round 5): mirrors the hero. The Edge (about 360px) on the left, the text on the
+   right, vertically centred, no card; the map switch is the hero's component. On phones the
+   text comes first, then the Edge at min(280px, 70vw), centred. */
+.home-edge-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 400px) minmax(0, 1fr);
+  gap: clamp(32px, 6vw, 96px);
   align-items: center;
-  gap: 12px;
-  margin: 8px 0 16px;
 }
 
+/* The three map names stay on one line under the Edge, like under the hero watch. */
+.home-edge .home-switch {
+  flex-wrap: nowrap;
+  max-width: 100%;
+}
+
+.home-edge .home-switch-button {
+  white-space: nowrap;
+}
+
+.home-edge .home-edge-screen {
+  width: min(100%, 360px);
+}
+
+.home-edge-copy {
+  max-width: 560px;
+}
+
+#main-content .home-edge-copy h2 {
+  margin: 0 0 16px;
+}
+
+#main-content .home-edge-copy p {
+  margin: 0 0 16px;
+  color: var(--muted-text);
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+#main-content .home-edge-copy p:last-child {
+  margin-bottom: 0;
+}
+
+@media (max-width: 899px) {
+  .home-edge-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+  }
+
+  .home-edge-copy {
+    order: -1;
+  }
+
+  .home-edge .home-edge-screen {
+    width: min(280px, 70vw);
+  }
+}
 
 /* Mac app and web installer cards: same height, actions at the bottom. */
 .home-way .home-way-actions {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 4px;
+  gap: 12px;
   padding-top: 16px;
 }
 
@@ -4432,18 +4473,6 @@ a.chip {
 
 .compatibility-chips {
   grid-column: 1 / -1;
-}
-
-.compatibility-summary .trust-strip {
-  margin-bottom: 4px;
-}
-
-.compatibility-summary .trust-strip-item {
-  white-space: normal;
-}
-
-.compatibility-summary .compatibility-summary-separator {
-  display: none;
 }
 
 .compatibility-directory.section {
@@ -4749,40 +4778,6 @@ a.chip {
   margin-top: 16px;
 }
 
-/* The contact line, links and the donation note: one card directly under the story. */
-.about-socials.card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
-  gap: 16px clamp(24px, 5vw, 64px);
-  align-items: start;
-}
-
-.about-socials .about-social-label {
-  grid-column: 1;
-}
-
-.about-socials .about-social-links {
-  grid-column: 1;
-}
-
-.about-socials .about-donate {
-  grid-column: 2;
-  grid-row: 1 / span 2;
-  margin-top: 0;
-}
-
-@media (max-width: 899px) {
-  .about-socials.card {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .about-socials .about-donate {
-    grid-column: 1;
-    grid-row: auto;
-    margin-top: 8px;
-  }
-}
-
 .about-social-links {
   display: flex;
   flex-wrap: wrap;
@@ -5055,7 +5050,7 @@ a.chip {
   font-weight: 600;
 }
 
-/* Closing call to action: the same band on every page except Download. */
+/* Closing call to action: Compatibility, Map styles and the guides. */
 .end-cta {
   margin: 0 0 var(--block-space);
   border-radius: var(--panel-radius);
@@ -5074,45 +5069,10 @@ a.chip {
   margin: 0;
 }
 
-/* Download: release line under "What you need", the checksum folded away. */
-.download-v2 .download-release {
-  margin: 0 0 20px;
-}
-
-.download-sha {
-  margin-top: 20px;
-}
-
-.download-sha summary {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  color: var(--link-text);
-  font: 600 15px/1.3 var(--font-ui);
-  cursor: pointer;
-}
-
-.download-sha p {
-  margin: 4px 0 0;
-}
-
-.download-sha code {
-  display: block;
-  max-width: 100%;
-  overflow-wrap: anywhere;
-  color: var(--muted-text);
-  font: 13px/1.5 var(--font-mono);
-}
-
 /* Guide screenshots open full size in a new tab on tap. */
 .guide-screenshot-link {
   display: block;
   cursor: zoom-in;
-}
-
-/* About: the story is a normal section under the plain hero; the contact card follows it. */
-.about-story .about-socials {
-  margin-top: clamp(32px, 4vw, 48px);
 }
 
 /* Compatibility: one fill per card, the photo on its own inner panel, the model name as the
@@ -5341,14 +5301,333 @@ a.chip {
   }
 }
 
-/* Compatibility: "Not seeing your model?" sits in the card under the grid. */
-#main-content .compatibility-community-cta .compatibility-missing-note {
-  margin: 0 0 12px;
-  color: var(--graphite);
-}
 
 @media (prefers-reduced-motion: reduce) {
   .button-secondary {
     transition: none;
+  }
+}
+
+/* Site refresh round 5 (2026-11-19). */
+
+/* Closing call to action: Compatibility, Map styles and the guides only. The normal section gap
+   above and below it, on the page canvas. */
+#main-content .end-cta {
+  margin: var(--block-space) 0;
+}
+
+/* Compatibility: one quiet sentence under the lead, no large numbers. */
+#main-content .compatibility-summary {
+  margin: 16px 0 0;
+}
+
+#main-content .compatibility-summary-line {
+  max-width: 68ch;
+  margin: 0;
+  color: var(--muted-text);
+  font: 400 17px/1.55 var(--font-ui);
+}
+
+/* Compatibility toolbar: one row at the grid width. Device type on the left, search in the
+   middle, "More filters" on the right; every control 40px high with the control radius. */
+#main-content .compatibility-filters {
+  position: relative;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+}
+
+.segmented {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 4px;
+  padding: 3px;
+  border-radius: var(--control-radius);
+  background: var(--tile);
+}
+
+.segmented-option {
+  min-height: 34px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: calc(var(--control-radius) - 3px);
+  background: transparent;
+  color: var(--secondary);
+  font: 600 15px/1.2 var(--font-ui);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.segmented-option:hover {
+  color: var(--graphite);
+}
+
+.segmented-option[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--graphite);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--graphite) 14%, transparent);
+}
+
+.segmented-option:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+#main-content .compatibility-filters .compatibility-chips {
+  flex: 0 0 auto;
+}
+
+#main-content .compatibility-filters .compatibility-search {
+  flex: 1 1 auto;
+  max-width: none;
+}
+
+#main-content .compatibility-filters .compatibility-search input,
+#main-content .compatibility-filters select {
+  height: 40px;
+  min-height: 40px;
+  border-radius: var(--control-radius);
+}
+
+#main-content .compatibility-filters .compatibility-filter-select::after {
+  bottom: 18px;
+}
+
+#main-content .compatibility-more-filters {
+  position: static;
+  flex: 0 0 auto;
+}
+
+#main-content .compatibility-more-filters > summary {
+  min-height: 40px;
+}
+
+/* The extra filters open as a panel under the row, aligned to its right edge. */
+#main-content .compatibility-more-filters-body {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 5;
+  display: grid;
+  gap: 12px;
+  width: min(320px, 100%);
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  background: var(--surface);
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--graphite) 16%, transparent);
+}
+
+#main-content .compatibility-more-filters-body .compatibility-filter-control,
+#main-content .compatibility-filters .compatibility-more-filters-body select {
+  width: 100%;
+}
+
+#main-content .compatibility-filters .compatibility-clear {
+  flex: 0 0 auto;
+  min-height: 40px;
+}
+
+#main-content .compatibility-results-count {
+  min-height: 0;
+  margin: 8px 0 12px;
+  color: var(--muted-text);
+  font-size: 13px;
+  text-align: right;
+}
+
+#main-content .compatibility-directory.section {
+  padding-top: 0;
+}
+
+
+@media (max-width: 760px) {
+  #main-content .compatibility-filters {
+    flex-wrap: wrap;
+  }
+
+  #main-content .compatibility-filters .compatibility-chips {
+    display: flex;
+    flex: 1 1 100%;
+  }
+
+  .compatibility-chips .segmented-option {
+    flex: 1 1 auto;
+    min-width: min-content;
+    padding: 4px 6px;
+    font-size: 14px;
+    line-height: 1.15;
+    white-space: normal;
+  }
+
+  #main-content .compatibility-filters .compatibility-search {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}
+
+/* Under the grid: "Don't see your Garmin here?" and "How this list works" side by side. */
+.compatibility-after {
+  margin-top: var(--block-space);
+}
+
+.compatibility-after {
+  align-items: stretch;
+}
+
+#main-content .compatibility-after > .card {
+  display: block;
+  grid-column: span 12;
+  margin: 0;
+  padding: var(--card-pad);
+  border: 0;
+  border-radius: var(--card-radius);
+  background: var(--tile);
+}
+
+#main-content .compatibility-after .compatibility-missing-note {
+  margin: 0 0 12px;
+  color: var(--muted-text);
+}
+
+#main-content .compatibility-after .compatibility-guide-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  margin-top: 4px;
+  font: 600 15px/1.4 var(--font-ui);
+}
+
+/* The closing CTA's own margin gives the gap to the footer. */
+#main-content .compatibility-directory.section {
+  padding-bottom: 0;
+}
+
+@media (min-width: 900px) {
+  .compatibility-after > .card {
+    grid-column: span 6;
+  }
+}
+
+#main-content .compatibility-after h2 {
+  margin: 0 0 12px;
+  font: 600 clamp(22px, 2vw, 26px)/1.2 var(--font-brand);
+  letter-spacing: -0.02em;
+}
+
+#main-content .compatibility-after p {
+  max-width: 68ch;
+  margin: 0 0 12px;
+  color: var(--muted-text);
+  font: 400 17px/1.55 var(--font-ui);
+}
+
+#main-content .compatibility-after .compatibility-how-body p:last-child {
+  margin-bottom: 0;
+}
+
+.compatibility-how.card {
+  max-width: none;
+  border-top: 0;
+}
+
+.compatibility-how-body {
+  padding: 0;
+}
+
+/* Troubleshooting picker: every card is one title and one line, the whole card clickable. */
+.troubleshooting-pick {
+  position: relative;
+}
+
+#main-content .troubleshooting-pick-title a::after {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  content: "";
+}
+
+.troubleshooting-pick:hover {
+  box-shadow: inset 0 0 0 1px var(--interactive);
+}
+
+.troubleshooting-pick:focus-within {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+#main-content .troubleshooting-pick-title a:focus-visible {
+  outline: none;
+}
+
+#main-content .troubleshooting-pick-line {
+  margin: 0;
+  color: var(--muted-text);
+  font: 400 15px/1.45 var(--font-ui);
+}
+
+/* About: "Who makes it" is a plain section. The story at body size, then the contact links and
+   the donation line, no panel. */
+#main-content .about-story-copy h2 {
+  margin: 0 0 12px;
+}
+
+#main-content .about-story-copy .about-maker {
+  margin: 0 0 20px;
+  font-size: 17px;
+}
+
+#main-content .about-story-copy p {
+  font-size: 17px;
+}
+
+.about-story .about-socials {
+  display: block;
+  max-width: 62ch;
+  margin-top: 32px;
+}
+
+#main-content .about-socials .about-social-label {
+  margin: 0 0 12px;
+  font: 400 17px/1.55 var(--font-ui);
+}
+
+.about-socials .about-donate {
+  display: block;
+  margin-top: 24px;
+}
+
+#main-content .about-socials .about-donate p {
+  margin: 0 0 12px;
+  color: var(--muted-text);
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+/* Home: the Mac App Store badge sits under "Download for Mac" in the Mac app card. */
+.home-way .home-app-store {
+  flex: 0 0 auto;
+}
+
+#main-content .troubleshooting-pick-title {
+  margin: 0 0 6px;
+  font: 600 18px/1.3 var(--font-brand);
+  letter-spacing: -0.01em;
+}
+
+/* Download: one release line under "What you need", then the list. */
+#main-content .download-v2 .download-release {
+  margin: 0 0 20px;
+}
+
+/* Phones: the "Last install" line wraps instead of cutting the date. */
+@media (max-width: 640px) {
+  .watch-card .watch-card-meta {
+    white-space: normal;
+    text-overflow: clip;
   }
 }

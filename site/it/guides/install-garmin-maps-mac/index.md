@@ -15,7 +15,7 @@ Terento installa mappe OpenStreetMap gratuite, o un tuo file di mappa, su un oro
 - Smartwatch Garmin con supporto alle mappe
 - Cavo USB per il trasferimento dati
 
-Dopo il collegamento, Terento controlla l’orologio e ti dice se può installare le mappe. La pagina [Compatibilità](https://terento.app/it/compatibility/) elenca i modelli con installazioni riuscite; un modello assente non è per forza non supportato.
+Dopo il collegamento, Terento controlla l’orologio e ti dice se può installare le mappe. Non è nell’elenco [Compatibilità](https://terento.app/it/compatibility/)? Può funzionare lo stesso: l’elenco mostra solo i modelli su cui qualcuno ha già installato una mappa.
 
 ## Installa una mappa
 

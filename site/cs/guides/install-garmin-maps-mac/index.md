@@ -15,7 +15,7 @@ Terento nainstaluje bezplatné mapy OpenStreetMap nebo váš vlastní mapový so
 - Hodinky Garmin s podporou map
 - USB kabel pro přenos dat
 
-Po připojení Terento hodinky zkontroluje a řekne vám, zda do nich může nainstalovat mapy. Stránka [Kompatibilita](https://terento.app/cs/compatibility/) uvádí modely s úspěšnými instalacemi; chybějící model nemusí znamenat, že není podporovaný.
+Po připojení Terento hodinky zkontroluje a řekne vám, zda do nich může nainstalovat mapy. Není na seznamu [Kompatibilita](https://terento.app/cs/compatibility/)? I tak může fungovat: seznam ukazuje jen modely, do kterých už někdo nainstaloval mapu.
 
 ## Instalace mapy
 

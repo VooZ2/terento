@@ -15,7 +15,7 @@ Terento puts free OpenStreetMap maps, or your own map file, on a Garmin watch wi
 - Garmin watch with map support
 - USB cable that supports data transfer
 
-After you connect, Terento checks the watch and tells you whether it can install maps. [Compatibility](https://terento.app/compatibility/) lists the models with successful installations; a missing model isn’t necessarily unsupported.
+After you connect, Terento checks the watch and tells you whether it can install maps. Not on the [Compatibility](https://terento.app/compatibility/) list? It can still work: the list only shows models where someone has already installed a map.
 
 ## Install a map
 

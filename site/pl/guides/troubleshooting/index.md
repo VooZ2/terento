@@ -5,7 +5,7 @@ canonical: https://terento.app/pl/guides/troubleshooting/
 
 # Rozwiązywanie problemów z zegarkiem Garmin i mapami na Macu
 
-Znajdź swój problem – od zegarka Garmin, którego Mac nie widzi, po nieudane pobieranie mapy – i wykonaj krótkie kroki. Jeśli nic nie pomaga, wyślij raport, abyśmy mogli się temu przyjrzeć.
+Znajdź swój problem – od zegarka Garmin, którego Mac nie widzi, po nieudane pobieranie mapy – i wykonaj krótkie kroki. Jeśli nic nie pomaga, wyślij raport, a ja się temu przyjrzę.
 
 ## Mac nie widzi Garmin Edge
 

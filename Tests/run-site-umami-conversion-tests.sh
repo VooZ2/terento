@@ -193,12 +193,14 @@ download_files = [
 for path in home_files:
     html = path.read_text(encoding="utf-8")
     assert html.count('class="block home-how"') == 1, f"{path}: expected the how-it-works section"
-    assert html.count('aria-labelledby="manage-title"') == 1, f"{path}: expected the manage maps section"
+    assert 'aria-labelledby="manage-title"' not in html, f"{path}: the manage maps card was removed (owner round 5)"
+    assert html.count('<section class="block home-edge" id="edge"') == 1, f"{path}: expected the Garmin Edge section"
+    assert html.count('data-umami-event="app-store-click" data-umami-event-location="home-section"') == 1, f"{path}: expected the App Store badge in the Mac app card"
     assert html.count('data-umami-event="guide-link-click" data-umami-event-location="home-edge"') == 1, f"{path}: expected the Garmin Edge guide link"
     assert 'class="scope-section"' not in html, f"{path}: Beta scope section must be removed"
     assert html.count('data-provider-card=') == 5, f"{path}: expected one card per provider"
     assert html.count('class="provider-benefits"') == 5, f"{path}: expected one benefits list per map card"
-    assert html.count("<details>") == 7, f"{path}: expected seven FAQ answers"
+    assert html.count("<details>") == 8, f"{path}: expected eight FAQ answers"
     assert 'final-cta' not in html, f"{path}: the closing download block was removed (owner 2026-11-13)"
     assert "/assets/home/hero-opentopomap.webp" in html, f"{path}: expected the drawn watch hero map"
     assert "/assets/app/optimized/install-maps-640.avif" in html, f"{path}: expected responsive install screenshot"

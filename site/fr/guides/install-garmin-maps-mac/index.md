@@ -15,7 +15,7 @@ Terento installe des cartes OpenStreetMap gratuites, ou votre propre fichier de 
 - Montre Garmin prenant en charge les cartes
 - Câble USB permettant le transfert de données
 
-Après la connexion, Terento vérifie la montre et vous indique s’il peut installer des cartes. La page [Compatibilité](https://terento.app/fr/compatibility/) liste les modèles avec des installations réussies ; un modèle absent n’est pas forcément incompatible.
+Après la connexion, Terento vérifie la montre et vous indique s’il peut installer des cartes. Absent de la liste [Compatibilité](https://terento.app/fr/compatibility/) ? Cela peut quand même fonctionner : la liste ne montre que les modèles sur lesquels quelqu’un a déjà installé une carte.
 
 ## Installer une carte
 

@@ -5,7 +5,7 @@ canonical: https://terento.app/de/guides/troubleshooting/
 
 # Probleme mit Garmin-Uhr und Karten am Mac lösen
 
-Finde dein Problem – von einer Garmin-Uhr, die der Mac nicht erkennt, bis zu einem fehlgeschlagenen Karten-Download – und folge den kurzen Schritten. Wenn nichts hilft, sende einen Bericht, damit wir es uns ansehen können.
+Finde dein Problem – von einer Garmin-Uhr, die der Mac nicht erkennt, bis zu einem fehlgeschlagenen Karten-Download – und folge den kurzen Schritten. Wenn nichts hilft, sende einen Bericht und ich sehe es mir an.
 
 ## Garmin Edge wird am Mac nicht erkannt
 

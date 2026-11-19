@@ -15,17 +15,13 @@ Terento zeigt eine verbundene Garmin-Uhr unter macOS
 
 ## Das brauchst du
 
-Neueste Version **v1.2.1**, veröffentlicht am 14. November 2026. macOS 13 oder neuer auf Apple Silicon. [Was ist neu](https://github.com/VooZ2/terento/releases/tag/v1.2.1-build48)
+Neueste Version **v1.2.1**, 14. November 2026. [Was ist neu](https://github.com/VooZ2/terento/releases/tag/v1.2.1-build48)
 
 - Einen Mac mit Apple Silicon
 - macOS 13 oder neuer
 - Ein USB-Datenkabel, kein reines Ladekabel
 - Eine Garmin-Uhr oder einen Garmin Edge Fahrradcomputer
 [Kompatibilität prüfen](https://terento.app/de/compatibility/)
-
-Download prüfen (SHA-256)
-
-`06bedd5c494b2788a6764a93aa7d7a00134c134eb052e357961881ecc021ff51`
 
 ## Nach dem Download
 

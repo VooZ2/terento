@@ -15,17 +15,13 @@ Terento zobrazuje připojené hodinky Garmin v macOS
 
 ## Co budete potřebovat
 
-Nejnovější verze **v1.2.1**, vydáno 14. listopadu 2026. macOS 13 nebo novější na Apple Silicon. [Co je nového](https://github.com/VooZ2/terento/releases/tag/v1.2.1-build48)
+Nejnovější verze **v1.2.1**, 14. listopadu 2026. [Co je nového](https://github.com/VooZ2/terento/releases/tag/v1.2.1-build48)
 
 - Mac s Apple Silicon
 - macOS 13 nebo novější
 - Datový kabel USB, ne jen nabíjecí
 - Hodinky Garmin nebo cyklopočítač Garmin Edge
 [Ověřit kompatibilitu](https://terento.app/cs/compatibility/)
-
-Ověřit stažený soubor (SHA-256)
-
-`06bedd5c494b2788a6764a93aa7d7a00134c134eb052e357961881ecc021ff51`
 
 ## Po stažení
 

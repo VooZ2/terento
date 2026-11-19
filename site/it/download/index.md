@@ -15,17 +15,13 @@ Terento mostra uno smartwatch Garmin collegato su macOS
 
 ## Cosa ti serve
 
-Ultima versione **v1.2.1**, pubblicata il 14 novembre 2026. macOS 13 o successivo su Apple Silicon. [Novità](https://github.com/VooZ2/terento/releases/tag/v1.2.1-build48)
+Ultima versione **v1.2.1**, il 14 novembre 2026. [Novità](https://github.com/VooZ2/terento/releases/tag/v1.2.1-build48)
 
 - Un Mac con Apple Silicon
 - macOS 13 o successivo
 - Un cavo USB dati, non solo di ricarica
 - Uno smartwatch Garmin o un ciclocomputer Garmin Edge
 [Verifica la compatibilità](https://terento.app/it/compatibility/)
-
-Verifica il download (SHA-256)
-
-`06bedd5c494b2788a6764a93aa7d7a00134c134eb052e357961881ecc021ff51`
 
 ## Dopo il download
 

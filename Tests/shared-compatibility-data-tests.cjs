@@ -19,9 +19,9 @@ function embeddedSnapshot(page, language) {
 }
 
 function summaryValue(page, summary, language) {
-  const match = page.match(new RegExp(`data-summary="${summary}">(\\d+)<\\/strong>`));
+  const match = page.match(new RegExp(`<span data-summary="${summary}">([\\d.,\\s\u00a0\u202f]+)<\\/span>`));
   assert.ok(match, `${language}: server-rendered ${summary} summary`);
-  return Number(match[1]);
+  return Number(match[1].replace(/\D/g, ""));
 }
 
 function snapshotFacts(snapshot) {
@@ -84,7 +84,8 @@ for (const language of languages) {
   assert.equal((page.match(/<p class="watch-install-sources">/g) || []).length, snapshot.models.length, `${language}: every card shows the app/web split`);
   const facts = assertSnapshotFacts(page, snapshot, language);
   localeFacts.push({ language, ...facts });
-  assert.match(page, new RegExp(`data-summary="successes">${facts.successes}<\\/strong>\\s+(?:successful installs|erfolgreiche Installationen|installations réussies|udane instalacje|úspěšných instalací|installazioni riuscite)`), `${language}: localized server-rendered total`);
+  assert.match(page, new RegExp(`data-summary-content>(?:<span data-summary="successes">[^<]+<\\/span> (?:successful installs on|erfolgreiche Installationen auf|installations réussies sur|installazioni riuscite su)|(?:Udane instalacje|Úspěšné instalace): <span data-summary="successes">[^<]+<\\/span> na) <span data-summary="models">`), `${language}: one quiet localized summary sentence`);
+  assert.doesNotMatch(page.match(/<p class="compatibility-summary-line"[\s\S]*?<\/p>/)[0], /<strong/, `${language}: no large summary numbers`);
   assert.match(page, /Not seeing your model|Wenn dein Modell|L’absence de votre modèle|Brak Twojego modelu|Pokud zde svůj model|Se il tuo modello/, `${language}: visible missing-model guidance`);
   assert.doesNotMatch(page, /<option value="VERIFIED"|<option value="SUPPORTED"|<option value="TESTED"|<option value="TESTING"/, `${language}: no public status filter`);
   assert.doesNotMatch(page, /class="compatibility-status|status badge|models tested|modelle getestet/i, `${language}: no public status presentation`);

@@ -7,15 +7,7 @@ canonical: https://terento.app/de/compatibility/
 
 Terento funktioniert mit Garmin-Uhren und Edge Fahrradcomputern, die Karten anzeigen können. Unten stehen die genauen Modelle, auf denen schon jemand eine Karte mit Terento installiert hat. Die Liste wächst mit jeder geteilten Installation.
 
-**47** Modelle mit erfolgreichen Installationen**463** erfolgreiche Installationen**18. November 2026** Letzte erfolgreiche Installation
-
-So funktioniert diese Liste
-
-Diese Liste basiert auf echten erfolgreichen Terento-Installationen, die Nutzer geteilt haben. Sie zeigt nur genaue Garmin-Modelle und -Varianten mit mindestens einer erfolgreichen Installation einer Drittanbieter-Karte. Sie ist keine vollständige Liste aller Garmin-Uhren und Edge-Geräte, mit denen Terento funktionieren kann.
-
-Die Installationsergebnisse wurden von Nutzern mit Terento geteilt; sie sind keine Garmin-Zertifizierung.
-
-Die aktuelle Version umfasst alle Kartenanbieter im Katalog. Diese Produktinformation ist von den hier gezeigten Geräteergebnissen getrennt.
+463 erfolgreiche Installationen auf 47 Modellen. Letzte Installation am 18. November 2026.
 
 47 Modelle
 
@@ -35,13 +27,13 @@ App 59 Web 1
 
 Letzte Installation 18.11.2026
 
-### Forerunner 965 Smartwatch
+### Forerunner 965
 
 32 erfolgreiche Installationen
 
 App 29 Web 3
 
-Letzte Installation 1.11.2026
+Letzte Installation 01.11.2026
 
 ### fēnix 9 Pro 51 mm, AMOLED
 
@@ -73,7 +65,7 @@ Letzte Installation 17.11.2026
 
 App 17
 
-Letzte Installation 9.11.2026
+Letzte Installation 09.11.2026
 
 ### fēnix 9 Pro 47 mm, AMOLED
 
@@ -137,9 +129,9 @@ Letzte Installation 16.11.2026
 
 App 6 Web 4
 
-Letzte Installation 3.11.2026
+Letzte Installation 03.11.2026
 
-### Edge 1050 Fahrradcomputer
+### Edge 1050
 
 8 erfolgreiche Installationen
 
@@ -161,7 +153,7 @@ Letzte Installation 17.11.2026
 
 App 8
 
-Letzte Installation 1.11.2026
+Letzte Installation 01.11.2026
 
 ### fēnix 8 43 mm, AMOLED
 
@@ -169,7 +161,7 @@ Letzte Installation 1.11.2026
 
 App 8
 
-Letzte Installation 7.11.2026
+Letzte Installation 07.11.2026
 
 ### fēnix 9 Pro 47 mm, AMOLED, inReach
 
@@ -203,7 +195,7 @@ App 6
 
 Letzte Installation 11.11.2026
 
-### Edge 540 Fahrradcomputer
+### Edge 540
 
 5 erfolgreiche Installationen
 
@@ -225,7 +217,7 @@ Letzte Installation 17.11.2026
 
 App 4
 
-Letzte Installation 2.10.2026
+Letzte Installation 02.10.2026
 
 ### fēnix 9 47 mm, AMOLED
 
@@ -233,9 +225,9 @@ Letzte Installation 2.10.2026
 
 App 4
 
-Letzte Installation 23.9.2026
+Letzte Installation 23.09.2026
 
-### fēnix 5 Plus Smartwatch
+### fēnix 5 Plus
 
 3 erfolgreiche Installationen
 
@@ -257,7 +249,7 @@ Letzte Installation 14.11.2026
 
 App 3
 
-Letzte Installation 7.10.2026
+Letzte Installation 07.10.2026
 
 ### fēnix 9 Pro 47 mm, MIP, Solar
 
@@ -283,7 +275,7 @@ App 2
 
 Letzte Installation 14.10.2026
 
-### Edge 1040 Fahrradcomputer
+### Edge 1040
 
 2 erfolgreiche Installationen
 
@@ -291,7 +283,7 @@ App 2
 
 Letzte Installation 14.11.2026
 
-### Edge 840 Fahrradcomputer
+### Edge 840
 
 2 erfolgreiche Installationen
 
@@ -299,7 +291,7 @@ App 2
 
 Letzte Installation 17.11.2026
 
-### Enduro 2 Smartwatch
+### Enduro 2
 
 2 erfolgreiche Installationen
 
@@ -339,7 +331,7 @@ App 2
 
 Letzte Installation 29.10.2026
 
-### Edge 850 Fahrradcomputer
+### Edge 850
 
 1 erfolgreiche Installation
 
@@ -369,7 +361,7 @@ Letzte Installation 12.10.2026
 
 App 1
 
-Letzte Installation 27.9.2026
+Letzte Installation 27.09.2026
 
 ### fēnix E 47 mm, AMOLED
 
@@ -379,7 +371,7 @@ App 1
 
 Letzte Installation 17.11.2026
 
-### quatix 7 Smartwatch
+### quatix 7
 
 1 erfolgreiche Installation
 
@@ -393,7 +385,7 @@ Letzte Installation 17.10.2026
 
 App 1
 
-Letzte Installation 7.10.2026
+Letzte Installation 07.10.2026
 
 ## Dein Garmin ist nicht dabei?
 
@@ -402,6 +394,14 @@ Wenn dein Modell fehlt, heißt das nicht, dass es nicht funktioniert. Vielleicht
 Wenn deine Garmin-Uhr oder dein Edge Fahrradcomputer Karten unterstützt, kannst du Terento trotzdem ausprobieren. Jede geteilte erfolgreiche Installation bringt dein Modell auf diese Liste.
 
 [Zum ersten Mal? Lies die Mac-Anleitung](https://terento.app/de/guides/install-garmin-maps-mac/)
+
+## So funktioniert diese Liste
+
+Diese Liste basiert auf echten erfolgreichen Terento-Installationen, die Nutzer geteilt haben. Sie zeigt nur genaue Garmin-Modelle und -Varianten mit mindestens einer erfolgreichen Installation einer Drittanbieter-Karte. Sie ist keine vollständige Liste aller Garmin-Uhren und Edge-Geräte, mit denen Terento funktionieren kann.
+
+Die Installationsergebnisse wurden von Nutzern mit Terento geteilt; sie sind keine Garmin-Zertifizierung.
+
+Die aktuelle Version umfasst alle Kartenanbieter im Katalog. Diese Produktinformation ist von den hier gezeigten Geräteergebnissen getrennt.
 
 Bring eine kostenlose Karte auf dein Garmin
 

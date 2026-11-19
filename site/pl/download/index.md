@@ -15,17 +15,13 @@ Terento pokazuje podłączony zegarek Garmin w macOS
 
 ## Czego potrzebujesz
 
-Najnowsza wersja **v1.2.1**, wydana 14 listopada 2026. macOS 13 lub nowszy na Apple Silicon. [Co nowego](https://github.com/VooZ2/terento/releases/tag/v1.2.1-build48)
+Najnowsza wersja **v1.2.1**, 14 listopada 2026. [Co nowego](https://github.com/VooZ2/terento/releases/tag/v1.2.1-build48)
 
 - Mac z Apple Silicon
 - macOS 13 lub nowszy
 - Kabel USB do transmisji danych, nie tylko do ładowania
 - Zegarek Garmin lub licznik rowerowy Garmin Edge
 [Sprawdź kompatybilność](https://terento.app/pl/compatibility/)
-
-Sprawdź pobrany plik (SHA-256)
-
-`06bedd5c494b2788a6764a93aa7d7a00134c134eb052e357961881ecc021ff51`
 
 ## Po pobraniu
 

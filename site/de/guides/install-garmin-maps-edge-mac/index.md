@@ -5,7 +5,7 @@ canonical: https://terento.app/de/guides/install-garmin-maps-edge-mac/
 
 # Kostenlose Karten vom Mac auf deinen Garmin Edge installieren
 
-Neuere Garmin-Edge-Radcomputer erscheinen am Mac nicht als Laufwerk, deshalb kannst du nicht einfach eine Kartendatei darauf kopieren. Terento installiert kostenlose OpenStreetMap-Karten oder deine eigene kompatible Kartendatei auf Garmin-Edge-Radcomputern mit Kartenunterstützung, etwa Edge 540, 840 und 1050.
+Neuere Garmin-Edge-Radcomputer erscheinen am Mac nicht als Laufwerk, deshalb kannst du nicht einfach eine Kartendatei darauf kopieren. Terento installiert kostenlose OpenStreetMap-Karten oder deine eigene Kartendatei auf Edge-Modellen mit Kartenunterstützung, etwa Edge 540, 840 und 1050.
 
 [Für Mac herunterladen](https://terento.app/de/download/)
 
@@ -15,7 +15,7 @@ Neuere Garmin-Edge-Radcomputer erscheinen am Mac nicht als Laufwerk, deshalb kan
 - Neuerer Garmin Edge mit Kartenunterstützung
 - USB-Kabel mit Datenübertragung
 
-Nach dem Verbinden prüft Terento den Edge und sagt dir, ob es Karten installieren kann. Unter [Kompatibilität](https://terento.app/de/compatibility/) stehen die Modelle mit erfolgreichen Installationen; fehlt ein Modell, heißt das nicht unbedingt, dass es nicht unterstützt wird.
+Nach dem Verbinden prüft Terento den Edge und sagt dir, ob es Karten installieren kann. Nicht auf der [Kompatibilitätsliste](https://terento.app/de/compatibility/)? Es kann trotzdem funktionieren: Die Liste zeigt nur Modelle, auf denen schon jemand eine Karte installiert hat.
 
 ## Eine Karte auf deinem Edge installieren
 

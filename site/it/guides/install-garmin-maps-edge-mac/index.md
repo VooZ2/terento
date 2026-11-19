@@ -5,7 +5,7 @@ canonical: https://terento.app/it/guides/install-garmin-maps-edge-mac/
 
 # Installa mappe gratuite sul tuo Garmin Edge da Mac
 
-I ciclocomputer Garmin Edge più recenti non compaiono sul Mac come disco, quindi non puoi semplicemente copiarci un file di mappa. Terento installa mappe OpenStreetMap gratuite, o un tuo file di mappa compatibile, sui ciclocomputer Garmin Edge con supporto alle mappe, come Edge 540, 840 e 1050.
+I ciclocomputer Garmin Edge più recenti non compaiono sul Mac come disco, quindi non puoi semplicemente copiarci un file di mappa. Terento installa mappe OpenStreetMap gratuite o un tuo file di mappa sugli Edge con supporto alle mappe, come Edge 540, 840 e 1050.
 
 [Scarica per Mac](https://terento.app/it/download/)
 
@@ -15,7 +15,7 @@ I ciclocomputer Garmin Edge più recenti non compaiono sul Mac come disco, quind
 - Garmin Edge recente con supporto alle mappe
 - Cavo USB che supporti il trasferimento dati
 
-Dopo il collegamento, Terento controlla l’Edge e ti dice se può installare le mappe. La pagina [Compatibilità](https://terento.app/it/compatibility/) elenca i modelli con installazioni riuscite; un modello assente non è per forza non supportato.
+Dopo il collegamento, Terento controlla l’Edge e ti dice se può installare le mappe. Non è nell’elenco [Compatibilità](https://terento.app/it/compatibility/)? Può funzionare lo stesso: l’elenco mostra solo i modelli su cui qualcuno ha già installato una mappa.
 
 ## Installa una mappa sul tuo Edge
 

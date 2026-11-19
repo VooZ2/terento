@@ -15,7 +15,7 @@ Terento installiert kostenlose OpenStreetMap-Karten oder deine eigene Kartendate
 - Garmin-Smartwatch mit Kartenunterstützung
 - USB-Kabel mit Datenübertragung
 
-Nach dem Verbinden prüft Terento die Uhr und sagt dir, ob es Karten installieren kann. Unter [Kompatibilität](https://terento.app/de/compatibility/) stehen die Modelle mit erfolgreichen Installationen; fehlt ein Modell, heißt das nicht unbedingt, dass es nicht unterstützt wird.
+Nach dem Verbinden prüft Terento die Uhr und sagt dir, ob es Karten installieren kann. Nicht auf der [Kompatibilitätsliste](https://terento.app/de/compatibility/)? Es kann trotzdem funktionieren: Die Liste zeigt nur Modelle, auf denen schon jemand eine Karte installiert hat.
 
 ## Eine Karte installieren
 

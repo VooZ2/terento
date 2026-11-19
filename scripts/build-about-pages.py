@@ -18,7 +18,7 @@ REDDIT_URL = "https://www.reddit.com/user/MrDonas/"
 BASE_URL = "https://terento.app"
 ABOUT_SLUG = "about/"
 SHELL_VERSION = "20260905-in-page-language-v1"
-STYLE_VERSION = "20261119-site-refresh-v4"
+STYLE_VERSION = "20261119-site-refresh-v5"
 UMAMI_SCRIPT_VERSION = "20261114-umami-monitoring"
 SOCIAL_IMAGE = "/assets/social/terento-og.png"
 EMAIL_ADDRESS = "hello@terento.app"
@@ -52,6 +52,8 @@ COPY = {
         "skip": "Skip to content",
         "h1": "About Terento",
         "role": "Maker of Terento",
+        "lead": "A free map app, made by one Garmin hiker.",
+        "maker_heading": "Who makes it",
         "story": [
             "I use a Garmin fēnix. On vacation I like to plan hikes to get to know a country, especially in the mountains of Europe. Before each trip, I wanted maps on my watch. On a Mac, that meant connecting the watch, searching how to add maps, finding them, downloading them and copying them over.",
             "I built Terento to make that simple: connect, install, done.",
@@ -94,6 +96,8 @@ COPY = {
         "skip": "Zum Inhalt springen",
         "h1": "Über Terento",
         "role": "Macher von Terento",
+        "lead": "Eine kostenlose Karten-App, gebaut von einem Garmin-Wanderer.",
+        "maker_heading": "Wer es macht",
         "story": [
             "Ich nutze eine Garmin fēnix. Im Urlaub plane ich gern Wanderungen, um ein Land kennenzulernen, besonders in den Bergen Europas. Vor jeder Reise wollte ich Karten auf meiner Uhr haben. Auf dem Mac hieß das: die Uhr anschließen, suchen, wie man Karten hinzufügt, sie finden, herunterladen und auf die Uhr kopieren.",
             "Ich habe Terento gebaut, um das einfach zu machen: verbinden, installieren, fertig.",
@@ -136,6 +140,8 @@ COPY = {
         "skip": "Aller au contenu",
         "h1": "À propos de Terento",
         "role": "Créateur de Terento",
+        "lead": "Une appli de cartes gratuite, faite par un randonneur Garmin.",
+        "maker_heading": "Qui le fait",
         "story": [
             "J’utilise une Garmin fēnix. En vacances, j’aime préparer des randonnées pour découvrir un pays, surtout dans les montagnes d’Europe. Avant chaque voyage, je voulais des cartes sur ma montre. Sur un Mac, il fallait brancher la montre, chercher comment ajouter des cartes, les trouver, les télécharger puis les copier sur la montre.",
             "J’ai créé Terento pour rendre tout cela simple : connecter, installer, terminé.",
@@ -178,6 +184,8 @@ COPY = {
         "skip": "Przejdź do treści",
         "h1": "O Terento",
         "role": "Twórca Terento",
+        "lead": "Darmowa aplikacja do map, stworzona przez turystę z Garminem.",
+        "maker_heading": "Kto go tworzy",
         "story": [
             "Używam zegarka Garmin fēnix. Na wakacjach lubię planować wędrówki, żeby poznać dany kraj, zwłaszcza w górach Europy. Przed każdym wyjazdem chciałem mieć mapy na zegarku. Na Macu oznaczało to podłączenie zegarka, szukanie, jak dodać mapy, znalezienie ich, pobranie i skopiowanie na zegarek.",
             "Zrobiłem Terento, żeby to było proste: połącz, zainstaluj, gotowe.",
@@ -220,6 +228,8 @@ COPY = {
         "skip": "Přejít k obsahu",
         "h1": "O Terento",
         "role": "Tvůrce Terento",
+        "lead": "Bezplatná aplikace na mapy od jednoho turisty s Garminem.",
+        "maker_heading": "Kdo ho dělá",
         "story": [
             "Používám hodinky Garmin fēnix. Na dovolené rád plánuji túry, abych poznal zemi, hlavně v evropských horách. Před každou cestou jsem chtěl mít mapy v hodinkách. Na Macu to znamenalo připojit hodinky, hledat, jak přidat mapy, najít je, stáhnout a zkopírovat do hodinek.",
             "Terento jsem vytvořil, aby to bylo jednoduché: připojit, nainstalovat, hotovo.",
@@ -262,6 +272,8 @@ COPY = {
         "skip": "Vai al contenuto",
         "h1": "Informazioni su Terento",
         "role": "Creatore di Terento",
+        "lead": "Un’app di mappe gratuita, fatta da un escursionista con Garmin.",
+        "maker_heading": "Chi lo fa",
         "story": [
             "Uso un Garmin fēnix. In vacanza mi piace pianificare escursioni per conoscere un paese, soprattutto sulle montagne d’Europa. Prima di ogni viaggio volevo le mappe sull’orologio. Su un Mac significava collegare l’orologio, cercare come aggiungere le mappe, trovarle, scaricarle e copiarle sull’orologio.",
             "Ho creato Terento per rendere tutto semplice: collega, installa, fatto.",
@@ -357,7 +369,7 @@ def mention_card(locale: str, copy: dict[str, object], mention: dict[str, str]) 
 
 
 def maker_row(copy: dict[str, object]) -> str:
-    return (f'<p class="hero-lede about-maker"><span class="about-maker-name">Gediminas</span>'
+    return (f'<p class="about-maker"><span class="about-maker-name">Gediminas</span>'
             f'<span class="about-maker-role">{esc(copy["role"])}</span></p>')
 
 
@@ -393,7 +405,7 @@ def render(locale: str, copy: dict[str, object]) -> str:
     is_items = "\n".join(f'              <li>{with_links(item, links)}</li>' for item in copy["is_items"])
     isnt_items = "\n".join(f'              <li>{isnt_item(item, links)}</li>' for item in copy["isnt_items"])
     mentions = "\n".join(f'            {mention_card(locale, copy, mention)}' for mention in MENTIONS)
-    social = f'''          <div class="card about-socials">
+    social = f'''          <div class="about-socials">
             <p class="about-social-label">{esc(copy["contact"])}</p>
             <div class="about-social-links">
               <a class="about-social-link" href="{LINKEDIN_URL}" target="_blank" rel="noopener noreferrer" data-umami-event="social-link-click" data-umami-event-location="about-story" data-umami-event-channel="linkedin" data-umami-event-destination="linkedin.com"><img src="/assets/social/linkedin.svg" alt="" width="16" height="16"><span>{esc(copy["linkedin"])}</span></a>
@@ -451,16 +463,8 @@ def render(locale: str, copy: dict[str, object]) -> str:
       <section class="page-hero about-hero" aria-labelledby="about-title">
         <div class="shell"><div class="hero-copy">
           <h1 id="about-title">{esc(copy["h1"])}</h1>
-          {maker_row(copy)}
+          <p class="hero-lede">{esc(copy["lead"])}</p>
         </div></div>
-      </section>
-      <section class="block about-story">
-        <div class="shell">
-          <div class="about-story-copy">
-{story}
-          </div>
-{social}
-        </div>
       </section>
       <section class="block about-main" aria-labelledby="about-principle-title">
         <div class="shell">
@@ -475,6 +479,16 @@ def render(locale: str, copy: dict[str, object]) -> str:
           </div>
         </div>
       </section>
+      <section class="block about-story" aria-labelledby="about-maker-title">
+        <div class="shell">
+          <div class="about-story-copy">
+            <h2 id="about-maker-title">{esc(copy["maker_heading"])}</h2>
+            {maker_row(copy)}
+{story}
+          </div>
+{social}
+        </div>
+      </section>
       <section class="block about-v2-mentions" aria-labelledby="about-mentions-title">
         <div class="shell">
           <div class="section-head"><h2 id="about-mentions-title">{esc(copy["mentions_heading"])}</h2><p>{esc(copy["mentions_intro"])}</p></div>
@@ -483,7 +497,6 @@ def render(locale: str, copy: dict[str, object]) -> str:
           </ul>
         </div>
       </section>
-      <div class="shell">{COMPONENTS["end_cta"](locale, "about-bottom")}</div>
     </main>
     <footer class="site-footer"></footer>
   </body>

@@ -31,7 +31,7 @@ IMAGE_VERSION = "20260912-app-screens-v2"
 READING_STATE_VERSION = "20260902-reading-state"
 UMAMI_SCRIPT_VERSION = "20261114-umami-monitoring"
 SHELL_VERSION = "20260905-in-page-language-v1"
-STYLE_VERSION = "20261119-site-refresh-v4"
+STYLE_VERSION = "20261119-site-refresh-v5"
 LANGUAGE_VERSION = "20260905-language-selector-full-name-v1"
 SOCIAL_IMAGE = "/assets/social/terento-og.png"
 EMAIL_ADDRESS = "hello@terento.app"
@@ -277,14 +277,13 @@ def render_troubleshooting(locale: str) -> str:
     groups_markup = "\n          ".join(groups)
     # Not a troubleshooting-item: the app's 15 anchors stay the only topics.
     edge = copy["edge"]
-    # Symptom picker: one card per H2 section, with its problems as direct links.
-    # Same structure for every card: the title, then its links (Edge: the Edge guide).
+    # Symptom picker (round 5): one card per H2 section, each with its title (a link to the
+    # section) and one short line; the problems themselves are the H3s below.
     picker_cards = [f'<div class="card troubleshooting-pick"><p class="troubleshooting-pick-title"><a href="#garmin-edge">{esc(edge["title"])}</a></p>'
-                    f'<ul><li><a href="{localized_path(locale, EDGE_SLUG)}">{esc(edge["link"])}</a></li></ul></div>']
+                    f'<p class="troubleshooting-pick-line">{esc(edge["line"])}</p></div>']
     picker_cards += [
-        f'<div class="card troubleshooting-pick"><p class="troubleshooting-pick-title"><a href="#{group["id"]}">{esc(group["title"])}</a></p><ul>'
-        + "".join(f'<li><a href="#{item["anchor"]}">{esc(item["title"])}</a></li>' for item in group["items"])
-        + "</ul></div>"
+        f'<div class="card troubleshooting-pick"><p class="troubleshooting-pick-title"><a href="#{group["id"]}">{esc(group["title"])}</a></p>'
+        f'<p class="troubleshooting-pick-line">{esc(group["line"])}</p></div>'
         for group in copy["groups"]]
     toc = "".join(picker_cards)
     return f'''<!doctype html>

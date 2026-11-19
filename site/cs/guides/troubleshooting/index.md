@@ -5,7 +5,7 @@ canonical: https://terento.app/cs/guides/troubleshooting/
 
 # Řešení potíží s hodinkami Garmin a mapami na Macu
 
-Najděte svou potíž – od hodinek Garmin, které Mac nevidí, po nezdařené stažení mapy – a postupujte podle krátkých kroků. Pokud nic nepomůže, pošlete zprávu, abychom se na to mohli podívat.
+Najděte svou potíž – od hodinek Garmin, které Mac nevidí, po nezdařené stažení mapy – a postupujte podle krátkých kroků. Pokud nic nepomůže, pošlete zprávu a já se na to podívám.
 
 ## Mac nevidí Garmin Edge
 

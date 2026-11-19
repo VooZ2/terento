@@ -7,15 +7,7 @@ canonical: https://terento.app/pl/compatibility/
 
 Terento działa z zegarkami Garmin i licznikami rowerowymi Edge, które potrafią wyświetlać mapy. Poniżej są dokładne modele, na których ktoś już zainstalował mapę przez Terento. Lista rośnie z każdą udostępnioną instalacją.
 
-**47** modele z udanymi instalacjami**463** udane instalacje**18 listopada 2026** Ostatnia udana instalacja
-
-Jak działa ta lista
-
-Lista powstaje na podstawie rzeczywistych, udanych instalacji Terento udostępnianych przez użytkowników. Pokazuje tylko dokładne modele i warianty Garmin z co najmniej jedną udaną instalacją mapy innej firmy. Nie jest to pełna lista wszystkich zegarków Garmin i liczników Edge, z którymi Terento może działać.
-
-Wyniki instalacji są udostępniane Terento przez użytkowników; nie są certyfikacją Garmin.
-
-Aktualna wersja obejmuje wszystkich dostawców map z katalogu. Ta informacja o produkcie jest oddzielona od pokazanych tutaj wyników dla urządzeń.
+Udane instalacje: 463 na 47 modelach. Ostatnia instalacja: 18 listopada 2026.
 
 47 modeli
 
@@ -25,7 +17,7 @@ Aktualna wersja obejmuje wszystkich dostawców map z katalogu. Ta informacja o p
 
 App 64 Web 1
 
-Ostatnia instalacja 15.11.2026
+Ostatnia instalacja 15 lis 2026
 
 ### Forerunner 970 AMOLED
 
@@ -33,15 +25,15 @@ Ostatnia instalacja 15.11.2026
 
 App 59 Web 1
 
-Ostatnia instalacja 18.11.2026
+Ostatnia instalacja 18 lis 2026
 
-### Forerunner 965 Zegarek
+### Forerunner 965
 
 32 udanych instalacji
 
 App 29 Web 3
 
-Ostatnia instalacja 1.11.2026
+Ostatnia instalacja 1 lis 2026
 
 ### fēnix 9 Pro 51 mm, AMOLED
 
@@ -49,7 +41,7 @@ Ostatnia instalacja 1.11.2026
 
 App 26
 
-Ostatnia instalacja 16.11.2026
+Ostatnia instalacja 16 lis 2026
 
 ### epix Pro (Gen 2) 51 mm, AMOLED
 
@@ -57,7 +49,7 @@ Ostatnia instalacja 16.11.2026
 
 App 21 Web 1
 
-Ostatnia instalacja 16.11.2026
+Ostatnia instalacja 16 lis 2026
 
 ### fēnix 7X Pro Solar
 
@@ -65,7 +57,7 @@ Ostatnia instalacja 16.11.2026
 
 App 17 Web 5
 
-Ostatnia instalacja 17.11.2026
+Ostatnia instalacja 17 lis 2026
 
 ### fēnix 8 47 mm, MIP, Solar
 
@@ -73,7 +65,7 @@ Ostatnia instalacja 17.11.2026
 
 App 17
 
-Ostatnia instalacja 9.11.2026
+Ostatnia instalacja 9 lis 2026
 
 ### fēnix 9 Pro 47 mm, AMOLED
 
@@ -81,7 +73,7 @@ Ostatnia instalacja 9.11.2026
 
 App 14 Web 2
 
-Ostatnia instalacja 16.11.2026
+Ostatnia instalacja 16 lis 2026
 
 ### Forerunner 955 Solar
 
@@ -89,7 +81,7 @@ Ostatnia instalacja 16.11.2026
 
 App 15
 
-Ostatnia instalacja 16.11.2026
+Ostatnia instalacja 16 lis 2026
 
 ### fēnix 9 Pro 51 mm, AMOLED, inReach
 
@@ -97,7 +89,7 @@ Ostatnia instalacja 16.11.2026
 
 App 15
 
-Ostatnia instalacja 31.10.2026
+Ostatnia instalacja 31 paź 2026
 
 ### fēnix 7 Pro Solar
 
@@ -105,7 +97,7 @@ Ostatnia instalacja 31.10.2026
 
 App 14
 
-Ostatnia instalacja 30.10.2026
+Ostatnia instalacja 30 paź 2026
 
 ### fēnix 7 47 mm, Solar
 
@@ -113,7 +105,7 @@ Ostatnia instalacja 30.10.2026
 
 App 12 Web 1
 
-Ostatnia instalacja 14.11.2026
+Ostatnia instalacja 14 lis 2026
 
 ### fēnix 8 51 mm, AMOLED
 
@@ -121,7 +113,7 @@ Ostatnia instalacja 14.11.2026
 
 App 13
 
-Ostatnia instalacja 12.11.2026
+Ostatnia instalacja 12 lis 2026
 
 ### fēnix 8 Pro 51 mm, AMOLED, inReach
 
@@ -129,7 +121,7 @@ Ostatnia instalacja 12.11.2026
 
 App 11
 
-Ostatnia instalacja 16.11.2026
+Ostatnia instalacja 16 lis 2026
 
 ### epix Pro (Gen 2) 47 mm, AMOLED
 
@@ -137,15 +129,15 @@ Ostatnia instalacja 16.11.2026
 
 App 6 Web 4
 
-Ostatnia instalacja 3.11.2026
+Ostatnia instalacja 3 lis 2026
 
-### Edge 1050 Licznik rowerowy
+### Edge 1050
 
 8 udanych instalacji
 
 App 8
 
-Ostatnia instalacja 18.11.2026
+Ostatnia instalacja 18 lis 2026
 
 ### epix (Gen 2) 47 mm
 
@@ -153,7 +145,7 @@ Ostatnia instalacja 18.11.2026
 
 App 4 Web 4
 
-Ostatnia instalacja 17.11.2026
+Ostatnia instalacja 17 lis 2026
 
 ### fēnix 7X 51 mm, Solar
 
@@ -161,7 +153,7 @@ Ostatnia instalacja 17.11.2026
 
 App 8
 
-Ostatnia instalacja 1.11.2026
+Ostatnia instalacja 1 lis 2026
 
 ### fēnix 8 43 mm, AMOLED
 
@@ -169,7 +161,7 @@ Ostatnia instalacja 1.11.2026
 
 App 8
 
-Ostatnia instalacja 7.11.2026
+Ostatnia instalacja 7 lis 2026
 
 ### fēnix 9 Pro 47 mm, AMOLED, inReach
 
@@ -177,7 +169,7 @@ Ostatnia instalacja 7.11.2026
 
 App 8
 
-Ostatnia instalacja 13.11.2026
+Ostatnia instalacja 13 lis 2026
 
 ### Enduro 3 MIP, Solar
 
@@ -185,7 +177,7 @@ Ostatnia instalacja 13.11.2026
 
 App 6
 
-Ostatnia instalacja 17.11.2026
+Ostatnia instalacja 17 lis 2026
 
 ### fēnix 6 Pro 47 mm, MIP
 
@@ -193,7 +185,7 @@ Ostatnia instalacja 17.11.2026
 
 App 3 Web 3
 
-Ostatnia instalacja 26.10.2026
+Ostatnia instalacja 26 paź 2026
 
 ### fēnix 8 Pro 47 mm, AMOLED, inReach
 
@@ -201,15 +193,15 @@ Ostatnia instalacja 26.10.2026
 
 App 6
 
-Ostatnia instalacja 11.11.2026
+Ostatnia instalacja 11 lis 2026
 
-### Edge 540 Licznik rowerowy
+### Edge 540
 
 5 udanych instalacji
 
 App 4 Web 1
 
-Ostatnia instalacja 17.11.2026
+Ostatnia instalacja 17 lis 2026
 
 ### Enduro 4 MIP, Solar
 
@@ -217,7 +209,7 @@ Ostatnia instalacja 17.11.2026
 
 App 4
 
-Ostatnia instalacja 17.11.2026
+Ostatnia instalacja 17 lis 2026
 
 ### fēnix 7S Pro Solar
 
@@ -225,7 +217,7 @@ Ostatnia instalacja 17.11.2026
 
 App 4
 
-Ostatnia instalacja 2.10.2026
+Ostatnia instalacja 2 paź 2026
 
 ### fēnix 9 47 mm, AMOLED
 
@@ -233,15 +225,15 @@ Ostatnia instalacja 2.10.2026
 
 App 4
 
-Ostatnia instalacja 23.09.2026
+Ostatnia instalacja 23 wrz 2026
 
-### fēnix 5 Plus Zegarek
+### fēnix 5 Plus
 
 3 udanych instalacji
 
 App 3
 
-Ostatnia instalacja 29.10.2026
+Ostatnia instalacja 29 paź 2026
 
 ### fēnix 6X Pro 51 mm, MIP
 
@@ -249,7 +241,7 @@ Ostatnia instalacja 29.10.2026
 
 App 3
 
-Ostatnia instalacja 14.11.2026
+Ostatnia instalacja 14 lis 2026
 
 ### fēnix 9 Pro 51 mm, MIP, Solar, inReach
 
@@ -257,7 +249,7 @@ Ostatnia instalacja 14.11.2026
 
 App 3
 
-Ostatnia instalacja 7.10.2026
+Ostatnia instalacja 7 paź 2026
 
 ### fēnix 9 Pro 47 mm, MIP, Solar
 
@@ -265,7 +257,7 @@ Ostatnia instalacja 7.10.2026
 
 App 3
 
-Ostatnia instalacja 16.10.2026
+Ostatnia instalacja 16 paź 2026
 
 ### Approach S72 47 mm, AMOLED
 
@@ -273,7 +265,7 @@ Ostatnia instalacja 16.10.2026
 
 App 2
 
-Ostatnia instalacja 15.11.2026
+Ostatnia instalacja 15 lis 2026
 
 ### Descent Mk3i 51 mm, AMOLED
 
@@ -281,31 +273,31 @@ Ostatnia instalacja 15.11.2026
 
 App 2
 
-Ostatnia instalacja 14.10.2026
+Ostatnia instalacja 14 paź 2026
 
-### Edge 1040 Licznik rowerowy
-
-2 udanych instalacji
-
-App 2
-
-Ostatnia instalacja 14.11.2026
-
-### Edge 840 Licznik rowerowy
+### Edge 1040
 
 2 udanych instalacji
 
 App 2
 
-Ostatnia instalacja 17.11.2026
+Ostatnia instalacja 14 lis 2026
 
-### Enduro 2 Zegarek
+### Edge 840
 
 2 udanych instalacji
 
 App 2
 
-Ostatnia instalacja 13.10.2026
+Ostatnia instalacja 17 lis 2026
+
+### Enduro 2
+
+2 udanych instalacji
+
+App 2
+
+Ostatnia instalacja 13 paź 2026
 
 ### fēnix 6X 51 mm
 
@@ -313,7 +305,7 @@ Ostatnia instalacja 13.10.2026
 
 App 2
 
-Ostatnia instalacja 20.10.2026
+Ostatnia instalacja 20 paź 2026
 
 ### fēnix 9 Pro 51 mm, MIP, Solar
 
@@ -321,7 +313,7 @@ Ostatnia instalacja 20.10.2026
 
 App 2
 
-Ostatnia instalacja 19.10.2026
+Ostatnia instalacja 19 paź 2026
 
 ### fēnix 9 43 mm, AMOLED
 
@@ -329,7 +321,7 @@ Ostatnia instalacja 19.10.2026
 
 App 2
 
-Ostatnia instalacja 29.10.2026
+Ostatnia instalacja 29 paź 2026
 
 ### Venu X1 AMOLED
 
@@ -337,15 +329,15 @@ Ostatnia instalacja 29.10.2026
 
 App 2
 
-Ostatnia instalacja 29.10.2026
+Ostatnia instalacja 29 paź 2026
 
-### Edge 850 Licznik rowerowy
+### Edge 850
 
 1 udana instalacja
 
 App 1
 
-Ostatnia instalacja 17.11.2026
+Ostatnia instalacja 17 lis 2026
 
 ### fēnix 8 51 mm, MIP, Solar
 
@@ -353,7 +345,7 @@ Ostatnia instalacja 17.11.2026
 
 Web 1
 
-Ostatnia instalacja 18.10.2026
+Ostatnia instalacja 18 paź 2026
 
 ### fēnix 9 Pro 43 mm, AMOLED
 
@@ -361,7 +353,7 @@ Ostatnia instalacja 18.10.2026
 
 App 1
 
-Ostatnia instalacja 12.10.2026
+Ostatnia instalacja 12 paź 2026
 
 ### fēnix 9 Pro 47 mm, MIP, Solar, inReach
 
@@ -369,7 +361,7 @@ Ostatnia instalacja 12.10.2026
 
 App 1
 
-Ostatnia instalacja 27.09.2026
+Ostatnia instalacja 27 wrz 2026
 
 ### fēnix E 47 mm, AMOLED
 
@@ -377,15 +369,15 @@ Ostatnia instalacja 27.09.2026
 
 App 1
 
-Ostatnia instalacja 17.11.2026
+Ostatnia instalacja 17 lis 2026
 
-### quatix 7 Zegarek
+### quatix 7
 
 1 udana instalacja
 
 App 1
 
-Ostatnia instalacja 17.10.2026
+Ostatnia instalacja 17 paź 2026
 
 ### tactix Delta Solar
 
@@ -393,7 +385,7 @@ Ostatnia instalacja 17.10.2026
 
 App 1
 
-Ostatnia instalacja 7.10.2026
+Ostatnia instalacja 7 paź 2026
 
 ## Nie widzisz swojego Garmina?
 
@@ -402,6 +394,14 @@ Brak Twojego modelu nie oznacza, że nie zadziała. Być może nikt jeszcze nie 
 Jeśli Twój zegarek Garmin lub licznik Edge obsługuje mapy, i tak możesz wypróbować Terento. Każda udostępniona udana instalacja dodaje Twój model do tej listy.
 
 [Pierwszy raz? Przeczytaj instrukcję na Maca](https://terento.app/pl/guides/install-garmin-maps-mac/)
+
+## Jak działa ta lista
+
+Lista powstaje na podstawie rzeczywistych, udanych instalacji Terento udostępnianych przez użytkowników. Pokazuje tylko dokładne modele i warianty Garmin z co najmniej jedną udaną instalacją mapy innej firmy. Nie jest to pełna lista wszystkich zegarków Garmin i liczników Edge, z którymi Terento może działać.
+
+Wyniki instalacji są udostępniane Terento przez użytkowników; nie są certyfikacją Garmin.
+
+Aktualna wersja obejmuje wszystkich dostawców map z katalogu. Ta informacja o produkcie jest oddzielona od pokazanych tutaj wyników dla urządzeń.
 
 Wgraj darmową mapę na swojego Garmina
 

@@ -5,21 +5,7 @@ canonical: https://terento.app/de/about/
 
 # Über Terento
 
-GediminasMacher von Terento
-
-Ich nutze eine Garmin fēnix. Im Urlaub plane ich gern Wanderungen, um ein Land kennenzulernen, besonders in den Bergen Europas. Vor jeder Reise wollte ich Karten auf meiner Uhr haben. Auf dem Mac hieß das: die Uhr anschließen, suchen, wie man Karten hinzufügt, sie finden, herunterladen und auf die Uhr kopieren.
-
-Ich habe Terento gebaut, um das einfach zu machen: verbinden, installieren, fertig.
-
-Es ist kostenlos und Open Source, weil ich meine Garmin mag und Menschen in derselben Lage helfen möchte.
-
-Wenn du Fragen oder Feedback hast, erreichst du mich hier:
-
-[LinkedIn](https://www.linkedin.com/in/gediminasc/) [Reddit](https://www.reddit.com/user/MrDonas/) [E-Mail](mailto:hello@terento.app)
-
-Terento ist kostenlos und bleibt es. Wenn es dir hilft, trägt eine Spende den Server hinter dem Web-Installer und den Kartenvorschauen sowie die Apple-Entwicklermitgliedschaft, die die Mac-App braucht. Spenden schalten nichts frei.
-
-[Spendier mir einen Kaffee](https://buymeacoffee.com/vooz2)
+Eine kostenlose Karten-App, gebaut von einem Garmin-Wanderer.
 
 ## Was Terento ist und was nicht
 
@@ -49,6 +35,24 @@ Terento ist kostenlos und bleibt es. Wenn es dir hilft, trägt eine Spende den S
 
 - **Ein Versprechen, dass jede Garmin funktioniert.** Die Seite [Kompatibilität](https://terento.app/de/compatibility/) zeigt die Modelle, auf denen schon Karten installiert wurden.
 
+## Wer es macht
+
+GediminasMacher von Terento
+
+Ich nutze eine Garmin fēnix. Im Urlaub plane ich gern Wanderungen, um ein Land kennenzulernen, besonders in den Bergen Europas. Vor jeder Reise wollte ich Karten auf meiner Uhr haben. Auf dem Mac hieß das: die Uhr anschließen, suchen, wie man Karten hinzufügt, sie finden, herunterladen und auf die Uhr kopieren.
+
+Ich habe Terento gebaut, um das einfach zu machen: verbinden, installieren, fertig.
+
+Es ist kostenlos und Open Source, weil ich meine Garmin mag und Menschen in derselben Lage helfen möchte.
+
+Wenn du Fragen oder Feedback hast, erreichst du mich hier:
+
+[LinkedIn](https://www.linkedin.com/in/gediminasc/) [Reddit](https://www.reddit.com/user/MrDonas/) [E-Mail](mailto:hello@terento.app)
+
+Terento ist kostenlos und bleibt es. Wenn es dir hilft, trägt eine Spende den Server hinter dem Web-Installer und den Kartenvorschauen sowie die Apple-Entwicklermitgliedschaft, die die Mac-App braucht. Spenden schalten nichts frei.
+
+[Spendier mir einen Kaffee](https://buymeacoffee.com/vooz2)
+
 ## Vorgestellt auf
 
 Danke an die Websites und Tester, die Terento ausprobiert, vorgestellt oder empfohlen haben.
@@ -64,7 +68,3 @@ Danke an die Websites und Tester, die Terento ausprobiert, vorgestellt oder empf
 - HikingGuy (Video)
 
 [Garmin Fenix: 17 Tips I Wish I Knew Sooner](https://www.youtube.com/watch?v=szqwPHHWiTM)
-
-Bring eine kostenlose Karte auf dein Garmin
-
-[Für Mac herunterladen](https://terento.app/de/download/) [Web-Installer verwenden](https://terento.app/de/install/)
