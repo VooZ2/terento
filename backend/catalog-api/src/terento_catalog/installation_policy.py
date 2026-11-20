@@ -81,36 +81,6 @@ def installation_authorization_for_row(row: dict[str, Any]) -> tuple[str, str]:
     return "UNKNOWN", "PENDING"
 
 
-def summarize_installation_catalog(rows: list[dict[str, Any]]) -> dict[str, int]:
-    """Count all Garmin policy rows by the stored nullable map capability."""
-    summary = {
-        "total": len(rows),
-        "mapCapableTrue": 0,
-        "mapCapableFalse": 0,
-        "mapCapableNull": 0,
-        "activeMapCapableTrueApproved": 0,
-        "activeMapCapableFalseBlocked": 0,
-        "activeMapCapableNullPending": 0,
-    }
-    for row in rows:
-        value = row.get("map_capable")
-        if value is True:
-            summary["mapCapableTrue"] += 1
-        elif value is False:
-            summary["mapCapableFalse"] += 1
-        else:
-            summary["mapCapableNull"] += 1
-
-        scope, authorization = installation_authorization_for_row(row)
-        if row.get("active") is True and value is True and scope == "IN_SCOPE" and authorization == "APPROVED":
-            summary["activeMapCapableTrueApproved"] += 1
-        elif row.get("active") is True and value is False and authorization == "BLOCKED":
-            summary["activeMapCapableFalseBlocked"] += 1
-        elif row.get("active") is True and value is None and authorization == "PENDING":
-            summary["activeMapCapableNullPending"] += 1
-    return summary
-
-
 def build_installation_policy(
     rows: list[dict[str, Any]], updated_at: datetime
 ) -> dict[str, Any]:

@@ -13,8 +13,8 @@ from terento_catalog.installation_policy import (
     build_installation_policy,
     installation_base_model,
     serialize_installation_policy,
-    summarize_installation_catalog,
 )
+from source_helpers import summarize_installation_catalog
 
 
 # --- Port of the shipped macOS resolver --------------------------------------

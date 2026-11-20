@@ -36,9 +36,6 @@ class AssetStorage:
     def __init__(self, root: Path) -> None:
         self.root = root
 
-    def store_webp(self, data: bytes, storage_key: str) -> StoredAsset:
-        return self._store(data, storage_key, self.root, public=True)
-
     def stage_webp(self, data: bytes, storage_key: str) -> StoredAsset:
         """Store a candidate outside the public asset tree."""
         return self._store(data, storage_key, self.root / ".review", public=False)

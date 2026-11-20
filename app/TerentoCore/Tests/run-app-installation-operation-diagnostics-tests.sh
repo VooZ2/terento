@@ -71,6 +71,9 @@ import subprocess, sys
 subprocess.run([sys.argv[1]], check=True, timeout=30)
 PYTEST
 
-"$project_root/../../Tests/run-backend-operation-diagnostic-contract-tests.sh"
+# Backend half: the same API delivery tests, fed with the payload the Swift
+# producer just wrote (TERENTO_DIAGNOSTIC_FIXTURE_OUTPUT).
+source "$project_root/../../Tests/backend-python-runtime.sh"
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$project_root/../../backend/catalog-api/src:$project_root/../../backend/catalog-api/tests" "$TERENTO_PYTHON_BIN" -m unittest test_operation_diagnostic_delivery
 
 print "PASS: operation diagnostic behavior and actual Swift-to-API payload tests"

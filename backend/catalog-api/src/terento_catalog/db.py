@@ -4742,33 +4742,6 @@ class Database:
             ),
         )
 
-    def record_admin_audit(
-        self,
-        *,
-        admin_user_id: int | None,
-        action: str,
-        provider_id: str | None = None,
-        target: str | None = None,
-        request_id: str | None = None,
-        old_status: str | None = None,
-        new_status: str | None = None,
-        reason: str | None = None,
-        details: dict[str, Any] | None = None,
-    ) -> None:
-        with self.connection() as connection:
-            self._insert_admin_audit(
-                connection,
-                admin_user_id=admin_user_id,
-                action=action,
-                provider_id=provider_id,
-                target=target,
-                request_id=request_id,
-                old_status=old_status,
-                new_status=new_status,
-                reason=reason,
-                details=details,
-            )
-
     def audit_rows(self, provider_id: str, limit: int = 50) -> list[dict[str, Any]]:
         with self.connection() as connection:
             return list(connection.execute(

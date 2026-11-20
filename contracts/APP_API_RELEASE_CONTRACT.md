@@ -584,9 +584,9 @@ report must remain visible as missing.
 
 The executable native-to-API gate is
 `app/TerentoCore/Tests/run-app-installation-operation-diagnostics-tests.sh`.
-Its backend half is `Tests/run-backend-operation-diagnostic-contract-tests.sh`.
-Both are registered in the test-suite manifest; the full packaging suite runs
-them. Live semantic behavior still needs the separate read-only review above.
+It runs its backend half, `backend/catalog-api/tests/test_operation_diagnostic_delivery.py`,
+against the payload the Swift producer just wrote; the backend suite also runs
+that module with its fixtures. Both are registered in the test-suite manifest. Live semantic behavior still needs the separate read-only review above.
 
 ## Publication order and recovery
 

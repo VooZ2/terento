@@ -11,8 +11,8 @@ from terento_catalog.collectors.freizeitkarte.range_zip import (
     RangeResponse,
     ZipRangeError,
     ZipRangeInspector,
-    validate_extracted_payload_size,
 )
+from source_helpers import validate_extracted_payload_size
 
 
 def make_zip(*, entries: dict[str, bytes], comment: bytes = b"") -> bytes:

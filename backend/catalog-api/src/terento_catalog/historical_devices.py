@@ -14,7 +14,6 @@ import re
 import unicodedata
 
 
-HISTORICAL_REGISTRY_VERSION = 3
 REGISTRY_SOURCE_URL = "https://developer.garmin.com/connect-iq/compatible-devices/"
 GARMIN_CATEGORY_URL = "https://www.garmin.com/en-US/c/wearables-smartwatches/"
 
@@ -184,8 +183,6 @@ HISTORICAL_DEVICE_REGISTRY: tuple[HistoricalDeviceSpec, ...] = (
     ),
 )
 
-_BY_ID = {spec.id: spec for spec in HISTORICAL_DEVICE_REGISTRY}
-
 
 def normalize_identity(value: object) -> str:
     if not isinstance(value, str):
@@ -197,10 +194,6 @@ def normalize_identity(value: object) -> str:
     if text.startswith("garmin "):
         text = text[len("garmin "):]
     return text
-
-
-def historical_device_spec(device_id: str | None) -> HistoricalDeviceSpec | None:
-    return _BY_ID.get(device_id or "")
 
 
 def historical_device_for_event(event: dict[str, object]) -> HistoricalDeviceSpec | None:

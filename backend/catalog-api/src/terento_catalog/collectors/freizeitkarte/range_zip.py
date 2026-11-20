@@ -413,10 +413,3 @@ def _select_payload(entries: list[ZipEntry], expected_path: str | None) -> ZipEn
     if len(candidates) == 1:
         return candidates[0]
     raise ZipRangeError("ZIP payload IMG entry is missing or ambiguous")
-
-
-def validate_extracted_payload_size(measurement: ZipPayloadMeasurement, actual_size: int) -> None:
-    if actual_size < 0 or measurement.install_size_bytes != actual_size:
-        raise ZipRangeError(
-            "extracted payload size does not match ZIP central-directory metadata"
-        )
