@@ -29,14 +29,15 @@ device telemetry; the audit must pass them through API validation locally.
 | --- | --- |
 | Ordinary Markdown, including component READMEs | shared/CI documentation and inventory checks |
 | Root README, release notes, `VERSIONING.md`, packaging/native dependency docs, third-party notices | release plus shared/CI; the root README also site |
-| Markdown read as a contract by a suite test (`contracts/README.md`, `site-deploy/README.md`) | that suite plus shared/CI |
+| Markdown read as a contract by a suite test (`contracts/README.md`, `site-deploy/README.md`) or owned by one (`contracts/STATISTICS_CONTRACT.md`: backend) | that suite plus shared/CI |
+| Admin boundary check and its test (`scripts/infra/check-admin-boundary.py`, `Tests/admin-access-boundary-tests.py`) | shared/CI |
 | Legal web source | site, release, shared/CI |
 | App shell or presentation | app, shared/CI |
 | Native core or lifecycle | app, native, shared/CI |
 | Backend implementation | backend, shared/CI; selected catalog interfaces also native |
 | Site deploy workflow, `site-deploy/` container files or IndexNow publication state | site, shared/CI |
 | Other `.github/` automation or non-site/release `scripts/` | all suites except macOS app and native |
-| `swift-ci.yml`, shared schema/fixture, brand source, test inventory or unknown path | all suites |
+| `swift-ci.yml`, shared schema/fixture, brand source, test inventory, unmapped `Tests/` file or unknown path | all suites |
 
 The full release matrix runs on tags, manual full checks, weekly CI and release
 packaging. A manual dispatch with `selection_base` (`main`, task
