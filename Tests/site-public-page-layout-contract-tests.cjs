@@ -113,7 +113,7 @@ for (const [locale, contract] of Object.entries(locales)) {
   assert.ok(release, `${locale} release line`);
   assert.ok(release.includes(`<a class="text-link" href="${manifest.releaseNotesURL}" rel="noopener noreferrer">`), `${locale} "What's new" opens the GitHub release page`);
   assert.match(manifest.releaseNotesURL, /^https:\/\/github\.com\/VooZ2\/terento\/releases\/tag\//);
-  if (locale === "en") assert.equal(release.replace(/<[^>]+>/g, ""), "Latest version v1.2.1, November 14, 2026. What’s new");
+  if (locale === "en") assert.equal(release.replace(/<[^>]+>/g, ""), "Latest version v1.2.2, November 20, 2026. What’s new");
   const links = [...main.matchAll(/<a class="text-link( download-info-link)?" href="([^"]+)" data-umami-event="([^"]+)" data-umami-event-location="([^"]+)">/g)].map((m) => [m[2], m[3], m[4], Boolean(m[1])]);
   assert.deepEqual(links, [
     [`${contract.root}install/`, "web-installer-link-click", "download-page", false],

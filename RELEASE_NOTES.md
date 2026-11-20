@@ -1,5 +1,4 @@
 # Terento v1.2.2 (build 49)
-<!-- DRAFT: staged 1.2.2 build 49; not published until the signed, notarized DMG is on GitHub. -->
 
 Terento 1.2.2 is an update to Terento 1.2.1, the free, open-source app for installing community maps on map-capable Garmin smartwatches and Edge bike computers from Apple Silicon Macs running macOS 13 or later. Compatibility is still evaluated model by model.
 
@@ -31,6 +30,8 @@ This release makes the app clearer to use, tells you how to turn a new map on, a
 - Progress bars no longer turn grey when the window is in the background.
 - Removing a map whose ownership was imported from a file no longer reads the whole map again.
 - A ZIP file that is too large to unpack on the Mac is refused before it is unpacked.
+
+<!-- DMG SHA-256: 908836b1218af8aabeab66b4e02b12d4f8aeb5be30abb5a3aaa38d9d9e5f3f19 -->
 
 # Terento v1.2.1 (build 48)
 

@@ -1,13 +1,28 @@
 # App–API compatibility and release contract
 
-## 1.2.2 build 49 — no server-first change
+## Stable release 1.2.2 build 49 — published
 
-The 1.2.2 build 49 candidate (#735, #744, #745) is app-only. It requests
-`catalog-v5.json` and adds no route, payload field or migration, so no API
-deploy precedes it. The read-back repeat reports `retryCount` 1 in the existing
-failure context. App-made download stops are sent as the existing
-`DOWNLOAD_INTERRUPTED` value, and `DOWNLOAD_CANCELLED` only when the person
-presses Cancel; the API already accepts both values.
+Published on 2026-11-20 from GitHub-verified source
+`b612cf5c8e49c96b1ee2d1076a8a496449186bcc` (main after PR #747), tag
+`v1.2.2-build49`, on the `stable` update channel. It is app-only (#735, #744,
+#745): it requests `catalog-v5.json` and adds no route, payload field or
+migration, so no API deploy preceded it. The read-back repeat reports
+`retryCount` 1 in the existing failure context. App-made download stops are
+sent as the existing `DOWNLOAD_INTERRUPTED` value, and `DOWNLOAD_CANCELLED`
+only when the person presses Cancel; the API already accepted both values. The
+tag is listed in `contracts/released-catalog-clients.json` with
+`catalog-v5.json`.
+
+The full packaging suite and PR CI passed. Apple notarization was Accepted.
+Signing, stapling, Gatekeeper and ZIP/DMG launch checks passed. The deferred
+Freizeitkarte and OpenTopoMap Update gate stays recorded in
+`contracts/release-hardware-gates.json`.
+
+DMG: 7,819,590 bytes, SHA-256
+`908836b1218af8aabeab66b4e02b12d4f8aeb5be30abb5a3aaa38d9d9e5f3f19`.
+ZIP: 7,027,843 bytes, SHA-256
+`8a1f2f9d20152feaa6be00d8bf3a9a4cfd020302b4bf8785aecbea27cf4d287f`.
+Public GitHub asset digests match independently downloaded files.
 
 ## Stable release 1.2.1 build 48 — published
 
