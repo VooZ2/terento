@@ -77,9 +77,12 @@ preserve the same meaning in each locale.
   Sans 22px). Product photos sit on `--photo-tile` in both modes.
 - Buttons: `primary_action()` (one primary button, "Download for Mac" with
   the Lucide download icon, 40px, 15/20 at 600) and `secondary_action()`
-  (outlined, same size). `store_download()` adds Apple's badge on /download/;
-  Home shows it once, in the Mac app card under "Download for Mac". At most one
-  App Store badge per page. Never change the badge.
+  (outlined, same size). `store_download()` adds Apple's badge on /download/
+  (`ct=site-download`). Home shows it once, first in the hero (`ct=site-hero`);
+  the hero's primary action on a computer is the App Store badge, "Download for
+  Mac" is secondary (outlined) and "Install from your browser" is a text link.
+  The Mac app card keeps only "Download for Mac". At most one App Store badge
+  per page. Never change the badge.
 - Only Compatibility, Map styles and the guides end with
   `end_cta(locale, location)`: "Put a free map on your Garmin", "Download for
   Mac" and a "Use the web installer" text link (the Linux guide passes

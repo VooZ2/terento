@@ -661,35 +661,38 @@ def normalize_home(source: str, path: Path, locale: str) -> str:
         )
     values["hero_map_alt"] = html.escape(copy["hero_map_alt"].replace("{name}", HERO_MAP_STYLES[0][1]))
     values["hero_switch_buttons"] = map_switch(copy["hero_map_alt"], 0, "home-hero")
-    # Hero (round 4): on a computer, Download for Mac + Install from your browser; on a phone,
-    # where neither runs, Send this link to your computer + Check compatibility. No badge here:
-    # Apple's badge appears once, on the Download page.
+    # Hero (owner 2026-11-20): on a computer, Apple's Mac App Store badge first (App Store ranking
+    # counts store installs; a DMG install gives it nothing), then "Download for Mac" as the
+    # outlined secondary button and "Install from your browser" as a text link. On a phone, where
+    # neither runs, Send this link to your computer + Check compatibility. This is the page's one
+    # badge; the Mac app card keeps only "Download for Mac". Campaign ct=site-hero (site-home retired).
     prefix = "" if locale == "en" else f"/{locale}"
     send_body = f"{SITE_URL}{prefix}/"
     values["send_to_computer_href"] = html.escape(
         "mailto:?subject=" + quote(copy["send_to_computer_subject"]) + "&body=" + quote(send_body, safe="")
     )
-    values["hero_download_button"] = COMPONENTS["primary_action"](
+    badge = APP_STORE["badges"][locale]
+    store_href = f'{APP_STORE["listing_url"]}?pt={APP_STORE["provider_token"]}&ct=site-hero&mt=8'
+    # Apple has no Polish or Czech Mac App Store badge: those pages show the English artwork.
+    badge_lang = "" if badge["artwork"] == locale else f' lang="{badge["artwork"]}"'
+    values["hero_store_badge"] = (
+        f'<a class="app-store-badge hero-app-store" href="{html.escape(store_href)}" data-umami-event="app-store-click" data-umami-event-location="home-hero">'
+        f'<img src="/assets/app-store/download-on-the-mac-app-store-{badge["artwork"]}.svg?v={APP_STORE["asset_version"]}" '
+        f'width="{APP_STORE["width"]}" height="{APP_STORE["height"]}" alt="{html.escape(badge["alt"])}"{badge_lang}></a>'
+    )
+    values["hero_download_button"] = COMPONENTS["secondary_action"](
         copy["download_href"], html.escape(copy["hero_download"]), "hero-download-action",
-        'data-umami-event="download-cta-click" data-umami-event-location="home-hero"')
-    values["hero_browser_button"] = COMPONENTS["secondary_action"](
-        copy["web_installer_href"], html.escape(copy["hero_browser"]), "hero-web-installer-link",
-        'data-umami-event="web-installer-link-click" data-umami-event-location="home-hero"', "globe")
+        'data-umami-event="download-cta-click" data-umami-event-location="home-hero"', "download")
+    values["hero_browser_link"] = (
+        f'<a class="text-link hero-web-installer-link" href="{copy["web_installer_href"]}" '
+        f'data-umami-event="web-installer-link-click" data-umami-event-location="home-hero">{html.escape(copy["hero_browser"])}</a>'
+    )
     values["hero_send_button"] = COMPONENTS["primary_action"](
         values["send_to_computer_href"], html.escape(copy["send_to_computer"]), "",
         'data-umami-event="send-to-computer-click" data-umami-event-location="home-hero"', "send")
     values["mac_card_download_button"] = COMPONENTS["primary_action"](
         copy["download_href"], html.escape(copy["hero_download"]), "",
         'data-umami-event="download-cta-click" data-umami-event-location="home-section"')
-    # The page's one App Store badge: in the Mac app card, under its Download button (round 5).
-    badge = APP_STORE["badges"][locale]
-    store_href = f'{APP_STORE["listing_url"]}?pt={APP_STORE["provider_token"]}&ct=site-home&mt=8'
-    badge_lang = "" if badge["artwork"] == locale else f' lang="{badge["artwork"]}"'
-    values["mac_card_store_badge"] = (
-        f'<a class="app-store-badge home-app-store" href="{html.escape(store_href)}" data-umami-event="app-store-click" data-umami-event-location="home-section">'
-        f'<img src="/assets/app-store/download-on-the-mac-app-store-{badge["artwork"]}.svg?v={APP_STORE["asset_version"]}" '
-        f'width="{APP_STORE["width"]}" height="{APP_STORE["height"]}" alt="{html.escape(badge["alt"])}"{badge_lang}></a>'
-    )
     values["browser_card_button"] = COMPONENTS["secondary_action"](
         copy["web_installer_href"], html.escape(copy["browser_action"]), "",
         'data-umami-event="web-installer-link-click" data-umami-event-location="home-section"', "globe")

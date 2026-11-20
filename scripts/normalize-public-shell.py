@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SHELL_VERSION = "20261105-copy-command-v1"
 PROVIDER_SCRIPT_VERSION = "20261119-compare-card-v1"
-STYLE_VERSION = "20261119-site-refresh-v9"
+STYLE_VERSION = "20261120-site-refresh-v10"
 IMAGE_VERSION = "20261120-app-screens-v3"
 LANGUAGE_VERSION = "20260926-static-shell-v1"
 COMPATIBILITY_LOCALES_VERSION = "20261119-compatibility-labels-v4"

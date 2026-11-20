@@ -4693,11 +4693,6 @@ a.chip {
   font: 400 17px/1.55 var(--font-ui);
 }
 
-/* Home: the Mac App Store badge sits under "Download for Mac" in the Mac app card. */
-.home-way .home-app-store {
-  flex: 0 0 auto;
-}
-
 #main-content .troubleshooting-pick-title {
   margin: 0 0 6px;
   font: 600 18px/1.3 var(--font-brand);
@@ -4869,7 +4864,7 @@ a.chip {
   flex-wrap: wrap;
   align-items: center;
   gap: 12px;
-  min-height: 44px; /* the badge link is 44px (touch target), so both rows share one centre line */
+  min-height: 44px; /* the buttons' 44px touch target, so both cards share one centre line */
   margin: 24px 0 0;
   padding-top: 0;
 }

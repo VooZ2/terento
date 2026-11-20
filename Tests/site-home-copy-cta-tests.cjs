@@ -119,7 +119,7 @@ const anchorFor = (page, className) => {
 
 for (const [locale, expected] of locales) {
   const page = pageFor(locale);
-  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20261119-site-refresh-v9">/, `${locale}: Home stylesheet cache bust`);
+  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20261120-site-refresh-v10">/, `${locale}: Home stylesheet cache bust`);
   assert.match(page, /<script defer src="\/home-features\.js\?v=20261105-home-map-switch-v4"><\/script>/, `${locale}: Home feature script cache bust`);
   assert.match(page, /installing-maps-1600\.png\?v=20261120-app-screens-v3/, `${locale}: installation screenshot cache bust`);
   const heroDevice = page.match(/<figure class="home-device" data-map-switch>[\s\S]*?<\/figure>/)?.[0];
@@ -171,16 +171,25 @@ for (const [locale, expected] of locales) {
   // Home ends with the FAQ: no closing call to action.
   assert.doesNotMatch(page, /class="cta-band|end-cta|data-umami-event-location="home-bottom"/, `${locale}: no end CTA on Home`);
   assert.match(page, /<section class="faq section" id="faq"[\s\S]*?<\/section>\s*<\/main>/, `${locale}: Home ends at the FAQ`);
-  // Round 4 (owner): computer actions are "Download for Mac" + "Install from your browser"; phones get
-  // "Send this link to your computer" + "Check compatibility". Round 5: one App Store badge, in the Mac app card.
+  // Owner 2026-11-20: on a computer the hero leads with Apple's Mac App Store badge (ct=site-hero),
+  // then "Download for Mac" as the outlined secondary button, then "Install from your browser" as a
+  // text link. Phones get "Send this link to your computer" + "Check compatibility". The hero badge is
+  // the page's only badge; the retired ct=site-home campaign is gone from Home.
   const computerActions = page.match(/<div class="hero-actions home-actions home-actions--computer">[\s\S]*?<\/div>/)?.[0];
   assert.ok(computerActions, `${locale}: computer hero actions`);
-  assert.match(computerActions, /^<div[^>]*><a class="download-action download-action--store hero-download-action"[^>]*data-umami-event="download-cta-click" data-umami-event-location="home-hero">[\s\S]*?<\/a><a class="button-secondary hero-web-installer-link" href="[^"]*\/install\/" data-umami-event="web-installer-link-click" data-umami-event-location="home-hero">/);
+  const badge = appStoreBadge.badges[locale];
+  const badgeLang = badge.artwork === locale ? "" : ` lang="${badge.artwork}"`;
+  const heroBadge = `<a class="app-store-badge hero-app-store" href="https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&amp;ct=site-hero&amp;mt=8" data-umami-event="app-store-click" data-umami-event-location="home-hero"><img src="/assets/app-store/download-on-the-mac-app-store-${badge.artwork}.svg?v=${appStoreBadge.asset_version}" width="156" height="40" alt="${badge.alt}"${badgeLang}></a>`;
+  assert.ok(computerActions.startsWith(`<div class="hero-actions home-actions home-actions--computer">${heroBadge}<a class="button-secondary hero-download-action" href="${locale === "en" ? "/download/" : `/${locale}/download/`}" data-umami-event="download-cta-click" data-umami-event-location="home-hero">`), `${locale}: badge first, then the outlined Download for Mac`);
+  assert.match(computerActions, /<\/a><a class="text-link hero-web-installer-link" href="[^"]*\/install\/" data-umami-event="web-installer-link-click" data-umami-event-location="home-hero">[^<]+<\/a><\/div>$/, `${locale}: Install from your browser is a text link, last`);
+  assert.doesNotMatch(computerActions, /<a class="download-action/, `${locale}: no filled button in the computer hero actions`);
   const phoneActions = page.match(/<div class="hero-actions home-actions home-actions--phone">[\s\S]*?<\/div>/)?.[0];
   assert.ok(phoneActions, `${locale}: phone hero actions`);
   assert.match(phoneActions, /data-umami-event="send-to-computer-click" data-umami-event-location="home-hero"[\s\S]*?<a class="text-link hero-compatibility-link"/);
   assert.equal((page.match(/class="app-store-badge/g) || []).length, 1, `${locale}: one App Store badge on Home`);
-  assert.doesNotMatch(computerActions + phoneActions, /app-store-badge/, `${locale}: no badge in the hero`);
+  assert.doesNotMatch(phoneActions, /app-store-badge/, `${locale}: no badge in the phone actions`);
+  assert.equal((page.match(/ct=site-hero/g) || []).length, 1, `${locale}: ct=site-hero once on Home`);
+  assert.doesNotMatch(page, /ct=site-home/, `${locale}: retired ct=site-home campaign is not on Home`);
   assert.doesNotMatch(page, /home-hero-note|home-hero-browser|home-send-link/, `${locale}: no text under the hero buttons`);
   const providerSection = page.match(/<section class="block home-providers"[\s\S]*?<\/section>/)?.[0];
   assert.ok(providerSection, `${locale}: missing provider cards section`);
@@ -231,7 +240,7 @@ for (const [locale, expected] of locales) {
     assert.doesNotMatch(card, /license|licen[cs]|source|download/i, `${locale}: provider card ${index + 1} avoids technical/legal copy`);
   });
   assert.doesNotMatch(page, /class="scope-section"|class="scope-link"|id="scope-title"|>Beta scope<|Available today|Choose a map and get moving/i, `${locale}: removed Beta scope and stale provider copy`);
-  assert.ok(download.classes.has("download-action"), `${locale}: hero Download CTA uses the solid action style`);
+  assert.ok(download.classes.has("button-secondary"), `${locale}: hero Download CTA is the outlined secondary button (the badge leads)`);
   assert.equal(download.label, expected.heroDownload, `${locale}: download CTA label`);
   assert.ok(heroCompatibility.classes.has("text-link"), `${locale}: Hero Compatibility CTA uses the shared text-link style`);
   assert.ok(heroCompatibility.classes.has("hero-compatibility-link"), `${locale}: Hero Compatibility CTA uses its layout modifier`);
@@ -322,18 +331,17 @@ assert.match(styles, /grid-auto-columns: min\(90%, 420px\)/);
 assert.match(styles, /\.provider-cards\s*\{[^}]*max-width: 1300px/s);
 assert.match(styles, /overflow-x: auto/);
 
-// Round 5 (owner 2026-11-19): the Mac app card has "Download for Mac" with the official Mac App Store
-// badge under it (location home-section); the web installer card has one button. Same height.
+// The Mac app card has "Download for Mac" only (the badge moved to the hero, owner 2026-11-20); the
+// web installer card has one button. Same height.
 for (const [locale] of locales) {
   const html = pageFor(locale);
-  assert.equal((html.match(/class="app-store-badge/g) || []).length, 1, `${locale}: one App Store badge on Home`);
   const ways = [...html.matchAll(/<article class="card col-6 home-way">([\s\S]*?)<\/article>/g)].map(match => match[1]);
   assert.equal(ways.length, 2, `${locale}: two ways`);
   for (const way of ways) {
-    assert.match(way, /^\s*<div class="home-feature-visual"><svg[\s\S]*?<\/svg><\/div>\s*<h3>[^<]+<\/h3>\s*<p>[^<]+<\/p>\s*<div class="card-action home-way-actions"><a class="[^"]+"[^>]*>[\s\S]*?<\/a>(?:<a class="app-store-badge home-app-store"[^>]*><img [^>]+><\/a>)?<\/div>\s*$/, `${locale}: way card`);
+    assert.match(way, /^\s*<div class="home-feature-visual"><svg[\s\S]*?<\/svg><\/div>\s*<h3>[^<]+<\/h3>\s*<p>[^<]+<\/p>\s*<div class="card-action home-way-actions"><a class="[^"]+"[^>]*>[\s\S]*?<\/a><\/div>\s*$/, `${locale}: way card`);
+    assert.doesNotMatch(way, /app-store-badge/, `${locale}: no badge in the way cards`);
   }
-  assert.match(ways[0], /<a class="download-action download-action--store" href="[^"]+" data-umami-event="download-cta-click" data-umami-event-location="home-section">[\s\S]*?<\/a><a class="app-store-badge home-app-store" href="https:\/\/apps\.apple\.com\/[^"]*ct=site-home[^"]*" data-umami-event="app-store-click" data-umami-event-location="home-section"><img src="\/assets\/app-store\/[^"]+" width="\d+" height="40" alt="[^"]+"(?: lang="en")?><\/a><\/div>/, `${locale}: Mac card badge under Download for Mac`);
+  assert.match(ways[0], /<a class="download-action download-action--store" href="[^"]+" data-umami-event="download-cta-click" data-umami-event-location="home-section">[\s\S]*?<\/a><\/div>/, `${locale}: Mac card keeps Download for Mac`);
   assert.match(ways[1], /<a class="button-secondary" href="[^"]*\/install\/" data-umami-event="web-installer-link-click" data-umami-event-location="home-section">/);
-  assert.doesNotMatch(ways[1], /app-store-badge/, `${locale}: no badge in the web installer card`);
 }
 assert.match(styles, /\.home-way \.home-way-actions\s*\{\s*margin-top:\s*auto;/, "Way card buttons line up at the bottom");
