@@ -15,7 +15,7 @@
       "Garmin watch with map support",
       "USB cable that supports data transfer"
     ],
-    "needs_note": "After you connect, Terento checks the watch and tells you whether it can install maps. [Compatibility](compatibility/) lists the models with successful installations; a missing model isn’t necessarily unsupported.",
+    "needs_note": "After you connect, Terento checks the watch and tells you whether it can install maps. Not on the [Compatibility](compatibility/) list? It can still work: the list only shows models where someone has already installed a map.",
     "steps_title": "Install a map",
     "steps": [
       {
@@ -122,7 +122,7 @@
       "Garmin-Smartwatch mit Kartenunterstützung",
       "USB-Kabel mit Datenübertragung"
     ],
-    "needs_note": "Nach dem Verbinden prüft Terento die Uhr und sagt dir, ob es Karten installieren kann. Unter [Kompatibilität](compatibility/) stehen die Modelle mit erfolgreichen Installationen; fehlt ein Modell, heißt das nicht unbedingt, dass es nicht unterstützt wird.",
+    "needs_note": "Nach dem Verbinden prüft Terento die Uhr und sagt dir, ob es Karten installieren kann. Nicht auf der [Kompatibilitätsliste](compatibility/)? Es kann trotzdem funktionieren: Die Liste zeigt nur Modelle, auf denen schon jemand eine Karte installiert hat.",
     "steps_title": "Eine Karte installieren",
     "steps": [
       {
@@ -229,7 +229,7 @@
       "Montre Garmin prenant en charge les cartes",
       "Câble USB permettant le transfert de données"
     ],
-    "needs_note": "Après la connexion, Terento vérifie la montre et vous indique s’il peut installer des cartes. La page [Compatibilité](compatibility/) liste les modèles avec des installations réussies ; un modèle absent n’est pas forcément incompatible.",
+    "needs_note": "Après la connexion, Terento vérifie la montre et vous indique s’il peut installer des cartes. Absent de la liste [Compatibilité](compatibility/) ? Cela peut quand même fonctionner : la liste ne montre que les modèles sur lesquels quelqu’un a déjà installé une carte.",
     "steps_title": "Installer une carte",
     "steps": [
       {
@@ -336,7 +336,7 @@
       "Zegarek Garmin z obsługą map",
       "Kabel USB obsługujący przesyłanie danych"
     ],
-    "needs_note": "Po podłączeniu Terento sprawdza zegarek i informuje, czy może zainstalować mapy. Strona [Kompatybilność](compatibility/) pokazuje modele z udanymi instalacjami; brak modelu nie oznacza, że nie jest obsługiwany.",
+    "needs_note": "Po podłączeniu Terento sprawdza zegarek i informuje, czy może zainstalować mapy. Nie ma go na liście [Kompatybilność](compatibility/)? Może i tak działać: lista pokazuje tylko modele, na których ktoś już zainstalował mapę.",
     "steps_title": "Zainstaluj mapę",
     "steps": [
       {
@@ -443,7 +443,7 @@
       "Hodinky Garmin s podporou map",
       "USB kabel pro přenos dat"
     ],
-    "needs_note": "Po připojení Terento hodinky zkontroluje a řekne vám, zda do nich může nainstalovat mapy. Stránka [Kompatibilita](compatibility/) uvádí modely s úspěšnými instalacemi; chybějící model nemusí znamenat, že není podporovaný.",
+    "needs_note": "Po připojení Terento hodinky zkontroluje a řekne vám, zda do nich může nainstalovat mapy. Není na seznamu [Kompatibilita](compatibility/)? I tak může fungovat: seznam ukazuje jen modely, do kterých už někdo nainstaloval mapu.",
     "steps_title": "Instalace mapy",
     "steps": [
       {
@@ -550,7 +550,7 @@
       "Smartwatch Garmin con supporto alle mappe",
       "Cavo USB per il trasferimento dati"
     ],
-    "needs_note": "Dopo il collegamento, Terento controlla l’orologio e ti dice se può installare le mappe. La pagina [Compatibilità](compatibility/) elenca i modelli con installazioni riuscite; un modello assente non è per forza non supportato.",
+    "needs_note": "Dopo il collegamento, Terento controlla l’orologio e ti dice se può installare le mappe. Non è nell’elenco [Compatibilità](compatibility/)? Può funzionare lo stesso: l’elenco mostra solo i modelli su cui qualcuno ha già installato una mappa.",
     "steps_title": "Installa una mappa",
     "steps": [
       {

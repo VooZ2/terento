@@ -39,6 +39,8 @@ Alcuni dati restano nel tuo browser, non sul nostro server: quali mappe l’inst
 
 Le richieste al sito, all’installer web, API, catalogo e aggiornamenti possono comunicare IP e metadati ai fornitori di hosting e sicurezza. Nell’app le mappe si scaricano direttamente da Freizeitkarte, OpenTopoMap, MapRando, BBBike o OSMapaPL; a queste connessioni si applicano le loro regole privacy. Il controllo all’avvio recupera informazioni sulla versione, non l’app. La versione Mac App Store non controlla gli aggiornamenti; li fornisce Apple. Download, aggiornamenti e valutazioni nell’App Store sono gestiti da Apple secondo la sua [informativa sulla privacy](https://www.apple.com/legal/privacy/). Apple fornisce a Terento statistiche sui download e, solo se hai accettato di condividere i dati di analisi con gli sviluppatori, rapporti sugli arresti anomali e statistiche di utilizzo.
 
+**Immagine del dispositivo.** Quando è collegato un dispositivo Garmin, l’app mostra un’immagine del suo modello. L’app scaricata da terento.app carica questa immagine dal server di Terento o dal server di immagini di Garmin (`res.garmin.com`); per alcuni modelli apre prima la pagina prodotto pubblica del modello su `garmin.com` per trovare l’immagine. Garmin riceve così il tuo indirizzo IP e i normali dati della richiesta, tra cui nome e versione dell’app; l’indirizzo richiesto indica a quale modello si riferisce l’immagine. I server di Garmin possono impostare cookie; restano nell’archivio dell’app e vengono inviati solo a Garmin. La richiesta non contiene numero di serie, Unit ID né dati di account o mappe. L’immagine viene conservata sul tuo Mac. A queste connessioni si applica l’[informativa sulla privacy di Garmin](https://www.garmin.com/en-US/privacy/global/). Le versioni Mac App Store fino alla 1.2.1 inclusa non inviano richieste a Garmin e mostrano un’immagine propria di Terento; le versioni più recenti caricano l’immagine come l’app scaricata da terento.app.
+
 Le connessioni forniscono contenuti e funzioni richieste e proteggono dagli abusi. Il trattamento per sicurezza si basa sul legittimo interesse ai sensi dell’art. 6(1)(f) GDPR.
 
 ## Assistenza e segnalazioni pubbliche
@@ -77,4 +79,4 @@ La compatibilità può includere un nome modello MTP ripulito, USB VID/PID, tras
 
 I rapporti possono includere anche la descrizione originale del modello XML (fino a 160 caratteri) e il codice prodotto del modello (fino a 64 lettere ASCII, cifre o trattini). Questi dati identificano un modello, non un singolo orologio. Sono esclusi documenti XML completi, Unit ID e numeri di serie. Le associazioni dei codici e le correzioni amministrative sono conservate separatamente dal rapporto originale.
 
-Aggiornamento: 29 ottobre 2026.
+Aggiornamento: 18 novembre 2026.

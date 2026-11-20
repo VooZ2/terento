@@ -9,9 +9,13 @@ Terento installa mappe gratuite dai progetti OpenStreetMap su orologi Garmin e c
 
 [Scarica per Mac](https://terento.app/it/download/) [Installa dal browser](https://terento.app/it/install/)
 
-Non sai se il tuo modello è compatibile? [Verifica la compatibilità](https://terento.app/it/compatibility/)
+[Invia il link al tuo computer](mailto:?subject=Terento%3A%20mappe%20gratuite%20per%20il%20tuo%20Garmin&body=https%3A%2F%2Fterento.app%2Fit%2F) [Verifica la compatibilità](https://terento.app/it/compatibility/)
 
 Orologio Garmin con la mappa OpenTopoMap del lago Königssee, nelle Alpi bavaresi
+
+- **47** modelli con installazioni riuscite
+- **463** installazioni riuscite
+- **18 novembre 202618 nov 2026** Ultima installazione riuscita
 
 ## Come funziona
 
@@ -28,12 +32,6 @@ Scegli le mappe dal catalogo oppure aggiungi la tua mappa .img compatibile.
 Le tue mappe sono installate e pronte per essere usate sul tuo Garmin.
 
 Terento mostra provider e regioni di mappe di terze parti su macOS
-
-## Gestisci le mappe
-
-Visualizza le mappe installate, aggiornatele quando è disponibile una versione più recente e rimuovi le mappe di terze parti gestite da Terento. Le mappe Garmin originali restano protette.
-
-Terento mostra le mappe di terze parti installate raggruppate per provider
 
 Ciclocomputer Garmin Edge con la mappa Freizeitkarte della salita di Sa Calobra, nella Serra de Tramuntana a Maiorca
 
@@ -73,7 +71,7 @@ Per escursioni in cui il terreno conta.
 
 Componente aggiuntivo opzionale per OpenTopoMap Curve di livello
 
-Aggiungi linee altimetriche per leggere meglio le pendenze. Scegli questo componente durante l’installazione di una regione OpenTopoMap in Terento.
+Aggiungi curve di livello per leggere meglio le pendenze. Scegli questo componente durante l’installazione di una regione OpenTopoMap in Terento.
 
 Disponibile per 157 pacchetti di mappe · Occupa spazio aggiuntivo.
 
@@ -89,7 +87,9 @@ Per esplorare i sentieri minori a piedi.
 
 Alcune etichette della mappa sono in francese.
 
-[Confronta gli stili dal vivo](https://terento.app/it/map-styles/)
+### [Confronta gli stili dal vivo](https://terento.app/it/map-styles/)
+
+Guarda come ognuna disegna lo stesso luogo, poi installa quella adatta alle tue uscite.
 
 ## Con l’app per Mac o dal browser
 
@@ -97,15 +97,11 @@ Alcune etichette della mappa sono in francese.
 
 Installa le mappe del catalogo o la tua mappa .img, vedi cosa c’è sul tuo Garmin e aggiorna le mappe quando escono nuove edizioni.
 
-macOS 13 o successivo su Apple Silicon.
-
-[Scarica per Mac](https://terento.app/it/download/)
+[Scarica per Mac](https://terento.app/it/download/) [Scarica su Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-home&mt=8)
 
 ### Installer web
 
-Collega il tuo Garmin con un cavo USB, scegli le mappe e installale direttamente da Chrome, Microsoft Edge, Opera o Brave. In seguito le aggiorni o le rimuovi allo stesso modo.
-
-Funziona su Mac e, ancora in fase di test, su Linux. Non ancora su Windows, telefoni o tablet.
+Collega il tuo Garmin con un cavo USB, scegli le mappe e installale direttamente da Chrome, Microsoft Edge, Opera o Brave.
 
 [Apri l’installer web](https://terento.app/it/install/)
 
@@ -118,6 +114,10 @@ Consulta la pagina [Compatibilità](https://terento.app/it/compatibility/) per i
 Posso installare mappe di terze parti su uno smartwatch Garmin da un Mac senza Garmin Express né BaseCamp?
 
 Sì. Terento fa tutto dal tuo Mac: scegli una mappa e una regione, installala sul tuo Garmin e più tardi aggiornala o rimuovila. Non servono Garmin Express né BaseCamp. [Leggi la guida all’installazione.](https://terento.app/it/guides/install-garmin-maps-mac/)
+
+È sicuro per il mio Garmin?
+
+Sì. Terento lascia sempre almeno 1 GB libero sul tuo Garmin, controlla ogni mappa dopo la copia e non tocca mai le mappe installate da Garmin.
 
 Posso aggiungere la mia mappa .img?
 

@@ -5,9 +5,9 @@ canonical: https://terento.app/cs/guides/install-garmin-maps-edge-mac/
 
 # Instalace bezplatných map do Garmin Edge z Macu
 
-Novější cyklopočítače Garmin Edge se na Macu nezobrazí jako disk, takže do nich nelze jednoduše zkopírovat mapový soubor. Terento nainstaluje bezplatné mapy OpenStreetMap nebo váš vlastní kompatibilní mapový soubor do cyklopočítačů Garmin Edge s podporou map, například Edge 540, 840 a 1050.
+Novější cyklopočítače Garmin Edge se na Macu nezobrazí jako disk, takže do nich nelze jednoduše zkopírovat mapový soubor. Terento nainstaluje bezplatné mapy OpenStreetMap nebo váš vlastní mapový soubor do modelů Edge s podporou map, například Edge 540, 840 a 1050.
 
-[Stáhnout](https://terento.app/cs/download/)
+[Stáhnout pro Mac](https://terento.app/cs/download/)
 
 ## Co potřebujete
 
@@ -15,7 +15,7 @@ Novější cyklopočítače Garmin Edge se na Macu nezobrazí jako disk, takže 
 - Novější Garmin Edge s podporou map
 - USB kabel s podporou přenosu dat
 
-Po připojení Terento Edge zkontroluje a řekne vám, zda do něj může nainstalovat mapy. Stránka [Kompatibilita](https://terento.app/cs/compatibility/) uvádí modely s úspěšnými instalacemi; chybějící model nemusí znamenat, že není podporovaný.
+Po připojení Terento Edge zkontroluje a řekne vám, zda do něj může nainstalovat mapy. Není na seznamu [Kompatibilita](https://terento.app/cs/compatibility/)? I tak může fungovat: seznam ukazuje jen modely, do kterých už někdo nainstaloval mapu.
 
 ## Instalace mapy do Edge
 
@@ -31,14 +31,14 @@ Ukončete Garmin Express, pokud je otevřený. Připojte Edge přímo k Macu USB
 
 Vyberte poskytovatele a oblast z katalogu, nebo přidejte z Macu vlastní kompatibilní mapový soubor .img. [Porovnejte styly map](https://terento.app/cs/map-styles/) a podívejte se, jak každá mapa zobrazuje silnice a stezky.
 
-Terento zobrazuje poskytovatele, oblasti map třetích stran a dostupné místo v Garminu
+[Terento zobrazuje poskytovatele, oblasti map třetích stran a dostupné místo v Garminu](https://terento.app/assets/app/optimized/map-selected-1600.webp?v=20260912-app-screens-v2)
 Vyberte mapu z katalogu nebo přidejte vlastní kompatibilní soubor.
 
 4. Instalujte
 
 Spusťte instalaci a nechte Edge připojený, dokud Terento neoznámí, že je instalace hotová. Potom Edge odpojte.
 
-Terento zobrazuje dokončenou instalaci mapy
+[Terento zobrazuje dokončenou instalaci mapy](https://terento.app/assets/app/optimized/maps-done-1600.webp?v=20260912-app-screens-v2)
 Nechte Edge připojený, dokud Terento neoznámí, že je mapa připravená.
 
 ## Zobrazení mapy v Edge
@@ -68,3 +68,7 @@ Novější modely Edge, například Edge 540, 840 a 1050, přenášejí soubory 
 ## Starší modely Edge
 
 Starší modely, například Edge 1030 Plus a dřívější, se na Macu obvykle zobrazí jako USB disk. U nich můžete kompatibilní mapový soubor .img sami zkopírovat do složky Garmin na disku, bez Terento. Terento není pro tyto modely určené.
+
+Nahrajte do svého Garminu mapu zdarma
+
+[Stáhnout pro Mac](https://terento.app/cs/download/) [Použít webový instalátor](https://terento.app/cs/install/)

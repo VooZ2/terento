@@ -5,7 +5,7 @@ canonical: https://terento.app/pl/guides/troubleshooting/
 
 # Rozwiązywanie problemów z zegarkiem Garmin i mapami na Macu
 
-Znajdź swój problem – od zegarka Garmin, którego Mac nie widzi, po nieudane pobieranie mapy – i wykonaj krótkie kroki. Jeśli nic nie pomaga, wyślij raport, abyśmy mogli się temu przyjrzeć.
+Znajdź swój problem – od zegarka Garmin, którego Mac nie widzi, po nieudane pobieranie mapy – i wykonaj krótkie kroki. Jeśli nic nie pomaga, wyślij raport, a ja się temu przyjrzę.
 
 ## Mac nie widzi Garmin Edge
 
@@ -44,19 +44,27 @@ Odłącz wszystkie urządzenia Garmin oprócz zegarka, którego chcesz użyć: T
 
 ### Mac nie rozpoznaje zegarka Garmin: tryb USB (MTP)
 
-Jeśli Terento informuje, że zegarek nie jest gotowy do przesyłania plików, ustaw tryb USB zegarka na MTP, jeśli Twój model ma to ustawienie. MTP (Media Transfer Protocol) to sposób, w jaki większość obecnych zegarków Garmin udostępnia pliki przez USB, tak jak telefony z Androidem. macOS nie obsługuje MTP natywnie, dlatego zegarek nie pojawia się jako dysk; Terento samo korzysta z MTP, więc nie potrzebujesz Android File Transfer ani OpenMTP.
+Jeśli Terento informuje, że zegarek nie jest gotowy do przesyłania plików, ustaw tryb USB zegarka na MTP, jeśli Twój model ma to ustawienie.
 
 1. Na zegarku otwórz tryb USB, zwykle w Ustawienia › System. Nie każdy model go ma.
 2. Wybierz MTP.
 3. Odłącz zegarek i podłącz go ponownie.
 
+Więcej szczegółów
+
+MTP (Media Transfer Protocol) to sposób, w jaki większość obecnych zegarków Garmin udostępnia pliki przez USB, tak jak telefony z Androidem. macOS nie obsługuje MTP natywnie, dlatego zegarek nie pojawia się jako dysk; Terento samo korzysta z MTP, więc nie potrzebujesz Android File Transfer ani OpenMTP.
+
 ### Zegarek Garmin wykryty, ale niegotowy
 
-Jeśli Terento znajdzie zegarek, ale połączenie nie będzie gotowe w ciągu 2 minut, odłącz zegarek i podłącz go ponownie. Sporadyczne zawieszanie się połączenia to znane ograniczenie obecnej wersji.
+Jeśli Terento znajdzie zegarek, ale połączenie nie będzie gotowe w ciągu 2 minut, odłącz zegarek i podłącz go ponownie.
 
 1. Zamknij inne aplikacje, które mogą korzystać z zegarka. Zobacz [Garmin Express lub inna aplikacja używa zegarka](https://terento.app/pl/guides/troubleshooting/#garmin-busy).
 2. Spróbuj innego portu USB lub innego kabla.
 3. Jeśli problem się powtarza, uruchom zegarek ponownie i podłącz go jeszcze raz.
+
+Więcej szczegółów
+
+Sporadyczne zawieszanie się połączenia to znane ograniczenie obecnej wersji.
 
 ### Zegarek Garmin przestał odpowiadać
 
@@ -69,11 +77,15 @@ Odłącz zegarek, odczekaj kilka sekund i podłącz go ponownie: połączenie zo
 
 ### Instalacja map niedostępna dla tego modelu Garmin
 
-Terento instaluje mapy tylko na zegarkach Garmin z obsługą map, które są włączone w Terento. Nadal możesz podłączyć zegarek i przeglądać mapy.
+Terento instaluje mapy tylko na zegarkach Garmin z obsługą map, które są włączone w Terento.
 
 1. Sprawdź, czy Twój model zegarka obsługuje mapy.
 2. Terento sprawdza swoją aktualną listę przy każdym podłączeniu. Jeśli Twój model zostanie włączony później, podłącz zegarek ponownie.
 3. Podaj nam dokładny model, abyśmy mogli go sprawdzić. Zobacz [Jak zgłosić problem z Terento](https://terento.app/pl/guides/troubleshooting/#send-report).
+
+Więcej szczegółów
+
+Nadal możesz podłączyć zegarek i przeglądać mapy.
 
 ### Terento nie mogło sprawdzić zegarka Garmin
 
@@ -85,10 +97,14 @@ Sprawdź, czy Mac ma połączenie z internetem, i podłącz zegarek ponownie: Te
 
 ### Lista map Garmin się nie wczytuje lub Terento wymaga aktualizacji
 
-Jeśli Terento nie może wczytać aktualnej listy map, sprawdź połączenie z internetem i spróbuj ponownie za kilka minut. Nie dotyczy to map, które już są na zegarku.
+Jeśli Terento nie może wczytać aktualnej listy map, sprawdź połączenie z internetem i spróbuj ponownie za kilka minut.
 
 1. Jeśli ta wersja Terento jest zbyt stara dla aktualnej listy map, a Terento informuje o nowszej wersji, zainstaluj aktualizację.
 2. Dopóki Terento pokazuje starszą zapisaną listę map, instalowanie i aktualizowanie map z katalogu pozostaje niedostępne, aż będzie można sprawdzić aktualną listę.
+
+Więcej szczegółów
+
+Nie dotyczy to map, które już są na zegarku.
 
 ## Pobieranie map i wolne miejsce
 
@@ -118,20 +134,28 @@ Wybierz mniejszy region albo usuń mapę, której już nie potrzebujesz: Terento
 
 ### Instalacja mapy nie powiodła się: pozostałość mapy na zegarku
 
-Usuń pozostałą mapę w „Manage maps”, a potem zainstaluj ją ponownie. Jeśli instalacja zatrzyma się po rozpoczęciu kopiowania, część mapy może pozostać na zegarku, a Terento nie usuwa jej automatycznie.
+Usuń pozostałą mapę w „Manage maps”, a potem zainstaluj ją ponownie.
 
 1. Podłącz zegarek ponownie i poczekaj, aż Terento będzie gotowe.
 2. Otwórz „Manage maps” i sprawdź listę.
 3. Jeśli mapa z nieudanej instalacji jest na liście, usuń ją, a następnie zainstaluj ponownie.
 4. Jeśli znowu się nie uda, [wyślij raport](https://terento.app/pl/guides/troubleshooting/#send-report).
 
+Więcej szczegółów
+
+Jeśli instalacja zatrzyma się po rozpoczęciu kopiowania, część mapy może pozostać na zegarku, a Terento nie usuwa jej automatycznie.
+
 ### Aktualizacja lub usuwanie mapy trwa długo
 
-W obecnej wersji jest to oczekiwane: podczas aktualizacji lub usuwania mapy wskaźnik może przez chwilę stać na wysokim procencie przed zakończeniem. Pozostaw zegarek podłączony, a Maca wybudzonego.
+W obecnej wersji jest to oczekiwane: podczas aktualizacji lub usuwania mapy wskaźnik może przez chwilę stać na wysokim procencie przed zakończeniem.
 
 1. Nie odłączaj zegarka, gdy Terento pracuje.
 2. Poczekaj, aż Terento poinformuje o zakończeniu.
 3. Jeśli Terento zgłosi błąd, podłącz zegarek ponownie i sprawdź „Manage maps”, zanim spróbujesz ponownie.
+
+Więcej szczegółów
+
+Pozostaw zegarek podłączony, a Maca wybudzonego.
 
 ## Pomoc
 
@@ -144,4 +168,6 @@ Na ekranie błędu wybierz „Report issue”: Terento otworzy GitHuba z już wy
 3. Sprawdź raport przed publikacją: zgłoszenia na GitHubie są publiczne.
 4. Nie masz konta GitHub? Napisz na [hello@terento.app](mailto:hello@terento.app?subject=Terento%20installation%20issue), podając model zegarka, region mapy i opis tego, co się stało.
 
-Pierwszy raz z Terento? [Przeczytaj instrukcję instalacji na Macu](https://terento.app/pl/guides/install-garmin-maps-mac/)
+Wgraj darmową mapę na swojego Garmina
+
+[Pobierz na Maca](https://terento.app/pl/download/) [Użyj instalatora webowego](https://terento.app/pl/install/)

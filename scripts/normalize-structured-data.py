@@ -19,6 +19,13 @@ BASE_URL = "https://terento.app"
 REPOSITORY_URL = "https://github.com/VooZ2/terento"
 LOGO_URL = f"{BASE_URL}/assets/logo-sky.svg"
 ORGANIZATION_ID = f"{BASE_URL}/#organization"
+# The Mac App Store listing of the same app, without campaign parameters. The
+# listing id has one owner: the badge template that renders the visible links.
+APP_STORE_ID = re.fullmatch(
+    r"https://apps\.apple\.com/app/apple-store/(id\d+)",
+    json.loads((ROOT / "scripts" / "templates" / "app-store-badge.json").read_text(encoding="utf-8"))["listing_url"],
+).group(1)
+APP_STORE_URL = f"https://apps.apple.com/app/terento-gps-watch-maps/{APP_STORE_ID}"
 SOFTWARE_ID = f"{BASE_URL}/#software"
 # The released app's own install screen, the same artwork the home hero shows,
 # with the shell's image cache version (normalize-public-shell.py keeps it current).
@@ -123,9 +130,12 @@ def application(
         "@id": SOFTWARE_ID,
         "name": "Terento",
         "url": url,
+        # The direct download and the store listing are the same application.
+        "sameAs": [APP_STORE_URL],
         "applicationCategory": source_application["applicationCategory"],
         "operatingSystem": source_application["operatingSystem"],
         "downloadUrl": release["downloadURL"],
+        "installUrl": APP_STORE_URL,
         "releaseNotes": release["releaseNotesURL"],
         "offers": {"@type": "Offer", "price": "0", "priceCurrency": "EUR"},
         "processorRequirements": "Apple Silicon (arm64)",
@@ -149,12 +159,14 @@ def application(
             "@id",
             "name",
             "url",
+            "sameAs",
             "applicationCategory",
             "operatingSystem",
             "description" if description_before_version else "softwareVersion",
             "softwareVersion" if description_before_version else "softwareRequirements",
             "softwareRequirements" if description_before_version else "description",
             "downloadUrl",
+            "installUrl",
             "releaseNotes",
             "offers",
             "processorRequirements",

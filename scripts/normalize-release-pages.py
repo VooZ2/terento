@@ -31,17 +31,13 @@ def page_path(locale: str) -> Path:
 
 
 COPY = json.loads((ROOT / "scripts" / "templates" / "download-copy.json").read_text(encoding="utf-8"))
-# Empty until the Mac App Store listing is live; then the row becomes a link.
-APP_STORE_URL = ""
+# Apple's official "Download on the Mac App Store" badge beside the Download button.
+# Listing URL, campaign token, artwork and alt text per locale: scripts/templates/app-store-badge.json.
+APP_STORE = json.loads((ROOT / "scripts" / "templates" / "app-store-badge.json").read_text(encoding="utf-8"))
 SHOT = "/assets/app/optimized/your-garmin-{width}.{fmt}?v=20260912-app-screens-v2"
 SHOT_SIZES = "(max-width: 899px) min(480px, calc(100vw - 32px)), 480px"
-# Lucide 0.460.0 `clock` (ISC, see THIRD_PARTY_NOTICES.md); no inline license comment so the
-# page carries only the release version string.
-CLOCK_ICON = (
-    '<svg class="download-v2-store-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" '
-    'stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">'
-    '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
-)
+# "macOS 13 or later on Apple Silicon." in the Home copy's words.
+COMPONENTS = __import__("runpy").run_path(str(ROOT / "scripts" / "site_components.py"))
 
 
 def release_family(label: str) -> str:
@@ -54,7 +50,10 @@ def release_family(label: str) -> str:
 
 
 def release_date(locale: str, published: date) -> str:
+    """One date format per locale across the site (same as Compatibility and the Home trust strip)."""
     month = MONTHS[locale][published.month - 1]
+    if locale == "en":
+        return f"{month} {published.day}, {published.year}"
     if locale in ("de", "cs"):
         return f"{published.day}. {month} {published.year}"
     if locale == "it":
@@ -75,6 +74,19 @@ def fill(template: str, **links: str) -> str:
     return text
 
 
+def app_store_badge(locale: str, css_class: str, campaign: str, location: str) -> str:
+    """Link Apple's unmodified badge artwork to the listing with an App Store Connect campaign (pt, ct)."""
+    badge = APP_STORE["badges"][locale]
+    href = f'{APP_STORE["listing_url"]}?pt={APP_STORE["provider_token"]}&ct={campaign}&mt=8'
+    # Apple has no Polish or Czech Mac App Store badge: those pages show the English artwork.
+    lang = "" if badge["artwork"] == locale else f' lang="{badge["artwork"]}"'
+    return (
+        f'<a class="app-store-badge {css_class}" href="{html.escape(href)}" data-umami-event="app-store-click" data-umami-event-location="{location}">'
+        f'<img src="/assets/app-store/download-on-the-mac-app-store-{badge["artwork"]}.svg?v={APP_STORE["asset_version"]}" '
+        f'width="{APP_STORE["width"]}" height="{APP_STORE["height"]}" alt="{html.escape(badge["alt"])}"{lang}></a>'
+    )
+
+
 def render_main(locale: str, release: dict[str, object], dmg_url: str, notes_url: str) -> str:
     c = COPY[locale]
     root = "/" if locale == "en" else f"/{locale}/"
@@ -85,13 +97,9 @@ def render_main(locale: str, release: dict[str, object], dmg_url: str, notes_url
     published = date.fromisoformat(str(release["publishedAt"]))
     release_text = fill(c["release_" + release_family(label)],
                         version=f"<strong>v{html.escape(label)}</strong>", date=html.escape(release_date(locale, published)))
-    store = (f'<a class="download-v2-store download-v2-store-link" href="{APP_STORE_URL}" data-umami-event="app-store-click" '
-             f'data-umami-event-location="download-page">{html.escape(c["store_label"])}</a>'
-             if APP_STORE_URL else
-             f'<p class="download-v2-store">{html.escape(c["store_label"])} '
-             f'<span class="download-v2-store-status">{CLOCK_ICON}{html.escape(c["store_status"])}</span></p>')
+    store = app_store_badge(locale, "download-v2-store-link", "site-download", "download-page")
     sources = "".join(
-        f'<source type="image/{fmt}" srcset="'
+        f'<source type="image/{fmt}" width="2358" height="1575" srcset="'
         + ", ".join(f"{SHOT.format(width=w, fmt=fmt)} {w}w" for w in (640, 960, 1280, 1600))
         + f'" sizes="{SHOT_SIZES}">'
         for fmt in ("avif", "webp")
@@ -99,33 +107,34 @@ def render_main(locale: str, release: dict[str, object], dmg_url: str, notes_url
     shot = (f'<figure class="app-shot app-shot--download download-v2-shot"><picture>{sources}'
             f'<img src="{SHOT.format(width=1600, fmt="png")}" width="2358" height="1575" sizes="{SHOT_SIZES}" '
             f'alt="{html.escape(c["shot_alt"])}" decoding="async"></picture></figure>')
-    web = fill(c["web_text"],
-               web=link(c["web_label"], f"{root}install/", "web-installer-link-click", "download-page"),
-               linux=link(c["linux_label"], f"{root}guides/install-garmin-maps-linux/", "guide-link-click", "download-page-linux"))
+    web = link(c["web_label"], f"{root}install/", "web-installer-link-click", "download-page")
     needs = "".join(f"<li>{html.escape(item)}</li>" for item in c["needs"])
     steps = "".join(f"<li><h3>{html.escape(title)}</h3><p>{html.escape(body)}</p></li>" for title, body in c["steps"])
     guides = fill(c["guides_text"],
                   watch=link(c["watch_label"], f"{root}guides/install-garmin-maps-mac/", "guide-link-click", "download-page"),
                   edge=link(c["edge_label"], f"{root}guides/install-garmin-maps-edge-mac/", "guide-link-click", "download-page-edge"))
+    button = COMPONENTS["store_download"](dmg_url, html.escape(c["download"]), "download-v2-primary", 'rel="noopener noreferrer"')
+    # Hero (round 4): H1, lead, Download for Mac beside Apple's badge, one text link. The release
+    # line (matches softwareVersion) sits under "What you need"; its "What's new" link opens the
+    # GitHub release page, which shows each file's SHA-256 (round 5: no checksum block here).
     return (
         '<main id="main-content" class="download-main download-v2"><div class="shell">'
-        '<section class="download-v2-hero"><div class="download-v2-copy">'
+        '<section class="download-v2-hero page-hero page-hero-grid"><div class="hero-copy download-v2-copy">'
         f'<h1>{html.escape(c["h1"])}</h1>'
-        f'<p class="download-intro">{html.escape(c["intro"])}</p>'
-        '<div class="download-v2-actions">'
-        f'<a class="download-action download-v2-primary" href="{dmg_url}" rel="noopener noreferrer">{html.escape(c["download"])}</a>'
-        f'{store}</div>'
+        f'<p class="hero-lede download-intro">{html.escape(c["intro"])}</p>'
+        f'<div class="hero-actions download-v2-actions store-actions">{button}{store}</div>'
+        f'<p class="hero-secondary download-v2-web">{web}</p>'
+        f'</div>{shot}</section>'
+        '<div class="grid download-v2-info">'
+        '<section class="col-6 download-v2-needs" aria-labelledby="download-needs-title">'
+        f'<h2 id="download-needs-title">{html.escape(c["needs_title"])}</h2>'
         f'<p class="download-release">{release_text} '
         f'<a class="text-link" href="{notes_url}" rel="noopener noreferrer">{html.escape(c["notes"])}</a></p>'
-        f'<p class="download-v2-web">{web}</p>'
-        f'</div>{shot}</section>'
-        '<div class="download-v2-info">'
-        '<section class="download-v2-needs" aria-labelledby="download-needs-title">'
-        f'<h2 id="download-needs-title">{html.escape(c["needs_title"])}</h2><ul>{needs}</ul>'
+        f'<ul class="checklist">{needs}</ul>'
         + link(c["compat_label"], f"{root}compatibility/", "compatibility-link-click", "download-page", " download-info-link")
         + '</section>'
-        '<section class="download-v2-steps" aria-labelledby="download-steps-title">'
-        f'<h2 id="download-steps-title">{html.escape(c["steps_title"])}</h2><ol>{steps}</ol>'
+        '<section class="col-6 download-v2-after" aria-labelledby="download-steps-title">'
+        f'<h2 id="download-steps-title">{html.escape(c["steps_title"])}</h2><ol class="steps">{steps}</ol>'
         f'<p class="download-v2-guides">{guides}</p></section></div>'
         '</div></main>'
     )

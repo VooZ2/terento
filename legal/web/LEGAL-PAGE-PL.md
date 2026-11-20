@@ -26,7 +26,7 @@ Terento nie tworzy tych map, nie zmienia ich licencji, nie prowadzi biblioteki m
 
 ## Nazwy i niezależność
 
-Garmin i nazwy jego produktów są znakami Garmin Ltd. Apple, Mac, macOS i Apple Silicon są znakami Apple Inc. Google i Chrome są znakami Google LLC. Microsoft i Edge są znakami Microsoft Corporation. Opera jest znakiem Opera Norway AS. Brave jest znakiem Brave Software, Inc. Używamy ich opisowo. Terento nie jest powiązane z tymi firmami ani przez nie zatwierdzone lub certyfikowane.
+Garmin i nazwy jego produktów są znakami Garmin Ltd. Apple, Mac, macOS, Apple Silicon, App Store i Mac App Store są znakami Apple Inc. Google i Chrome są znakami Google LLC. Microsoft i Edge są znakami Microsoft Corporation. Opera jest znakiem Opera Norway AS. Brave jest znakiem Brave Software, Inc. Używamy ich opisowo. Terento nie jest powiązane z tymi firmami ani przez nie zatwierdzone lub certyfikowane.
 
 ## Gwarancja i Twoje prawa
 

@@ -15,7 +15,7 @@ const locales = new Map([
     installStep: "Choose maps from the catalog, or add your own compatible .img map.",
     doneLabel: "Done",
     doneStep: "Your maps are installed and ready to use on your Garmin.",
-    manageShowcase: "See what's installed, update maps when newer releases are available, and remove third-party maps managed by Terento. Original Garmin maps remain protected.",
+    manageShowcase: "See what is on your Garmin, update maps when a newer version is out, or remove them. Your original Garmin maps stay untouched.",
     providerTitle: "Pick the map that fits the trip",
     providerCopy: "Choose maps from available providers. Maps are downloaded from each provider's original source.",
     heroCompatibility: "Check compatibility",
@@ -31,7 +31,7 @@ const locales = new Map([
     installStep: "Wähle Karten aus dem Katalog oder füge deine eigene kompatible .img-Karte hinzu.",
     doneLabel: "Fertig",
     doneStep: "Deine Karten sind installiert und auf deinem Garmin einsatzbereit.",
-    manageShowcase: "Sieh, was installiert ist, aktualisiere Karten, wenn neuere Versionen verfügbar sind, und entferne von Terento verwaltete Drittanbieter-Karten. Originale Garmin-Karten bleiben geschützt.",
+    manageShowcase: "Sieh, was auf deinem Garmin ist, aktualisiere Karten, sobald eine neuere Version da ist, oder entferne sie. Die Original-Garmin-Karten bleiben unberührt.",
     providerTitle: "Wähle die Karte, die zur Tour passt",
     providerCopy: "Wähle Karten der verfügbaren Anbieter. Karten werden von der Originalquelle des jeweiligen Anbieters geladen.",
     heroCompatibility: "Kompatibilität prüfen",
@@ -47,7 +47,7 @@ const locales = new Map([
     installStep: "Choisissez des cartes dans le catalogue ou ajoutez votre propre carte .img compatible.",
     doneLabel: "Terminé",
     doneStep: "Vos cartes sont installées et prêtes à être utilisées sur votre Garmin.",
-    manageShowcase: "Consultez les cartes installées, mettez-les à jour lorsqu’une version plus récente est disponible et supprimez les cartes tierces gérées par Terento. Les cartes Garmin d’origine restent protégées.",
+    manageShowcase: "Voyez ce qui se trouve sur votre Garmin, mettez à jour les cartes quand une nouvelle version sort, ou supprimez-les. Les cartes Garmin d’origine ne sont jamais touchées.",
     providerTitle: "Choisissez la carte adaptée à votre sortie",
     providerCopy: "Choisissez parmi les fournisseurs disponibles. Les cartes sont téléchargées depuis la source d’origine de chaque fournisseur.",
     heroCompatibility: "Vérifier la compatibilité",
@@ -63,7 +63,7 @@ const locales = new Map([
     installStep: "Wybierz mapy z katalogu albo dodaj własną zgodną mapę .img.",
     doneLabel: "Gotowe",
     doneStep: "Twoje mapy są zainstalowane i gotowe do użycia na Twoim Garminie.",
-    manageShowcase: "Sprawdź, co jest zainstalowane, aktualizuj mapy, gdy dostępne są nowsze wydania, i usuwaj mapy innych firm zarządzane przez Terento. Oryginalne mapy Garmin pozostają chronione.",
+    manageShowcase: "Zobacz, co jest na Twoim Garminie, aktualizuj mapy, gdy pojawi się nowsza wersja, albo je usuń. Oryginalne mapy Garmina pozostają nietknięte.",
     providerTitle: "Wybierz mapę pasującą do wyprawy",
     providerCopy: "Wybieraj mapy od dostępnych dostawców. Mapy są pobierane z oryginalnego źródła każdego dostawcy.",
     heroCompatibility: "Sprawdź kompatybilność",
@@ -79,7 +79,7 @@ const locales = new Map([
     installStep: "Vybírejte mapy z katalogu podle oblasti nebo přidejte vlastní kompatibilní mapu .img.",
     doneLabel: "Hotovo",
     doneStep: "Vaše mapy jsou nainstalované a připravené k použití ve vašem Garminu.",
-    manageShowcase: "Prohlédněte si nainstalované mapy, aktualizujte je, když je k dispozici novější vydání, a odstraňte mapy třetích stran spravované aplikací Terento. Původní mapy Garmin zůstávají chráněné.",
+    manageShowcase: "Podívejte se, co máte v Garminu, aktualizujte mapy, když vyjde novější verze, nebo je odstraňte. Původních map Garminu se Terento nedotkne.",
     providerTitle: "Vyberte mapu, která sedí k výletu",
     providerCopy: "Vyberte si mapy od dostupných poskytovatelů. Mapy se stahují z původního zdroje každého poskytovatele.",
     heroCompatibility: "Ověřit kompatibilitu",
@@ -95,7 +95,7 @@ const locales = new Map([
     installStep: "Scegli le mappe dal catalogo oppure aggiungi la tua mappa .img compatibile.",
     doneLabel: "Fatto",
     doneStep: "Le tue mappe sono installate e pronte per essere usate sul tuo Garmin.",
-    manageShowcase: "Visualizza le mappe installate, aggiornatele quando è disponibile una versione più recente e rimuovi le mappe di terze parti gestite da Terento. Le mappe Garmin originali restano protette.",
+    manageShowcase: "Vedi cosa c’è sul tuo Garmin, aggiorna le mappe quando esce una nuova versione o rimuovile. Le mappe Garmin originali restano intatte.",
     providerTitle: "Scegli la mappa adatta al percorso",
     providerCopy: "Scegli mappe dei provider disponibili. Le mappe vengono scaricate dalla fonte originale di ciascun provider.",
     heroCompatibility: "Verifica la compatibilità",
@@ -104,20 +104,22 @@ const locales = new Map([
   }],
 ]);
 
+const appStoreBadge = JSON.parse(fs.readFileSync(path.join(root, "scripts", "templates", "app-store-badge.json"), "utf8"));
 const pageFor = (locale) => fs.readFileSync(locales.get(locale).file, "utf8");
 const classTokens = (classValue) => new Set(classValue.trim().split(/\s+/));
 const anchorFor = (page, className) => {
   const escapedClass = className.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const match = page.match(new RegExp(
-    `<a class="([^"]*\\b${escapedClass}\\b[^"]*)" href="([^"]+)"([^>]*)>([^<]+)</a>`
+    `<a class="([^"]*\\b${escapedClass}\\b[^"]*)" href="([^"]+)"([^>]*)>([\\s\\S]*?)</a>`
   ));
   assert.ok(match, `missing ${className} CTA`);
-  return { classes: classTokens(match[1]), href: match[2], attributes: match[3], label: match[4].trim() };
+  // The Download button carries a decorative icon (aria-hidden SVG) before its label.
+  return { classes: classTokens(match[1]), href: match[2], attributes: match[3], label: match[4].replace(/<svg[\s\S]*?<\/svg>/g, "").replace(/<[^>]+>/g, "").trim() };
 };
 
 for (const [locale, expected] of locales) {
   const page = pageFor(locale);
-  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20261117-map-place-v1">/, `${locale}: Home stylesheet cache bust`);
+  assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20261119-site-refresh-v9">/, `${locale}: Home stylesheet cache bust`);
   assert.match(page, /<script defer src="\/home-features\.js\?v=20261105-home-map-switch-v4"><\/script>/, `${locale}: Home feature script cache bust`);
   assert.match(page, /installing-maps-1600\.png\?v=20260912-app-screens-v2/, `${locale}: installation screenshot cache bust`);
   const heroDevice = page.match(/<figure class="home-device" data-map-switch>[\s\S]*?<\/figure>/)?.[0];
@@ -142,51 +144,63 @@ for (const [locale, expected] of locales) {
   const download = anchorFor(page, "hero-download-action");
   const heroCompatibility = anchorFor(page, "hero-compatibility-link");
   assert.doesNotMatch(page, /final-cta/, `${locale}: the closing download block was removed (owner 2026-11-13)`);
-  const experience = page.match(/<section class="home-steps section" id="how-it-works"[\s\S]*?<\/section>/)?.[0];
+  const experience = page.match(/<section class="block home-how" id="how-it-works"[\s\S]*?<\/section>/)?.[0];
   assert.ok(experience);
   assert.equal(experience.match(/<h2 id="steps-title">([^<]+)<\/h2>/)?.[1], expected.experienceLabel);
-  const steps = [...experience.matchAll(/<li class="step">([\s\S]*?)<\/li>/g)];
+  const steps = [...experience.matchAll(/<li>([\s\S]*?)<\/li>/g)];
   assert.equal(steps.length, 3);
   assert.equal(steps[1][1].match(/<p>([^<]+)<\/p>\s*$/)?.[1], expected.installStep);
   assert.equal(steps[2][1].match(/<h3>([^<]+)<\/h3>/)?.[1], expected.doneLabel);
   assert.equal(steps[2][1].match(/<p>([^<]+)<\/p>\s*$/)?.[1], expected.doneStep);
-  const manage = page.match(/<section class="home-manage section"[\s\S]*?<\/section>/)?.[0];
-  assert.ok(manage, `${locale}: missing manage maps section`);
-  assert.equal(manage.match(/<h2 id="manage-title">([^<]+)<\/h2>/)?.[1], expected.manageLabel);
-  assert.equal(manage.match(/<h2 id="manage-title">[^<]+<\/h2>\s*<p>([^<]+)<\/p>/)?.[1], expected.manageShowcase);
+  // Round 5 (owner 2026-11-19): no feature cards. "Manage maps" and "Safe for your Garmin" are gone
+  // (safety moved to the FAQ); Edge is its own full-width two-column section.
+  assert.doesNotMatch(page, /class="block home-features|home-feature--|manage-title|safety-title/, `${locale}: no feature cards on Home`);
   assert.doesNotMatch(page, /class="map-feature-section"|role="tablist"|class="eyebrow"/, `${locale}: no tabs or eyebrow labels on Home`);
-  for (const [section, stem] of [[experience, "install-maps"], [manage, "manage-maps"]]) {
-    assert.equal((section.match(/<figure class="app-shot app-shot--feature">/g) || []).length, 1);
-    assert.match(section, /width="2358" height="1575"/);
-    for (const url of section.match(/\/assets\/app\/optimized\/[^"\s,]+/g) || []) {
-      assert.ok(url.startsWith(`/assets/app/optimized/${stem}-`));
-      assert.ok(url.endsWith("?v=20260912-app-screens-v2"), `${locale}: screenshot cache version`);
-    }
+  assert.equal((experience.match(/<figure class="col-8 app-shot app-shot--feature">/g) || []).length, 1);
+  assert.match(experience, /width="2358" height="1575"/);
+  for (const url of experience.match(/\/assets\/app\/optimized\/[^"\s,]+/g) || []) {
+    assert.ok(url.startsWith("/assets/app/optimized/install-maps-"));
+    assert.ok(url.endsWith("?v=20260912-app-screens-v2"), `${locale}: screenshot cache version`);
   }
-  const edge = page.match(/<section class="home-edge section" id="edge"[\s\S]*?<\/section>/)?.[0];
+  const edge = page.match(/<section class="block home-edge" id="edge" aria-labelledby="edge-title">[\s\S]*?<\/section>/)?.[0];
   assert.ok(edge, `${locale}: Garmin Edge section`);
-  assert.match(edge, /Edge 540, 840/);
+  assert.match(edge, /<div class="shell home-edge-grid">\s*<figure class="home-device home-edge-figure" data-map-switch>[\s\S]*?class="home-switch"[\s\S]*?<\/figure>\s*<div class="home-edge-copy">\s*<h2 id="edge-title">[^<]+<\/h2>\s*<p>[^<]*Edge 540, 840[^<]*<\/p>/, `${locale}: Edge device first, then H2 and the sentence; the same map switch as the hero`);
+  assert.doesNotMatch(edge, /class="card/, `${locale}: Edge section has no card`);
+  if (locale === "en") assert.match(edge, /<h2 id="edge-title">On the bike, too<\/h2>[\s\S]*>Read the Garmin Edge guide<\/a>/);
   assert.match(edge, new RegExp(`href="${locale === "en" ? "" : `/${locale}`}/guides/install-garmin-maps-edge-mac/" data-umami-event="guide-link-click" data-umami-event-location="home-edge"`));
-  assert.doesNotMatch(page, /class="home-app-store"/, `${locale}: App Store button waits for the approved listing`);
-  const providerSection = page.match(/<section class="provider-section section"[\s\S]*?<\/section>/)?.[0];
+  // Home ends with the FAQ: no closing call to action.
+  assert.doesNotMatch(page, /class="cta-band|end-cta|data-umami-event-location="home-bottom"/, `${locale}: no end CTA on Home`);
+  assert.match(page, /<section class="faq section" id="faq"[\s\S]*?<\/section>\s*<\/main>/, `${locale}: Home ends at the FAQ`);
+  // Round 4 (owner): computer actions are "Download for Mac" + "Install from your browser"; phones get
+  // "Send this link to your computer" + "Check compatibility". Round 5: one App Store badge, in the Mac app card.
+  const computerActions = page.match(/<div class="hero-actions home-actions home-actions--computer">[\s\S]*?<\/div>/)?.[0];
+  assert.ok(computerActions, `${locale}: computer hero actions`);
+  assert.match(computerActions, /^<div[^>]*><a class="download-action download-action--store hero-download-action"[^>]*data-umami-event="download-cta-click" data-umami-event-location="home-hero">[\s\S]*?<\/a><a class="button-secondary hero-web-installer-link" href="[^"]*\/install\/" data-umami-event="web-installer-link-click" data-umami-event-location="home-hero">/);
+  const phoneActions = page.match(/<div class="hero-actions home-actions home-actions--phone">[\s\S]*?<\/div>/)?.[0];
+  assert.ok(phoneActions, `${locale}: phone hero actions`);
+  assert.match(phoneActions, /data-umami-event="send-to-computer-click" data-umami-event-location="home-hero"[\s\S]*?<a class="text-link hero-compatibility-link"/);
+  assert.equal((page.match(/class="app-store-badge/g) || []).length, 1, `${locale}: one App Store badge on Home`);
+  assert.doesNotMatch(computerActions + phoneActions, /app-store-badge/, `${locale}: no badge in the hero`);
+  assert.doesNotMatch(page, /home-hero-note|home-hero-browser|home-send-link/, `${locale}: no text under the hero buttons`);
+  const providerSection = page.match(/<section class="block home-providers"[\s\S]*?<\/section>/)?.[0];
   assert.ok(providerSection, `${locale}: missing provider cards section`);
   assert.match(providerSection, new RegExp(`<h2 id="providers-title">${expected.providerTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/h2>`));
   assert.match(providerSection, new RegExp(`<p class="provider-copy">${expected.providerCopy.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/p>`));
-  assert.equal((providerSection.match(/<article class="provider-card"/g) || []).length, 5, `${locale}: one card per provider`);
-  const osmapa = providerSection.match(/<article class="provider-card" data-provider-card="osmapa" hidden>[\s\S]*?<\/article>/)?.[0];
+  assert.equal((providerSection.match(/<article class="provider-card[ "]/g) || []).length, 5, `${locale}: one card per provider`);
+  const osmapa = providerSection.match(/<article class="provider-card[^"]*" data-provider-card="osmapa" hidden>[\s\S]*?<\/article>/)?.[0];
   assert.ok(osmapa, `${locale}: OSMapaPL stays hidden until the catalog lists it as active`);
   assert.ok(osmapa.includes("<h3>OSMapaPL</h3>"));
   assert.match(osmapa, /data-provider-count[^>]* hidden><\/p>/);
-  const maprando = providerSection.match(/<article class="provider-card" data-provider-card="maprando">[\s\S]*?<\/article>/)?.[0];
+  const maprando = providerSection.match(/<article class="provider-card[^"]*" data-provider-card="maprando">[\s\S]*?<\/article>/)?.[0];
   assert.ok(maprando, `${locale}: MapRando card`);
   assert.match(maprando, /class="provider-language-note"><span aria-hidden="true">ⓘ<\/span><span>[^<]+<\/span><\/p>/);
   assert.match(maprando, /data-provider-count[^>]* hidden><\/p>/);
   assert.match(maprando, /OpenStreetMap/);
-  const bbbike = providerSection.match(/<article class="provider-card" data-provider-card="bbbike" hidden>[\s\S]*?<\/article>/)?.[0];
+  const bbbike = providerSection.match(/<article class="provider-card[^"]*" data-provider-card="bbbike" hidden>[\s\S]*?<\/article>/)?.[0];
   assert.ok(bbbike, `${locale}: one BBBike card, hidden until the catalog lists BBBike`);
   assert.ok(bbbike.includes("<h3>BBBike</h3>"));
   assert.doesNotMatch(providerSection, /data-provider-type=/, `${locale}: BBBike variants share one card`);
-  const otm = providerSection.match(/<article class="provider-card" data-provider-card="opentopomap">[\s\S]*?<\/article>/)?.[0];
+  const otm = providerSection.match(/<article class="provider-card[^"]*" data-provider-card="opentopomap">[\s\S]*?<\/article>/)?.[0];
   assert.ok(otm, `${locale}: OpenTopoMap card`);
   assert.match(otm, /<details class="provider-addon" data-provider-addon="contours">\s*<summary class="provider-addon-toggle">/);
   assert.doesNotMatch(otm, /<details[^>]*\bopen(?:\s|=|>)/);
@@ -199,8 +213,15 @@ for (const [locale, expected] of locales) {
   }
   assert.equal((providerSection.match(/class="provider-summary"/g) || []).length, 5);
   assert.doesNotMatch(providerSection, /data-provider-previous|data-provider-next/);
-  assert.match(providerSection, new RegExp(`<p class="provider-compare"><a class="text-link" href="${locale === "en" ? "" : `/${locale}`}/map-styles/"`));
-  assert.match(page, /provider-list\.js\?v=20261026-osmapa-v1/);
+  // Round 6 (owner): "Compare map styles live" is a card in the grid's last row (no separate row under it);
+  // href and Umami event unchanged. Its span fills the row: 3 visible providers in the static HTML.
+  assert.doesNotMatch(providerSection, /class="provider-compare"/, `${locale}: no full-width Compare row`);
+  const compareCard = providerSection.match(/<div class="grid home-provider-grid"[\s\S]*?(<article class="card card--media home-compare-card" data-compare-card data-span="(\d)">[\s\S]*?<\/article>)\s*<\/div>/);
+  assert.ok(compareCard, `${locale}: Compare card is the last item of the provider grid`);
+  assert.equal(compareCard[2], String(3 - ((providerSection.match(/<article class="provider-card[^"]*" data-provider-card="[^"]+">/g) || []).length % 3)), `${locale}: Compare card fills the last row`);
+  assert.match(compareCard[1], new RegExp(`<div class="card-media home-compare-media"><img src="/assets/home/maps-[a-z-]+\\.webp[^"]*"[^>]*><img src="/assets/home/maps-[a-z-]+\\.webp[^"]*"[^>]*></div>[\\s\\S]*<h3><a class="home-compare-link" href="${locale === "en" ? "" : `/${locale}`}/map-styles/" data-umami-event="maps-link-click" data-umami-event-location="home-providers">[^<]+</a></h3>\\s*<p class="home-compare-line">[^<]+</p>`));
+  assert.match(page, /provider-list\.js\?v=20261119-compare-card-v1/);
+  assert.match(fs.readFileSync(path.join(root, "site", "provider-list.js"), "utf8"), /compare\.dataset\.span = String\(3 - \(cards\.filter\(\(card\) => !card\.hidden\)\.length % 3\)\)/, "provider-list.js keeps the Compare card filling the last row");
   assert.match(providerSection, /data-count-template="[^"]*\{count\}[^"]*"/);
   assert.match(providerSection, /63/);
   assert.match(providerSection, /177/);
@@ -218,7 +239,6 @@ for (const [locale, expected] of locales) {
   assert.equal(heroCompatibility.href, locale === "en" ? "/compatibility/" : `/${locale}/compatibility/`, `${locale}: Hero Compatibility CTA href`);
   assert.match(heroCompatibility.attributes, /data-umami-event="compatibility-link-click"/);
   assert.match(heroCompatibility.attributes, /data-umami-event-location="home-hero"/);
-  assert.match(page, /<div class="home-actions"><a class="download-action hero-download-action"[\s\S]*?<a class="text-link hero-compatibility-link"/);
   assert.doesNotMatch(page, /<p class="hero-lede">[^<]*Freizeitkarte/i, `${locale}: hero copy is provider-neutral`);
   assert.doesNotMatch(page, /back up|backup|sauvegarder|zálohovat|wykonać kopię|eseguire il backup/i, `${locale}: no backup marketing copy`);
   assert.doesNotMatch(page, /beta[ .]?8|bêta 8/i, `${locale}: no stale beta.8 copy`);
@@ -260,11 +280,21 @@ assert.match(styles, /\.compatibility-results-count\s*\{[^}]*font-variant-numeri
 assert.match(styles, /\.watch-install-count\s*\{[^}]*font-variant-numeric: tabular-nums/s);
 assert.match(styles, /summary:not\(\.language-trigger\)::after\s*\{[^}]*border-right: 1\.5px solid currentColor[^}]*transition: transform 160ms ease-out/s);
 assert.match(styles, /\.text-link:hover\s*\{[^}]*color: var\(--link-text-hover\)/s);
-const heroAction = styles.match(/\.hero-download-action\s*\{([^}]*)\}/s);
+// One class for the Download button beside Apple's badge (Home hero and /download/, owner 2026-11-19):
+// 40px tall like the badge, natural width, 10px radius, 15px/600 label, 44px touch target via ::after.
+const heroAction = styles.match(/\.download-action--store\s*\{([^}]*)\}/s);
 assert.ok(heroAction, "missing Hero Download CTA sizing block");
-assert.match(heroAction[1], /min-height:\s*52px/);
-assert.match(heroAction[1], /padding:\s*12px 22px/);
+assert.match(heroAction[1], /\bheight:\s*40px/);
+assert.match(heroAction[1], /width:\s*auto/);
+assert.match(heroAction[1], /padding:\s*0 16px/);
+assert.match(heroAction[1], /border-radius:\s*var\(--control-radius\)/);
+assert.match(styles, /--control-radius:\s*10px/);
 assert.match(heroAction[1], /font-size:\s*15px/);
+assert.match(heroAction[1], /font-weight:\s*600/);
+assert.doesNotMatch(heroAction[1], /box-shadow/);
+assert.match(styles, /\.download-action--store::after\s*\{[^}]*inset:\s*-2px 0/s);
+assert.match(styles, /\.download-action-icon\s*\{[^}]*width:\s*18px[^}]*height:\s*18px/s);
+assert.match(styles, /@media \(max-width: 560px\)\s*\{\s*\.store-actions\s*\{[^}]*flex-direction:\s*column[^}]*align-items:\s*center/s, "button above badge, centred, at natural width");
 const heroActions = styles.match(/\.hero-actions\s*\{([^}]*)\}/s);
 assert.ok(heroActions, "missing Hero action stack block");
 assert.match(heroActions[1], /display:\s*flex/);
@@ -275,19 +305,8 @@ const heroCompatibilityLink = styles.match(/\.hero-compatibility-link\s*\{([^}]*
 assert.ok(heroCompatibilityLink, "missing Hero Compatibility CTA touch target block");
 assert.match(heroCompatibilityLink[1], /min-height:\s*44px/);
 assert.match(styles, /a:focus-visible,\s*button:focus-visible,\s*summary:focus-visible\s*\{[^}]*outline: 3px solid var\(--focus-ring\)/s);
-assert.match(styles, /\.experience\.section\s*\{[^}]*padding:\s*clamp\(72px, 9vw, 116px\) 0 clamp\(40px, 5vw, 64px\)/s);
-assert.match(styles, /\.product-showcase\s*\{[^}]*padding:\s*clamp\(68px, 7\.5vw, 100px\) 0/s);
-assert.match(styles, /\.product-showcase-panel\s*\{[^}]*border:\s*1px solid var\(--border\)[^}]*border-radius:\s*24px[^}]*background:\s*var\(--surface\)/s);
-assert.match(styles, /\.steps::before\s*\{[^}]*background:\s*var\(--border\)/s);
-assert.match(styles, /\.steps::before\s*\{[^}]*display:\s*none/s);
-assert.match(styles, /\.step,\s*\.step \+ \.step\s*\{[^}]*border-bottom:\s*0/s);
-assert.match(styles, /\.map-feature-tabs\s*\{[^}]*border-radius:\s*14px/s);
-assert.match(styles, /\.map-feature-tab\s*\{[^}]*border-radius:\s*10px/s);
+assert.match(styles, /\.steps > li::before\s*\{[^}]*content:\s*counter\(steps\)/s);
 assert.match(styles, /\.section-heading h2 span\s*\{[^}]*color:\s*var\(--sky\)[^}]*font-family:\s*var\(--font-ui\)/s);
-assert.match(styles, /\.section-heading h2 \.workflow-title-bullet\s*\{[^}]*display:\s*none/s);
-assert.match(styles, /\.section-heading h2 \.workflow-title-bullet\s*\{[^}]*display:\s*inline-block[^}]*font-size:\s*\.72em/s);
-assert.match(styles, /\.section-heading h2 \.workflow-title-arrow\s*\{[^}]*display:\s*none/s);
-assert.match(styles, /\.map-feature-panel\[hidden\]\s*\{[^}]*display:\s*none/s);
 assert.match(styles, /\.provider-cards\s*\{[^}]*grid-auto-flow:\s*column/s);
 assert.match(styles, /\.provider-card\s*\{[^}]*background:\s*var\(--surface\)/s);
 assert.match(styles, /\.provider-addon\s*\{[^}]*border-top:\s*1px solid var\(--border\)/s);
@@ -302,3 +321,19 @@ assert.match(englishHome, /Add lines that show elevation and help you read slope
 assert.match(styles, /grid-auto-columns: min\(90%, 420px\)/);
 assert.match(styles, /\.provider-cards\s*\{[^}]*max-width: 1300px/s);
 assert.match(styles, /overflow-x: auto/);
+
+// Round 5 (owner 2026-11-19): the Mac app card has "Download for Mac" with the official Mac App Store
+// badge under it (location home-section); the web installer card has one button. Same height.
+for (const [locale] of locales) {
+  const html = pageFor(locale);
+  assert.equal((html.match(/class="app-store-badge/g) || []).length, 1, `${locale}: one App Store badge on Home`);
+  const ways = [...html.matchAll(/<article class="card col-6 home-way">([\s\S]*?)<\/article>/g)].map(match => match[1]);
+  assert.equal(ways.length, 2, `${locale}: two ways`);
+  for (const way of ways) {
+    assert.match(way, /^\s*<div class="home-feature-visual"><svg[\s\S]*?<\/svg><\/div>\s*<h3>[^<]+<\/h3>\s*<p>[^<]+<\/p>\s*<div class="card-action home-way-actions"><a class="[^"]+"[^>]*>[\s\S]*?<\/a>(?:<a class="app-store-badge home-app-store"[^>]*><img [^>]+><\/a>)?<\/div>\s*$/, `${locale}: way card`);
+  }
+  assert.match(ways[0], /<a class="download-action download-action--store" href="[^"]+" data-umami-event="download-cta-click" data-umami-event-location="home-section">[\s\S]*?<\/a><a class="app-store-badge home-app-store" href="https:\/\/apps\.apple\.com\/[^"]*ct=site-home[^"]*" data-umami-event="app-store-click" data-umami-event-location="home-section"><img src="\/assets\/app-store\/[^"]+" width="\d+" height="40" alt="[^"]+"(?: lang="en")?><\/a><\/div>/, `${locale}: Mac card badge under Download for Mac`);
+  assert.match(ways[1], /<a class="button-secondary" href="[^"]*\/install\/" data-umami-event="web-installer-link-click" data-umami-event-location="home-section">/);
+  assert.doesNotMatch(ways[1], /app-store-badge/, `${locale}: no badge in the web installer card`);
+}
+assert.match(styles, /\.home-way \.home-way-actions\s*\{\s*margin-top:\s*auto;/, "Way card buttons line up at the bottom");

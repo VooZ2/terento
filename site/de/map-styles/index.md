@@ -5,7 +5,7 @@ canonical: https://terento.app/de/map-styles/
 
 # Kostenlose Karten für deinen Garmin
 
-OpenTopoMap, Freizeitkarte, MapRando, BBBike und OSMapaPL sind kostenlose topografische Karten aus OpenStreetMap für Garmin-Uhren und Edge-Radcomputer. Sieh dir an, wie jede denselben Ort darstellt, und installiere die, die zu deinen Touren passt.
+OpenTopoMap, Freizeitkarte, MapRando, BBBike und OSMapaPL sind kostenlose topografische Karten aus OpenStreetMap für Garmin-Uhren und Edge-Fahrradcomputer. Sieh dir an, wie jede denselben Ort darstellt, und installiere die, die zu deinen Touren passt.
 
 Kartenstil links Kartenstil rechts
 
@@ -133,7 +133,7 @@ Kartendaten © OpenStreetMap-Mitwirkende (ODbL). OSMapaPL von OSMapa-Freiwillige
 
 Terento ist kostenlos. Nutze die Mac-App auf einem Mac mit Apple Silicon oder den Web-Installer in Chrome, Microsoft Edge, Opera oder Brave.
 
-[Für Mac laden](https://terento.app/de/download/) [Web-Installer öffnen](https://terento.app/de/install/)
+[Für Mac herunterladen](https://terento.app/de/download/) [Web-Installer öffnen](https://terento.app/de/install/)
 
 Schritt für Schritt: die [Anleitung für Garmin-Uhren](https://terento.app/de/guides/install-garmin-maps-mac/) und die [Anleitung für Garmin Edge](https://terento.app/de/guides/install-garmin-maps-edge-mac/).
 
@@ -143,9 +143,9 @@ Sind diese Karten kostenlos?
 
 Ja. Jede Karte hier ist kostenlos und wird von Community-Projekten aus OpenStreetMap erstellt. Auch Terento, die App, die sie installiert, ist kostenlos und Open Source.
 
-Funktionieren sie auf Garmin-Edge-Radcomputern?
+Funktionieren sie auf Garmin-Edge-Fahrradcomputern?
 
-Ja, auf neueren Edge-Radcomputern mit Kartenunterstützung wie Edge 540, 840 und 1050 sowie auf Garmin-Uhren mit Kartenunterstützung. Die [Kompatibilitätsseite](https://terento.app/de/compatibility/) listet die Modelle, auf denen bereits Karten installiert wurden.
+Ja, auf neueren Edge-Fahrradcomputern mit Kartenunterstützung wie Edge 540, 840 und 1050 sowie auf Garmin-Uhren mit Kartenunterstützung. Die [Kompatibilitätsseite](https://terento.app/de/compatibility/) listet die Modelle, auf denen bereits Karten installiert wurden.
 
 Ersetzt eine kostenlose Karte meine Garmin-Karten?
 
@@ -158,3 +158,7 @@ Freizeitkarte enthält sie. OpenTopoMap bietet sie als optionales Extra an, OSMa
 Wie installiere ich eine Karte?
 
 [Lade](https://terento.app/de/download/) Terento für einen Mac mit Apple Silicon herunter oder nutze den [Web-Installer](https://terento.app/de/install/) in einem Chromium-Browser. Verbinde deine Uhr oder deinen Edge, wähle Karte und Region und installiere. Die [Anleitung für Garmin-Uhren](https://terento.app/de/guides/install-garmin-maps-mac/) und die [Anleitung für Garmin Edge](https://terento.app/de/guides/install-garmin-maps-edge-mac/) führen dich durch.
+
+Bring eine kostenlose Karte auf dein Garmin
+
+[Für Mac herunterladen](https://terento.app/de/download/) [Web-Installer verwenden](https://terento.app/de/install/)

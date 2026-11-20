@@ -1,10 +1,11 @@
 # Mac App Store build configuration (stage 1 spike)
 
 The `AppStore` Xcode configuration builds the same `Terento` target as an App
-Sandbox app. It exists for a private technical test: does USB through the
-bundled libmtp/libusb, the finishing helper and the container migration work
-under App Sandbox with a real watch? Nothing here is published, and the
-DMG/GitHub build (`Debug`, `Release`, `Packaging/release.sh`) does not change.
+Sandbox app. It started as a private technical test of USB through the bundled
+libmtp/libusb, the finishing helper and the container migration under App
+Sandbox with a real watch. Since 2026-11-18 it is the build published on the
+[Mac App Store](https://apps.apple.com/app/terento-gps-watch-maps/id6828556832). The DMG/GitHub build (`Debug`,
+`Release`, `Packaging/release.sh`) does not change.
 
 ## What the configuration changes
 

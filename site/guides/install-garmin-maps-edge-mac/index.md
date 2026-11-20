@@ -5,9 +5,9 @@ canonical: https://terento.app/guides/install-garmin-maps-edge-mac/
 
 # Install free maps on your Garmin Edge from a Mac
 
-Newer Garmin Edge bike computers don’t show up on a Mac as a drive, so you can’t simply copy a map file to them. Terento installs free OpenStreetMap maps, or your own compatible map file, on Garmin Edge bike computers with map support, such as Edge 540, 840 and 1050.
+Newer Garmin Edge bike computers don’t show up on a Mac as a drive, so you can’t simply copy a map file to them. Terento installs free OpenStreetMap maps or your own map file on Edge models with map support, such as Edge 540, 840 and 1050.
 
-[Download](https://terento.app/download/)
+[Download for Mac](https://terento.app/download/)
 
 ## What you need
 
@@ -15,7 +15,7 @@ Newer Garmin Edge bike computers don’t show up on a Mac as a drive, so you can
 - Newer Garmin Edge with map support
 - USB cable that supports data transfer
 
-After you connect, Terento checks the Edge and tells you whether it can install maps. [Compatibility](https://terento.app/compatibility/) lists the models with successful installations; a missing model isn’t necessarily unsupported.
+After you connect, Terento checks the Edge and tells you whether it can install maps. Not on the [Compatibility](https://terento.app/compatibility/) list? It can still work: the list only shows models where someone has already installed a map.
 
 ## Install a map on your Edge
 
@@ -31,14 +31,14 @@ Quit Garmin Express if it’s open. Connect the Edge directly to your Mac with a
 
 Choose a provider and a region from the catalog, or add your own compatible .img map file from your Mac. [Compare map styles](https://terento.app/map-styles/) to see how each map draws roads and trails.
 
-Terento showing third-party map providers, regions and available Garmin storage
+[Terento showing third-party map providers, regions and available Garmin storage](https://terento.app/assets/app/optimized/map-selected-1600.webp?v=20260912-app-screens-v2)
 Choose a map from the catalog or add your own compatible file.
 
 4. Install
 
 Start the installation and keep the Edge connected until Terento says the installation is complete. Then disconnect the Edge.
 
-Terento showing a completed map installation
+[Terento showing a completed map installation](https://terento.app/assets/app/optimized/maps-done-1600.webp?v=20260912-app-screens-v2)
 Keep the Edge connected until Terento says the map is ready.
 
 ## Show the map on your Edge
@@ -68,3 +68,7 @@ Newer Edge models, such as the Edge 540, 840 and 1050, share files over USB the 
 ## Older Edge models
 
 Older models, such as the Edge 1030 Plus and earlier, usually show up on a Mac as a USB drive. On those, you can copy a compatible .img map file into the Garmin folder on the drive yourself, without Terento. Terento is not designed for these models.
+
+Put a free map on your Garmin
+
+[Download for Mac](https://terento.app/download/) [Use the web installer](https://terento.app/install/)

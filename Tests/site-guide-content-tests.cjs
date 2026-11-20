@@ -24,12 +24,12 @@ const release = JSON.parse(read(path.join(root, "site", "updates", "macos-arm64.
 const guideContentReviewed = fs.readFileSync(path.join(__dirname, "..", "scripts", "build-guide-pages.py"), "utf8").match(/^GUIDE_CONTENT_REVIEWED = "([^"]+)"/m)[1];
 const metadataByPath = new Map(metadata.pages.map((page) => [page.path, page]));
 const downloadLabels = {
-  en: "Download",
-  de: "Herunterladen",
-  fr: "Télécharger",
-  pl: "Pobierz",
-  cs: "Stáhnout",
-  it: "Scarica",
+  en: "Download for Mac",
+  de: "Für Mac herunterladen",
+  fr: "Télécharger pour Mac",
+  pl: "Pobierz na Maca",
+  cs: "Stáhnout pro Mac",
+  it: "Scarica per Mac",
 };
 
 const availabilityHelp = {
@@ -76,7 +76,7 @@ for (const locale of locales) {
   assert.match(source, /Apple Silicon/);
   assert.match(source, /macOS 13/);
   assert.match(source, /USB/);
-  const needs = source.match(/<ul class="guide-checklist">([\s\S]*?)<\/ul>/)?.[1];
+  const needs = source.match(/<div class="guide-needs"><ul class="checklist">([\s\S]*?)<\/ul>/)?.[1];
   assert.ok(needs, locale + ": what-you-need checklist");
   assert.ok((needs.match(/<li>/g) || []).length >= 3, locale + ": at least three requirements");
   assert.doesNotMatch(source, /class="guide-actions"|class="guide-meta"|Last reviewed|Zuletzt geprüft|Dernière vérification|Ostatni przegląd|Naposledy ověřeno|Ultima verifica/);
@@ -90,9 +90,10 @@ for (const locale of locales) {
   assert.match(source, /maps-done-1600\.avif\?v=20260912-app-screens-v2[^\n]*width="2358" height="1575"/);
   assert.match(source, /your-garmin-1600\.avif\?v=20260912-app-screens-v2[^\n]*width="2358" height="1575"/);
   assert.equal((source.match(/<li class="guide-step[" ]/g) || []).length, 4, locale + ": four ordered steps");
-  assert.match(source, /<nav class="guide-v2-switch"[^>]*>[\s\S]*?aria-current="page"[^>]*data-umami-event="guide-link-click"/, locale + ": watch/Edge switch marks the current guide");
+  assert.match(source, /<nav class="chips guide-v2-switch"[^>]*>[\s\S]*?aria-current="page"[^>]*data-umami-event="guide-link-click"/, locale + ": guide switch marks the current guide");
+  assert.equal((source.match(/<nav class="chips guide-v2-switch"[^>]*>([\s\S]*?)<\/nav>/)[1].match(/class="chip guide-v2-switch-link"/g) || []).length, 3, locale + ": switch links watch, Edge and Linux guides");
   assert.doesNotMatch(source, /HowTo|aria-hidden="true">→/, locale + ": no HowTo schema or arrow glyphs");
-  assert.match(source, /<ol class="guide-timeline">/);
+  assert.match(source, /<ol class="guide-timeline steps">/);
   assert.match(source, /<ol class="guide-substeps">/);
   assert.doesNotMatch(source, /class="guide-step-note"/);
   assert.equal([...source.matchAll(/<li><h4>[^<]+<\/h4><p>[^<]+<\/p><\/li>/g)].length, 2, locale + ": two install choices");
@@ -110,11 +111,15 @@ for (const locale of locales) {
   assert.doesNotMatch(source, /mailto:hello@terento\.app/);
   assert.doesNotMatch(source, /mailto:hello@terento\.app\?subject=Terento%20installation%20issue/);
   assert.equal((source.match(/data-umami-event-location="guide-hero"/g) || []).length, 1, locale + ": one guide download CTA");
-  const downloadButtons = [...source.matchAll(/<a class="download-action"[^>]*data-umami-event-location="guide-hero">([^<]+)<\/a>/g)];
+  // One primary button component everywhere (owner, round 3): icon + "Download for Mac".
+  const downloadButtons = [...source.matchAll(/<a class="download-action download-action--store"[^>]*data-umami-event-location="guide-hero"><svg class="download-action-icon"[\s\S]*?<\/svg><span>([^<]+)<\/span><\/a>/g)];
   assert.equal(downloadButtons.length, 1, locale + ": one rendered download button");
   for (const button of downloadButtons) assert.equal(button[1].trim(), downloadLabels[locale], locale + ": download button label");
-  assert.match(source, /<p class="guide-hero-action"><a class="download-action"[^>]*data-umami-event-location="guide-hero"/, locale + ": download CTA in the guide intro");
-  assert.doesNotMatch(source, /data-umami-event-location="guide-bottom"|guide-bottom-title/);
+  assert.match(source, /<p class="hero-actions guide-hero-action"><a class="download-action download-action--store"[^>]*data-umami-event-location="guide-hero"/, locale + ": download CTA in the guide intro");
+  // Site refresh (owner spec 2026-11-18): one closing .cta-band; its title is a <p>, never a heading.
+  assert.equal((source.match(/data-umami-event="download-cta-click" data-umami-event-location="guide-bottom"/g) || []).length, 1, locale + ": one closing call to action");
+  assert.match(source, /<div class="cta-band end-cta"><div class="cta-band__copy"><p class="cta-band__title">/, locale + ": closing band title is a paragraph");
+  assert.doesNotMatch(source, /guide-bottom-title/);
   assert.match(source, /data-umami-event="compatibility-link-click" data-umami-event-location="guide-preflight"/);
   assert.doesNotMatch(source, /guide-support-actions/);
   assert.doesNotMatch(source, /[?&]utm_/i);
@@ -201,8 +206,6 @@ assert.match(styles, /\.guide-step-copy\s*\{[^}]*grid-column:\s*3/s);
 assert.match(styles, /\.guide-screenshot\s*\{[^}]*grid-column:\s*1/s);
 assert.match(styles, /\.guide-step-content\s*\{[^}]*display:\s*contents/s);
 assert.doesNotMatch(styles, /zigzag|zig-zag/i);
-assert.match(styles, /\.guide-facts span,\s*\.download-badges li\s*\{[^}]*border-radius:\s*999px/s);
-assert.match(styles, /\.guide-facts span,\s*\.download-badges li\s*\{[^}]*background:\s*color-mix\(in srgb, var\(--sky\) 25%, var\(--surface\)\)/s);
 assert.match(styles, /\.guide-substeps\s*\{/);
 assert.doesNotMatch(styles, /\.guide-progress\s*\{/);
 const shell = read(path.join(root, "site", "site-shell.js"));
@@ -443,20 +446,27 @@ for (const locale of locales) {
   }
   for (const [, anchor, body] of sections) {
     assert.match(body, new RegExp(`<h3 id="${anchor}-title">[^<]+</h3>`), `${locale}: #${anchor} heading`);
-    assert.match(body, /<p>[^<]+/, `${locale}: #${anchor} explanation`);
-    const steps = body.match(/<ol class="troubleshooting-steps">([\s\S]*?)<\/ol>/)?.[1] || "";
+    assert.match(body, /<p class="troubleshooting-answer">[^<]+/, `${locale}: #${anchor} one-line answer first`);
+    const steps = body.match(/<ol class="troubleshooting-steps steps steps--compact">([\s\S]*?)<\/ol>/)?.[1] || "";
     assert.ok((steps.match(/<li>/g) || []).length >= 2, `${locale}: #${anchor} short steps`);
   }
   for (const [, target] of source.matchAll(/href="#([^"]+)"/g)) {
-    assert.ok(target === "main-content" || troubleshootingAnchors.includes(target), `${locale}: in-page link #${target}`);
+    // The symptom picker also links the H2 sections (Garmin Edge and the topic groups).
+    const sectionTarget = new RegExp(`<section class="(?:troubleshooting|guide-preflight)" id="${target}"`).test(source);
+    assert.ok(target === "main-content" || troubleshootingAnchors.includes(target) || sectionTarget, `${locale}: in-page link #${target}`);
   }
   const main = visibleText(source.match(/<main\b[\s\S]*?<\/main>/)[0]);
   assert.doesNotMatch(main, /\bIMG\b|\.img|\/GARMIN|object (?:handle|ID)|libmtp|manifest/i, `${locale}: outcome language without device internals`);
   const outsideMtpSections = visibleText(source.match(/<main\b[\s\S]*?<\/main>/)[0].replace(/<section class="troubleshooting-item" id="(?:usb-mode|garmin-busy)"[\s\S]*?<\/section>/g, "")
     // The topic index repeats the section titles, including the USB-mode one.
-    .replace(/<nav class="troubleshooting-toc"[\s\S]*?<\/nav>/, ""));
+    .replace(/<nav class="troubleshooting-toc[^"]*"[\s\S]*?<\/nav>/, ""));
   assert.doesNotMatch(outsideMtpSections, /\bMTP\b/, `${locale}: MTP only in the USB-mode and app-conflict sections`);
-  assert.equal((source.match(/<nav class="troubleshooting-toc"[\s\S]*?<\/nav>/)?.[0].match(/<a href="#/g) || []).length, troubleshootingAnchors.length, `${locale}: topic index links every topic`);
+  // Owner, round 5: every picker card is one title (linking its section) and one line, no link lists.
+  const picker = source.match(/<nav class="troubleshooting-toc[^"]*"[\s\S]*?<\/nav>/)?.[0] || "";
+  const pickCards = [...picker.matchAll(/<div class="card troubleshooting-pick"><p class="troubleshooting-pick-title"><a href="#([a-z-]+)"[^>]*>[^<]+<\/a><\/p><p class="troubleshooting-pick-line">[^<]+<\/p><\/div>/g)];
+  assert.equal(pickCards.length, 6, `${locale}: six picker cards, each a title and one line`);
+  assert.equal((picker.match(/<a\b/g) || []).length, 6, `${locale}: one link per picker card`);
+  assert.doesNotMatch(picker, /<ul|<li/, `${locale}: no link lists in the picker`);
   assert.doesNotMatch(source, /Send report to Terento|TR-[A-Z0-9]{6}|TODO/i, `${locale}: no unreleased support-report claims`);
   assert.doesNotMatch(main, /\bresum|min left|Request support|automatic(?:ally)? reconnect/i, `${locale}: no unreleased resume, estimate or reconnect claims`);
   assert.match(main, /Report issue/, `${locale}: current GitHub report flow`);
@@ -478,7 +488,9 @@ for (const locale of locales) {
 
   const primary = source.match(/<nav class="primary-nav"[^>]*>([\s\S]*?)<\/nav>/)?.[1];
   assert.ok(primary, `${locale}: troubleshooting static shell`);
-  assert.doesNotMatch(primary.split('<span class="language-switcher">')[0], /aria-current="page"/, `${locale}: no nav item claims the troubleshooting page`);
+  // Owner, round 4: every guide page (watch, Edge, Linux, Troubleshooting) marks "Guide" as current.
+  assert.equal((primary.split('<span class="language-switcher">')[0].match(/aria-current="page"/g) || []).length, 1, `${locale}: one nav item is current`);
+  assert.match(primary, /data-shell-route="guide" aria-current="page"/, `${locale}: Guide is the current nav item on Troubleshooting`);
   const languageOptions = source.match(/<div class="language-options">([\s\S]*?)<\/div>/)?.[1];
   for (const candidate of locales) assert.ok(languageOptions.includes(`href="${localePath(candidate, troubleshootingSlug)}"`), `${locale}: troubleshooting language route`);
 

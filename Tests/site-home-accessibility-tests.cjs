@@ -20,7 +20,7 @@ const styles = read(path.join(root, "site", "styles.css"));
 for (const file of homeFiles) {
   const page = read(file);
   const experience = page.match(
-    /<section class="home-steps section" id="how-it-works"[\s\S]*?<\/section>/
+    /<section class="block home-how" id="how-it-works"[\s\S]*?<\/section>/
   )?.[0];
   assert.ok(experience, `${file}: missing Home experience section`);
 
@@ -29,7 +29,7 @@ for (const file of homeFiles) {
   assert.doesNotMatch(experience, /role="list(?:item)?"/, `${file}: redundant list ARIA role remains`);
   assert.doesNotMatch(experience, /<article class="step"/, `${file}: step must not be an article listitem`);
 
-  const steps = [...experience.matchAll(/<li class="step">([\s\S]*?)<\/li>/g)];
+  const steps = [...experience.matchAll(/<li>([\s\S]*?)<\/li>/g)];
   assert.equal(steps.length, 3, `${file}: expected exactly three workflow steps`);
   steps.forEach((step, index) => {
     const number = String(index + 1).padStart(2, "0");
@@ -39,14 +39,13 @@ for (const file of homeFiles) {
 }
 
 assert.doesNotMatch(styles, /<article class="step" role="listitem">/);
-assert.match(styles, /\.steps\s*\{[^}]*margin:\s*38px 0 0;[^}]*padding:\s*0;[^}]*list-style:\s*none;/s);
-assert.match(styles, /\.steps::before\s*\{[^}]*background:\s*var\(--border\)/s);
+// Shared numbered steps (site refresh): a native list whose numbers come from the list counter.
+assert.match(styles, /\.steps\s*\{[^}]*margin:\s*0;[^}]*padding:\s*0;[^}]*list-style:\s*none;[^}]*counter-reset:\s*steps;/s);
 assert.match(styles, /\.home-switch-button\s*\{[^}]*min-height:\s*44px/s);
-assert.match(styles, /\.home-steps \.step::before\s*\{[^}]*color:\s*var\(--accent-text\)[^}]*content:\s*counter\(home-step\)/s);
+assert.match(styles, /\.steps > li::before\s*\{[^}]*color:\s*var\(--accent-text\)[^}]*content:\s*counter\(steps\)/s);
 assert.match(styles, /\.text-link\s*\{[^}]*color:\s*var\(--link-text\)/s);
 assert.match(styles, /\.text-link:hover\s*\{[^}]*color:\s*var\(--link-text-hover\)/s);
 assert.match(styles, /\.eyebrow\s*\{[^}]*color:\s*var\(--eyebrow-text\)/s);
-assert.match(styles, /\.step-number\s*\{[^}]*color:\s*var\(--accent-text\)/s);
 assert.doesNotMatch(styles, /\.consent-banner|\.consent-button|\.privacy-settings/);
 assert.match(styles, /a:focus-visible,\s*button:focus-visible,\s*summary:focus-visible\s*\{[^}]*outline:\s*3px solid var\(--focus-ring\)/s);
 assert.doesNotMatch(styles, /\.text-link\s*\{[^}]*opacity:/s);

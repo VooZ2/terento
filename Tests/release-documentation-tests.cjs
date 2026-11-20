@@ -462,12 +462,12 @@ for (const locale of ["en", "de", "fr", "pl", "cs", "it"]) {
     `site/${prefix}guides/install-garmin-maps-mac/index.html: guide review date must not be older than the release date`,
   );
   const compatibilityMarkers = {
-    en: [/lists the models with successful installations/i, /missing model isn’t necessarily unsupported/i],
-    de: [/Modelle mit erfolgreichen Installationen/i, /fehlt ein Modell, heißt das nicht unbedingt/i],
-    fr: [/modèles avec des installations réussies/i, /modèle absent n’est pas forcément incompatible/i],
-    pl: [/modele z udanymi instalacjami/i, /brak modelu nie oznacza/i],
-    cs: [/modely s úspěšnými instalacemi/i, /chybějící model nemusí znamenat/i],
-    it: [/modelli con installazioni riuscite/i, /modello assente non è per forza non supportato/i],
+    en: [/the list only shows models where someone has already installed a map/i, /It can still work/i],
+    de: [/Die Liste zeigt nur Modelle, auf denen schon jemand eine Karte installiert hat/i, /Es kann trotzdem funktionieren/i],
+    fr: [/la liste ne montre que les modèles sur lesquels quelqu’un a déjà installé une carte/i, /Cela peut quand même fonctionner/i],
+    pl: [/lista pokazuje tylko modele, na których ktoś już zainstalował mapę/i, /Może i tak działać/i],
+    cs: [/seznam ukazuje jen modely, do kterých už někdo nainstaloval mapu/i, /I tak může fungovat/i],
+    it: [/l’elenco mostra solo i modelli su cui qualcuno ha già installato una mappa/i, /Può funzionare lo stesso/i],
   }[locale];
   for (const marker of compatibilityMarkers) {
     assert.match(guide, marker, `site/${prefix}guides/install-garmin-maps-mac: compatibility copy drift`);

@@ -128,7 +128,7 @@
   },
   "de": {
     "h1": "Kostenlose Karten für deinen Garmin",
-    "lead": "OpenTopoMap, Freizeitkarte, MapRando, BBBike und OSMapaPL sind kostenlose topografische Karten aus OpenStreetMap für Garmin-Uhren und Edge-Radcomputer. Sieh dir an, wie jede denselben Ort darstellt, und installiere die, die zu deinen Touren passt.",
+    "lead": "OpenTopoMap, Freizeitkarte, MapRando, BBBike und OSMapaPL sind kostenlose topografische Karten aus OpenStreetMap für Garmin-Uhren und Edge-Fahrradcomputer. Sieh dir an, wie jede denselben Ort darstellt, und installiere die, die zu deinen Touren passt.",
     "picker_label": "Karten auf dieser Seite",
     "image_alt": "Die Karte {name} der Hohen Tatra",
     "fields": {
@@ -236,8 +236,8 @@
         "Ja. Jede Karte hier ist kostenlos und wird von Community-Projekten aus OpenStreetMap erstellt. Auch Terento, die App, die sie installiert, ist kostenlos und Open Source."
       ],
       [
-        "Funktionieren sie auf Garmin-Edge-Radcomputern?",
-        "Ja, auf neueren Edge-Radcomputern mit Kartenunterstützung wie Edge 540, 840 und 1050 sowie auf Garmin-Uhren mit Kartenunterstützung. Die {compat} listet die Modelle, auf denen bereits Karten installiert wurden."
+        "Funktionieren sie auf Garmin-Edge-Fahrradcomputern?",
+        "Ja, auf neueren Edge-Fahrradcomputern mit Kartenunterstützung wie Edge 540, 840 und 1050 sowie auf Garmin-Uhren mit Kartenunterstützung. Die {compat} listet die Modelle, auf denen bereits Karten installiert wurden."
       ],
       [
         "Ersetzt eine kostenlose Karte meine Garmin-Karten?",

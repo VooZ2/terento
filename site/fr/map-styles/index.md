@@ -158,3 +158,7 @@ Freizeitkarte les inclut. OpenTopoMap les propose en option, et OSMapaPL dans un
 Comment en installer une ?
 
 [Téléchargez](https://terento.app/fr/download/) Terento pour un Mac avec puce Apple, ou utilisez l’ [installateur web](https://terento.app/fr/install/) dans un navigateur Chromium. Connectez votre montre ou votre Edge, choisissez une carte et une région, puis installez. Le [guide montres Garmin](https://terento.app/fr/guides/install-garmin-maps-mac/) et le [guide Garmin Edge](https://terento.app/fr/guides/install-garmin-maps-edge-mac/) vous guident.
+
+Installez une carte gratuite sur votre Garmin
+
+[Télécharger pour Mac](https://terento.app/fr/download/) [Utiliser l’installateur web](https://terento.app/fr/install/)

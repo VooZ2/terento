@@ -9,9 +9,13 @@ Terento nahraje mapy zdarma z projektů OpenStreetMap do hodinek Garmin a cyklop
 
 [Stáhnout pro Mac](https://terento.app/cs/download/) [Instalovat z prohlížeče](https://terento.app/cs/install/)
 
-Nejste si jistí svým modelem? [Ověřit kompatibilitu](https://terento.app/cs/compatibility/)
+[Poslat odkaz do počítače](mailto:?subject=Terento%3A%20mapy%20zdarma%20pro%20v%C3%A1%C5%A1%20Garmin&body=https%3A%2F%2Fterento.app%2Fcs%2F) [Ověřit kompatibilitu](https://terento.app/cs/compatibility/)
 
 Hodinky Garmin s mapou OpenTopoMap okolí jezera Königssee v Bavorských Alpách
+
+- **47** modely s úspěšnými instalacemi
+- **463** úspěšných instalací
+- **18. listopadu 202618. 11. 2026** Poslední úspěšná instalace
 
 ## Jak to funguje
 
@@ -28,12 +32,6 @@ Vybírejte mapy z katalogu podle oblasti nebo přidejte vlastní kompatibilní m
 Vaše mapy jsou nainstalované a připravené k použití ve vašem Garminu.
 
 Terento zobrazuje poskytovatele a oblasti map třetích stran v macOS
-
-## Spravovat mapy
-
-Prohlédněte si nainstalované mapy, aktualizujte je, když je k dispozici novější vydání, a odstraňte mapy třetích stran spravované aplikací Terento. Původní mapy Garmin zůstávají chráněné.
-
-Terento zobrazuje nainstalované mapy třetích stran seskupené podle poskytovatele
 
 Cyklopočítač Garmin Edge s mapou Freizeitkarte stoupání Sa Calobra v pohoří Serra de Tramuntana na Mallorce
 
@@ -73,7 +71,7 @@ Na túry, při kterých záleží na terénu.
 
 Volitelný doplněk pro OpenTopoMap Vrstevnice
 
-Přidejte výškové čáry, které pomáhají rozpoznat svahy. Tento doplněk vyberte při instalaci regionu OpenTopoMap v Terento.
+Přidejte vrstevnice, které pomáhají rozpoznat svahy. Tento doplněk vyberte při instalaci regionu OpenTopoMap v Terento.
 
 Dostupné pro 157 mapových balíčků · Zabírají další místo.
 
@@ -89,7 +87,9 @@ Pro pěší objevování menších stezek.
 
 Některé popisky mapy jsou ve francouzštině.
 
-[Porovnat styly map naživo](https://terento.app/cs/map-styles/)
+### [Porovnat styly map naživo](https://terento.app/cs/map-styles/)
+
+Podívejte se, jak každá zobrazuje stejné místo, a nainstalujte tu, která sedí vašim výletům.
 
 ## V aplikaci pro Mac nebo v prohlížeči
 
@@ -97,15 +97,11 @@ Některé popisky mapy jsou ve francouzštině.
 
 Instalujte mapy z katalogu nebo vlastní mapu .img, podívejte se, co je ve vašem Garminu, a aktualizujte mapy, když vyjdou novější vydání.
 
-macOS 13 nebo novější na Apple Silicon.
-
-[Stáhnout pro Mac](https://terento.app/cs/download/)
+[Stáhnout pro Mac](https://terento.app/cs/download/) [Download on the Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-home&mt=8)
 
 ### Webový instalátor
 
-Připojte hodinky Garmin kabelem USB, vyberte mapy a nainstalujte je přímo z Chrome, Microsoft Edge, Opery nebo Brave. Později je stejně aktualizujete nebo odeberete.
-
-Funguje na Macu a, zatím ve zkušebním provozu, na Linuxu. Zatím ne ve Windows, na telefonech ani tabletech.
+Připojte hodinky Garmin kabelem USB, vyberte mapy a nainstalujte je přímo z Chrome, Microsoft Edge, Opery nebo Brave.
 
 [Otevřít webový instalátor](https://terento.app/cs/install/)
 
@@ -118,6 +114,10 @@ Na stránce [Kompatibilita](https://terento.app/cs/compatibility/) najdete konkr
 Mohu instalovat mapy třetích stran do hodinek Garmin z Macu bez Garmin Express a BaseCamp?
 
 Ano. Terento zvládne vše na vašem Macu: vyberete mapu a oblast, nainstalujete ji do Garminu a později ji aktualizujete nebo odeberete. Garmin Express ani BaseCamp nepotřebujete. [Přečtěte si instalační příručku.](https://terento.app/cs/guides/install-garmin-maps-mac/)
+
+Je to pro můj Garmin bezpečné?
+
+Ano. Terento v Garminu vždy nechá aspoň 1 GB volného místa, každou mapu po zkopírování zkontroluje a mapy nainstalované Garminem nikdy nemění.
 
 Mohu přidat vlastní mapu .img?
 
