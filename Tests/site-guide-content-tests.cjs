@@ -86,9 +86,9 @@ for (const locale of locales) {
   assert.match(source, /Choose a provider and a region from the catalog|Wähle einen Anbieter und eine Region aus dem Katalog|Choisissez un fournisseur et une région dans le catalogue|Wybierz dostawcę i region z katalogu|Vyberte poskytovatele a oblast z katalogu|Scegli un provider e una regione dal catalogo/ , locale + ": active provider catalog guidance");
   assert.doesNotMatch(source, /four map providers|vier Kartenanbieter|quatre fournisseurs|czterech dostawców|čtyř poskytovatelů|quattro provider/ , locale + ": no fixed provider count");
   assert.doesNotMatch(source, /free storage|freier Speicher|espace libre|wolnego miejsca|volného místa|spazio libero|Not enough storage|Nicht genügend Speicher|Espace de stockage insuffisant|Za mało miejsca|Nedostatek úložiště|Spazio insufficiente/i, locale + ": no storage copy");
-  assert.match(source, /map-selected-1600\.avif\?v=20260912-app-screens-v2[^\n]*width="2358" height="1575"/);
-  assert.match(source, /maps-done-1600\.avif\?v=20260912-app-screens-v2[^\n]*width="2358" height="1575"/);
-  assert.match(source, /your-garmin-1600\.avif\?v=20260912-app-screens-v2[^\n]*width="2358" height="1575"/);
+  assert.match(source, /map-selected-1600\.avif\?v=20261120-app-screens-v3[^\n]*width="2358" height="1575"/);
+  assert.match(source, /maps-done-1600\.avif\?v=20261120-app-screens-v3[^\n]*width="2358" height="1575"/);
+  assert.match(source, /your-garmin-1600\.avif\?v=20261120-app-screens-v3[^\n]*width="2358" height="1575"/);
   assert.equal((source.match(/<li class="guide-step[" ]/g) || []).length, 4, locale + ": four ordered steps");
   assert.match(source, /<nav class="chips guide-v2-switch"[^>]*>[\s\S]*?aria-current="page"[^>]*data-umami-event="guide-link-click"/, locale + ": guide switch marks the current guide");
   assert.equal((source.match(/<nav class="chips guide-v2-switch"[^>]*>([\s\S]*?)<\/nav>/)[1].match(/class="chip guide-v2-switch-link"/g) || []).length, 3, locale + ": switch links watch, Edge and Linux guides");
