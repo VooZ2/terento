@@ -23,7 +23,22 @@ DOCUMENT_SUITES = {
     "Packaging/README.md": ("release",),
     "Packaging/NativeDependencies/README.md": ("release",),
     "contracts/README.md": ("backend",),
+    # Owns the backend and Admin statistics semantics. No Swift source, app
+    # test or native test reads it (MapEngine.swift only names it in comments).
+    "contracts/STATISTICS_CONTRACT.md": ("backend",),
     "site-deploy/README.md": ("site",),
+}
+
+# Repository files outside a suite's own prefix whose only CI readers are the
+# listed suites. Each entry is checked against the runners in
+# Tests/test-suites.json by Tests/ci-test-selection-tests.py.
+PATH_SUITES = {
+    # Run by Tests/run-ci-workflow-contract-tests.sh (and by the separate
+    # deploy-catalog-api.yml workflow, which has its own path trigger).
+    "Tests/admin-access-boundary-tests.py": ("ci",),
+    # Loaded only by Tests/admin-access-boundary-tests.py and
+    # deploy-catalog-api.yml.
+    "scripts/infra/check-admin-boundary.py": ("ci",),
 }
 
 
@@ -44,6 +59,10 @@ def select_suites(paths: list[str]) -> list[str]:
                 selected.update(("site", "release"))
             if text.startswith("brand/"):
                 selected.add("shared")
+            continue
+
+        if text in PATH_SUITES:
+            selected.update(PATH_SUITES[text])
             continue
 
         if text == "site/updates/macos-arm64.json":

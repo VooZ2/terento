@@ -76,6 +76,48 @@ def main() -> int:
     expect(["Tests/test-suites.json"], set(MODULE.ALL_SUITES))
     expect(["backend/catalog-api/src/terento_catalog/admin.py", "Tests/site-faq-content-tests.cjs"], baseline | {"backend", "site"})
     expect([], set(MODULE.ALL_SUITES))
+    # PR #753 (backend and Admin only) must not start the macOS app or native jobs.
+    pr_753 = [
+        "THIRD_PARTY_NOTICES.md",
+        "Tests/admin-access-boundary-tests.py",
+        "backend/catalog-api/.env.example",
+        "backend/catalog-api/README.md",
+        "backend/catalog-api/docs/admin-behavior-contract.md",
+        "backend/catalog-api/docs/api.md",
+        "backend/catalog-api/docs/schema.md",
+        "backend/catalog-api/pyproject.toml",
+        "backend/catalog-api/src/terento_catalog/admin.py",
+        "backend/catalog-api/src/terento_catalog/admin_website_stats.py",
+        "backend/catalog-api/src/terento_catalog/app.py",
+        "backend/catalog-api/src/terento_catalog/asc_stats.py",
+        "backend/catalog-api/src/terento_catalog/config.py",
+        "backend/catalog-api/src/terento_catalog/db.py",
+        "backend/catalog-api/src/terento_catalog/http_api.py",
+        "backend/catalog-api/src/terento_catalog/migrations/095_app_store_analytics.sql",
+        "backend/catalog-api/src/terento_catalog/scheduler.py",
+        "backend/catalog-api/tests/test_app_store_stats.py",
+        "backend/catalog-api/tests/test_app_store_stats_postgres.py",
+        "backend/catalog-api/tests/test_website_stats.py",
+        "contracts/STATISTICS_CONTRACT.md",
+        "scripts/infra/check-admin-boundary.py",
+    ]
+    expect(pr_753, baseline | {"backend", "release"})
+    assert not {"app", "native"} & set(MODULE.select_suites(pr_753))
+    expect(["Tests/admin-access-boundary-tests.py"], baseline)
+    expect(["scripts/infra/check-admin-boundary.py"], baseline)
+    expect(["contracts/STATISTICS_CONTRACT.md"], baseline | {"backend"})
+    # App code still starts the app suite; unknown test files and contract
+    # data still fail open to every suite.
+    expect(["app/Terento/TerentoAppResourceCompatibility.swift"], baseline | {"app"})
+    expect(pr_753 + ["app/Terento/TerentoAppResourceCompatibility.swift"], baseline | {"backend", "release", "app"})
+    expect(pr_753 + ["app/TerentoCore/Sources/TerentoPoC/Installation/MapLifecycle.swift"],
+           baseline | {"backend", "release", "app", "native"})
+    expect(["Tests/new-boundary-tests.py"], set(MODULE.ALL_SUITES))
+    expect(pr_753 + ["Tests/new-boundary-tests.py"], set(MODULE.ALL_SUITES))
+    expect(["contracts/new-contract.schema.json"], set(MODULE.ALL_SUITES))
+    expect(["contracts/released-catalog-clients.json"], set(MODULE.ALL_SUITES))
+    expect(["contracts/release-hardware-gates.json"], set(MODULE.ALL_SUITES))
+    expect(pr_753 + ["contracts/installation-policy.schema.json"], set(MODULE.ALL_SUITES))
     # Every Markdown document a suite test reads selects that suite.
     root = MODULE_PATH.parent.parent
     readers = {
@@ -90,15 +132,54 @@ def main() -> int:
         source = (root / reader).read_text(encoding="utf-8")
         assert Path(document).name in source, f"{reader} no longer reads {document}"
         assert suite in MODULE.select_suites([document]), f"{document} must select {suite}"
-    # macOS app/native runners must not read a path whose change skips them.
     inventory = json.loads((root / "Tests/test-suites.json").read_text(encoding="utf-8"))
+
+    def runner_sources(runner: str) -> list[Path]:
+        sources = [root / runner]
+        sources += [root / ref for ref in re.findall(
+            r"(?:Tests|app/TerentoCore/Tests)/[\w./-]+\.(?:py|cjs|js|swift|sh)",
+            sources[0].read_text(encoding="utf-8")) if (root / ref).is_file()]
+        return sources
+
+    # An explicitly mapped path selects every suite whose runners read it, and
+    # at least one of its mapped suites really reads it.
+    for mapped, suites in MODULE.PATH_SUITES.items():
+        assert (root / mapped).is_file(), f"{mapped} no longer exists"
+        readers = {
+            suite
+            for suite, runners in inventory.items()
+            for runner in runners
+            for source in runner_sources(runner)
+            if source.as_posix() != (root / mapped).as_posix()
+            and mapped in source.read_text(encoding="utf-8")
+        }
+        assert readers, f"no suite runner reads {mapped}"
+        assert readers <= set(suites), f"{mapped} is read by {sorted(readers)}, mapped to {sorted(suites)}"
+
+    # No Swift code and no macOS app/native runner reads a contract document,
+    # so a contracts/*.md text change never needs those suites. Comments that
+    # only name the document do not count.
+    contract_documents = sorted(path.name for path in (root / "contracts").glob("*.md") if path.name != "README.md")
+    assert "STATISTICS_CONTRACT.md" in contract_documents
+
+    def code_lines(source: Path) -> str:
+        comment = ("//", "/*", "*", "#") if source.suffix in {".swift", ".sh"} else ("#",)
+        return "\n".join(
+            line for line in source.read_text(encoding="utf-8").splitlines()
+            if not line.lstrip().startswith(comment)
+        )
+
+    mac_sources = sorted((root / "app").rglob("*.swift"))
+    mac_sources += [source for suite in ("app", "native") for runner in inventory[suite] for source in runner_sources(runner)]
+    for source in mac_sources:
+        text = code_lines(source)
+        for document in contract_documents:
+            assert document not in text, f"{source} reads contracts/{document}; map it to the macOS suites"
+
+    # macOS app/native runners must not read a path whose change skips them.
     for suite in ("app", "native"):
         for runner in inventory[suite]:
-            sources = [root / runner]
-            sources += [root / ref for ref in re.findall(
-                r"(?:Tests|app/TerentoCore/Tests)/[\w./-]+\.(?:py|cjs|js|swift|sh)",
-                sources[0].read_text(encoding="utf-8")) if (root / ref).is_file()]
-            for source in sources:
+            for source in runner_sources(runner):
                 assert "web-installer-" not in source.read_text(encoding="utf-8"), f"{source} reads web installer fixtures, which skip {suite}"
                 for ref in re.findall(r"(?:\.github|scripts|site-deploy)/[\w./-]+",
                                       source.read_text(encoding="utf-8")):
