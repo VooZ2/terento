@@ -6999,7 +6999,10 @@ def _diagnostic_detail_dialog(
             part for part in (
                 f" · {html.escape(str(first.get('resolution_reason') or 'Resolved'))}" if first.get("resolution_reason") else "",
                 f" · {_timestamp_markup(first.get('resolved_at'))}" if first.get("resolved_at") else "",
-                f" · by {html.escape(str(first.get('resolved_by_username')))}" if first.get("resolved_by_username") else "",
+                f" · by {html.escape(str(first.get('resolved_by_username')))}" if first.get("resolved_by_username")
+                # Resolved by the operator agent (POST /internal/attention): no Admin user.
+                else " · by Claude agent" if not first.get("resolved_by")
+                and str(first.get("resolution_note") or "").startswith("Claude agent: ") else "",
             )
         )
     if resolved:

@@ -1521,9 +1521,12 @@ the token itself. With a `page` parameter the same route returns one Admin
 page as text instead ([below](#admin-page-text-get-internalattentionpageadmin)). Without a configured digest, or with any other token, the
 route answers `401 {"error":"unauthorized"}`. At most 12 requests per client
 per minute are counted before authorization (`429` above that). The token
-grants no Admin page, form, CSRF token or write; it is independent of the
-Admin login, `OPERATIONS_INGEST_SECRET` and `WEB_INSTALLER_INGEST_SECRET`.
-Rotating or removing the digest and redeploying revokes it.
+grants no Admin login, form or CSRF token and exactly one write, Resolve of one
+installation diagnostic
+([below](#resolve-one-installation-diagnostic-post-internalattention)); it is
+independent of the Admin login, `OPERATIONS_INGEST_SECRET` and
+`WEB_INSTALLER_INGEST_SECRET`. Rotating or removing the digest and redeploying
+revokes it.
 
 `schemaVersion: 1` returns `generatedAt` and six sections. A section whose
 read fails is `{"available": false}`, never a shorter list:
@@ -1545,7 +1548,8 @@ read fails is `{"available": false}`, never a shorter list:
   `fields` and `adminUrl`.
 - `installationProblems`: `total` and up to 50 newest `items`, one per open
   installation problem operation (the `installationIssues` population and
-  unit). Each item has `operationKey`, `occurredAt`, catalog `model`/`variant`
+  unit). Each item has `operationKey`, `diagnosticIds` (the exact open
+  `result:<operation>:<index>` keys of that operation), `occurredAt`, catalog `model`/`variant`
   or the reported identity, `canonicalDeviceModelId`, `reason`, `appVersion`,
   `adminUrl`, and the sanitised `issueTitle`/`issueBody` that Admin prepares
   for a GitHub issue.
@@ -1573,8 +1577,44 @@ is unavailable.
 The response is `Cache-Control: no-store` and `noindex`. It contains no
 serial number, Unit ID, account, local path, raw log, manifest, map content,
 client IP or Admin user data. Reading it changes no diagnostic, report,
-statistic or audit state; resolving, linking and handling stay authenticated
-Admin actions.
+statistic or audit state. Linking, handling, Reopen, Archive and every other
+action stay authenticated Admin actions.
+
+### Resolve one installation diagnostic: `POST /internal/attention`
+
+Owner decision 2026-11-20: the agent may close an installation problem it has
+diagnosed as not a Terento issue, so the owner does not have to click Resolve.
+The same token and route accept one JSON body (`Content-Type:
+application/json`, no query string) with exactly these fields:
+
+```json
+{"action": "resolve_installation_diagnostic",
+ "diagnosticId": "result:2bd926cd-8929-4a10-bf46-9cae7321a8f1:0",
+ "reason": "NOT_TERENTO_ISSUE",
+ "note": "Watch was not visible after a long download (-2); nothing was written."}
+```
+
+- `diagnosticId` is one exact `result:<lowercase operation UUID>:<index>` key
+  from `installationProblems.items[].diagnosticIds`. An operation UUID, `web:`,
+  `legacy:` or any other key is refused, so one call never resolves a batch.
+- `reason` is `NOT_TERENTO_ISSUE`, `DUPLICATE`, `HISTORICAL_SUPERSEDED` or
+  `FIXED` (the Admin reasons without `IDENTITY_CORRECTED` and `OTHER`).
+- `note` is required, 1 to 486 characters after trimming, and is stored as
+  `Claude agent: <note>` (Admin's 500-character note limit).
+
+It runs the same lifecycle change as Admin Resolve: the result becomes
+`RESOLVED` with that reason and note, one lifecycle audit row is written, the
+installation result, statistics and evidence stay unchanged, and an already
+resolved result stays as it is. The audit row and `resolved_by` carry no Admin
+user; the note prefix names the agent, and Admin shows such a result as
+resolved `by Claude agent`. Reopen stays an Admin action, which is
+also the undo. Answers: `200 {"status":"resolved","diagnosticId":…}`, `400
+invalid_action` (any other field, value or shape), `401 unauthorized`, `404
+diagnostic_not_found`, `413`/`415` for a body of the wrong size or type, `429
+rate_limited` (10 per client per minute, counted before authorization, own
+budget) and `503 action_unavailable`. All answers are `no-store` and
+`noindex`. Update diagnostics, support reports and identity reviews have no
+agent write.
 
 ### Admin page text: `GET /internal/attention?page=/admin/...`
 

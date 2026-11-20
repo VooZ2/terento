@@ -24,6 +24,7 @@ from .admin import (
     _group_operation_tasks,
     _identity_parts,
     _model_detail_url,
+    _result_key,
     _sanitised_issue_value,
     _system_health_cards,
     _timestamp_iso,
@@ -116,6 +117,8 @@ def _installation_problems(service: Any, admin_url: str) -> dict[str, Any]:
         latest = max(results, key=lambda result: _timestamp_iso(result.get("occurred_at")))
         items.append({
             "operationKey": operation_key,
+            # Exact open results; POST /internal/attention resolves one of these.
+            "diagnosticIds": [key for key in (_result_key(result) for result in results) if key.startswith("result:")],
             "occurredAt": _timestamp_iso(latest.get("occurred_at")) or None,
             "model": model,
             "variant": _optional(variant),
