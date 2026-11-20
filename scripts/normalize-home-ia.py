@@ -662,24 +662,28 @@ def normalize_home(source: str, path: Path, locale: str) -> str:
     values["hero_map_alt"] = html.escape(copy["hero_map_alt"].replace("{name}", HERO_MAP_STYLES[0][1]))
     values["hero_switch_buttons"] = map_switch(copy["hero_map_alt"], 0, "home-hero")
     # Hero (owner 2026-11-20): on a computer, Apple's Mac App Store badge first (App Store ranking
-    # counts store installs; a DMG install gives it nothing), then "Download for Mac" as the
-    # outlined secondary button (short label "Download .dmg", owner 2026-11-20) and "Install from your browser" as a text link. On a phone, where
-    # neither runs, Send this link to your computer + Check compatibility. This is the page's one
-    # badge; the Mac app card keeps only "Download for Mac". Campaign ct=site-hero (site-home retired).
+    # counts store installs; a DMG install gives it nothing), then the outlined secondary button
+    # "Download .dmg" (to /download/) and "Install from your browser" as a text link. On a phone,
+    # where neither runs, Send this link to your computer + Check compatibility.
     prefix = "" if locale == "en" else f"/{locale}"
     send_body = f"{SITE_URL}{prefix}/"
     values["send_to_computer_href"] = html.escape(
         "mailto:?subject=" + quote(copy["send_to_computer_subject"]) + "&body=" + quote(send_body, safe="")
     )
-    badge = APP_STORE["badges"][locale]
-    store_href = f'{APP_STORE["listing_url"]}?pt={APP_STORE["provider_token"]}&ct=site-hero&mt=8'
-    # Apple has no Polish or Czech Mac App Store badge: those pages show the English artwork.
-    badge_lang = "" if badge["artwork"] == locale else f' lang="{badge["artwork"]}"'
-    values["hero_store_badge"] = (
-        f'<a class="app-store-badge hero-app-store" href="{html.escape(store_href)}" data-umami-event="app-store-click" data-umami-event-location="home-hero">'
-        f'<img src="/assets/app-store/download-on-the-mac-app-store-{badge["artwork"]}.svg?v={APP_STORE["asset_version"]}" '
-        f'width="{APP_STORE["width"]}" height="{APP_STORE["height"]}" alt="{html.escape(badge["alt"])}"{badge_lang}></a>'
-    )
+    def store_badge(campaign: str, css_class: str, location: str) -> str:
+        badge = APP_STORE["badges"][locale]
+        store_href = f'{APP_STORE["listing_url"]}?pt={APP_STORE["provider_token"]}&ct={campaign}&mt=8'
+        # Apple has no Polish or Czech Mac App Store badge: those pages show the English artwork.
+        badge_lang = "" if badge["artwork"] == locale else f' lang="{badge["artwork"]}"'
+        return (
+            f'<a class="app-store-badge {css_class}" href="{html.escape(store_href)}" data-umami-event="app-store-click" data-umami-event-location="{location}">'
+            f'<img src="/assets/app-store/download-on-the-mac-app-store-{badge["artwork"]}.svg?v={APP_STORE["asset_version"]}" '
+            f'width="{APP_STORE["width"]}" height="{APP_STORE["height"]}" alt="{html.escape(badge["alt"])}"{badge_lang}></a>'
+        )
+    values["hero_store_badge"] = store_badge("site-hero", "hero-app-store", "home-hero")
+    # Owner 2026-11-20: Home keeps a second badge in the Mac app card, under "Download for Mac"
+    # (ct=site-home), so App Store Connect separates hero and card clicks.
+    values["mac_card_store_badge"] = store_badge("site-home", "home-app-store", "home-section")
     values["hero_download_button"] = COMPONENTS["secondary_action"](
         copy["download_href"], html.escape(copy["hero_dmg"]), "hero-download-action",
         'data-umami-event="download-cta-click" data-umami-event-location="home-hero"', "download")

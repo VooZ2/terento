@@ -97,7 +97,7 @@ Voyez comment chacune représente le même lieu, puis installez celle qui convie
 
 Installez les cartes du catalogue ou votre propre carte .img, voyez ce qui se trouve sur votre Garmin et mettez à jour les cartes quand de nouvelles éditions paraissent.
 
-[Télécharger pour Mac](https://terento.app/fr/download/)
+[Télécharger pour Mac](https://terento.app/fr/download/) [Télécharger dans le Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-home&mt=8)
 
 ### Installateur web
 

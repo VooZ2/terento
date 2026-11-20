@@ -97,7 +97,7 @@ Zobacz, jak każda przedstawia to samo miejsce, i zainstaluj tę, która pasuje 
 
 Instaluj mapy z katalogu lub własną mapę .img, sprawdzaj, co jest na Garminie, i aktualizuj mapy, gdy pojawią się nowsze wydania.
 
-[Pobierz na Maca](https://terento.app/pl/download/)
+[Pobierz na Maca](https://terento.app/pl/download/) [Download on the Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-home&mt=8)
 
 ### Instalator w przeglądarce
 

@@ -97,7 +97,7 @@ Podívejte se, jak každá zobrazuje stejné místo, a nainstalujte tu, která s
 
 Instalujte mapy z katalogu nebo vlastní mapu .img, podívejte se, co je ve vašem Garminu, a aktualizujte mapy, když vyjdou novější vydání.
 
-[Stáhnout pro Mac](https://terento.app/cs/download/)
+[Stáhnout pro Mac](https://terento.app/cs/download/) [Download on the Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-home&mt=8)
 
 ### Webový instalátor
 

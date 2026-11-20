@@ -1,7 +1,7 @@
 {
   "site/index.html": {
     "events_removed": [
-      "app-store-click @ home-section"
+      "app-store-click @ home-hero"
     ],
     "h2": [
       "How it works",
@@ -37,7 +37,7 @@
   },
   "site/de/index.html": {
     "events_removed": [
-      "app-store-click @ home-section"
+      "app-store-click @ home-hero"
     ],
     "h2": [
       "So funktioniert es",
@@ -73,7 +73,7 @@
   },
   "site/fr/index.html": {
     "events_removed": [
-      "app-store-click @ home-section"
+      "app-store-click @ home-hero"
     ],
     "h2": [
       "Comment ça marche",
@@ -109,7 +109,7 @@
   },
   "site/pl/index.html": {
     "events_removed": [
-      "app-store-click @ home-section"
+      "app-store-click @ home-hero"
     ],
     "h2": [
       "Jak to działa",
@@ -145,7 +145,7 @@
   },
   "site/cs/index.html": {
     "events_removed": [
-      "app-store-click @ home-section"
+      "app-store-click @ home-hero"
     ],
     "h2": [
       "Jak to funguje",
@@ -181,7 +181,7 @@
   },
   "site/it/index.html": {
     "events_removed": [
-      "app-store-click @ home-section"
+      "app-store-click @ home-hero"
     ],
     "h2": [
       "Come funziona",

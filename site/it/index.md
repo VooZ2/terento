@@ -97,7 +97,7 @@ Guarda come ognuna disegna lo stesso luogo, poi installa quella adatta alle tue 
 
 Installa le mappe del catalogo o la tua mappa .img, vedi cosa c’è sul tuo Garmin e aggiorna le mappe quando escono nuove edizioni.
 
-[Scarica per Mac](https://terento.app/it/download/)
+[Scarica per Mac](https://terento.app/it/download/) [Scarica su Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-home&mt=8)
 
 ### Installer web
 

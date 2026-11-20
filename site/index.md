@@ -97,7 +97,7 @@ See how each one draws the same place, then install the one that fits your trips
 
 Install catalog maps or your own .img map, see what is on your Garmin and update maps when newer releases come out.
 
-[Download for Mac](https://terento.app/download/)
+[Download for Mac](https://terento.app/download/) [Download on the Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-home&mt=8)
 
 ### Web installer
 

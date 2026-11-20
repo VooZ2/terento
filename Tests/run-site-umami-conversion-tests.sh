@@ -196,7 +196,8 @@ for path in home_files:
     assert 'aria-labelledby="manage-title"' not in html, f"{path}: the manage maps card was removed (owner round 5)"
     assert html.count('<section class="block home-edge" id="edge"') == 1, f"{path}: expected the Garmin Edge section"
     assert html.count('data-umami-event="app-store-click" data-umami-event-location="home-hero"') == 1, f"{path}: expected the App Store badge first in the hero"
-    assert html.count('data-umami-event="app-store-click"') == 1, f"{path}: expected one App Store badge on Home"
+    assert html.count('data-umami-event="app-store-click" data-umami-event-location="home-section"') == 1, f"{path}: expected the App Store badge in the Mac app card"
+    assert html.count('data-umami-event="app-store-click"') == 2, f"{path}: expected two App Store badges on Home"
     assert html.count('data-umami-event="guide-link-click" data-umami-event-location="home-edge"') == 1, f"{path}: expected the Garmin Edge guide link"
     assert 'class="scope-section"' not in html, f"{path}: Beta scope section must be removed"
     assert html.count('data-provider-card=') == 5, f"{path}: expected one card per provider"
@@ -212,7 +213,7 @@ for path in home_files:
     assert hero[0]["attributes"].get("data-umami-event-location") == "home-hero"
     hero_store = [item for item in items if "hero-app-store" in item["class"]]
     assert len(hero_store) == 1 and "ct=site-hero" in hero_store[0]["href"], f"{path}: expected the hero App Store badge with ct=site-hero"
-    assert "ct=site-home" not in html, f"{path}: the retired ct=site-home campaign must not be on Home"
+    assert html.count("ct=site-home") == 1, f"{path}: expected ct=site-home once (Mac app card)"
     hero_compatibility = [
         item for item in items
         if "hero-compatibility-link" in item["class"]
