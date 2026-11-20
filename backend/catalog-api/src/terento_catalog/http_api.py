@@ -162,6 +162,13 @@ ATTENTION_RATE_LIMIT = 12
 ATTENTION_PAGE_RATE_LIMIT = 60
 # Same-host Admin redirects an agent page read follows (old links, period resets).
 ATTENTION_PAGE_REDIRECTS = 3
+# The agent's one write (POST /internal/attention): Resolve of one installation
+# diagnostic. Owner decision 2026-11-20; Reopen stays in Admin.
+ATTENTION_ACTION_RATE_LIMIT = 10
+ATTENTION_ACTION_FIELDS = frozenset({"action", "diagnosticId", "reason", "note"})
+ATTENTION_ACTION_REASONS = frozenset({"NOT_TERENTO_ISSUE", "DUPLICATE", "HISTORICAL_SUPERSEDED", "FIXED"})
+ATTENTION_ACTION_NOTE_PREFIX = "Claude agent: "
+ATTENTION_ACTION_NOTE_MAX = 500 - len(ATTENTION_ACTION_NOTE_PREFIX)
 # Socket timeout for one blocking read or write. A stalled or slow-loris client
 # cannot pin a server thread indefinitely; large bodies and responses still
 # progress as long as each chunk arrives within this interval.
@@ -1504,6 +1511,9 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
 
         def do_POST(self) -> None:  # noqa: N802 - stdlib handler API
             request_path = urlsplit(self.path).path
+            if request_path == "/internal/attention":
+                self._handle_attention_action()
+                return
             if request_path == "/internal/operations/observations":
                 self._handle_operational_observation()
                 return
@@ -1623,6 +1633,54 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 return
             LOGGER.info("attention read served")
             self._send_json(HTTPStatus.OK, attention_report(service), send_body=send_body, cache_control="no-store", noindex=True)
+
+        def _handle_attention_action(self) -> None:
+            """Resolve one installation diagnostic for the operator agent.
+
+            The only agent write: one exact result (``result:<operation>:<index>``),
+            a closed reason list and a required note. Evidence and statistics stay
+            unchanged; the audit row has no Admin user and the note names the agent.
+            """
+            reply = lambda status, body: self._send_json(status, body, send_body=True, cache_control="no-store", noindex=True)
+            client = (f"attention-action:{self._client_ip()}", ATTENTION_ACTION_RATE_LIMIT, RATE_LIMIT_WINDOW_SECONDS)
+            if self._rate_limited(client, record=True):
+                return reply(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"})
+            if not self._admin_read_authorized():
+                return reply(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
+            if urlsplit(self.path).query:
+                return reply(HTTPStatus.BAD_REQUEST, {"error": "invalid_action"})
+            document = self._read_json()
+            if document is None:
+                return
+            diagnostic_id = document.get("diagnosticId")
+            note = document.get("note")
+            if (
+                set(document) != ATTENTION_ACTION_FIELDS
+                or document.get("action") != "resolve_installation_diagnostic"
+                or document.get("reason") not in ATTENTION_ACTION_REASONS
+                or not isinstance(diagnostic_id, str)
+                or not re.fullmatch(r"result:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:(0|[1-9][0-9]{0,3})", diagnostic_id)
+                or not isinstance(note, str)
+                or not 1 <= len(note.strip()) <= ATTENTION_ACTION_NOTE_MAX
+            ):
+                return reply(HTTPStatus.BAD_REQUEST, {"error": "invalid_action"})
+            try:
+                changed = service.update_diagnostic_lifecycle(
+                    diagnostic_id,
+                    new_status="RESOLVED",
+                    admin_user_id=None,
+                    resolution_reason=document["reason"],
+                    resolution_note=ATTENTION_ACTION_NOTE_PREFIX + note.strip(),
+                )
+            except ValueError:
+                return reply(HTTPStatus.BAD_REQUEST, {"error": "invalid_action"})
+            except Exception:
+                LOGGER.exception("attention action failed")
+                return reply(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "action_unavailable"})
+            if not changed:
+                return reply(HTTPStatus.NOT_FOUND, {"error": "diagnostic_not_found"})
+            LOGGER.info("attention action served action=resolve_installation_diagnostic")
+            reply(HTTPStatus.OK, {"status": "resolved", "diagnosticId": diagnostic_id})
 
         def _handle_attention_page(self, raw_page: str, *, send_body: bool) -> None:
             """One Admin GET page, rendered for the read-only agent and returned as text."""

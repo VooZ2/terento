@@ -94,6 +94,7 @@ class AttentionReportTests(unittest.TestCase):
         problem = report["installationProblems"]["items"][0]
         self.assertEqual(report["installationProblems"]["total"], 1)
         self.assertEqual(problem["operationKey"], "0f0c7f4e-79a8-4c0b-9a3a-6b8d6e0d1c11")
+        self.assertEqual(problem["diagnosticIds"], ["result:0f0c7f4e-79a8-4c0b-9a3a-6b8d6e0d1c11:0"])
         self.assertEqual(problem["model"], "fēnix 7X Pro")
         self.assertEqual(problem["appVersion"], "1.0.1 · build 45 [redacted email]")
         self.assertTrue(problem["adminUrl"].startswith("https://api.terento.app/admin/"))
