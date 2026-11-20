@@ -156,6 +156,7 @@ class MonitoringPostgresTests(unittest.TestCase):
         db.commands=[]
         db.record_provider_health(replace(check_provider(OPENTOPO_MAP,probe=Probe()),provider_id='due',retry_after_seconds=7200))
         cooldown=db.commands[-1]
+        # Not a text assertion: this extracts the production INSERT so PGlite runs the exact SQL.
         tree=ast.parse(textwrap.dedent(inspect.getsource(Database.upsert_provider_snapshot)))
         package_sql=next(n.value for n in ast.walk(tree) if isinstance(n,ast.Constant) and isinstance(n.value,str) and 'INSERT INTO map_package (' in n.value)
         root=Path(__file__).parent

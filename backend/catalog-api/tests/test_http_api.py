@@ -419,12 +419,6 @@ class HTTPAPITests(unittest.TestCase):
         self.assertEqual(cached.status, 304)
         self.assertEqual(cached_body, b"")
 
-    def test_device_catalog_database_projection_includes_map_capability(self) -> None:
-        import inspect
-
-        source = inspect.getsource(Database.device_catalog_snapshot)
-        self.assertIn("dm.map_capable", source)
-
     def test_installation_policy_is_private_write_authorization_projection(self) -> None:
         response, body = self.request("/devices/installation-policy.json")
         document = json.loads(body)
@@ -439,13 +433,6 @@ class HTTPAPITests(unittest.TestCase):
         self.assertNotIn("supportStatus", document["devices"][0])
         self.assertNotIn("successfulInstallCount", json.dumps(document))
         self.assertNotIn("compatibilityStatus", json.dumps(document))
-
-    def test_installation_policy_database_projection_excludes_support_metadata(self) -> None:
-        import inspect
-
-        source = inspect.getsource(Database.installation_policy_snapshot)
-        self.assertIn("dm.map_capable", source)
-        self.assertNotIn("dm.support_status", source)
 
     def test_non_approved_asset_is_not_serialized(self) -> None:
         row = {

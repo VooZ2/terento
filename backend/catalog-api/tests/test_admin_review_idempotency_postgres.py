@@ -97,6 +97,10 @@ class AdminReviewIdempotencyTests(PGliteTestCase):
             [(row["new_status"], row["linked_github_issue"]) for row in self.lifecycle_audits(resolved)],
             [("RESOLVED", "#9"), ("RESOLVED", None)],
         )
+        # Linking an issue never changes the recorded outcome or lifecycle.
+        stored = self.sql("SELECT phase_outcome, diagnostic_status FROM compatibility_evidence_event"
+                          " WHERE event_id = %s", (resolved,))[0]
+        self.assertEqual((stored["phase_outcome"], stored["diagnostic_status"]), ("FAILED", "RESOLVED"))
 
     def test_workflow_change_on_resolved_diagnostic_is_rejected(self):
         resolved = self.legacy_diagnostic(phase_outcome="FAILED", diagnostic_status="RESOLVED")
