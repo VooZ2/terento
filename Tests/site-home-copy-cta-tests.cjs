@@ -20,7 +20,7 @@ const locales = new Map([
     providerCopy: "Choose maps from available providers. Maps are downloaded from each provider's original source.",
     heroCompatibility: "Check compatibility",
     download: "Download for Mac",
-    heroDownload: "Download for Mac",
+    heroDownload: "Download .dmg",
   }],
   ["de", {
     file: path.join(root, "site", "de", "index.html"),
@@ -36,7 +36,7 @@ const locales = new Map([
     providerCopy: "Wähle Karten der verfügbaren Anbieter. Karten werden von der Originalquelle des jeweiligen Anbieters geladen.",
     heroCompatibility: "Kompatibilität prüfen",
     download: "Für Mac herunterladen",
-    heroDownload: "Für Mac herunterladen",
+    heroDownload: ".dmg herunterladen",
   }],
   ["fr", {
     file: path.join(root, "site", "fr", "index.html"),
@@ -52,7 +52,7 @@ const locales = new Map([
     providerCopy: "Choisissez parmi les fournisseurs disponibles. Les cartes sont téléchargées depuis la source d’origine de chaque fournisseur.",
     heroCompatibility: "Vérifier la compatibilité",
     download: "Télécharger pour Mac",
-    heroDownload: "Télécharger pour Mac",
+    heroDownload: "Télécharger le .dmg",
   }],
   ["pl", {
     file: path.join(root, "site", "pl", "index.html"),
@@ -68,7 +68,7 @@ const locales = new Map([
     providerCopy: "Wybieraj mapy od dostępnych dostawców. Mapy są pobierane z oryginalnego źródła każdego dostawcy.",
     heroCompatibility: "Sprawdź kompatybilność",
     download: "Pobierz na Maca",
-    heroDownload: "Pobierz na Maca",
+    heroDownload: "Pobierz .dmg",
   }],
   ["cs", {
     file: path.join(root, "site", "cs", "index.html"),
@@ -84,7 +84,7 @@ const locales = new Map([
     providerCopy: "Vyberte si mapy od dostupných poskytovatelů. Mapy se stahují z původního zdroje každého poskytovatele.",
     heroCompatibility: "Ověřit kompatibilitu",
     download: "Stáhnout pro Mac",
-    heroDownload: "Stáhnout pro Mac",
+    heroDownload: "Stáhnout .dmg",
   }],
   ["it", {
     file: path.join(root, "site", "it", "index.html"),
@@ -100,7 +100,7 @@ const locales = new Map([
     providerCopy: "Scegli mappe dei provider disponibili. Le mappe vengono scaricate dalla fonte originale di ciascun provider.",
     heroCompatibility: "Verifica la compatibilità",
     download: "Scarica per Mac",
-    heroDownload: "Scarica per Mac",
+    heroDownload: "Scarica il .dmg",
   }],
 ]);
 
@@ -171,16 +171,25 @@ for (const [locale, expected] of locales) {
   // Home ends with the FAQ: no closing call to action.
   assert.doesNotMatch(page, /class="cta-band|end-cta|data-umami-event-location="home-bottom"/, `${locale}: no end CTA on Home`);
   assert.match(page, /<section class="faq section" id="faq"[\s\S]*?<\/section>\s*<\/main>/, `${locale}: Home ends at the FAQ`);
-  // Round 4 (owner): computer actions are "Download for Mac" + "Install from your browser"; phones get
-  // "Send this link to your computer" + "Check compatibility". Round 5: one App Store badge, in the Mac app card.
+  // Owner 2026-11-20: on a computer the hero leads with Apple's Mac App Store badge (ct=site-hero),
+  // then "Download for Mac" as the outlined secondary button, then "Install from your browser" as a
+  // text link. Phones get "Send this link to your computer" + "Check compatibility". The Mac app card
+  // keeps a second badge (ct=site-home); Home is the only page with two badges.
   const computerActions = page.match(/<div class="hero-actions home-actions home-actions--computer">[\s\S]*?<\/div>/)?.[0];
   assert.ok(computerActions, `${locale}: computer hero actions`);
-  assert.match(computerActions, /^<div[^>]*><a class="download-action download-action--store hero-download-action"[^>]*data-umami-event="download-cta-click" data-umami-event-location="home-hero">[\s\S]*?<\/a><a class="button-secondary hero-web-installer-link" href="[^"]*\/install\/" data-umami-event="web-installer-link-click" data-umami-event-location="home-hero">/);
+  const badge = appStoreBadge.badges[locale];
+  const badgeLang = badge.artwork === locale ? "" : ` lang="${badge.artwork}"`;
+  const heroBadge = `<a class="app-store-badge hero-app-store" href="https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&amp;ct=site-hero&amp;mt=8" data-umami-event="app-store-click" data-umami-event-location="home-hero"><img src="/assets/app-store/download-on-the-mac-app-store-${badge.artwork}.svg?v=${appStoreBadge.asset_version}" width="156" height="40" alt="${badge.alt}"${badgeLang}></a>`;
+  assert.ok(computerActions.startsWith(`<div class="hero-actions home-actions home-actions--computer">${heroBadge}<a class="button-secondary hero-download-action" href="${locale === "en" ? "/download/" : `/${locale}/download/`}" data-umami-event="download-cta-click" data-umami-event-location="home-hero">`), `${locale}: badge first, then the outlined Download for Mac`);
+  assert.match(computerActions, /<\/a><a class="text-link hero-web-installer-link" href="[^"]*\/install\/" data-umami-event="web-installer-link-click" data-umami-event-location="home-hero">[^<]+<\/a><\/div>$/, `${locale}: Install from your browser is a text link, last`);
+  assert.doesNotMatch(computerActions, /<a class="download-action/, `${locale}: no filled button in the computer hero actions`);
   const phoneActions = page.match(/<div class="hero-actions home-actions home-actions--phone">[\s\S]*?<\/div>/)?.[0];
   assert.ok(phoneActions, `${locale}: phone hero actions`);
   assert.match(phoneActions, /data-umami-event="send-to-computer-click" data-umami-event-location="home-hero"[\s\S]*?<a class="text-link hero-compatibility-link"/);
-  assert.equal((page.match(/class="app-store-badge/g) || []).length, 1, `${locale}: one App Store badge on Home`);
-  assert.doesNotMatch(computerActions + phoneActions, /app-store-badge/, `${locale}: no badge in the hero`);
+  assert.equal((page.match(/class="app-store-badge/g) || []).length, 2, `${locale}: two App Store badges on Home (hero, Mac app card)`);
+  assert.doesNotMatch(phoneActions, /app-store-badge/, `${locale}: no badge in the phone actions`);
+  assert.equal((page.match(/ct=site-hero/g) || []).length, 1, `${locale}: ct=site-hero once on Home`);
+  assert.equal((page.match(/ct=site-home/g) || []).length, 1, `${locale}: ct=site-home once on Home`);
   assert.doesNotMatch(page, /home-hero-note|home-hero-browser|home-send-link/, `${locale}: no text under the hero buttons`);
   const providerSection = page.match(/<section class="block home-providers"[\s\S]*?<\/section>/)?.[0];
   assert.ok(providerSection, `${locale}: missing provider cards section`);
@@ -231,7 +240,7 @@ for (const [locale, expected] of locales) {
     assert.doesNotMatch(card, /license|licen[cs]|source|download/i, `${locale}: provider card ${index + 1} avoids technical/legal copy`);
   });
   assert.doesNotMatch(page, /class="scope-section"|class="scope-link"|id="scope-title"|>Beta scope<|Available today|Choose a map and get moving/i, `${locale}: removed Beta scope and stale provider copy`);
-  assert.ok(download.classes.has("download-action"), `${locale}: hero Download CTA uses the solid action style`);
+  assert.ok(download.classes.has("button-secondary"), `${locale}: hero Download CTA is the outlined secondary button (the badge leads)`);
   assert.equal(download.label, expected.heroDownload, `${locale}: download CTA label`);
   assert.ok(heroCompatibility.classes.has("text-link"), `${locale}: Hero Compatibility CTA uses the shared text-link style`);
   assert.ok(heroCompatibility.classes.has("hero-compatibility-link"), `${locale}: Hero Compatibility CTA uses its layout modifier`);
@@ -322,11 +331,10 @@ assert.match(styles, /grid-auto-columns: min\(90%, 420px\)/);
 assert.match(styles, /\.provider-cards\s*\{[^}]*max-width: 1300px/s);
 assert.match(styles, /overflow-x: auto/);
 
-// Round 5 (owner 2026-11-19): the Mac app card has "Download for Mac" with the official Mac App Store
-// badge under it (location home-section); the web installer card has one button. Same height.
+// The Mac app card has "Download for Mac" with the official Mac App Store badge under it
+// (ct=site-home, location home-section; owner 2026-11-20); the web installer card has one button.
 for (const [locale] of locales) {
   const html = pageFor(locale);
-  assert.equal((html.match(/class="app-store-badge/g) || []).length, 1, `${locale}: one App Store badge on Home`);
   const ways = [...html.matchAll(/<article class="card col-6 home-way">([\s\S]*?)<\/article>/g)].map(match => match[1]);
   assert.equal(ways.length, 2, `${locale}: two ways`);
   for (const way of ways) {

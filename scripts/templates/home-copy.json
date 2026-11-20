@@ -1,6 +1,7 @@
 {
   "en": {
     "hero_download": "Download for Mac",
+    "hero_dmg": "Download .dmg",
     "hero_browser": "Install from your browser",
     "hero_compat": "Check compatibility",
     "compatibility_href": "/compatibility/",
@@ -64,6 +65,7 @@
   },
   "de": {
     "hero_download": "Für Mac herunterladen",
+    "hero_dmg": ".dmg herunterladen",
     "hero_browser": "Direkt aus dem Browser installieren",
     "hero_compat": "Kompatibilität prüfen",
     "compatibility_href": "/de/compatibility/",
@@ -127,6 +129,7 @@
   },
   "fr": {
     "hero_download": "Télécharger pour Mac",
+    "hero_dmg": "Télécharger le .dmg",
     "hero_browser": "Installer depuis votre navigateur",
     "hero_compat": "Vérifier la compatibilité",
     "compatibility_href": "/fr/compatibility/",
@@ -190,6 +193,7 @@
   },
   "pl": {
     "hero_download": "Pobierz na Maca",
+    "hero_dmg": "Pobierz .dmg",
     "hero_browser": "Zainstaluj z przeglądarki",
     "hero_compat": "Sprawdź kompatybilność",
     "compatibility_href": "/pl/compatibility/",
@@ -253,6 +257,7 @@
   },
   "cs": {
     "hero_download": "Stáhnout pro Mac",
+    "hero_dmg": "Stáhnout .dmg",
     "hero_browser": "Instalovat z prohlížeče",
     "hero_compat": "Ověřit kompatibilitu",
     "compatibility_href": "/cs/compatibility/",
@@ -316,6 +321,7 @@
   },
   "it": {
     "hero_download": "Scarica per Mac",
+    "hero_dmg": "Scarica il .dmg",
     "hero_browser": "Installa dal browser",
     "hero_compat": "Verifica la compatibilità",
     "compatibility_href": "/it/compatibility/",
