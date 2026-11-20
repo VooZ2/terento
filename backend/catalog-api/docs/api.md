@@ -1544,7 +1544,8 @@ It runs the same lifecycle change as Admin Resolve: the result becomes
 `RESOLVED` with that reason and note, one lifecycle audit row is written, the
 installation result, statistics and evidence stay unchanged, and an already
 resolved result stays as it is. The audit row and `resolved_by` carry no Admin
-user; the note prefix names the agent. Reopen stays an Admin action, which is
+user; the note prefix names the agent, and Admin shows such a result as
+resolved `by Claude agent`. Reopen stays an Admin action, which is
 also the undo. Answers: `200 {"status":"resolved","diagnosticId":…}`, `400
 invalid_action` (any other field, value or shape), `401 unauthorized`, `404
 diagnostic_not_found`, `413`/`415` for a body of the wrong size or type, `429

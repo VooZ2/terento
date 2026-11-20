@@ -80,6 +80,9 @@ class AttentionActionTests(unittest.TestCase):
             {**VALID, "reason": "IDENTITY_CORRECTED"},
             {**VALID, "reason": "OTHER"},
             {**VALID, "reason": "not_terento_issue"},
+            {**VALID, "reason": []},
+            {**VALID, "reason": {}},
+            {**VALID, "action": []},
             {**VALID, "diagnosticId": "2bd926cd-8929-4a10-bf46-9cae7321a8f1"},  # whole operation
             {**VALID, "diagnosticId": "web:2bd926cd-8929-4a10-bf46-9cae7321a8f1"},
             {**VALID, "diagnosticId": "legacy:2bd926cd-8929-4a10-bf46-9cae7321a8f1"},
@@ -122,6 +125,21 @@ class AttentionActionTests(unittest.TestCase):
         response, body = self.post(VALID)
         self.assertEqual((response.status, body), (429, {"error": "rate_limited"}))
         self.assertEqual(self.calls, [])
+
+
+class AgentResolutionLabelTests(unittest.TestCase):
+    def render(self, **result):
+        from terento_catalog.admin import _diagnostic_detail_dialog
+        return _diagnostic_detail_dialog("Unknown", "test", [{
+            "phase_outcome": "FAILED", "resolution_reason": "NOT_TERENTO_ISSUE", **result,
+        }], resolved=True, csrf_token="test", identity_devices=[])
+
+    def test_admin_names_the_agent_only_for_its_own_marked_resolution(self):
+        self.assertIn("· by Claude agent", self.render(resolved_by=None, resolution_note="Claude agent: watch -2"))
+        self.assertIn("· by owner", self.render(resolved_by=1, resolved_by_username="owner",
+                                                resolution_note="Claude agent: watch -2"))
+        self.assertNotIn("Claude agent", self.render(resolved_by=1, resolution_note="Claude agent: x"))
+        self.assertNotIn("by Claude agent", self.render(resolved_by=None, resolution_note="GitHub issue closed"))
 
 
 if __name__ == "__main__":

@@ -1657,6 +1657,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if (
                 set(document) != ATTENTION_ACTION_FIELDS
                 or document.get("action") != "resolve_installation_diagnostic"
+                or not isinstance(document.get("reason"), str)
                 or document.get("reason") not in ATTENTION_ACTION_REASONS
                 or not isinstance(diagnostic_id, str)
                 or not re.fullmatch(r"result:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:(0|[1-9][0-9]{0,3})", diagnostic_id)
