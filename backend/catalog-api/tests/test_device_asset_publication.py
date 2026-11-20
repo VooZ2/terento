@@ -4,6 +4,7 @@ import struct
 import unittest
 from datetime import datetime, timezone
 
+from source_helpers import store_webp
 from terento_catalog.asset_storage import AssetStorage
 from terento_catalog.device_catalog import build_device_catalog
 
@@ -64,7 +65,8 @@ class DeviceAssetPublicationTests(unittest.TestCase):
         from tempfile import TemporaryDirectory
 
         with TemporaryDirectory() as directory:
-            stored = AssetStorage(Path(directory)).store_webp(
+            stored = store_webp(
+                AssetStorage(Path(directory)),
                 _minimal_vp8x_webp(600, 600),
                 "devices/garmin/fenix-8-47-amoled.webp",
             )

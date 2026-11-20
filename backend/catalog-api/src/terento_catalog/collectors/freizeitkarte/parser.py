@@ -72,18 +72,6 @@ def parse_release_page(html: str) -> ReleaseMetadata:
     )
 
 
-def parse_region_download(
-    html: str,
-    *,
-    region_code: str,
-    base_url: str,
-) -> str:
-    for download in parse_region_downloads(html, base_url=base_url):
-        if download.region == region_code:
-            return download.source_url
-    raise ProviderPageParseError(f"Freizeitkarte region section not found: {region_code}")
-
-
 def parse_region_downloads(html: str, *, base_url: str) -> list[RegionDownload]:
     """Parse one official Garmin regional page into one preferred package per map.
 

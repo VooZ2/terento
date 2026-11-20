@@ -5,8 +5,8 @@ from terento_catalog.historical_devices import (
     HISTORICAL_DEVICE_REGISTRY,
     all_historical_device_specs,
     historical_device_for_event,
-    historical_device_spec,
 )
+from source_helpers import historical_device_spec
 from terento_catalog.map_capability import classify_map_capable
 
 

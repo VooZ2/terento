@@ -3,11 +3,11 @@ from __future__ import annotations
 import unittest
 
 from terento_catalog.collectors.freizeitkarte.parser import (
-    parse_region_download,
     parse_region_downloads,
     parse_release_page,
 )
 from terento_catalog.migrate import _statements
+from source_helpers import parse_region_download
 
 
 class FreizeitkarteParserTests(unittest.TestCase):

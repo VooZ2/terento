@@ -205,9 +205,6 @@ class FakeProviderDatabase:
             self.audits.append(audit)
         return 11
 
-    def record_admin_audit(self, **kwargs):
-        self.audits.append(kwargs)
-
     def set_provider_status(self, provider_id, status, **kwargs):
         if provider_id not in {"freizeitkarte", "opentopomap"}:
             return False

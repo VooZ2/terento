@@ -13,6 +13,7 @@ from terento_catalog.http_api import CatalogService, make_handler
 from terento_catalog.db import Database
 from terento_catalog.device_catalog import build_device_catalog
 from terento_catalog.asset_storage import AssetStorage
+from source_helpers import store_webp
 from terento_catalog.scheduler import _run_scheduled_cycle
 from http.server import ThreadingHTTPServer
 from pathlib import Path
@@ -620,7 +621,7 @@ class HTTPAPITests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             storage = AssetStorage(Path(directory))
             data = _minimal_vp8x_webp(64, 64)
-            stored = storage.store_webp(data, "devices/garmin/fenix-8.webp")
+            stored = store_webp(storage, data, "devices/garmin/fenix-8.webp")
             server = ThreadingHTTPServer(
                 ("127.0.0.1", 0),
                 make_handler(CatalogService(FakeDatabase(), asset_storage=storage)),

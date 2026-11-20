@@ -23,12 +23,6 @@ CANONICAL_STATUS_ORDER = (
     CompatibilityStatus.SUPPORTED,
     CompatibilityStatus.VERIFIED,
 )
-CANONICAL_STATUS_VALUES = tuple(status.value for status in CANONICAL_STATUS_ORDER)
-
-
-PUBLIC_COMPATIBILITY_STATUSES = frozenset(
-    CANONICAL_STATUS_ORDER
-)
 
 
 def calculate_compatibility_status(

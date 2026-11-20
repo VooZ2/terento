@@ -25,7 +25,6 @@ SUPPORT_REPORT_SCHEMA_VERSION = 1
 MAX_USER_MESSAGE_LENGTH = 2000
 MAX_ADMIN_NOTE_LENGTH = 2000
 SUPPORT_REPORT_CATEGORIES = ("INSTALL_FAILED", "UPDATE_FAILED", "REMOVE_FAILED", "CONNECTION", "OTHER")
-SUPPORT_REPORT_STATUSES = ("OPEN", "HANDLED")
 ALLOWED_SUPPORT_REPORT_KEYS = frozenset({
     "schemaVersion", "id", "createdAt", "appBuild", "releaseLabel", "category",
     "operationId", "userMessage", "report",

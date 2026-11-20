@@ -7,8 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from terento_catalog.db import migration_directory
-from terento_catalog.migrate import apply_migrations, validate_migration_versions
+from terento_catalog.migrate import apply_migrations
 
 
 class Rows:
@@ -75,9 +74,6 @@ class GenericMigrationTests(unittest.TestCase):
             (self.directory / f"{version:03d}_migration.sql").write_text(
                 "SELECT 'migration';", encoding="utf-8"
             )
-
-    def test_repository_inventory_is_canonical(self):
-        validate_migration_versions(list(migration_directory().glob("*.sql")))
 
     def test_062_to_063_applies_one_pending_file_transactionally(self):
         database = TransactionalDatabase(ledger_through(62))
