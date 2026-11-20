@@ -74,6 +74,11 @@ These paths are ignored by `.gitignore`. A release is identified by its
 reviewed commit/tag and its checksummed artifact, not by duplicating the
 whole repository into a `production/` or `ready/` directory.
 
+Committed files that a generator rewrites completely (for example the About,
+guide and map style pages, `site/**/index.md`, `site/sitemap.xml` and the brand
+token outputs) are listed in `.gitattributes` as `linguist-generated`, with the
+generator for each. This only affects GitHub's language bar and PR diff view.
+
 ## Current application boundary
 
 The root `Terento.xcodeproj/` consumes production source from `app/TerentoCore/`.

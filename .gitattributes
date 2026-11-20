@@ -1,0 +1,48 @@
+# GitHub Linguist classification only. These attributes do not change Git
+# diffs, merges, archives, builds or deploys.
+#
+# linguist-generated: committed output that a generator rewrites completely.
+# Each pattern was checked by deleting the file in a clean checkout and running
+# the generators: the file came back byte for byte. Pages that a generator only
+# patches in place (Home, Download, Compatibility, Legal, Privacy, 404,
+# Supported watches) and site/styles.css are partly hand-written and stay
+# unmarked. Never hand-edit a generated file; change its generator or source.
+
+# scripts/build-about-pages.py
+site/about/index.html linguist-generated=true
+site/*/about/index.html linguist-generated=true
+
+# scripts/build-guide-pages.py
+site/guides/install-garmin-maps-mac/index.html linguist-generated=true
+site/guides/install-garmin-maps-edge-mac/index.html linguist-generated=true
+site/guides/install-garmin-maps-linux/index.html linguist-generated=true
+site/guides/troubleshooting/index.html linguist-generated=true
+site/*/guides/install-garmin-maps-mac/index.html linguist-generated=true
+site/*/guides/install-garmin-maps-edge-mac/index.html linguist-generated=true
+site/*/guides/install-garmin-maps-linux/index.html linguist-generated=true
+site/*/guides/troubleshooting/index.html linguist-generated=true
+
+# scripts/build-map-style-pages.py
+site/map-styles/index.html linguist-generated=true
+site/*/map-styles/index.html linguist-generated=true
+
+# scripts/build-markdown-pages.py --write
+site/**/index.md linguist-generated=true
+
+# scripts/generate-llms.py --write
+site/llms.txt linguist-generated=true
+
+# scripts/generate-sitemap.py --write
+site/sitemap.xml linguist-generated=true
+
+# scripts/generate-brand-tokens.py
+brand/tokens.css linguist-generated=true
+app/TerentoCore/Sources/TerentoPoC/Views/DesignSystem/TerentoTokens.generated.swift linguist-generated=true
+backend/catalog-api/src/terento_catalog/admin_brand_tokens_generated.py linguist-generated=true
+
+# backend/catalog-api/tools/build_admin_visits_map.py
+backend/catalog-api/src/terento_catalog/admin_visits_map.py linguist-generated=true
+
+# Third-party copy (Leaflet 1.9.4, see THIRD_PARTY_NOTICES.md)
+backend/catalog-api/src/terento_catalog/static/map/leaflet-1.9.4.css linguist-vendored=true
+backend/catalog-api/src/terento_catalog/static/map/leaflet-1.9.4.js linguist-vendored=true
