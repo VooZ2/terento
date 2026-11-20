@@ -446,7 +446,7 @@ struct InstallationEvidenceTests {
                 && event.provider == "custom"
                 && event.region == "custom"
                 && event.mapRelease == "custom",
-            "custom IMG evidence keeps the watch model and uses coarse source labels"
+            "custom IMG evidence keeps the device model and uses coarse source labels"
         )
         let payload = String(decoding: try JSONEncoder().encode(event), as: UTF8.self)
         expect(
@@ -671,7 +671,7 @@ struct InstallationEvidenceTests {
             writeStarted: false, terentoVersion: "test", macOSVersion: "test"
         )
         let excluded = CompatibilityEvidenceCalculator.summarize([prewrite], forModel: model)
-        expect(excluded.attemptedInstallCount == 0 && excluded.failedInstallCount == 0, "pre-write failure is diagnostic and excluded from watch compatibility")
+        expect(excluded.attemptedInstallCount == 0 && excluded.failedInstallCount == 0, "pre-write failure is diagnostic and excluded from device compatibility")
     }
 
     @MainActor

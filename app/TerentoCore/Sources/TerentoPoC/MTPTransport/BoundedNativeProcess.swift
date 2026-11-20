@@ -202,6 +202,7 @@ extension FinishingTrace {
         "preflight_inventory_failed", "operation_begin", "operation_worker_failed", "operation_failed",
         "operation_complete", "worker_operation_begin", "worker_operation_failed", "worker_started",
         "worker_exited", "worker_deadline", "worker_cancelled", "readback_attempt", "readback_failed",
+        "readback_retry", "readback_repeat_succeeded",
         "verify_begin", "region_begin", "open_begin", "open_end", "identity_begin", "identity_end",
         "session_open_begin", "session_open_end", "file_list_begin", "file_list_end",
         "session_close_begin", "session_close_end", "native_cleanup_begin", "native_cleanup_end",

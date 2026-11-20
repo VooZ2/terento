@@ -107,7 +107,13 @@ parts together.
 - **Acquisitions** are provider-download attempts. Only terminal
   `DOWNLOAD_SUCCEEDED` and `DOWNLOAD_FAILED` events count. `STARTED`,
   `PROCESSING`, `CANCELLED`, `INTERRUPTED`, missing, and unknown terminal
-  states are excluded. A custom `.img` import is not an external provider
+  states are excluded. In apps newer than 1.2.1 an installation download ends
+  as `DOWNLOAD_CANCELLED` only when the person pressed Cancel; a stop the app
+  makes itself (a new map read, a withdrawn installation authorization, a
+  custom import, a disconnect or a quit) ends as `DOWNLOAD_INTERRUPTED`.
+  Through 1.2.1 those app-made stops, except a disconnect and a quit, were
+  also reported as cancelled, so an older cancelled download does not prove a
+  person's decision. Neither state carries a reason field. A custom `.img` import is not an external provider
   acquisition. `acquisitionPurpose` records `install` or `update` independently
   of the eventual device outcome. Missing historical purpose stays unknown.
   Downloads totals and charts include all purposes; their breakdown explicitly

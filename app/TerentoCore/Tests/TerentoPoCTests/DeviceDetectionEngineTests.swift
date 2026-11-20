@@ -168,7 +168,7 @@ struct DeviceDetectionEngineTests {
         engine.readDevice()
         try? await Task.sleep(for: .milliseconds(700))
         transport.setUSBCount(1)
-        check(await waitUntil(4) { engine.hasConnectedDevice }, "plugging the watch in later connects without a click")
+        check(await waitUntil(4) { engine.hasConnectedDevice }, "plugging the device in later connects without a click")
         check(outcomes.values == [.connected] && engine.lastConnectOutcome == .connected, "connected outcome is exposed once")
     }
 
@@ -198,7 +198,7 @@ struct DeviceDetectionEngineTests {
               "repeated session-open failures are shown as busy while polling continues")
         check(engine.state == .detecting, "busy keeps detecting so quitting the other app reconnects")
         transport.enqueue(.success(watch))
-        check(await waitUntil(6) { engine.hasConnectedDevice }, "a freed watch connects automatically")
+        check(await waitUntil(6) { engine.hasConnectedDevice }, "a freed device connects automatically")
         check(outcomes.values == [.busy, .connected], "busy then connected are reported")
     }
 
@@ -211,10 +211,10 @@ struct DeviceDetectionEngineTests {
         engine.setPresenceMonitoringEnabled(false)
         engine.readDevice()
         check(await waitUntil(3) { engine.state == .failed }, "a bounded read deadline ends detection")
-        check(engine.connectFailure?.title == "Your watch stopped responding"
-                && engine.connectFailure?.steps.first?.text == "Unplug the watch and wait 5 seconds"
+        check(engine.connectFailure?.title == "Your device isn't responding"
+                && engine.connectFailure?.steps.first?.text == "Unplug the device and wait 5 seconds"
                 && engine.userErrorMessage == engine.connectFailure?.text,
-              "a stalled watch shows the unplug-and-replug recovery message")
+              "a stalled device shows the unplug-and-replug recovery message")
         check(outcomes.values == [.failed], "a stalled read reports failed")
         transport.enqueue(.success(watch))
         transport.setUSBCount(0)
@@ -229,7 +229,7 @@ struct DeviceDetectionEngineTests {
         let outcomes = OutcomeRecorder()
         let engine = makeEngine(transport, outcomes: outcomes)
         engine.readDevice()
-        check(await waitUntil(3) { engine.hasConnectedDevice }, "fixture watch connects")
+        check(await waitUntil(3) { engine.hasConnectedDevice }, "fixture device connects")
         transport.setUSBCount(0)
         check(await waitUntil(4) { engine.state == .detecting && engine.detectionPhase == .waitingForWatch },
               "an unexpected disconnect returns to calm discovery")
@@ -240,16 +240,16 @@ struct DeviceDetectionEngineTests {
         check(await waitUntil(4) { engine.detectionPhase == .needsAttention(.multipleDevices) },
               "a second Garmin is shown as its own issue, not a disconnect")
         transport.setUSBCount(1)
-        check(await waitUntil(5) { engine.hasConnectedDevice }, "the remaining watch reconnects automatically")
+        check(await waitUntil(5) { engine.hasConnectedDevice }, "the remaining device reconnects automatically")
         engine.setPresenceMonitoringEnabled(false)
     }
 
     static func testBoundedReadDeadlines() {
-        check(MTPFinishingWorker.inventoryTimeout(expectedObjectCount: 0) == 60, "an empty watch keeps the 60 s inventory floor")
+        check(MTPFinishingWorker.inventoryTimeout(expectedObjectCount: 0) == 60, "an empty device keeps the 60 s inventory floor")
         check(MTPFinishingWorker.inventoryTimeout(expectedObjectCount: 1_000) == 90, "inventory bound adds 30 ms per observed object")
-        check(MTPFinishingWorker.inventoryTimeout(expectedObjectCount: 12_000) == 420, "a heavy 12k-object watch gets 7 minutes")
+        check(MTPFinishingWorker.inventoryTimeout(expectedObjectCount: 12_000) == 420, "a heavy 12k-object device gets 7 minutes")
         check(MTPFinishingWorker.inventoryTimeout(expectedObjectCount: 100_000) == 600, "inventory bound is capped at 10 minutes")
-        check(MTPFinishingWorker.inventoryTimeout(expectedObjectCount: nil) == 600, "an unobserved watch assumes the native maximum")
+        check(MTPFinishingWorker.inventoryTimeout(expectedObjectCount: nil) == 600, "an unobserved device assumes the native maximum")
         check(MTPFinishingWorker.prefixTimeout(expectedObjectCount: 1_000, fileCount: 4) == 110, "prefix bound covers the walk plus each header")
         check(MTPFinishingWorker.timeout(for: .init(operation: .deviceSnapshot), sampleTimeout: 600) == 90, "detection snapshot has a finite bound")
         check(MTPFinishingWorker.timeout(for: .init(operation: .scanInventory, expectedObjectCount: 2_000), sampleTimeout: 600) == 120, "scan inventory uses the scaled bound")
@@ -280,7 +280,7 @@ struct DeviceDetectionEngineTests {
                 return MTPFinishingWorker.Response(files: [])
             })
         check((try? reader.readFileInventory()) == nil, "a stalled inventory read fails")
-        check(reader.stoppedRespondingError != nil, "the scan remembers that the watch stopped responding")
+        check(reader.stoppedRespondingError != nil, "the scan remembers that the device stopped responding")
         let file = DeviceFile(itemID: 2, parentID: 1, storageID: 1, path: "/GARMIN/a.img", filename: "a.img", sizeBytes: 9, isFolder: false)
         check((try? reader.readFilePrefix(for: file, maxLength: 4096)) == nil && calls.value == 1,
               "later reads fail immediately instead of starting another bounded worker")
@@ -349,14 +349,14 @@ struct DeviceDetectionEngineTests {
             }))
         engine.setPresenceMonitoringEnabled(false)
         engine.readDevice()
-        check(await waitUntil(3) { engine.hasConnectedDevice }, "policy fixture watch connects")
+        check(await waitUntil(3) { engine.hasConnectedDevice }, "policy fixture device connects")
         check(engine.installationAuthorization == .resolving, "a fresh connection starts in Checking…, not a connection error")
         await responses.release()
         check(await waitUntil(3) { engine.installationAuthorization == .blocked(.catalogUnavailable) },
               "an offline policy fetch becomes a retryable Couldn't check")
         engine.retryInstallationAuthorizationIfUnavailable()
         check(engine.installationAuthorization == .resolving, "the catalog timer re-resolves an unavailable policy")
-        check(await waitUntil(3) { engine.installationAuthorization.canInstall }, "a successful retry approves the watch")
+        check(await waitUntil(3) { engine.installationAuthorization.canInstall }, "a successful retry approves the device")
         engine.retryInstallationAuthorizationIfUnavailable()
         check(engine.installationAuthorization.canInstall, "the catalog timer leaves a made decision alone")
         guard let identity = engine.currentInstallationIdentity else {
@@ -368,7 +368,7 @@ struct DeviceDetectionEngineTests {
         let other = DeviceIdentity(manufacturer: "Garmin", model: "Other", family: nil, variant: nil,
             usbVendorId: 0x091e, usbProductId: 0x1, firmware: nil, storageCapacity: 0, freeSpace: 0)
         engine.applyFreshInstallationAuthorization(.blocked(.outOfScope), for: other)
-        check(engine.installationAuthorization == .blocked(.pending), "a decision for another watch is ignored")
+        check(engine.installationAuthorization == .blocked(.pending), "a decision for another device is ignored")
 
         let fresh = [StorageInfo(id: 1, description: "Internal", volumeIdentifier: "", maximumCapacity: 32_000, freeSpace: 7_000)]
         engine.refreshStorage(DeviceStorageObservation(vendorID: 0x091e, productID: 0x51b8,
@@ -378,7 +378,7 @@ struct DeviceDetectionEngineTests {
         engine.refreshStorage(DeviceStorageObservation(vendorID: 0x091e, productID: 0x51b8,
             serialNumber: "OTHER", storages: [StorageInfo(id: 1, description: "", volumeIdentifier: "",
                 maximumCapacity: 1, freeSpace: 1)]))
-        check(engine.snapshot?.freeSpace == 7_000, "storage read from another watch is ignored")
+        check(engine.snapshot?.freeSpace == 7_000, "storage read from another device is ignored")
     }
 
     static func testClassifier() {

@@ -11,6 +11,7 @@ struct Stage45MapSelectionTests {
     static func main() {
         testCatalogRegionsProduceOneCanonicalList()
         testMacRegionsRecommendLithuaniaAndLatvia()
+        testMacCountryRecommendsEveryProvidersCountryMap()
         testUpToDateMapIsNotActionable()
         testNewMapProducesReadyPlan()
         testStorageUsesInstallSizeNotDownloadSize()
@@ -111,6 +112,96 @@ struct Stage45MapSelectionTests {
                 && latvianItems.first?.comparison.catalogMap.regionId == "LVA"
                 && latvianItems.first?.isRecommended == true,
             "the Mac locale recommends the matching Lithuania and Latvia catalog regions"
+        )
+    }
+
+    /// The Mac's country recommends every provider's map of that whole
+    /// country, not only the provider whose region id is an ISO code.
+    private static func testMacCountryRecommendsEveryProvidersCountryMap() {
+        let fzk = makeComparison(region: "LTU", name: "Republic of Lithuania", status: .notInstalled)
+        let fzkGermany = makeComparison(region: "DEU", name: "Federal Republic of Germany", status: .notInstalled)
+        let fzkGermanyNorth = makeComparison(
+            region: "DEU-NORTH", name: "Federal Republic of Germany", status: .notInstalled,
+            identifier: "DEU+NORTH")
+        let otm = makeComparison(
+            providerID: "opentopomap", providerName: "OpenTopoMap", region: "LTU",
+            name: "Lithuania", status: .notInstalled, countryCodes: ["LT"])
+        let otmGermany = makeComparison(
+            providerID: "opentopomap", providerName: "OpenTopoMap", region: "GERMANY",
+            name: "Germany", status: .notInstalled, regionKind: .multiCountry)
+        let otmAlps = makeComparison(
+            providerID: "opentopomap", providerName: "OpenTopoMap", region: "ALPS",
+            name: "Alps", status: .notInstalled, regionKind: .multiCountry)
+        let bbbike = makeComparison(
+            providerID: "bbbike", providerName: "BBBike", region: "EUROPE-LITHUANIA-BBBIKE-LATIN1",
+            name: "Lithuania", status: .notInstalled, countryCodes: ["LT"])
+        let bbbikeBavaria = makeComparison(
+            providerID: "bbbike", providerName: "BBBike", region: "EUROPE-GERMANY-BAYERN-BBBIKE-LATIN1",
+            name: "Bavaria – Germany", status: .notInstalled, countryCodes: ["DE"], regionKind: .subregion)
+        let bbbikeDACH = makeComparison(
+            providerID: "bbbike", providerName: "BBBike", region: "EUROPE-DACH-BBBIKE-LATIN1",
+            name: "Germany, Austria, Switzerland", status: .notInstalled,
+            countryCodes: ["DE", "AT", "CH"], regionKind: .multiCountry)
+        let maprando = makeComparison(
+            providerID: "maprando", providerName: "MapRando", region: "LITUANIE",
+            name: "Lithuania", status: .notInstalled, countryCodes: ["LT"])
+        let maprandoGermany = makeComparison(
+            providerID: "maprando", providerName: "MapRando", region: "ALLEMAGNE",
+            name: "Germany", status: .notInstalled, countryCodes: ["DE"])
+        let comparisons = [fzk, fzkGermany, fzkGermanyNorth, otm, otmGermany, otmAlps,
+                           bbbike, bbbikeBavaria, bbbikeDACH, maprando, maprandoGermany]
+        let statuses = Dictionary(uniqueKeysWithValues: comparisons.map {
+            ($0.id, InstallationPreflightStatus.readyNewInstall)
+        })
+
+        func recommended(_ systemRegion: String?) -> Set<String> {
+            Set(MapSelectionPlanner().items(
+                comparisons: comparisons,
+                preflightStatuses: statuses,
+                recommendedRegionID: MapRegionRecommendation.regionID(
+                    systemRegionCode: systemRegion, comparisons: comparisons),
+                recommendedCountryCode: MapRegionRecommendation.countryCode(
+                    systemRegionCode: systemRegion)
+            ).filter(\.isRecommended).map(\.id))
+        }
+
+        expect(
+            recommended("LT") == [fzk.catalogMap.id, otm.catalogMap.id, bbbike.catalogMap.id, maprando.catalogMap.id],
+            "a Lithuanian Mac recommends the Lithuania map of every provider"
+        )
+        expect(
+            recommended("de") == [fzkGermany.catalogMap.id, otmGermany.catalogMap.id, maprandoGermany.catalogMap.id],
+            "a German Mac recommends whole-country maps only, never a subregion or a multi-country map"
+        )
+        let lithuanianItems = MapSelectionPlanner().items(
+            comparisons: comparisons, preflightStatuses: statuses, recommendedRegionID: nil,
+            recommendedCountryCode: "LT")
+        expect(
+            lithuanianItems.prefix(4).allSatisfy(\.isRecommended)
+                && lithuanianItems.dropFirst(4).allSatisfy { !$0.isRecommended },
+            "recommended country maps are listed before the other maps"
+        )
+        expect(
+            recommended("419").isEmpty && recommended(nil).isEmpty && recommended("XX").isEmpty
+                && MapRegionRecommendation.countryCode(systemRegionCode: "419") == nil
+                && MapRegionRecommendation.countryCode(systemRegionCode: " lt ") == "LT",
+            "a locale region that is not a known country recommends nothing"
+        )
+        let custom = MapPackage(
+            id: "custom-lt", providerId: "custom", regionId: "CUSTOM", name: "Lithuania",
+            version: MapVersion(year: 2026, month: 5)!, sizeBytes: 1, sourceURL: nil,
+            releaseDate: nil, identifier: nil, sourceKind: .custom)
+        expect(
+            !MapRegionRecommendation.isWholeCountryMap(custom, displayName: "Lithuania", countryCode: "LT")
+                && MapRegionRecommendation.isWholeCountryMap(
+                    fzkGermany.catalogMap, displayName: "Germany", countryCode: "DE")
+                && !MapRegionRecommendation.isWholeCountryMap(
+                    fzkGermanyNorth.catalogMap, displayName: "Germany North", countryCode: "DE")
+                && MapRegionRecommendation.isWholeCountryMap(
+                    otmGermany.catalogMap, displayName: "Czech-Republic", countryCode: "CZ")
+                && !MapRegionRecommendation.isWholeCountryMap(
+                    bbbikeBavaria.catalogMap, displayName: "Germany", countryCode: "DE"),
+            "a custom import, a named subregion and a coded subregion are never recommended"
         )
     }
 
@@ -854,7 +945,7 @@ struct Stage45MapSelectionTests {
             installationPhase: .idle, hasValidatedArtifact: false, operationBusy: false
         )
         expect(
-            pending.userReason == "This watch model isn't enabled for map installation yet."
+            pending.userReason == "This device model isn't enabled for map installation yet."
                 && unavailable.userReason == DeviceAuthorizationPresentation(.blocked(.catalogUnavailable)).reviewReason,
             "authorization blockers use the outcome-language verdict shown on the Device page"
         )
@@ -1385,7 +1476,8 @@ struct Stage45MapSelectionTests {
         identifier: String? = nil,
         includeInstallSize: Bool = true,
         artifacts: [MapArtifact]? = nil,
-        countryCodes: [String] = []
+        countryCodes: [String] = [],
+        regionKind: MapRegionKind = .country
     ) -> MapComparison {
         let package = MapPackage(
             id: id ?? "\(providerID)-\(region.lowercased())",
@@ -1399,6 +1491,7 @@ struct Stage45MapSelectionTests {
             identifier: identifier,
             installSizeBytes: includeInstallSize ? (installSize ?? size) : nil,
             countryCodes: countryCodes,
+            regionKind: regionKind,
             artifacts: artifacts
         )
 

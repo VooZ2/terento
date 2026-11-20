@@ -46,7 +46,7 @@ struct MapCapabilityTests {
         )
         expect(
             registry.evaluate(identity: identity(model: "Lily 2 Active")).showsTerentoCompatibility == false,
-            "known non-map watches hide Terento compatibility status"
+            "known non-map devices hide Terento compatibility status"
         )
         expect(
             registry.evaluate(identity: identity(model: "Approach S70"))

@@ -17,6 +17,7 @@ struct InstallationRetryTests {
     @MainActor static func main() async throws {
         try testRetainedArtifactCache()
         await testCancelBeforeWrite()
+        await testDownloadStopStatistics()
         await testMapReadSurvivesCustomMapClose()
         try testBoundedCheckBeforeRemoval()
         testRetryClassification()
@@ -94,6 +95,64 @@ struct InstallationRetryTests {
               "Cancel stops the download task and returns to the review state")
     }
 
+    private final class RecordingStatisticsUploader: MapStatisticsEventUploading, @unchecked Sendable {
+        private let lock = NSLock()
+        private var uploaded: [MapStatisticsEvent] = []
+        func upload(_ event: MapStatisticsEvent) async throws { append(event) }
+        private func append(_ event: MapStatisticsEvent) { lock.withLock { uploaded.append(event) } }
+        var events: [MapStatisticsEvent] { lock.withLock { uploaded } }
+    }
+
+    /// A cancelled download in the statistics always means the person pressed
+    /// Cancel. A stop the app makes itself ends the download as interrupted.
+    @MainActor static func testDownloadStopStatistics() async {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("terento-retry-stats-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let uploader = RecordingStatisticsUploader()
+        let store = LocalMapStatisticsEventStore(rootURL: root)
+        let stats = MapStatisticsEventController(store: store, uploader: uploader, retryDelays: [0])
+        stats.decideConsent(.accepted)
+        let engine = MapEngine(operationGate: MTPOperationGate(), statisticsController: stats,
+            installationAuthorizationClient: InstallationAuthorizationClient(dataLoader: { _ in throw URLError(.cancelled) }))
+        let package = MapPackage(id: "bbbike-asia-china", providerId: "bbbike", regionId: "ASIA-CHINA-BBBIKE-LATIN1",
+            name: "China", version: MapVersion(year: 2026, month: 5)!, sizeBytes: 100, sourceURL: nil,
+            releaseDate: nil, identifier: nil)
+        // The store accepts a terminal event only for a download whose start
+        // it holds, as the acquisition observer records it in the app.
+        func start() -> MapStatisticsEvent {
+            let event = MapStatisticsEvent(operationId: UUID(), package: package, eventType: .downloadStarted,
+                outcome: .unknown, acquisitionId: UUID(), acquisitionPurpose: .install, componentKind: .main)
+            stats.record(event)
+            return event
+        }
+        func terminals(_ acquisition: MapStatisticsEvent) -> [MapStatisticsEventType] {
+            var seen = Set<UUID>()
+            return (uploader.events + store.pendingEvents())
+                .filter { $0.acquisitionId == acquisition.acquisitionId && seen.insert($0.id).inserted }
+                .map(\.eventType)
+                .filter { $0 != .downloadStarted }
+        }
+
+        let cancelled = start()
+        engine.beginPreparationForTesting(acquisition: cancelled)
+        engine.cancelInstallationPreparation()
+        check(terminals(cancelled) == [.downloadCancelled],
+              "Cancel pressed during a download is recorded as a cancelled download")
+
+        let interrupted = start()
+        engine.beginPreparationForTesting(acquisition: interrupted)
+        engine.cancelActiveTaskForTesting()
+        check(terminals(interrupted) == [.downloadInterrupted],
+              "a download stopped by other work of the app is recorded as interrupted, not cancelled")
+
+        let disconnected = start()
+        engine.beginPreparationForTesting(acquisition: disconnected)
+        engine.resetForDisconnectedDevice(presence: .absent)
+        check(terminals(disconnected) == [.downloadInterrupted],
+              "a download stopped by a disconnect is recorded once, as interrupted")
+        await stats.flushPendingEvents()
+    }
+
     /// Closing the custom map warning while the maps are being read stops
     /// nothing; a read stopped by other work returns Refresh instead of an
     /// endless "Reading your maps".
@@ -150,7 +209,7 @@ struct InstallationRetryTests {
             check(false, "a stalled check before removal must fail")
         } catch let error as SafeDeleteTransportError {
             guard case .deviceBusy = error else {
-                check(false, "a stalled check before removal asks to reconnect the watch, got \(error)")
+                check(false, "a stalled check before removal asks to reconnect the device, got \(error)")
                 return
             }
         }
@@ -159,7 +218,7 @@ struct InstallationRetryTests {
               && request?.mapScope == nil && request?.expectedObjectCount == 470,
               "the check before removal is the same inventory read, run once in the bounded worker")
         check(request.map { abs(MTPFinishingWorker.timeout(for: $0, sampleTimeout: 600) - 74.1) < 0.001 } == true,
-              "the check before removal ends after about 75 s for a watch with 470 objects")
+              "the check before removal ends after about 75 s for a device with 470 objects")
 
         let answered = MTPSafeDeleteTransport(operationProfile: profile, operationGate: MTPOperationGate(),
             boundedInventoryObjectCount: 470, inventoryWorker: { _ in
@@ -168,7 +227,7 @@ struct InstallationRetryTests {
             })
         let object = try answered.inspectExactObject(target)
         check(object.file.path == target.expectedPath && !object.contentHashVerified,
-              "a watch that answers passes the same identity checks as before")
+              "a device that answers passes the same identity checks as before")
     }
 
     @MainActor static func testRetryClassification() {
@@ -206,19 +265,19 @@ struct InstallationRetryTests {
         for code: Int32 in [-5, -2, -3] {
             check(WatchReconnectWaitPolicy.qualifies(failure: .preflightMTPReadFailed,
                     context: snapshotContext(code), wroteAnyComponent: false),
-                  "a pre-write snapshot \(code) waits for the watch to be reconnected")
+                  "a pre-write snapshot \(code) waits for the device to be reconnected")
         }
         check(WatchReconnectWaitPolicy.qualifies(failure: .deviceDisconnected,
                 context: snapshotContext(-1, boundary: .prewriteInventory, presence: .absent, namespace: .terentoInventory),
                 wroteAnyComponent: false),
-              "an unplug seen by the last read before the write waits for the watch")
+              "an unplug seen by the last read before the write waits for the device")
         check(WatchReconnectWaitPolicy.qualifies(failure: .preflightMTPReadFailed,
                 context: snapshotContext(-1, boundary: .initialInventory, presence: .absent, namespace: .terentoInventory),
                 wroteAnyComponent: false),
-              "a pre-write read of a watch confirmed gone waits for the watch")
+              "a pre-write read of a device confirmed gone waits for the device")
         check(!WatchReconnectWaitPolicy.qualifies(failure: .preflightMTPReadFailed,
                 context: snapshotContext(-5), wroteAnyComponent: true),
-              "a busy watch after an earlier map of the same installation was written does not wait")
+              "a busy device after an earlier map of the same installation was written does not wait")
         check(!WatchReconnectWaitPolicy.qualifies(failure: .preflightMTPReadFailed,
                 context: snapshotContext(-1, boundary: .initialInventory, namespace: .terentoInventory),
                 wroteAnyComponent: false),
@@ -236,7 +295,7 @@ struct InstallationRetryTests {
     static func testWatchReconnectDecision() {
         let start = Date(timeIntervalSince1970: 1_000_000)
         var wait = WatchReconnectWait(watchKey: "watch-a", selectedMapIDs: ["freizeitkarte-fra"],
-            selectedOptionalArtifactIDs: [:], mapTitle: "France", failureReason: "Your watch may be in use.",
+            selectedOptionalArtifactIDs: [:], mapTitle: "France", failureReason: "Your device may be in use.",
             watchWasBusy: true, now: start)
         let soon = start.addingTimeInterval(30)
         func decide(_ wait: WatchReconnectWait, now: Date? = nil, connected: Bool = true, key: String? = "watch-a",
@@ -244,33 +303,33 @@ struct InstallationRetryTests {
             WatchReconnectWaitPolicy.decision(for: wait, now: now ?? soon, deviceConnected: connected,
                 connectedWatchKey: key, mapScanReady: scanned, authorizationResolved: resolved)
         }
-        check(WatchReconnectWait.timeout == 5 * 60, "Terento waits up to 5 minutes for the watch")
+        check(WatchReconnectWait.timeout == 5 * 60, "Terento waits up to 5 minutes for the device")
         check(MapEngine.retainedArtifactLifetime > WatchReconnectWait.timeout,
               "the kept download outlives the whole wait")
         check(decide(wait) == .keepWaiting, "the stopped session alone never continues; a reconnect is required")
         wait.watchWasDisconnected = true
-        check(decide(wait, connected: false) == .keepWaiting, "while no watch is connected Terento keeps waiting")
-        check(decide(wait, key: "watch-b") == .differentWatch, "a different watch stops the installation")
-        check(decide(wait, key: nil) == .differentWatch, "a watch without a stable identity stops the installation")
-        check(decide(wait, scanned: false) == .keepWaiting, "the same watch continues only after its maps are read again")
-        check(decide(wait, resolved: false) == .keepWaiting, "the same watch continues only after its authorization is resolved")
-        check(decide(wait) == .resume, "the same watch, read again and authorized, continues the installation")
+        check(decide(wait, connected: false) == .keepWaiting, "while no device is connected Terento keeps waiting")
+        check(decide(wait, key: "watch-b") == .differentWatch, "a different device stops the installation")
+        check(decide(wait, key: nil) == .differentWatch, "a device without a stable identity stops the installation")
+        check(decide(wait, scanned: false) == .keepWaiting, "the same device continues only after its maps are read again")
+        check(decide(wait, resolved: false) == .keepWaiting, "the same device continues only after its authorization is resolved")
+        check(decide(wait) == .resume, "the same device, read again and authorized, continues the installation")
         check(decide(wait, now: start.addingTimeInterval(WatchReconnectWait.timeout)) == .timedOut,
-              "after 5 minutes the wait ends even if the watch is back")
+              "after 5 minutes the wait ends even if the device is back")
 
         var stayed = wait
         stayed.watchWasDisconnected = false
         check(WatchReconnectWaitPolicy.endMessage(for: stayed, decision: .timedOut, deviceConnected: true)
-              == "Your watch may be in use.", "a watch that never left ends with its original failure")
+              == "Your device may be in use.", "a device that never left ends with its original failure")
         check(WatchReconnectWaitPolicy.endMessage(for: wait, decision: .timedOut, deviceConnected: false)
-              == WatchReconnectWaitPolicy.timedOutMessage, "a watch that never came back says so")
+              == WatchReconnectWaitPolicy.timedOutMessage, "a device that never came back says so")
         check(WatchReconnectWaitPolicy.endMessage(for: wait, decision: .timedOut, deviceConnected: true)
               == WatchReconnectWaitPolicy.timedOutAfterReconnectMessage,
-              "a watch that came back but was not ready in time is not told it never came back")
+              "a device that came back but was not ready in time is not told it never came back")
         check(WatchReconnectWaitPolicy.endMessage(for: wait, decision: .differentWatch, deviceConnected: true)
-              == WatchReconnectWaitPolicy.differentWatchMessage, "a different watch says so")
+              == WatchReconnectWaitPolicy.differentWatchMessage, "a different device says so")
         check(WatchReconnectWaitPolicy.endMessage(for: wait, decision: .keepWaiting, deviceConnected: false)
-              == "Your watch may be in use.", "Cancel after an unplug shows the original failure")
+              == "Your device may be in use.", "Cancel after an unplug shows the original failure")
     }
 
     /// The download kept for Try again survives the unplug that the wait asks

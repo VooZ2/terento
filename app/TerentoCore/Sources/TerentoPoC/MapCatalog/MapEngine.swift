@@ -405,8 +405,10 @@ final class MapEngine: ObservableObject {
         operationDiagnostics = diagnostics
     }
 
-    /// Puts the engine in the download phase with a long-running local task.
-    func beginPreparationForTesting() {
+    /// Puts the engine in the download phase with a long-running local task
+    /// and, optionally, a provider download that has started.
+    func beginPreparationForTesting(acquisition: MapStatisticsEvent? = nil) {
+        activeAcquisition = acquisition
         activeTask = Task { try? await Task.sleep(for: .seconds(60)) }
         state = .acquiringArtifact
         installationPhase = .downloading
@@ -854,8 +856,16 @@ final class MapEngine: ObservableObject {
         }
     }
 
-    private func cancelActiveTaskAndCleanupWorkspaces() {
-        finishAcquisition(.downloadCancelled)
+    /// Stops the active work. `downloadTerminal` is the statistics outcome of a
+    /// provider download that is still running. `DOWNLOAD_CANCELLED` is
+    /// reserved for the person pressing Cancel; every stop the app makes
+    /// itself (a new map read, a withdrawn authorization, a custom import, a
+    /// disconnect) is `DOWNLOAD_INTERRUPTED`, so a cancelled download in the
+    /// statistics always means the person stopped it.
+    private func cancelActiveTaskAndCleanupWorkspaces(
+        downloadTerminal: MapStatisticsEventType = .downloadInterrupted
+    ) {
+        finishAcquisition(downloadTerminal)
         let task = activeTask
         task?.cancel()
         activeTask = nil
@@ -1043,7 +1053,10 @@ final class MapEngine: ObservableObject {
             comparisons: inventory.comparisons,
             preflightStatuses: preflightStatuses,
             recommendedRegionID: recommendedRegionID,
-            preflightReasons: preflightReasons
+            preflightReasons: preflightReasons,
+            recommendedCountryCode: MapRegionRecommendation.countryCode(
+                systemRegionCode: Locale.current.region?.identifier
+            )
         )
     }
 
@@ -1329,9 +1342,9 @@ final class MapEngine: ObservableObject {
     /// workspace cleanup path. Nothing has been written to the watch.
     func cancelInstallationPreparation() {
         guard canCancelInstallationPreparation else { return }
-        // The cancelled task records its own cancelled diagnostic and the
-        // download statistics outcome through the existing paths.
-        cancelActiveTaskAndCleanupWorkspaces()
+        // The cancelled task records its own cancelled diagnostic. The person
+        // pressed Cancel, so a running download ends as cancelled.
+        cancelActiveTaskAndCleanupWorkspaces(downloadTerminal: .downloadCancelled)
         resetTimeRemaining()
         state = .scanned
         installationPhase = .idle
@@ -1711,10 +1724,10 @@ final class MapEngine: ObservableObject {
             guard let quarantined = try store.quarantineUnreadableManifest(deviceKey: identity.localManifestDeviceKey) else {
                 return true
             }
-            message = "Terento couldn't read its record of maps on this watch, so it set the record aside. Nothing was written. Install the map again."
+            message = "Terento couldn't read its record of maps on this device, so it set the record aside. Nothing was written. Install the map again."
             recordInstallationFailure(message, technicalError: "Unreadable local manifest quarantined as \(quarantined.lastPathComponent)")
         } catch {
-            message = "Terento couldn't read its record of maps on this watch. Nothing was written."
+            message = "Terento couldn't read its record of maps on this device. Nothing was written."
             recordInstallationFailure(message, technicalError: String(reflecting: error))
         }
         installationErrorMessage = message
@@ -2826,9 +2839,9 @@ enum WatchReconnectWaitPolicy: Sendable {
         case timedOut
     }
 
-    static let differentWatchMessage = "A different watch was connected, so Terento stopped. Nothing was written. Connect the watch you chose and install the map again."
-    static let timedOutMessage = "Your watch did not come back within 5 minutes. Nothing was written. Connect it and install the map again."
-    static let timedOutAfterReconnectMessage = "Your watch came back, but Terento could not finish checking it within 5 minutes. Nothing was written. Unplug it, plug it back in and install the map again."
+    static let differentWatchMessage = "A different device was connected, so Terento stopped. Nothing was written. Connect the device you chose and install the map again."
+    static let timedOutMessage = "Your device did not come back within 5 minutes. Nothing was written. Connect it and install the map again."
+    static let timedOutAfterReconnectMessage = "Your device came back, but Terento could not finish checking it within 5 minutes. Nothing was written. Unplug it, plug it back in and install the map again."
 
     /// The text when the wait ends: the original failure while the watch
     /// never left (the caller then shows the engine's own failure), otherwise

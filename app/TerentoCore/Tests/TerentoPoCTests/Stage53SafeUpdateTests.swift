@@ -1472,7 +1472,7 @@ private final class VirtualContentReader: SafeUpdateContentReader, @unchecked Se
         let total = proof.sampledBytes(fileSizeBytes: file.sizeBytes)
         for (index, offset) in proof.offsets.enumerated() {
             if proofReadFails && index == 5 {
-                throw MapLifecycleReadTransportError.deviceDisconnected("The Garmin watch was disconnected.")
+                throw MapLifecycleReadTransportError.deviceDisconnected("The Garmin device was disconnected.")
             }
             let length = min(UInt64(proof.regionLength), file.sizeBytes - offset)
             let bytes = Self.region(offset, length: length, salt: 0, flipped: flippedOld)

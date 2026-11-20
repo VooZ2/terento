@@ -54,11 +54,11 @@ enum InstallationFailure: String, Codable, Error, Equatable, Sendable {
         case .insufficientSpace:
             return "There is not enough free space for a safe installation."
         case .unknownInstallSize:
-            return "Terento couldn't work out how much space this map needs on the watch, so it wasn't installed."
+            return "Terento couldn't work out how much space this map needs on the device, so it wasn't installed."
         case .unknownInstallTarget:
             return "Terento could not verify a safe place to install maps. Reconnect your device and try again."
         case .stableWatchIdentityUnavailable:
-            return "Terento couldn't identify this watch reliably, so it didn't install the map. Unplug the watch, plug it back in, and try again."
+            return "Terento couldn't identify this device reliably, so it didn't install the map. Unplug the device, plug it back in, and try again."
         case .mapIdentityAmbiguous:
             return "An existing map could not be identified safely."
         case .downloadFailed:
@@ -84,7 +84,7 @@ enum InstallationFailure: String, Codable, Error, Equatable, Sendable {
         case .protectionViolation:
             return "Another device file changed unexpectedly, so installation was not accepted."
         case .cleanupFailed:
-            return "Installation failed and a partial map may still remain on the Garmin device. Terento did not retry or remove it automatically. Reconnect the watch and refresh its maps before any further action."
+            return "Installation failed and a partial map may still remain on the Garmin device. Terento did not retry or remove it automatically. Reconnect the device and refresh its maps before any further action."
         case .transactionAlreadyRunning:
             return "Another installation is already in progress."
         case .invalidStateTransition:
@@ -94,7 +94,7 @@ enum InstallationFailure: String, Codable, Error, Equatable, Sendable {
         case .installationAuthorization:
             return "Map installation is not available for this device in Terento."
         case .installationAuthorizationUnavailable:
-            return "Terento couldn't check whether this watch can install maps. Check your internet connection and try again."
+            return "Terento couldn't check whether this device can install maps. Check your internet connection and try again."
         }
     }
 }
@@ -103,7 +103,7 @@ extension InstallationFailure {
     /// One plain follow-up when a map file may remain after a failed install.
     /// A file left behind means cleanup could not reach the watch, so the
     /// connection is reset before Manage maps reads it again.
-    static let leftoverMapFollowUp = "First unplug the watch, wait 5 seconds and plug it back in. The map file may still be on it: then open Manage maps, remove it and install it again."
+    static let leftoverMapFollowUp = "First unplug the device, wait 5 seconds and plug it back in. The map file may still be on it: then open Manage maps, remove it and install it again."
 }
 
 enum InstallMapOwnership: String, Codable, Equatable, Sendable {

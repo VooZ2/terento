@@ -95,8 +95,8 @@ print('PASS: exact context shutdown/reinitialization, aborted/healthy close, nar
 # Compile the actual Swift retry classifier against a small error fixture.
 import re
 repo=patch.resolve().parents[2]
-transport=(repo/'app/TerentoCore/Sources/TerentoPoC/Installation/MTPMapInstallationTransport.swift').read_text()
-method=re.search(r"    private static func shouldRetryReadBack\(_ error: Error\) -> Bool \{.*?\n    \}",transport,re.S).group().replace('private static','static')
+transport=(repo/'app/TerentoCore/Sources/TerentoPoC/Installation/InstallationTransportProtocols.swift').read_text()
+method=re.search(r"    static func isMetadataLookupMiss\(_ error: Error\) -> Bool \{.*?\n    \}",transport,re.S).group()
 swift = """import Foundation
 enum InstallationTransportError: Error {
 case targetAlreadyExists, remoteFileMissing, objectIdentityMismatch, unsupportedDevice, liveIdentityMismatch
@@ -107,9 +107,9 @@ struct Policy {
 """+method+"""
 }
 let fatalErrors: [InstallationTransportError] = [.deviceDisconnected("lost", createdItemID: nil), .operationFailed("deadline", createdItemID: nil), .contextual, .targetAlreadyExists, .unsupportedDevice, .liveIdentityMismatch]
-for error in fatalErrors { precondition(!Policy.shouldRetryReadBack(error)) }
-precondition(Policy.shouldRetryReadBack(InstallationTransportError.remoteFileMissing))
-precondition(Policy.shouldRetryReadBack(InstallationTransportError.objectIdentityMismatch))
+for error in fatalErrors { precondition(!Policy.isMetadataLookupMiss(error)) }
+precondition(Policy.isMetadataLookupMiss(InstallationTransportError.remoteFileMissing))
+precondition(Policy.isMetadataLookupMiss(InstallationTransportError.objectIdentityMismatch))
 """
 with tempfile.TemporaryDirectory(prefix='terento-retry-policy-') as tmp:
  p=Path(tmp)/'Policy.swift';p.write_text(swift);binary=Path(tmp)/'policy'

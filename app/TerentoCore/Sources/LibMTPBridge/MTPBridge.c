@@ -1082,11 +1082,11 @@ static int find_existing_file_by_stable_identity(
         return result;
     }
     if (*match_count == 0) {
-        set_error(error_message, error_message_capacity, "The exact managed map object was not found on the Garmin watch");
+        set_error(error_message, error_message_capacity, "The exact managed map object was not found on the Garmin device");
         return -3;
     }
     if (*match_count != 1) {
-        set_error(error_message, error_message_capacity, "The exact managed map object was not unique on the Garmin watch");
+        set_error(error_message, error_message_capacity, "The exact managed map object was not unique on the Garmin device");
         return -4;
     }
 
@@ -1201,7 +1201,7 @@ int terento_mtp_read_existing_file_to_local(
             error_message,
             error_message_capacity,
             device,
-            "The managed map could not be read from the Garmin watch"
+            "The managed map could not be read from the Garmin device"
         );
         result = -5;
         goto cleanup;
@@ -1246,8 +1246,8 @@ static void set_write_test_device_error(
         snprintf(
             message,
             sizeof(message),
-            "The watch rejected the test file before transfer. No existing file was overwritten. "
-            "Disconnect and reconnect the watch, close other Garmin or file-transfer apps, and try again. "
+            "The device rejected the test file before transfer. No existing file was overwritten. "
+            "Disconnect and reconnect the device, close other Garmin or file-transfer apps, and try again. "
             "Technical detail: %s",
             technical
         );
@@ -2318,7 +2318,7 @@ static int send_stage42_map_file(
         if (record == NULL || !record->attempted) {
             /* The final gate refused; libmtp was never called. */
             set_error(error_message, error_message_capacity,
-                "The map write was not authorized; nothing was sent to the watch");
+                "The map write was not authorized; nothing was sent to the device");
             return TERENTO_MTP_MUTATION_REFUSED;
         }
         describe_map_send_failure(device, write_failure);
@@ -2695,7 +2695,7 @@ int terento_mtp_verify_managed_map_samples(
                 if (raw_bytes != NULL) {
                     LIBMTP_FreeMemory(raw_bytes);
                 }
-                set_device_error(error_message, error_message_capacity, device, "The sampled map could not be read. Reconnect the watch before retrying.");
+                set_device_error(error_message, error_message_capacity, device, "The sampled map could not be read. Reconnect the device before retrying.");
                 terento_trace_event(&trace, "abort_close_begin", offset, read_result, 0);
                 abort_failed_device(device);
                 terento_trace_event(&trace, "abort_close_returned", offset, read_result, 0);

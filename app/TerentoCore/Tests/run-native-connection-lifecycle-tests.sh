@@ -69,7 +69,30 @@ if ! grep -Fq 'detectionPolicy.usbObserved(count: usbCount' "$device_engine" \
     || ! grep -Fq 'case .settleThenRead:' "$device_engine" \
     || ! grep -Fq 'Garmin returned to USB; waiting for MTP enumeration' "$device_engine" \
     || ! grep -Fq 'try await Task.sleep(for: .milliseconds(750))' "$device_engine"; then
-    print -u2 "FAIL: reconnect detection enters MTP before USB presence and enumeration settle"
+    print -u2 "FAIL: reconnect detection enters MTP before USB presence, or lost its settle-first path"
+    exit 1
+fi
+
+device_policy="$project_root/Sources/TerentoPoC/DeviceEngine/DeviceStateManager.swift"
+if ! grep -Fq 'static let readsImmediatelyOnAppearanceByDefault = false' "$device_policy" \
+    || ! grep -Fq 'return .wait(Self.enumerationSettle)' "$device_policy" \
+    || ! grep -Fq 'let isImmediateFirstRead = detectionPolicy.isImmediateFirstRead' "$device_engine" \
+    || grep -Fq 'readsImmediatelyOnAppearance: true' "$device_engine"; then
+    print -u2 "FAIL: the immediate first read is not off by default with the settle-first order kept"
+    exit 1
+fi
+
+if ! grep -Fq 'IOServiceAddMatchingNotification(' "$device_engine" \
+    || ! grep -Fq 'static let garminVendorID = 0x091E' "$device_engine" \
+    || ! grep -Fq 'orUSBChangeOn: usbChangeSignal' "$device_engine" \
+    || ! grep -Fq 'static let presencePollInterval: TimeInterval = 0.5' "$device_policy" \
+    || ! grep -Fq 'transport is BoundedDeviceTransport' "$device_engine"; then
+    print -u2 "FAIL: USB change notifications are not wired next to the 0.5 s presence poll"
+    exit 1
+fi
+
+if grep -Eq 'IOServiceOpen|IOUSBDeviceInterface|USBDeviceOpen|SMAppService|LaunchAgent|launchd' "$device_engine"; then
+    print -u2 "FAIL: USB change notifications open a device or install a background service"
     exit 1
 fi
 
@@ -85,4 +108,6 @@ if ! grep -Fq 'startReplugWatch()' "$device_engine" \
 fi
 
 print "PASS: reconnect waits for USB presence before reopening MTP"
+print "PASS: the immediate first read is off by default; the settle-first order is unchanged"
+print "PASS: USB change notifications only wake the presence poll, which stays as the fallback"
 print "PASS: a failed check restarts discovery after a physical replug"

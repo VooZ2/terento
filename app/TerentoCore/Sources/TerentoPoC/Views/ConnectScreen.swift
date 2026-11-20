@@ -81,6 +81,7 @@ struct ConnectScreen: View {
     @State private var watchReconnectWait: WatchReconnectWait?
     @State private var watchReconnectFollowUp: WatchReconnectFollowUp?
     @State private var installationFailureOverride: InstallationFailureOverride?
+    @State private var installationFailureSnapshot: InstallationFailureSnapshot?
     @State private var evidenceOperationID = UUID()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.openWindow) private var openWindow
@@ -199,6 +200,11 @@ struct ConnectScreen: View {
             lifecycleOperationBusy: lifecycleViewModel.isBusy,
             installationActive: installationOperationIsActive
         )
+    }
+
+    /// The map scan that follows every connection is still running.
+    private var isReadingDeviceMaps: Bool {
+        mapEngine.state == .loadingCatalog || mapEngine.state == .scanning
     }
 
     private var mapManagementActionsBusy: Bool {
@@ -372,6 +378,7 @@ struct ConnectScreen: View {
         .onChange(of: mapEngine.installationPhase) { phase in
             updatePresenceMonitoring(for: mapEngine.state)
             if phase == .failed {
+                installationFailureSnapshot = makeInstallationFailureSnapshot()
                 if let wait = makeWatchReconnectWait() {
                     watchReconnectWait = wait
                 } else {
@@ -426,7 +433,6 @@ struct ConnectScreen: View {
         .sheet(item: $watchReconnectWait, onDismiss: handleWatchReconnectWaitDismissed) { presented in
             let wait = watchReconnectWait ?? presented
             WatchReconnectWaitDialog(
-                mapTitle: wait.mapTitle,
                 watchWasBusy: wait.watchWasBusy,
                 isCheckingWatch: wait.watchWasDisconnected && deviceEngine.hasConnectedDevice,
                 onCancel: {
@@ -443,8 +449,7 @@ struct ConnectScreen: View {
             onDismiss: handleInstallationFailureDismissed
         ) {
             InstallationFailureDialog(
-                mapTitle: installationFailureOverride.map { $0.mapTitle }
-                    ?? selectedInstallationPlan.flatMap(installationFailureMapTitle),
+                mapTitle: installationFailureDialogMapTitle,
                 reason: installationFailureReason,
                 safetyMessage: installationFailureSafetyMessage,
                 reportError: diagnosticLogMessage,
@@ -639,6 +644,7 @@ struct ConnectScreen: View {
         let followUp = installationFailureFollowUp
         installationFailureFollowUp = .backToDevice
         installationFailureOverride = nil
+        installationFailureSnapshot = nil
         switch followUp {
         case .backToDevice:
             returnToDeviceAfterFailure()
@@ -959,11 +965,11 @@ struct ConnectScreen: View {
     private var connectChecklist: some View {
         VStack(alignment: .leading, spacing: 7) {
             troubleshootingRow("Use a USB data cable, not a charge-only cable", icon: "cable.connector")
-            troubleshootingRow("Unlock your watch", icon: "lock.open")
+            troubleshootingRow("Unlock your device", icon: "lock.open")
             troubleshootingRow("Quit Garmin Express", icon: "xmark.app")
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Before you connect: use a USB data cable, unlock your watch, and quit Garmin Express.")
+        .accessibilityLabel("Before you connect: use a USB data cable, unlock your device, and quit Garmin Express.")
     }
 
     /// After the whole connection window with nothing on USB, the calm
@@ -976,8 +982,8 @@ struct ConnectScreen: View {
         ConnectStep(systemImage: "cable.connector", text: "Use a USB data cable, not a charge-only cable"),
         ConnectStep(systemImage: "desktopcomputer", text: "Plug it directly into the Mac, not into a USB hub"),
         ConnectStep(systemImage: "cable.connector", text: "Try another USB port"),
-        ConnectStep(systemImage: "lock.open", text: "Unlock your watch"),
-        ConnectStep(systemImage: "arrow.clockwise", text: "Restart your watch"),
+        ConnectStep(systemImage: "lock.open", text: "Unlock your device"),
+        ConnectStep(systemImage: "arrow.clockwise", text: "Restart your device"),
         ConnectStep(systemImage: "xmark.app", text: "Quit Garmin Express")
     ]
 
@@ -1056,7 +1062,7 @@ struct ConnectScreen: View {
         case .detecting:
             switch deviceEngine.detectionPhase {
             case .waitingForWatch:
-                return disconnectExplanation == nil ? "Connect your watch" : "Your Garmin was disconnected"
+                return disconnectExplanation == nil ? "Connect your device" : "Your Garmin was disconnected"
             case .connecting:
                 return "Waiting for your Garmin…"
             case .needsAttention(let outcome):
@@ -1064,7 +1070,7 @@ struct ConnectScreen: View {
                     ?? "Waiting for your Garmin…"
             }
         case .connected, .ready:
-            return "Garmin \(deviceEngine.compatibility?.displayName ?? "watch") connected"
+            return "Garmin \(deviceEngine.compatibility?.displayName ?? "device") connected"
         case .ejecting:
             return "Releasing your Garmin…"
         case .safeToDisconnect:
@@ -1080,7 +1086,7 @@ struct ConnectScreen: View {
     private var connectionStatusDescription: String {
         switch deviceEngine.state {
         case .disconnected:
-            return "Connect your watch to this Mac."
+            return "Connect your device to this Mac."
         case .detecting:
             switch deviceEngine.detectionPhase {
             case .waitingForWatch:
@@ -1248,7 +1254,7 @@ struct ConnectScreen: View {
             } else if mapEngine.mapScanFailed && deviceEngine.hasConnectedDevice {
                 MapStatusRow(
                     title: "Couldn't read your maps",
-                    detail: "Your watch is connected, but its maps couldn't be read.",
+                    detail: "Your device is connected, but its maps couldn't be read.",
                     status: "Error",
                     note: mapEngine.userErrorMessage,
                     isError: true,
@@ -1262,9 +1268,9 @@ struct ConnectScreen: View {
                         : "Map information is not available",
                     detail: deviceEngine.hasConnectedDevice
                         ? (mapEngine.state == .loadingCatalog || mapEngine.state == .scanning
-                            ? "Checking your Garmin watch…"
-                            : "Refresh the connected Garmin watch to try again.")
-                        : "Connect your Garmin watch first",
+                            ? "Checking your Garmin device…"
+                            : "Refresh the connected Garmin device to try again.")
+                        : "Connect your Garmin device first",
                     status: deviceEngine.hasConnectedDevice
                         ? (mapEngine.state == .loadingCatalog || mapEngine.state == .scanning
                             ? "Checking"
@@ -1373,7 +1379,7 @@ struct ConnectScreen: View {
                             ? "Try another country or region, or clear the filters."
                             : (deviceEngine.hasConnectedDevice
                                 ? "No installed maps were found on this Garmin."
-                                : "Connect your Garmin watch first"),
+                                : "Connect your Garmin device first"),
                         status: deviceEngine.hasConnectedDevice ? "Ready" : "Pending",
                         note: nil
                     )
@@ -1456,6 +1462,20 @@ struct ConnectScreen: View {
                     navigate(to: .manageMaps)
                 }
                 .disabled(mapManagementActionsBusy)
+
+                // Says why the two buttons are disabled right after connecting.
+                if isReadingDeviceMaps {
+                    HStack(spacing: 6) {
+                        ProgressView()
+                            .controlSize(.small)
+                            .accessibilityHidden(true)
+                        Text("Reading your maps…")
+                            .font(.terentoUI(size: 13, weight: .medium))
+                            .foregroundStyle(TerentoColors.secondaryText)
+                            .lineLimit(1)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
 
                 Spacer()
             }
@@ -1773,15 +1793,15 @@ struct ConnectScreen: View {
                     if mapEngine.state == .loadingCatalog || mapEngine.state == .scanning {
                         MapStatusRow(
                             title: "Reading your maps",
-                            detail: "Checking your Garmin watch…",
+                            detail: "Checking your Garmin device…",
                             status: "Checking",
-                            note: "Map information will appear here when your watch is ready."
+                            note: "Map information will appear here when your device is ready."
                         )
                         .padding(.top, 18)
                     } else if mapEngine.mapScanFailed && deviceEngine.hasConnectedDevice {
                         MapStatusRow(
                             title: "Couldn't read your maps",
-                            detail: "Your watch is connected, but its maps couldn't be read.",
+                            detail: "Your device is connected, but its maps couldn't be read.",
                             status: "Error",
                             note: mapEngine.userErrorMessage,
                             isError: true,
@@ -1791,7 +1811,7 @@ struct ConnectScreen: View {
                     } else if mapEngine.state != .scanned {
                         MapStatusRow(
                             title: "Maps are not ready yet",
-                            detail: "Connect your Garmin watch first",
+                            detail: "Connect your Garmin device first",
                             status: "Pending",
                             note: mapEngine.userErrorMessage
                                 ?? "Available maps will appear here after the device is checked."
@@ -2000,7 +2020,7 @@ struct ConnectScreen: View {
                             .foregroundStyle(TerentoColors.interactive)
                             .disabled(mapEngine.isBusy)
                             .accessibilityLabel("Remove staged custom map")
-                            .accessibilityHint("Removes the local staged file. It does not change the Garmin watch.")
+                            .accessibilityHint("Removes the local staged file. It does not change the Garmin device.")
                         }
                         .padding(10)
                         .background(TerentoColors.canvas, in: RoundedRectangle(cornerRadius: 9))
@@ -2207,7 +2227,7 @@ struct ConnectScreen: View {
                             SecondaryButton(title: "Try again") {
                                 deviceEngine.retryInstallationAuthorization()
                             }
-                            .accessibilityHint("Checks again whether this watch can install maps.")
+                            .accessibilityHint("Checks again whether this device can install maps.")
                         }
                     }
                     .padding(.top, 18)
@@ -2284,9 +2304,9 @@ struct ConnectScreen: View {
                         SecondaryButton(title: "Cancel") {
                             mapEngine.cancelInstallationPreparation()
                         }
-                        .accessibilityHint("Stops downloading and preparing. Nothing has been written to your watch.")
+                        .accessibilityHint("Stops downloading and preparing. Nothing has been written to your device.")
 
-                        Text("Nothing has been written to your watch yet.")
+                        Text("Nothing has been written to your device yet.")
                             .font(.terentoUI(size: 12, weight: .medium))
                             .foregroundStyle(TerentoColors.secondaryText)
                     }
@@ -2334,7 +2354,7 @@ struct ConnectScreen: View {
 
             installationStepRow(
                 title: "Installing",
-                detail: "Writing the validated map to your Garmin watch",
+                detail: "Writing the validated map to your Garmin device",
                 state: installationStepState(for: .installing),
                 progress: mapEngine.installationProgress.flatMap {
                     $0.totalBytes > 0 ? $0.fractionCompleted : nil
@@ -2763,8 +2783,37 @@ struct ConnectScreen: View {
         return plan.installItems.count == 1 ? plan.installItems.first?.title : nil
     }
 
+    /// What the failure dialog shows, captured when the installation failed.
+    private func makeInstallationFailureSnapshot() -> InstallationFailureSnapshot {
+        InstallationFailureSnapshot(
+            mapTitle: selectedInstallationPlan.flatMap(installationFailureMapTitle),
+            reason: liveInstallationFailureReason,
+            safetyMessage: liveInstallationFailureSafetyMessage,
+            helpTopic: liveInstallationFailureHelpTopic,
+            issueDraft: installationIssueDraft(for: selectedInstallationPlan)
+        )
+    }
+
+    /// A disconnect clears the engine's failure state and the selected plan
+    /// while the failure dialog is open or about to open. The dialog then
+    /// keeps what was captured at the failure instead of a generic reason.
+    private var retainedInstallationFailure: InstallationFailureSnapshot? {
+        mapEngine.installationPhase == .failed ? nil : installationFailureSnapshot
+    }
+
+    private var installationFailureDialogMapTitle: String? {
+        if let override = installationFailureOverride { return override.mapTitle }
+        if let retained = retainedInstallationFailure { return retained.mapTitle }
+        return selectedInstallationPlan.flatMap(installationFailureMapTitle)
+    }
+
     private var installationFailureReason: String {
         if let override = installationFailureOverride { return override.reason }
+        if let retained = retainedInstallationFailure { return retained.reason }
+        return liveInstallationFailureReason
+    }
+
+    private var liveInstallationFailureReason: String {
         let normalized = mapEngine.installationErrorMessage?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return normalized.isEmpty
@@ -2773,6 +2822,10 @@ struct ConnectScreen: View {
     }
 
     private var installationFailureHelpTopic: TroubleshootingTopic {
+        retainedInstallationFailure?.helpTopic ?? liveInstallationFailureHelpTopic
+    }
+
+    private var liveInstallationFailureHelpTopic: TroubleshootingTopic {
         if mapEngine.evidenceFailure == nil,
            mapEngine.installationFailureAcquisitionError == nil,
            let topic = TroubleshootingHelp.topic(for: deviceEngine.installationAuthorization) {
@@ -2789,6 +2842,11 @@ struct ConnectScreen: View {
     private var installationFailureSafetyMessage: String? {
         // A reconnect wait ends only after a stop before any write.
         if installationFailureOverride != nil { return "Your existing maps were not changed." }
+        if let retained = retainedInstallationFailure { return retained.safetyMessage }
+        return liveInstallationFailureSafetyMessage
+    }
+
+    private var liveInstallationFailureSafetyMessage: String? {
         if let diagnostics = mapEngine.installationResult?.diagnostics {
             return diagnostics.existingFilesProtectionPassed
                 && diagnostics.unrelatedFilesProtectionPassed
@@ -2805,7 +2863,7 @@ struct ConnectScreen: View {
     }
 
     private func reportInstallationIssue(for plan: InstallationPlan?) {
-        let draft = installationIssueDraft(for: plan)
+        let draft = retainedInstallationFailure?.issueDraft ?? installationIssueDraft(for: plan)
         diagnosticLogMessage = InstallationIssueReport.openGitHub(draft)
             ? nil
             : "GitHub could not be opened. Please try again."
@@ -2813,7 +2871,8 @@ struct ConnectScreen: View {
 
     /// The same sanitised report as the GitHub option, as a support report.
     private func sendInstallationSupportReport(for plan: InstallationPlan?) {
-        guard let saved = installationIssueDraft(for: plan).supportReport else { return }
+        let draft = retainedInstallationFailure?.issueDraft ?? installationIssueDraft(for: plan)
+        guard let saved = draft.supportReport else { return }
         supportReportPayload = SupportReportPayload(category: saved.category, operationID: saved.operationID,
                                                     userMessage: nil, report: saved.report)
     }
@@ -3167,7 +3226,7 @@ private struct CustomMapImportConfirmationSheet: View {
             title: "Import this map?",
             subtitle: safeFilename,
             message: "Terento can verify that this is a Garmin map file, but cannot verify who created it or whether you trust its source.",
-            supportingMessage: "Imported map files are transferred directly from your Mac to your watch. They are not sent to Terento servers.",
+            supportingMessage: "Imported map files are transferred directly from your Mac to your device. They are not sent to Terento servers.",
             primaryLabel: "Continue import",
             isDestructive: false,
             onCancel: onCancel,
@@ -3284,6 +3343,16 @@ private struct InstallationFailureOverride {
     let reason: String
 }
 
+/// The failure dialog's content as it was when the installation failed. A
+/// disconnect resets the engine while the dialog can still be open.
+private struct InstallationFailureSnapshot {
+    let mapTitle: String?
+    let reason: String
+    let safetyMessage: String?
+    let helpTopic: TroubleshootingTopic
+    let issueDraft: InstallationIssueDraft
+}
+
 private enum WatchReconnectFollowUp {
     case showFailure
     case stop(String?, String)
@@ -3294,23 +3363,22 @@ private enum WatchReconnectFollowUp {
 /// the watch was busy or no longer visible. It only waits; reconnecting the
 /// same watch starts the normal installation again.
 private struct WatchReconnectWaitDialog: View {
-    let mapTitle: String?
     let watchWasBusy: Bool
     let isCheckingWatch: Bool
     let onCancel: () -> Void
 
     private var message: String {
         if isCheckingWatch {
-            return "Your watch is back. Terento is checking it again before it continues with the map it already downloaded."
+            return "Your device is back. Terento is checking it again before it continues with the map it already downloaded."
         }
-        let steps = "Unplug your watch, wait 5 seconds and plug it back in. Terento then checks it again and continues with the map it already downloaded."
+        let steps = "Unplug your device, wait 5 seconds and plug it back in. Terento then checks it again and continues with the map it already downloaded."
         return watchWasBusy
-            ? "Your watch may be in use by another app. Quit Garmin Express and similar apps. " + steps
-            : "Terento could not reach your watch before installing. " + steps
+            ? "Your device may be in use by another app. Quit Garmin Express and similar apps. " + steps
+            : "Terento could not reach your device before installing. " + steps
     }
 
     private var title: String {
-        isCheckingWatch ? "Checking your watch" : "Reconnect your watch"
+        isCheckingWatch ? "Checking your device" : "Reconnect your device"
     }
 
     /// VoiceOver hears the state when the dialog opens and when it changes.
@@ -3326,9 +3394,10 @@ private struct WatchReconnectWaitDialog: View {
             icon: isCheckingWatch ? "arrow.triangle.2.circlepath" : "cable.connector",
             iconColor: isCheckingWatch ? TerentoColors.interactive : TerentoColors.warning,
             title: title,
-            subtitle: mapTitle ?? "",
+            // No map name here: the dialog is about the watch, not one map.
+            subtitle: "",
             message: message,
-            supportingMessage: "Nothing was written to your watch. Terento waits up to 5 minutes.",
+            supportingMessage: "Nothing was written to your device. Terento waits up to 5 minutes.",
             secondaryLabel: "Cancel",
             primaryLabel: nil,
             isDestructive: false,
@@ -3431,7 +3500,7 @@ private struct InstallSharingDialog: View {
         link.link = TerentoAppLinks.privacyFromApp
         link.foregroundColor = TerentoColors.interactive
         link.font = Font.terentoUI(size: 12, weight: .semibold)
-        return AttributedString("Watch model and software, map name, result, and app versions. Never serial numbers, Unit IDs or files. Change anytime in Diagnostics. ") + link
+        return AttributedString("Device model and software, map name, result, and app versions. Never serial numbers, Unit IDs or files. Change anytime in Diagnostics. ") + link
     }
 
     var body: some View {
@@ -4522,7 +4591,7 @@ private struct DeviceAuthorizationStatusView: View {
                     .font(.terentoUI(size: 12, weight: .semibold))
                     .foregroundStyle(TerentoColors.interactive)
                     .padding(.leading, 18)
-                    .accessibilityHint("Checks again whether this watch can install maps.")
+                    .accessibilityHint("Checks again whether this device can install maps.")
             }
         }
     }
@@ -4578,7 +4647,7 @@ private struct DeviceAssetImage: View {
                 // resolve to Terento's canvas without altering the source
                 // asset or its attribution metadata.
                 .blendMode(asset.isFallback ? .normal : .multiply)
-                .accessibilityLabel(asset.isFallback ? "Generic Garmin watch" : "Garmin device")
+                .accessibilityLabel(asset.isFallback ? "Generic Garmin device" : "Garmin device")
         } else {
             ZStack {
                 Circle()
@@ -4589,7 +4658,7 @@ private struct DeviceAssetImage: View {
                     .foregroundStyle(TerentoColors.lichenDark)
             }
             .padding(28)
-            .accessibilityLabel("Generic Garmin watch placeholder")
+            .accessibilityLabel("Generic Garmin device placeholder")
         }
     }
 
@@ -5172,7 +5241,7 @@ struct MapStatusRow: View {
 
             if let onRetry {
                 SecondaryButton(title: "Try again", action: onRetry)
-                    .accessibilityHint("Reads the maps on your watch again.")
+                    .accessibilityHint("Reads the maps on your device again.")
             }
         }
         .padding(22)
@@ -5629,9 +5698,9 @@ struct MapSelectionRow: View {
                 if let preflightStatus = item.preflightStatus {
                     switch preflightStatus {
                     case .blockedUnsupportedDevice:
-                        baseDetail = "This watch has no validated Terento install profile yet"
+                        baseDetail = "This device has no validated Terento install profile yet"
                     case .blockedUnknownTarget:
-                        baseDetail = "Install target is not validated for this watch"
+                        baseDetail = "Install target is not validated for this device"
                     case .blockedAmbiguousMapIdentity:
                         baseDetail = "Map identity needs to be checked before installation"
                     case .blockedMapTypeConflict:
@@ -5912,7 +5981,7 @@ struct MapSelectionStorageSummary: View {
         if plan.storagePlan.isAllowed {
             return ""
         }
-        return "Not enough space available. Remove a map or select fewer maps."
+        return plan.storagePlan.insufficientSpaceMessage(formatBytes: formatBytes)
     }
 
     private var statusColor: Color {
@@ -5927,6 +5996,7 @@ struct MapSelectionStorageSummary: View {
 
     private var storageAccessibilityValue: String {
         "\(formatBytes(plan.storagePlan.currentFreeSpace)) available of \(formatBytes(totalCapacity)), \(selectedMapSummary), \(afterInstallationSummary), \(Int(projectedUsedFraction * 100)) percent used"
+            + (statusText.isEmpty ? "" : ". \(statusText)")
     }
 
     private var selectedMapSummary: String {

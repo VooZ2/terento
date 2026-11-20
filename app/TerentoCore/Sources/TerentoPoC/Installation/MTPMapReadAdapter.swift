@@ -217,7 +217,7 @@ struct MTPMapReadAdapter: MapLifecycleReadTransport, Sendable {
         buffer.withUnsafeBufferPointer { buffer in
             let bytes = buffer.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }
             let message = String(decoding: bytes, as: UTF8.self)
-            return message.isEmpty ? "The map could not be read from the Garmin watch." : message
+            return message.isEmpty ? "The map could not be read from the Garmin device." : message
         }
     }
 

@@ -204,7 +204,7 @@ final class DeviceOperationActivityMonitor {
         if keepAwake, activity == nil {
             activity = ProcessInfo.processInfo.beginActivity(
                 options: [.userInitiated, .idleSystemSleepDisabled],
-                reason: "Terento is transferring maps with a connected Garmin watch."
+                reason: "Terento is transferring maps with a connected Garmin device."
             )
         } else if !keepAwake, let activity {
             ProcessInfo.processInfo.endActivity(activity)
@@ -219,8 +219,8 @@ final class TerentoAppDelegate: NSObject, NSApplicationDelegate {
         guard writeActive else { return .terminateNow }
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "Terento is still working on your watch"
-        alert.informativeText = "Quitting now can leave an incomplete map on your watch. Wait until Terento finishes, then quit."
+        alert.messageText = "Terento is still working on your device"
+        alert.informativeText = "Quitting now can leave an incomplete map on your device. Wait until Terento finishes, then quit."
         alert.addButton(withTitle: "Keep Terento open")
         alert.addButton(withTitle: "Quit anyway")
         return alert.runModal() == .alertFirstButtonReturn ? .terminateCancel : .terminateNow

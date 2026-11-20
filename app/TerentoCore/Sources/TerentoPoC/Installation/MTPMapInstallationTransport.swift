@@ -172,76 +172,42 @@ struct MTPMapInstallationTransport: MapInstallationTransport, Sendable {
         sampleLength: UInt32,
         progress: @escaping @Sendable (TransferProgress) -> Void
     ) throws -> MTPReadBackMapObject {
-        var lastError: Error?
-        let verificationDeadline = ProcessInfo.processInfo.systemUptime + 600
-        // Only the parent may retry a completed metadata lookup. Transport failures
-        // require reconnect, never another nested reset/open sequence.
-        let retryDelays: [TimeInterval] = MTPFinishingWorker.isWorker ? [0] : [0, 1.0]
-        for (attempt, delay) in retryDelays.enumerated() {
-            FinishingTrace.event("readback_attempt", "worker=\(MTPFinishingWorker.isWorker) attempt=\(attempt + 1) delay=\(delay)")
-            if attempt > 0 {
-                Thread.sleep(forTimeInterval: delay)
-            }
-
-            let remaining = verificationDeadline - ProcessInfo.processInfo.systemUptime
-            guard remaining > 0 else {
-                throw InstallationTransportError.operationFailed("Map verification exceeded its total time budget.", createdItemID: nil)
-            }
-            do {
-                return try operationGate.withOperation(
-                    kind: .install,
-                    lifecycleLease: lifecycleLease
-                ) {
-                    try readBackUncoordinated(
-                        sourceURL: sourceURL,
-                        targetFilename: targetFilename,
-                        expectedItemID: expectedItemID,
-                        targetPath: targetPath,
-                        expectedSizeBytes: expectedSizeBytes,
-                        sampleOffsets: sampleOffsets,
-                        sampleLength: sampleLength,
-                        remainingTime: remaining,
-                        progress: progress
-                    )
-                }
-            } catch {
-                FinishingTrace.event("readback_failed", "worker=\(MTPFinishingWorker.isWorker) attempt=\(attempt + 1) error=\(Self.traceError(error))")
-                lastError = error
-                guard Self.shouldRetryReadBack(error), attempt < retryDelays.count - 1 else {
-                    throw error
-                }
+        // Only the parent may repeat the check, never inside one session:
+        // every attempt is a new bounded worker and so a new USB session.
+        // `SampledReadBackRetryPolicy.run` owns the count and the time bound:
+        // at most one repeat in total, after a metadata lookup that did not
+        // find the exact object or after a sample that could not be read.
+        // Every other failure, a mismatch and any second failure end the
+        // verification as before and may require a reconnect.
+        // A repeated check restarts its byte count; the bar must not go back.
+        let monotonicProgress = MonotonicTransferProgress(progress)
+        return try SampledReadBackRetryPolicy.run(
+            isWorker: MTPFinishingWorker.isWorker,
+            now: { ProcessInfo.processInfo.systemUptime },
+            sleep: { Thread.sleep(forTimeInterval: $0) },
+            trace: { FinishingTrace.event($0, $1) }
+        ) { remaining in
+            try operationGate.withOperation(
+                kind: .install,
+                lifecycleLease: lifecycleLease
+            ) {
+                try readBackUncoordinated(
+                    sourceURL: sourceURL,
+                    targetFilename: targetFilename,
+                    expectedItemID: expectedItemID,
+                    targetPath: targetPath,
+                    expectedSizeBytes: expectedSizeBytes,
+                    sampleOffsets: sampleOffsets,
+                    sampleLength: sampleLength,
+                    remainingTime: remaining,
+                    progress: { monotonicProgress.report($0) }
+                )
             }
         }
-
-        throw lastError ?? InstallationTransportError.operationFailed(
-            "The Garmin map could not be read back after verification retries.",
-            createdItemID: nil
-        )
     }
 
     fileprivate static func traceError(_ error: Error) -> String {
-        guard let error = error as? InstallationTransportError else { return "other" }
-        switch error {
-        case .contextual:
-            return error.isConfirmedDeviceDisconnected ? "deviceDisconnected" : "operationFailed"
-        case .deviceDisconnected: return "deviceDisconnected"
-        case .operationFailed: return "operationFailed"
-        case .remoteFileMissing: return "remoteFileMissing"
-        case .objectIdentityMismatch: return "objectIdentityMismatch"
-        case .targetAlreadyExists: return "targetAlreadyExists"
-        case .unsupportedDevice: return "unsupportedDevice"
-        case .liveIdentityMismatch: return "liveIdentityMismatch"
-        }
-    }
-
-    private static func shouldRetryReadBack(_ error: Error) -> Bool {
-        guard let error = error as? InstallationTransportError else { return false }
-        switch error {
-        case .remoteFileMissing, .objectIdentityMismatch:
-            return true
-        case .contextual, .deviceDisconnected, .operationFailed, .targetAlreadyExists, .unsupportedDevice, .liveIdentityMismatch:
-            return false
-        }
+        SampledReadBackRetryPolicy.traceName(of: error)
     }
 
     private func readBackUncoordinated(

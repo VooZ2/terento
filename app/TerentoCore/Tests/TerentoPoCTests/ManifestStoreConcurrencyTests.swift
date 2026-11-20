@@ -287,7 +287,7 @@ struct ManifestStoreConcurrencyTests {
               watchA.hasPrefix("watch-v2-"),
               !watchA.contains("SERIAL-A"),
               permissions == 0o600 else {
-            throw TestFailure(message: "physical watch keys were not stable, distinct, private, and permission-restricted")
+            throw TestFailure(message: "physical device keys were not stable, distinct, private, and permission-restricted")
         }
 
         print("PASS: identical models can use stable, distinct physical-watch namespaces")

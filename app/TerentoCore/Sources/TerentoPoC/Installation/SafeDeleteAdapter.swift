@@ -304,7 +304,7 @@ struct SafeDeleteAdapter: Sendable {
             return result(
                 target,
                 status: .blockedIntegrityCheck,
-                message: "The map on the watch no longer matches the verified record. Nothing was removed."
+                message: "The map on the device no longer matches the verified record. Nothing was removed."
             )
         }
 
@@ -511,7 +511,7 @@ struct SafeDeleteAdapter: Sendable {
         case .deviceDisconnected:
             return "The Garmin device was disconnected. Nothing else was changed."
         case .deviceBusy:
-            return "The watch is busy or another app is using it. Quit Garmin Express and other apps that connect to your watch, unplug the watch and plug it back in, then choose Refresh. Nothing was removed."
+            return "The device is busy or another app is using it. Quit Garmin Express and other apps that connect to your device, unplug the device and plug it back in, then choose Refresh. Nothing was removed."
         case .objectNotFound:
             return "The map was not found on the Garmin device. Nothing was removed."
         case .operationFailed:

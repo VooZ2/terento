@@ -372,7 +372,7 @@ enum MapLifecycleInterruption {
         switch action {
         case .remove:
             if fraction < removalDeleteBoundary {
-                return "Removal didn't finish because your Garmin was disconnected. Nothing was removed, so the map is still on your watch."
+                return "Removal didn't finish because your Garmin was disconnected. Nothing was removed, so the map is still on your device."
             }
             return "Your Garmin was disconnected while Terento was confirming the removal. Plug it back in and open Manage maps to check whether the map was removed."
         case .update:
@@ -380,7 +380,7 @@ enum MapLifecycleInterruption {
             case .downloading, .preparing, .checking, .removing, .updating:
                 return "The update didn't finish because your Garmin was disconnected. Your current map is unchanged."
             case .installing, .verifying:
-                return "The update didn't finish because your Garmin was disconnected. Your current map is kept. Plug the watch back in and open Manage maps to check for an unfinished copy."
+                return "The update didn't finish because your Garmin was disconnected. Your current map is kept. Plug the device back in and open Manage maps to check for an unfinished copy."
             case .removingOld, .finishing:
                 return "Your Garmin was disconnected after the new version was installed. Plug it back in and open Manage maps to check whether the old version is still there."
             case .idle, .awaitingConfirmation, .completed, .failed:

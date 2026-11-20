@@ -394,12 +394,13 @@ class AppStoreConfigurationContract(unittest.TestCase):
             self.assertIn("= TerentoTelemetryMetadata.eventReleaseLabel", source, path)
             self.assertNotIn("= TerentoTelemetryMetadata.releaseLabel", source, path)
 
-    def test_app_store_shows_no_manufacturer_product_photos(self) -> None:
+    def test_app_store_shows_the_same_device_photo_as_the_direct_download(self) -> None:
         registry = (SWIFT_SOURCES / "Compatibility" / "DeviceAssetRegistry.swift").read_text(encoding="utf-8")
-        flag = registry.split("static let allowsOfficialProductMedia: Bool = {", 1)[1].split("}()", 1)[0]
-        self.assertIn("return false", active_source(flag, APP_STORE_ONLY))
-        self.assertIn("return true", active_source(flag, DMG_ONLY))
-        # No garmin.com product page is read and no official photo is shown.
+        # One rule for both distributions: no App Store branch hides the photo.
+        self.assertIn("static let allowsOfficialProductMedia = true", registry)
+        self.assertNotIn("TERENTO_APP_STORE", registry)
+        self.assertEqual(active_source(registry, APP_STORE_ONLY), active_source(registry, DMG_ONLY))
+        # The gate stays in one place, so the decision can be reversed there.
         self.assertIn("} else if Self.allowsOfficialProductMedia,", registry)
         self.assertIn("|| match.asset.source?.sourceType != .officialProductMedia else {", registry)
 

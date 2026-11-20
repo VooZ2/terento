@@ -179,6 +179,14 @@ extension InstallationFailureContext {
              protection: protection, writeFailureStep: writeFailureStep, ptpResponseCode: ptpResponseCode)
     }
 
+    /// `terento_mtp_verify_managed_map_samples` -9: the fresh read-back
+    /// session opened and resolved the exact written map, but one planned
+    /// sample could not be read. Nothing was compared, so this is neither a
+    /// match nor a mismatch (-11).
+    var isSampledReadBackReadFailure: Bool {
+        boundary == .readback && nativeCodeNamespace == .terentoMapVerify && nativeResultCode == -9
+    }
+
     /// `terento_mtp_read_snapshot_diagnostic` -5: exactly one Garmin is on
     /// USB, but its file-transfer session could not be opened (usually another
     /// app holds the watch). Detection reports the same code as busy.
@@ -193,6 +201,201 @@ extension InstallationFailureContext {
         nativeCodeNamespace == .terentoSnapshot && (nativeResultCode == -2 || nativeResultCode == -3)
     }
 }
+/// The one automatic second attempt of the post-write sampled read-back.
+///
+/// A sample read that fails (`terento_map_verify` -9) after a complete write
+/// is, in the field, a short-lived USB or device stall: the same device reads
+/// the same map again later. The parent therefore waits and repeats the SAME
+/// sampled read-back once, in a new worker process and so a new USB session.
+/// The method, the planned regions and the validated local artifact do not
+/// change; a mismatch, a changed identity or a second failure blocks exactly
+/// as before. The repeat only reads: it sends no write and no delete. Opening
+/// its session is the ordinary native open, which may reset the USB link on
+/// some models exactly as every other session open does.
+///
+/// The earlier single repeat after a completed metadata lookup that did not
+/// find the exact object shares the same count: a read-back makes at most ONE
+/// repeat in total, so at most two USB sessions per written map.
+enum SampledReadBackRetryPolicy {
+    /// Wait before the second attempt, so the device can settle.
+    static let delay: TimeInterval = 5
+    /// Upper bound for the wait plus the second attempt.
+    static let totalBudget: TimeInterval = 120
+    /// At most this many repeats per written map, whatever their reason.
+    static let maximumRetries = 1
+    /// Wait before repeating a metadata lookup that did not find the object.
+    static let metadataLookupDelay: TimeInterval = 1
+    /// Upper bound of the whole read-back, as before the repeat existed.
+    static let verificationBudget: TimeInterval = 600
+
+    enum Repeat: Equatable, Sendable {
+        /// A completed metadata lookup did not find the exact written object.
+        case metadataLookup
+        /// A sample could not be read; `timeout` bounds the attempt after the wait.
+        case sampleRead(timeout: TimeInterval)
+
+        var delay: TimeInterval {
+            switch self {
+            case .metadataLookup: return SampledReadBackRetryPolicy.metadataLookupDelay
+            case .sampleRead: return SampledReadBackRetryPolicy.delay
+            }
+        }
+    }
+
+    /// A completed lookup that did not find the exact object, or found another.
+    static func isMetadataLookupMiss(_ error: Error) -> Bool {
+        guard let error = error as? InstallationTransportError else { return false }
+        switch error {
+        case .remoteFileMissing, .objectIdentityMismatch:
+            return true
+        case .contextual, .deviceDisconnected, .operationFailed, .targetAlreadyExists,
+             .unsupportedDevice, .liveIdentityMismatch:
+            return false
+        }
+    }
+
+    /// The exact "sample could not be read" result of the read-back.
+    static func isSampleReadFailure(_ error: Error) -> Bool {
+        guard case let InstallationTransportError.contextual(_, _, _, context) = error else {
+            return false
+        }
+        return context.isSampledReadBackReadFailure
+    }
+
+    /// The repeat to make after `error`, or nil when the failure is final.
+    /// Only the parent process repeats, and only once in total. A worker
+    /// never repeats, and a mismatch (-11), an unopened session (-8), a
+    /// disconnect or any other failure is never repeated.
+    static func nextRepeat(
+        after error: Error,
+        isWorker: Bool,
+        repeatsMade: Int,
+        remainingVerificationTime: TimeInterval
+    ) -> Repeat? {
+        guard !isWorker, repeatsMade < maximumRetries else { return nil }
+        if isMetadataLookupMiss(error) { return .metadataLookup }
+        if isSampleReadFailure(error),
+           let timeout = retryTimeout(remainingVerificationTime: remainingVerificationTime) {
+            return .sampleRead(timeout: timeout)
+        }
+        return nil
+    }
+
+    /// Seconds the second attempt may take after the wait, or nil when the
+    /// overall verification budget cannot hold the wait and a useful attempt.
+    static func retryTimeout(remainingVerificationTime: TimeInterval) -> TimeInterval? {
+        let available = min(totalBudget, remainingVerificationTime) - delay
+        return available >= 1 ? available : nil
+    }
+
+    /// The failure of a second attempt, marked with the retry that was made.
+    /// Other error cases carry no failure context and are returned unchanged.
+    static func failureAfterRetry(_ error: Error, retriesMade: Int) -> Error {
+        guard retriesMade > 0,
+              case let InstallationTransportError.contextual(failure, message, createdItemID, context) = error else {
+            return error
+        }
+        return InstallationTransportError.contextual(
+            failure: failure, message: message, createdItemID: createdItemID,
+            context: context.retried(UInt8(clamping: retriesMade))
+        )
+    }
+
+    /// The whole read-back loop: the first attempt and at most one repeat.
+    /// `attempt` performs one complete read-back in its own USB session and
+    /// receives the seconds it may take. The clock, the wait and the trace are
+    /// supplied by the caller, so the loop itself performs no device I/O.
+    static func run<Value>(
+        isWorker: Bool,
+        now: () -> TimeInterval,
+        sleep: (TimeInterval) -> Void,
+        trace: (_ event: String, _ details: String) -> Void,
+        attempt: (_ remainingTime: TimeInterval) throws -> Value
+    ) throws -> Value {
+        var deadline = now() + verificationBudget
+        var repeatsMade = 0
+        var attemptNumber = 0
+        var delay: TimeInterval = 0
+        while true {
+            attemptNumber += 1
+            trace("readback_attempt", "worker=\(isWorker) attempt=\(attemptNumber) delay=\(delay)")
+            if delay > 0 { sleep(delay) }
+
+            let remaining = deadline - now()
+            guard remaining > 0 else {
+                throw InstallationTransportError.operationFailed(
+                    "Map verification exceeded its total time budget.", createdItemID: nil)
+            }
+            do {
+                let result = try attempt(remaining)
+                if repeatsMade > 0 {
+                    // Local record that the repeat was what completed the check.
+                    // The reason is the error of the preceding readback_failed
+                    // line; the finishing trace keeps only allow-listed events
+                    // and values (FinishingTrace.safeLine).
+                    trace("readback_repeat_succeeded", "attempt=\(attemptNumber)")
+                }
+                return result
+            } catch {
+                trace("readback_failed", "worker=\(isWorker) attempt=\(attemptNumber) error=\(traceName(of: error))")
+                let failedAt = now()
+                guard let next = nextRepeat(
+                    after: error, isWorker: isWorker, repeatsMade: repeatsMade,
+                    remainingVerificationTime: deadline - failedAt
+                ) else {
+                    throw failureAfterRetry(error, retriesMade: repeatsMade)
+                }
+                repeatsMade += 1
+                delay = next.delay
+                if case .sampleRead(let timeout) = next {
+                    // From here the wait and the repeat share one bound.
+                    deadline = failedAt + delay + timeout
+                }
+                trace("readback_retry", "attempt=\(attemptNumber) delay=\(delay)")
+            }
+        }
+    }
+
+    static func traceName(of error: Error) -> String {
+        guard let error = error as? InstallationTransportError else { return "other" }
+        switch error {
+        case .contextual:
+            return error.isConfirmedDeviceDisconnected ? "deviceDisconnected" : "operationFailed"
+        case .deviceDisconnected: return "deviceDisconnected"
+        case .operationFailed: return "operationFailed"
+        case .remoteFileMissing: return "remoteFileMissing"
+        case .objectIdentityMismatch: return "objectIdentityMismatch"
+        case .targetAlreadyExists: return "targetAlreadyExists"
+        case .unsupportedDevice: return "unsupportedDevice"
+        case .liveIdentityMismatch: return "liveIdentityMismatch"
+        }
+    }
+}
+
+/// Forwards transfer progress that only ever increases, so a repeated check
+/// never moves a progress bar backwards.
+final class MonotonicTransferProgress: @unchecked Sendable {
+    private let lock = NSLock()
+    private var highest: UInt64 = 0
+    private var reportedAny = false
+    private let forward: @Sendable (TransferProgress) -> Void
+
+    init(_ forward: @escaping @Sendable (TransferProgress) -> Void) {
+        self.forward = forward
+    }
+
+    func report(_ progress: TransferProgress) {
+        lock.lock()
+        let advances = !reportedAny || progress.bytesTransferred > highest
+        if advances {
+            highest = progress.bytesTransferred
+            reportedAny = true
+        }
+        lock.unlock()
+        if advances { forward(progress) }
+    }
+}
+
 struct InstallationProtectionContext: Codable, Equatable, Sendable {
     enum Boundary: String, Codable, Sendable {
         case preWrite = "pre-write"

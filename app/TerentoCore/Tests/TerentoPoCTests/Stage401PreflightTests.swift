@@ -124,7 +124,7 @@ struct Stage401PreflightTests {
                 && profile?.usbProductIds == [0x7777]
                 && profile?.targetDirectory == "/GARMIN"
                 && profile?.matches(identity) == true,
-            "arbitrary Garmin watch gets an exact live-bound /GARMIN profile without a model allowlist"
+            "arbitrary Garmin device gets an exact live-bound /GARMIN profile without a model allowlist"
         )
     }
 
@@ -252,7 +252,7 @@ struct Stage401PreflightTests {
             manufacturer: "Garmin", model: "fenix 8 - 47mm", deviceVersion: "2331",
             vendorID: 0x091e, productID: 0x51b8, storages: []))
         expect(reviewedLegacy.screenTechnology == nil && reviewedLegacy.screenTechnologySource == "Unavailable",
-               "no local USB-to-AMOLED association replaces missing original watch metadata")
+               "no local USB-to-AMOLED association replaces missing original device metadata")
         expect(withoutXML.solar == nil && withoutXML.inReach == nil, "absent feature words remain unknown")
         expect(GarminDeviceModelNormalizer.screenTechnology(from: "MIP Solar inReach") == "MIP",
                "Solar and inReach remain independent of screen technology")
@@ -327,7 +327,7 @@ struct Stage401PreflightTests {
         expect(
             profile?.id == "garmin-live-map-device"
                 && profile?.matches(identity) == true,
-            "Garmin watch profile binding is model-neutral; final install policy remains separate"
+            "Garmin device profile binding is model-neutral; final install policy remains separate"
         )
     }
 

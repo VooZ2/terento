@@ -277,6 +277,68 @@ struct Stage41AcquisitionTests {
         } catch {
             expect(false, "ZIP extractor safety fixtures: \(error)")
         }
+        testZIPDeclaredSizeLimit()
+    }
+
+    /// The declared uncompressed size is read from the same `unzip -Z` listing
+    /// and checked before anything is extracted.
+    private static func testZIPDeclaredSizeLimit() {
+        typealias Extractor = SystemZIPArchiveExtractor
+        let listing = [
+            "Archive:  /tmp/map.zip",
+            "Zip file size: 300659 bytes, number of entries: 4",
+            "-rw-r--r--  3.0 unx        3 tx stor 26-Nov-18 09:37 read me.txt",
+            "-rw-r--r--  3.0 unx   300000 bx defN 26-Nov-18 09:37 gmapsupp.img",
+            "drwxr-xr-x  3.0 unx        0 bx stor 26-Nov-18 09:37 sub/",
+            "-rw-a--     2.0 fat      100 b- defN 26-Nov-18 09:37 sub/windows made.txt",
+            "4 files, 300103 bytes uncompressed, 300053 bytes compressed:  0.0%"
+        ]
+        expect(Extractor.declaredUncompressedBytes(listing: listing) == 300_103,
+               "the declared ZIP size is the sum of the listed entries")
+        expect(Extractor.declaredUncompressedBytes(listing: Array(listing.dropLast())) == 300_103
+               && Extractor.declaredUncompressedBytes(listing: [
+                    listing[3], "1 file, 999999 bytes uncompressed, 10 bytes compressed:  99.9%"]) == 999_999
+               && Extractor.declaredUncompressedBytes(listing: Array(listing.prefix(2))) == nil,
+               "the larger of the entry sum and the listing total counts, and a listing without entries is unknown")
+
+        func outcome(_ lines: [String], entries: Int = 1, free: UInt64? = nil) -> MapAcquisitionError? {
+            do {
+                try Extractor.rejectOversizedArchive(listing: lines, entryCount: entries, availableBytes: free)
+                return nil
+            } catch {
+                return error as? MapAcquisitionError
+            }
+        }
+        func entry(_ bytes: UInt64) -> String {
+            "-rw-r--r--  4.5 unx \(bytes) bx defN 26-Nov-18 09:37 gmapsupp.img"
+        }
+        let limit = Extractor.maximumUncompressedBytes
+        expect(limit == 2 * CustomMapSourceAcquirer.maximumMapFileBytes
+               && outcome([entry(limit)]) == nil
+               && outcome([entry(4_131_454_976), entry(1_000_000_000)]) == nil,
+               "an archive as large as two full map images is accepted")
+        var isInvalidPackage = false
+        if case .invalidPackage = outcome([entry(limit), entry(1)]) { isInvalidPackage = true }
+        var bombIsInvalid = false
+        if case .invalidPackage = outcome([entry(UInt64.max), entry(UInt64.max)]) { bombIsInvalid = true }
+        expect(isInvalidPackage && bombIsInvalid,
+               "an archive that declares more than a map package can hold is refused before extraction")
+        expect(outcome([entry(5_000)], free: 4_999) == .insufficientMacStorage(requiredBytes: 5_000)
+               && outcome([entry(5_000)], free: 5_000) == nil,
+               "an archive larger than the free space on the Mac is refused with the needed size")
+        var unreadableIsRefused = false
+        if case .extractionFailed = outcome(["Archive:  /tmp/map.zip"]) { unreadableIsRefused = true }
+        expect(unreadableIsRefused && outcome([], entries: 0) == nil,
+               "an archive whose sizes cannot be read is refused")
+        var linkIsRefused = false
+        do {
+            try Extractor.rejectSymbolicLinkEntries(listing: listing + [
+                "lrwxr-xr-x  3.0 unx       10 bx stor 26-Nov-18 09:37 link"])
+        } catch MapAcquisitionError.unsafeArchivePath {
+            linkIsRefused = true
+        } catch {}
+        expect(linkIsRefused && (try? Extractor.rejectSymbolicLinkEntries(listing: listing)) != nil,
+               "the shared listing still refuses symbolic link entries")
     }
 
     private static func testDownloaderUsesCatalogURL() async {

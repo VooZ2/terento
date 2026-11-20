@@ -17,7 +17,7 @@ enum MapLifecycleClassification: String, Codable, Equatable, Sendable {
         case .terentoManaged:
             return "Installed by Terento"
         case .externalRecognized:
-            return "Installed on your watch"
+            return "Installed on your device"
         case .ambiguous:
             return "Read-only"
         case .system:

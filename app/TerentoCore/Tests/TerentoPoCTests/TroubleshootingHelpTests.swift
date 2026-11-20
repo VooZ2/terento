@@ -69,7 +69,7 @@ struct TroubleshootingHelpTests {
                 "connect outcome \(outcome.rawValue) has its guide section")
         }
         expect(TroubleshootingHelp.topic(detectionPhase: .waitingForWatch).anchor == .connectWatch,
-            "waiting for a watch links the connect steps")
+            "waiting for a device links the connect steps")
         expect(TroubleshootingHelp.topic(detectionPhase: .connecting).anchor == .connectWatch,
             "connecting links the connect steps")
         expect(TroubleshootingHelp.topic(detectionPhase: .needsAttention(.busy)).anchor == .garminBusy,
@@ -83,7 +83,7 @@ struct TroubleshootingHelpTests {
         let expected: [DeviceConnectOutcome: (anchor: TroubleshootingAnchor, cue: String)] = [
             .timeoutNoUSB: (.connectWatch, "Use a USB data cable, not a charge-only cable"),
             .timeoutUSBPresent: (.connectionTimeout, "didn't become ready within 2 minutes"),
-            .busy: (.garminBusy, "Only one app at a time can use the watch"),
+            .busy: (.garminBusy, "Only one app at a time can use the device"),
             .multipleDevices: (.multipleGarmin, "one Garmin at a time"),
             .notMTPMode: (.usbMode, "USB Mode (usually under Settings › System), choose MTP"),
             .disconnected: (.connectWatch, "firmly plugged in"),
@@ -139,7 +139,7 @@ struct TroubleshootingHelpTests {
         }
         let lost = UserFacingErrorMessage.connectionTimeout(garminUSBPresent: false, detectedConflicts: [])
         expect(helpTopic(.failed, failure: lost)?.anchor == .connectionTimeout,
-            "a watch that left USB before it was ready links the connection-timeout section")
+            "a device that left USB before it was ready links the connection-timeout section")
         expect(helpTopic(.failed) == nil, "a failure without a known cause shows no Help link")
         let stale = UserFacingErrorMessage.detectionFailure(.busy, garminUSBPresent: true, detectedConflicts: [])
         for state in [DeviceConnectionState.disconnected, .connected, .ready, .ejecting, .safeToDisconnect] {
@@ -211,7 +211,7 @@ struct TroubleshootingHelpTests {
             expect(specifiedAnchors.contains(TroubleshootingHelp.topic(for: failure).anchor.rawValue),
                 "installation failure \(failure.rawValue) has an S2 section")
         }
-        expect(TroubleshootingHelp.topic(for: .insufficientSpace).anchor == .watchStorage, "watch storage")
+        expect(TroubleshootingHelp.topic(for: .insufficientSpace).anchor == .watchStorage, "device storage")
         expect(TroubleshootingHelp.topic(for: .cleanupFailed).anchor == .leftoverMap, "failed cleanup")
         expect(TroubleshootingHelp.installationTopic(failure: .writeFailed, acquisitionError: nil,
             mayHaveLeftMapOnWatch: true).anchor == .leftoverMap,
@@ -226,7 +226,7 @@ struct TroubleshootingHelpTests {
             nativeCategory: .sessionOpen, nativeCodeNamespace: .terentoSnapshot, nativeResultCode: -5)
         expect(TroubleshootingHelp.installationTopic(failure: .preflightMTPReadFailed, acquisitionError: nil,
             mayHaveLeftMapOnWatch: false, failureContext: busySession).anchor == .garminBusy,
-            "a watch session that could not be opened before writing links the busy-watch section")
+            "a device session that could not be opened before writing links the busy-watch section")
         let storageRead = InstallationFailureContext(boundary: .initialSnapshot, classificationSource: .native,
             devicePresence: .unknown, operation: .snapshot, executionMode: .inProcess, resultKind: .nativeError,
             nativeCategory: .storageRead, nativeCodeNamespace: .terentoSnapshot, nativeResultCode: -10)

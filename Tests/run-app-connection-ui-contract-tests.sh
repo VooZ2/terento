@@ -83,7 +83,7 @@ assert_contains 'title: deviceEngine.state == .failed ? "Try again" : "Connect d
 assert_contains 'stateManager.fail()' "$device_engine"
 assert_contains 'static let connectionWindow: TimeInterval = 120' "$repo_root/app/TerentoCore/Sources/TerentoPoC/DeviceEngine/DeviceStateManager.swift"
 assert_contains 'Connection timed out after 2 minutes.' "$device_engine"
-assert_contains '? "Connect your watch" : "Your Garmin was disconnected"' "$connect_screen"
+assert_contains '? "Connect your device" : "Your Garmin was disconnected"' "$connect_screen"
 assert_contains 'lifecycleViewModel.interruptedOperationNotice ?? deviceEngine.disconnectNotice' "$connect_screen"
 assert_contains 'Use a USB data cable, not a charge-only cable' "$connect_screen"
 assert_contains 'Quit Garmin Express' "$connect_screen"
