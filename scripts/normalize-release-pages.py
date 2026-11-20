@@ -34,7 +34,7 @@ COPY = json.loads((ROOT / "scripts" / "templates" / "download-copy.json").read_t
 # Apple's official "Download on the Mac App Store" badge beside the Download button.
 # Listing URL, campaign token, artwork and alt text per locale: scripts/templates/app-store-badge.json.
 APP_STORE = json.loads((ROOT / "scripts" / "templates" / "app-store-badge.json").read_text(encoding="utf-8"))
-SHOT = "/assets/app/optimized/your-garmin-{width}.{fmt}?v=20260912-app-screens-v2"
+SHOT = "/assets/app/optimized/your-garmin-{width}.{fmt}?v=20261120-app-screens-v3"
 SHOT_SIZES = "(max-width: 899px) min(480px, calc(100vw - 32px)), 480px"
 # "macOS 13 or later on Apple Silicon." in the Home copy's words.
 COMPONENTS = __import__("runpy").run_path(str(ROOT / "scripts" / "site_components.py"))

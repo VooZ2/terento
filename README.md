@@ -62,13 +62,13 @@ separate confirmation.
 
 <p align="center">
   <img src="site/assets/app/masters/map-selected.png"
-       alt="Terento showing a search for Lithuania, a selected BBBike map, and projected storage before installation"
+       alt="Terento showing a search for Iceland, a selected BBBike map, and projected storage before installation"
        width="100%">
 </p>
 
 <p align="center">
   <img src="site/assets/app/masters/maps-done.png"
-       alt="Terento confirming that the BBBike Lithuania map is installed and verified"
+       alt="Terento confirming that the BBBike Iceland map is installed on the Garmin"
        width="100%">
 </p>
 
@@ -164,9 +164,9 @@ devices, and automotive devices are outside the current public scope.
 
 ## Download and release status
 
-The latest public release is **1.2.1 (build 48)**: when the watch is busy or
-can't be reached before anything is written, Terento asks you to reconnect it
-and continues with the map it already downloaded. Download the notarized macOS app below; no additional software is
+The latest public release is **1.2.2 (build 49)**: the Done page shows how to
+turn the new map on, the screens are clearer, and the check after writing a map
+is repeated once after a read error. Download the notarized macOS app below; no additional software is
 required.
 
 **[Download Terento](https://terento.app/download/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_download)**

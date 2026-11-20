@@ -7,7 +7,7 @@ canonical: https://terento.app/cs/download/
 
 Bezplatná open-source aplikace, která instaluje bezplatné mapy do hodinek Garmin a cyklopočítačů Edge s podporou map.
 
-[Stáhnout pro Mac](https://github.com/VooZ2/terento/releases/download/v1.2.1-build48/Terento-1.2.1-macOS-arm64.dmg) [Download on the Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-download&mt=8)
+[Stáhnout pro Mac](https://github.com/VooZ2/terento/releases/download/v1.2.2-build49/Terento-1.2.2-macOS-arm64.dmg) [Download on the Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-download&mt=8)
 
 [Použijte webový instalátor](https://terento.app/cs/install/)
 
@@ -15,7 +15,7 @@ Terento zobrazuje připojené hodinky Garmin v macOS
 
 ## Co budete potřebovat
 
-Nejnovější verze **v1.2.1**, 14. listopadu 2026. [Co je nového](https://github.com/VooZ2/terento/releases/tag/v1.2.1-build48)
+Nejnovější verze **v1.2.2**, 20. listopadu 2026. [Co je nového](https://github.com/VooZ2/terento/releases/tag/v1.2.2-build49)
 
 - Mac s Apple Silicon
 - macOS 13 nebo novější

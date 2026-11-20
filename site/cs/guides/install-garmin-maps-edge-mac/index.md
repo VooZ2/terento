@@ -31,14 +31,14 @@ Ukončete Garmin Express, pokud je otevřený. Připojte Edge přímo k Macu USB
 
 Vyberte poskytovatele a oblast z katalogu, nebo přidejte z Macu vlastní kompatibilní mapový soubor .img. [Porovnejte styly map](https://terento.app/cs/map-styles/) a podívejte se, jak každá mapa zobrazuje silnice a stezky.
 
-[Terento zobrazuje poskytovatele, oblasti map třetích stran a dostupné místo v Garminu](https://terento.app/assets/app/optimized/map-selected-1600.webp?v=20260912-app-screens-v2)
+[Terento zobrazuje poskytovatele, oblasti map třetích stran a dostupné místo v Garminu](https://terento.app/assets/app/optimized/map-selected-1600.webp?v=20261120-app-screens-v3)
 Vyberte mapu z katalogu nebo přidejte vlastní kompatibilní soubor.
 
 4. Instalujte
 
 Spusťte instalaci a nechte Edge připojený, dokud Terento neoznámí, že je instalace hotová. Potom Edge odpojte.
 
-[Terento zobrazuje dokončenou instalaci mapy](https://terento.app/assets/app/optimized/maps-done-1600.webp?v=20260912-app-screens-v2)
+[Terento zobrazuje dokončenou instalaci mapy](https://terento.app/assets/app/optimized/maps-done-1600.webp?v=20261120-app-screens-v3)
 Nechte Edge připojený, dokud Terento neoznámí, že je mapa připravená.
 
 ## Zobrazení mapy v Edge

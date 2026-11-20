@@ -29,7 +29,7 @@ Zamknij Garmin Express, jeśli jest otwarty. Odblokuj zegarek i podłącz go do 
 
 [Mac nie widzi zegarka Garmin](https://terento.app/pl/guides/troubleshooting/#connect-watch)
 
-[Terento pokazuje podłączony zegarek Garmin i stan wykrywania](https://terento.app/assets/app/optimized/your-garmin-1600.webp?v=20260912-app-screens-v2)
+[Terento pokazuje podłączony zegarek Garmin i stan wykrywania](https://terento.app/assets/app/optimized/your-garmin-1600.webp?v=20261120-app-screens-v3)
 Terento rozpoznaje podłączony zegarek Garmin przed instalacją.
 
 3. Wybierz mapę
@@ -44,14 +44,14 @@ Wybierz dostawcę i region z katalogu.
 
 Dodaj zgodną mapę .img z Maca.
 
-[Terento pokazuje dostawców, regiony map innych firm i dostępne miejsce na Garminie](https://terento.app/assets/app/optimized/map-selected-1600.webp?v=20260912-app-screens-v2)
+[Terento pokazuje dostawców, regiony map innych firm i dostępne miejsce na Garminie](https://terento.app/assets/app/optimized/map-selected-1600.webp?v=20261120-app-screens-v3)
 Wybierz mapę z katalogu albo dodaj własny zgodny plik.
 
 4. Zainstaluj
 
 Rozpocznij instalację i nie odłączaj zegarka, dopóki Terento nie poinformuje, że mapa jest gotowa. Potem odłącz zegarek.
 
-[Terento pokazuje ukończoną instalację mapy na zegarku Garmin](https://terento.app/assets/app/optimized/maps-done-1600.webp?v=20260912-app-screens-v2)
+[Terento pokazuje ukończoną instalację mapy na zegarku Garmin](https://terento.app/assets/app/optimized/maps-done-1600.webp?v=20261120-app-screens-v3)
 Pozostaw zegarek podłączony do zakończenia przesyłania i sprawdzania.
 
 ## Wyświetl mapę na zegarku

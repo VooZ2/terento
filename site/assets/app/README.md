@@ -1,6 +1,22 @@
 # Website application screenshots
 
-## September 12, 2026 refresh (published)
+## November 20, 2026 refresh
+
+The seven owner-supplied PNGs from Terento 1.2.2 (49) replace the
+corresponding screenshot masters without pixel edits or resizing. The
+screenshots show Iceland instead of Lithuania. Each master keeps the same
+format: 2358 × 1575 pixels with 48px transparent rounded corners. Placements,
+file names and alt-text meaning are unchanged (see the September 12 table
+below); only the repository README alt texts named Lithuania and now name
+Iceland.
+
+`scripts/optimize-app-images.mjs` regenerated only these seven masters. The
+image query version is now `20261120-app-screens-v3`, owned by
+`scripts/normalize-public-shell.py` and synchronized with the Guide, Home
+template and Download sources. `about.png`, `map-styles-compare.png`,
+`web-installer-connect.png` and social artwork are unchanged.
+
+## September 12, 2026 refresh (published, superseded)
 
 The seven owner-supplied prepared PNGs replace the corresponding screenshot
 masters without pixel edits or resizing. Each new master is 2358 × 1575 pixels
@@ -24,7 +40,7 @@ sizes (640, 960, 1280, 1600) and largest-width PNG fallback. Original masters
 are unchanged; responsive derivatives use the existing resizing/compression
 settings. Pass master filenames to regenerate only those screenshots without
 regenerating social artwork. Full runs retain their existing social output.
-The current refreshed image query version is `20260912-app-screens-v2`, owned
+The image query version for this refresh was `20260912-app-screens-v2`, owned
 by `scripts/normalize-public-shell.py` and synchronized with the Guide source.
 The connection screenshot now uses the same cache version.
 
