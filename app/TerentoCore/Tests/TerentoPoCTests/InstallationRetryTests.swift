@@ -376,11 +376,14 @@ struct InstallationRetryTests {
         check(!DeviceOperationActivityPolicy.keepsMacAwake(installationPhase: .completed, mapPreparationActive: false,
                                                           lifecyclePhases: [.completed, .awaitingConfirmation]),
               "an idle app or a waiting dialog lets the Mac sleep")
-        check(DeviceOperationActivityPolicy.writesToDevice(mapInstallActive: true, lifecyclePhases: []),
+        check(DeviceOperationActivityPolicy.writesToDevice(mapInstallActive: true, lifecycleOperations: []),
               "an active install warns on Quit")
-        check(DeviceOperationActivityPolicy.writesToDevice(mapInstallActive: false, lifecyclePhases: [.installing]),
+        check(DeviceOperationActivityPolicy.writesToDevice(mapInstallActive: false, lifecycleOperations: [(.update, .installing)]),
               "an Update write warns on Quit")
-        check(!DeviceOperationActivityPolicy.writesToDevice(mapInstallActive: false, lifecyclePhases: [.downloading, .checking]),
-              "downloading or checking alone does not warn on Quit")
+        check(!DeviceOperationActivityPolicy.writesToDevice(mapInstallActive: false,
+                                                            lifecycleOperations: [(.update, .downloading), (.update, .checking)]),
+              "Update's download or pre-write check alone does not warn on Quit")
+        check(DeviceOperationActivityPolicy.writesToDevice(mapInstallActive: false, lifecycleOperations: [(.remove, .checking)]),
+              "Remove's Checking after the delete warns on Quit")
     }
 }

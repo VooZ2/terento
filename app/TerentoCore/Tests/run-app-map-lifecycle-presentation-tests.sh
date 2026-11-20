@@ -47,7 +47,7 @@ fi
 
 if grep -Fq 'ProgressView(value: operation.progress?.fractionCompleted ?? 0)' \
     "$project_root/Sources/TerentoPoC/Views/ConnectScreen.swift" \
-    || ! grep -Fq '.progressViewStyle(.linear)' \
+    || ! grep -Fq 'TerentoProgressBar(value:' \
         "$project_root/Sources/TerentoPoC/Views/ConnectScreen.swift"; then
     print -u2 "FAIL: map progress must retain explicit stage handling and linear styling"
     exit 1

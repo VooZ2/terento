@@ -27,6 +27,7 @@ enum TerentoColors {
     )
     static let progressTrack = TerentoGeneratedTokens.Light.progressTrack
     static let interactive = TerentoGeneratedTokens.Functional.interactivePrimary
+    static let interactiveHover = TerentoGeneratedTokens.Functional.interactiveHover
     static let warning = TerentoGeneratedTokens.Functional.stoneDark
     static let error = TerentoGeneratedTokens.Status.error
 }

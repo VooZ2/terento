@@ -27,6 +27,10 @@ assert_absent() {
 }
 
 assert_contains 'ProgressView()' "$connect_screen"
+# The Device card shows no Testing/Tested/Supported/Verified pill: the tier
+# counts shared installs and is not a public support badge.
+assert_absent 'CompatibilityStatusView' "$connect_screen"
+assert_absent 'presentation.compatibility' "$connect_screen"
 assert_contains 'ResourceImage(name: connectionIllustrationName' "$connect_screen"
 assert_contains 'return "connect-illustration-connecting"' "$connect_screen"
 assert_contains 'return "connect-illustration"' "$connect_screen"
@@ -52,7 +56,7 @@ assert_contains 'connectFailure = failure' "$device_engine"
 # finding, icon steps, the guide link and a note. There is no second list.
 assert_contains 'connectHelpBox(heading: issue.finding, steps: issue.steps, note: issue.note)' "$connect_screen"
 assert_contains 'troubleshootingRow(step.text, icon: step.systemImage)' "$connect_screen"
-assert_contains '.background(TerentoColors.helpSurface, in: RoundedRectangle(cornerRadius: 10))' "$connect_screen"
+assert_contains '.background(TerentoColors.helpSurface, in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.card))' "$connect_screen"
 assert_contains 'return ("exclamationmark.circle", TerentoColors.warning)' "$connect_screen"
 assert_contains 'return ("exclamationmark.triangle", TerentoColors.error)' "$connect_screen"
 assert_absent 'Having trouble connecting?' "$connect_screen"
@@ -89,6 +93,14 @@ assert_contains 'Use a USB data cable, not a charge-only cable' "$connect_screen
 assert_contains 'Quit Garmin Express' "$connect_screen"
 assert_contains 'case .needsAttention(let outcome):' "$connect_screen"
 assert_contains 'private var connectionStatusIcon: (name: String, color: Color)?' "$connect_screen"
+# Just unplugged: the title and "Plug it back in…" only; tips and the plug icon are for first connection.
+assert_contains '"Plug it back in. Terento reconnects automatically."' "$device_engine"
+assert_contains 'self.readDevice()' "$device_engine"
+assert_contains '            && disconnectExplanation == nil' "$connect_screen"
+assert_contains 'return disconnectExplanation == nil ? ("cable.connector", TerentoColors.secondaryText) : nil' "$connect_screen"
+# One Eject on the Device page: the sidebar icon hides while the page shows "Eject device".
+assert_contains 'showsEject: selectedSection != .device || snapshot == nil' "$connect_screen"
+assert_contains 'if showsEject, ejectPresentation != .hidden {' "$connect_screen"
 # A failed map read on a connected watch says so, shows an error icon and offers Try again.
 if [[ "$(rg -Fc "title: \"Couldn't read your maps\"" "$connect_screen")" -ne 2 \
     || "$(rg -Fc 'onRetry: refreshMapInventory' "$connect_screen")" -ne 2 ]]; then
@@ -163,5 +175,15 @@ assert_absent 'Identity unavailable' "$map_lifecycle"
 assert_absent 'Installed · Garmin system map' "$map_lifecycle"
 assert_absent 'Other maps are shown for reference and left unchanged.' "$connect_screen"
 assert_absent 'Garmin system maps are not included in this list.' "$connect_screen"
+# Sidebar: round Lucide watch for Device (SF Symbols has none on macOS 13),
+# Interactive Primary icon and Interactive Hover text (AA contrast) for the
+# selected row (lichen stays a success colour),
+# and one-line labels.
+assert_contains 'return Image("Watch")' "$connect_screen"
+assert_contains '@license lucide-static v0.460.0 - ISC' "$repo_root/app/Terento/Assets.xcassets/Watch.imageset/watch.svg"
+assert_contains 'Watch.imageset/watch.svg' "$repo_root/THIRD_PARTY_NOTICES.md"
+assert_contains '.foregroundStyle(isSelected ? TerentoColors.interactive : TerentoColors.secondaryText)' "$connect_screen"
+assert_contains '.foregroundStyle(isSelected ? TerentoColors.interactiveHover : TerentoColors.secondaryText)' "$connect_screen"
+assert_absent 'isSelected ? TerentoColors.lichenDark' "$connect_screen"
 
 print "PASS: connection activity, timeout recovery, shared layout, and Manage maps copy checks"

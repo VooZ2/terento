@@ -100,7 +100,7 @@ struct InstallationAuthorizationClient: Sendable {
     static let supportedSchemaVersion = 3
 
     /// The normalized base model used for policy matching (for example
-    /// `fenix 8`), for privacy-minimised funnel telemetry. Never a raw MTP
+    /// `fenix 8`), for privacy-minimized funnel telemetry. Never a raw MTP
     /// label, serial, Unit ID or catalog hint.
     static func funnelBaseModel(for identity: DeviceIdentity) -> String? {
         guard observedIdentityIsConsistent(identity) else { return nil }

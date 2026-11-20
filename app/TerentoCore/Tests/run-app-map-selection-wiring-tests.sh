@@ -39,8 +39,8 @@ if grep -Fq 'Help improve Garmin compatibility' "$connect_screen" \
     exit 1
 fi
 
-if ! grep -Fq 'Terento sends privacy-minimised diagnostics by default' "$project_root/Sources/TerentoPoC/Views/AboutTerentoView.swift" \
-    || ! grep -Fq 'AboutSecondaryButton(title: "Manage diagnostics")' "$project_root/Sources/TerentoPoC/Views/AboutTerentoView.swift"; then
+if ! grep -Fq 'Terento sends privacy-minimized diagnostics by default' "$project_root/Sources/TerentoPoC/Views/AboutTerentoView.swift" \
+    || ! grep -Fq 'AboutSecondaryButton(title: "Diagnostics")' "$project_root/Sources/TerentoPoC/Views/AboutTerentoView.swift"; then
     print -u2 "FAIL: About diagnostics disclosure or settings entry point is missing"
     exit 1
 fi
@@ -71,7 +71,11 @@ if ! grep -Fq 'return selectedGeography == .all ? "No maps are available." : "No
     || ! grep -Fq '.labelsHidden()' "$connect_screen" \
     || ! grep -Fq '.accessibilityLabel("Map provider")' "$connect_screen" \
     || grep -Fq 'Button("Manage maps")' "$connect_screen" \
-    || ! grep -Fq 'baseDetail = "Already installed"' "$connect_screen" \
+    || ! grep -Fq 'baseDetail = item.alreadyInstalledDetail(updateOffered: updateOfferedInManage)' "$connect_screen" \
+    || ! grep -Fq 'updateOfferedInManage: isUpdateOfferedInManage(item)' "$connect_screen" \
+    || ! grep -Fq 'lifecycleViewModel.availability(for: lifecycleItem).allows(.update)' "$connect_screen" \
+    || grep -Fq 'return installed.managementState == .managedByTerento' "$project_root/Sources/TerentoPoC/MapCatalog/MapSelectionPlanner.swift" \
+    || ! grep -Fq 'return "Already installed"' "$project_root/Sources/TerentoPoC/MapCatalog/MapSelectionPlanner.swift" \
     || grep -Fq 'row.item.comparison.installedMap == nil' \
         "$project_root/Sources/TerentoPoC/MapCatalog/MapSelectionPresentation.swift"; then
     printf '%s\n' "FAIL: Install empty state or installed-search presentation is missing" >&2
@@ -139,7 +143,7 @@ fi
 if grep -Fq 'LocalInstallStepperLayout' "$connect_screen" \
     || grep -Fq 'LocalInstallProgress' "$connect_screen" \
     || grep -Fq 'WorkflowProgress' "$connect_screen" \
-    || ! grep -Fq 'title: "Maps installed"' "$connect_screen"; then
+    || ! grep -Fq 'installedCount == 1 ? "Map installed" : "Maps installed"' "$connect_screen"; then
     print -u2 "FAIL: install stepper remains or successful Done state is missing"
     exit 1
 fi

@@ -120,8 +120,8 @@ struct MapVersionComparisonTests {
         )
 
         expect(
-            package.displayVersionLabel == "2/2026",
-            "provider-native release label is preferred for display"
+            package.displayVersionLabel == "2026-02",
+            "provider-native month release label is shown in the list's year-month style"
         )
 
         let fallbackPackage = MapPackage(

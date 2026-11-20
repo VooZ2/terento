@@ -105,7 +105,9 @@ status shows an icon with its text and colour, including "Needs attention".
 While maps are downloaded and checked on the Mac, or the no-write preflight
 runs, the install page offers Cancel; it uses the existing task cancellation
 and workspace cleanup, and nothing has been written to the watch. Once the
-install step owns the device it is not cancellable. After a failure in which
+install step owns the device it is not cancellable: while it still prepares,
+Cancel stays visible but disabled with "Can’t cancel while the map is being
+prepared." After a failure in which
 nothing was written, validated provider artifacts are kept for 30 minutes,
 keyed by package and artifact with their SHA-256; Try again (offered for
 download, connection, pre-write check, write-start and authorization-check
@@ -126,7 +128,8 @@ installation was written, and the reported failure code is unchanged. When that
 stop comes before any map or contour of the installation was written (a busy
 session after its retries, the snapshot no longer seeing a Garmin (-2/-3), or a
 confirmed unplug, at the reads before the write), the failure dialog is replaced
-by "Reconnect your device": unplug the watch, wait 5 seconds and plug it back in,
+by "Reconnect your device" shown on the page in place of the install progress
+(it stays across the unplug and the sidebar is locked until it ends): unplug the watch, wait 5 seconds and plug it back in,
 with Cancel and no other action; it names no map, because it is about the
 device. Only a new connection after the unplug can
 continue. The same watch (its local physical key) that is read again and whose
@@ -137,8 +140,10 @@ write. A different or unidentifiable watch, an authorization that no longer
 allows installing, 5 minutes without the same watch ready, or Cancel ends with
 the failure dialog (Report issue included); if the watch never left, it shows
 the original failure unchanged, otherwise what happened during the wait. The
-dialog announces its state to VoiceOver, and the update prompt never opens over
-it. What the failure dialog shows (map, reason, safety line, help topic and the
+wait announces its state to VoiceOver, and the update offer is never claimed
+while it runs. In the GitHub (DMG) build that offer is one quiet line at the top
+of Device ("Terento X is available" with What’s new, Later and Download), not a
+dialog; it is claimed only when nothing is reading, writing or waiting. What the failure dialog shows (map, reason, safety line, help topic and the
 prepared report) is captured when the installation fails. A disconnect resets
 the engine's failure state while that dialog is open or about to open; the
 dialog then keeps the captured failure instead of the generic "Installation
@@ -220,11 +225,15 @@ writing. OpenTopoMap
 contours are optional source-validated components, not a Debug-only feature.
 Compatible local IMG imports have no automatic provider update path.
 
-Install Maps provides geographic and provider/type filtering, local search,
-retained selections and one-provider batches. Filtering uses a cached
+Install Maps provides geographic and provider/type filtering, local search
+(an exact name first, then names containing the text, then maps that only
+cover it), retained selections and one-provider batches. Month-only provider
+releases read "2026-03", like the other dates. Filtering uses a cached
 presentation index and does not rescan the device. Manage Maps exposes current
 owned-map lifecycle actions and exact valid external-map removal with
 separate confirmation. About is opened through `Terento → About Terento`;
+it offers a secondary "Check for updates" and a primary "Update" only once an
+update is found;
 Diagnostics contains sharing settings. The sidebar remains Device, Install
 maps, Manage maps. UI layout and exact copy are reviewed visually; tests should
 protect actions, state transitions, accessibility and data contracts.
@@ -369,15 +378,35 @@ percentage belongs to its displayed stage, not the whole update or time remainin
 Stage weights allocate work; they do not predict duration. ZIP extraction, device
 inventory and the deletion command itself do not expose intermediate completion, so
 progress holds at the last completed checkpoint with an action description until
-the call returns. Unknown download lengths remain at 0% until a total is known;
-no timer fabricates progress. Device safety checks and mutation order are unchanged.
+the call returns. Unknown download lengths show an empty bar without a
+percentage until a total is known; no timer fabricates progress. Install steps,
+Manage rows and the storage meters share one 6 pt capsule bar
+(`TerentoProgressBar`); a percentage appears only for a measured value above zero,
+so a step that has measured nothing yet shows the bar without "0%". The install
+Finishing step chains several waits and only one of them is measured, so it shows
+one indeterminate bar for the whole step and never moves backwards. While a
+provider package is being resolved, before its download starts, the install step
+list shows Downloading as the current step; it is never drawn as complete and then
+current again. The engine's reported phase is unchanged. Device safety checks and mutation order are unchanged.
 Remove and Update's old-map removal reserve 20–90% for the content check
 immediately before deletion (the recorded sampled proof of a managed map, which
 usually ends before the 5-second estimate warm-up, so no time estimate appears,
 or the full SHA-256 read otherwise). The internal C bridge reports bytes read
 without changing read sizes, content/identity checks or authorization. Read
 completion is not deletion success: hash or target mismatch still prevents the
-destructive call. At 93%, the UI says “Confirming the map was removed”; repeated
+destructive call. Remove reads “Removing” through the content check and the
+deletion, then “Checking” while it confirms the map is gone, with the same
+Interactive Primary bar as Install; a confirmed removal shows “<Map> removed.”
+for 4 seconds above the list, and VoiceOver announces it. The list stays on
+screen during the rescan that follows: the removed row fades out (no animation
+with Reduce Motion), and "Reading your maps" appears only while there is no
+list yet. Whenever a rescan keeps the list on screen (after Remove, or on opening
+Manage maps), the rows keep their buttons and Refresh stays in place, all disabled
+until the new list is read. While Remove or Update runs, the other Update/Remove buttons and
+Refresh are disabled. The Remove dialog body is one line: provider (as the
+provider filter names it, e.g. "BBBike (Ontrail)"), release and size, then
+"Other maps stay. This can't be undone." VoiceOver names each row action with
+the map and provider ("Remove Lithuania, MapRando"). At 93%, the UI says “Confirming the map was removed”; repeated
 inventory checks hold that value rather than increasing it for each retry. Only
 confirmed absence completes removal. The existing settle delays and retry limits
 are unchanged. No watchdog, shortened timeout or new USB recovery is introduced.
@@ -484,7 +513,7 @@ catalog before workspace creation or HTTP acquisition. Existing device files
 remain protected.
 
 Manifests and device identifiers stay on the Mac. Compatibility and map-use
-reports are privacy-minimised and enabled by default; either stream can be
+reports are privacy-minimized and enabled by default; either stream can be
 turned off in Diagnostics. Custom maps contribute compatibility evidence and
 eligible common fresh-install totals, but no provider-download event or guessed
 catalog geography.
@@ -532,7 +561,12 @@ a download start without a received outcome is not proof of a failed download.
   GitHub report (unknown values omitted, never "Unavailable"; no serial, Unit ID,
   account, local path, raw log or file content; the Diagnostic ID and
   `Transport: MTP` line are not sent) plus an optional description of at most
-  2000 characters. Nothing is sent before Send, and sending does not depend on
+  2000 characters. One plain line above the JSON says what failed and when
+  ("Last saved report: removing Andalucía failed · 2026-11-19 20:35", local
+  time), or "No saved report."; it comes from the map name and failure time kept
+  in `failure-report.json` (older reports without a name say "a map"; without a
+  time they use the file's save time, which is when that failure was saved) and is not part of the payload, whose `createdAt` is when the window
+  opened. Nothing is sent before Send, and sending does not depend on
   the sharing toggles. The reply's reference is shown ("Report TR-XXXXXX sent");
   409 resends once under a new id; 429, 503 and network failures keep the report
   in `Application Support/Terento/support-report-unsent.json` and offer Try
@@ -567,8 +601,9 @@ a download start without a received outcome is not proof of a failed download.
   only) or a conservative 1 MB/s. While no map on the watch is managed by
   Terento (first map selection only), the locale recommendation is also
   highlighted with "Recommended for your region" (never selected
-  automatically), and "Keep the watch connected and the Mac awake until Terento
-  finishes." appears once a map is selected. The recommendation is every
+  automatically). The keep-connected line appears only on the Installing
+  screen, and "Choose maps from one provider at a time." sits in the map count
+  row under the provider filter. The recommendation is every
   provider's map of the whole country of the Mac's locale region
   (`MapRegionRecommendation`), listed first: a catalog row with country codes
   must be a `country` row for exactly that country, and a row without codes
@@ -713,6 +748,22 @@ five-minute catalog timer re-resolves an unavailable policy. A decision fetched
 at download time is applied to `DeviceEngine`, so a rejection is shown on the
 review page instead of silently returning to it. These are presentation and
 retry changes only; the authorization rules are unchanged.
+The Device page shows no public compatibility tier (Testing, Tested, Supported,
+Verified): the tier counts shared successful installations, which proves write
+and read-back but not that the device shows the map, and it is not a support
+badge. The tier stays in the Compatibility API, Admin and diagnostics logs.
+The Done page has no subtitle after a complete installation (the title says it)
+and gives the next step from the install guides: eject it here, then unplug it,
+turn the new map on in the device's map settings, restart the device if it is
+not listed. In App Store builds the first successful installation also shows a
+"Share install results with Terento" callout under those steps with two equal
+buttons, Share and Not now; nothing is pre-selected and leaving the page
+without choosing records nothing, so it asks again after the next installation.
+A map from an unrecognized provider is named by its whole IMG header
+description (20 bytes at 0x49 joined with the 31-byte continuation at 0x65,
+decoded as UTF-8). Recognized providers keep their own parsing. For an
+unrecognized provider this whole name is also what the last-resort catalog name
+match compares (it used to compare the 20-byte prefix).
 The public beta.15 build 37 passes the connected-device authorization state into
 the map engine and shows pending or blocked authorization on the Install review
 screen. It also removes obsolete internal installation/update paths while
@@ -1093,3 +1144,8 @@ disconnected" and, when Remove or Update was running, states what the safety
 order guarantees at that point: before the removal content check finished
 nothing was removed; an interrupted update keeps the current map until the new
 one is verified; later phases point to Manage maps to check the result.
+Otherwise it says only "Plug it back in. Terento reconnects automatically."
+(detection restarts by itself); the cable icon and the first-connection tips
+(USB data cable, unlock, quit Garmin Express) are shown only before a first
+connection. The Device page has one Eject: "Eject device" beside the watch; the
+sidebar eject icon appears on the other pages.

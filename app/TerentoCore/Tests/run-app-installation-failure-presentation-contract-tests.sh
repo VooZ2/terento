@@ -73,17 +73,29 @@ require_source 'onTryAgain: mapEngine.canRetryFailedInstallation' 'Try again is 
 require_source 'if let wait = makeWatchReconnectWait() {' 'a stop before any write for a busy or missing watch does not wait for the watch'
 require_source 'guard mapEngine.stoppedBeforeWriteForWatchReconnect,' 'the reconnect wait is not limited to stops before any write'
 require_source '!plan.installItems.contains(where: { $0.package.sourceKind == .custom })' 'custom imports, which are not kept across a disconnect, wait for the watch'
-require_source '.sheet(item: $watchReconnectWait, onDismiss: handleWatchReconnectWaitDismissed)' 'the reconnect wait is not a dialog that survives the unplug'
+require_source 'if let wait = watchReconnectWait {
+                // The wait stays in place across the unplug' 'the reconnect wait is not on the page or does not survive the unplug'
+if grep -Fq '.sheet(item: $watchReconnectWait' "$connect_screen"; then
+    print -u2 'FAIL: the reconnect wait is still a dialog'
+    exit 1
+fi
+require_source 'navigationLocked: installationOperationIsActive || watchReconnectWait != nil' 'the sidebar can leave the reconnect wait'
+# Both ends of the wait (Cancel and the policy decision) run the follow-up once.
+[[ "$(grep -c 'endWatchReconnectWait()' "$connect_screen")" == 3 ]] || { print -u2 'FAIL: an end of the reconnect wait skips its follow-up'; exit 1; }
+require_source 'guard watchReconnectWait != nil else { return }
+        watchReconnectWait = nil
+        handleWatchReconnectWaitEnded()' 'the reconnect wait follow-up can run twice or not at all'
+[[ "$(grep -c 'watchReconnectWait = nil' "$connect_screen")" == 1 ]] || { print -u2 'FAIL: the reconnect wait can end without its follow-up'; exit 1; }
 require_source 'watchReconnectWait?.watchWasDisconnected = true' 'an unplug is not recorded for the reconnect wait'
 require_source 'connectedWatchKey: identity?.physicalManifestDeviceKey' 'the reconnected watch is not compared with the watch that stopped'
-require_source 'icon: isCheckingWatch ? "arrow.triangle.2.circlepath" : "cable.connector"' 'the reconnect wait status has no icon'
+require_source 'isCheckingWatch ? "arrow.triangle.2.circlepath" : "cable.connector"' 'the reconnect wait status has no icon'
 require_source 'isCheckingWatch ? "Checking your device" : "Reconnect your device"' 'the reconnect wait status has no text'
-reconnect_dialog="$(sed -n '/private struct WatchReconnectWaitDialog: View/,/private struct InstallationFailureDialog: View/p' "$connect_screen")"
+reconnect_dialog="$(sed -n '/private struct WatchReconnectWaitPanel: View/,/private struct InstallationFailureDialog: View/p' "$connect_screen")"
 if grep -Fq 'mapTitle' <<< "$reconnect_dialog"; then
     print -u2 'FAIL: the reconnect wait still shows a map name'
     exit 1
 fi
-require_source '// No map name here: the dialog is about the watch, not one map.' 'the reconnect wait subtitle is not empty on purpose'
+require_source '// No map name here: the wait is about the watch, not one map.' 'the reconnect wait names a map'
 require_source 'installationFailureSnapshot = makeInstallationFailureSnapshot()' 'the failure is not captured when the installation fails'
 require_source 'mapEngine.installationPhase == .failed ? nil : installationFailureSnapshot' 'the captured failure is not limited to a reset engine'
 require_source 'if let retained = retainedInstallationFailure { return retained.reason }' 'a disconnect replaces the real failure reason with a generic one'
@@ -92,9 +104,22 @@ require_source 'let draft = retainedInstallationFailure?.issueDraft ?? installat
 require_source 'installationFailureSnapshot = nil' 'the captured failure outlives its dialog'
 require_source '.onChange(of: isCheckingWatch) { _ in announceState() }' 'VoiceOver does not hear the reconnect wait state change'
 require_source '&& watchReconnectWait == nil' 'the update prompt can open over the reconnect wait'
+# The update offer is a quiet line on Device, not a dialog, with the same calls.
+if grep -Fq '.sheet(item: $updatePrompt)' "$connect_screen"; then
+    print -u2 'FAIL: the update offer is still a dialog'
+    exit 1
+fi
+require_source 'if selectedSection == .device, watchReconnectWait == nil, let update = updatePrompt {' 'the update offer is not limited to Device'
+require_source 'if appUpdateController.openDownload(for: update) {' 'Download does not use the validated update URL'
+require_source 'appUpdateController.deferPrompt(for: update)' 'Later does not defer the offer'
+require_source '_ = appUpdateController.openReleaseNotes(for: update)' 'release notes do not use the validated link'
 require_source 'watchReconnectFollowUp = endFollowUp(for: wait, decision: .keepWaiting)' 'Cancel skips the failure dialog and its Report issue'
-require_source 'supportingMessage: "Nothing was written to your device. Terento waits up to 5 minutes."' 'the reconnect wait does not say that nothing was written'
-require_source 'primaryLabel: nil,' 'the reconnect wait offers an action other than Cancel'
+require_source 'Text("Nothing was written to your device. Terento waits up to 5 minutes.")' 'the reconnect wait does not say that nothing was written'
+[[ "$(grep -c 'Button' <<< "$reconnect_dialog")" == 1 ]] && grep -Fq 'SecondaryButton(title: "Cancel", action: onCancel)' <<< "$reconnect_dialog" \
+    || { print -u2 'FAIL: the reconnect wait offers an action other than Cancel'; exit 1; }
+grep -Fq '.keyboardShortcut(.cancelAction)' <<< "$reconnect_dialog" || { print -u2 'FAIL: Escape does not end the reconnect wait'; exit 1; }
+require_active '} else if mapEngine.installationPhase == .preparing {' 'Cancel disappears while the map is prepared'
+require_active 'Text("Can’t cancel while the map is being prepared.")' 'disabled Cancel does not say why'
 require_source 'onManageMaps: mapEngine.installationResult?.mayHaveLeftMapOnWatch == true' 'leftover-map failures do not offer Manage maps'
 require_source 'selectedSection = .device' 'failure recovery does not navigate to Device'
 require_source 'title: "Installation stopped"' 'failure modal title is incorrect'

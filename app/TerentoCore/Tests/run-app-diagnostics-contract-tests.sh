@@ -10,11 +10,16 @@ connect_source="$repo_root/app/TerentoCore/Sources/TerentoPoC/Views/ConnectScree
 for text in \
     'struct DiagnosticsView: View' \
     'Text("Diagnostics")' \
-    'Text("Privacy-minimised diagnostics help improve the Terento app and its services.")' \
-    'Send privacy-minimised compatibility diagnostics' \
-    'Send privacy-minimised map usage diagnostics' \
-    'Text("Both diagnostics streams are enabled by default.' \
-    'DiagnosticsActionButton(title: isSending ? "Sending diagnostics…" : "Send diagnostics")' \
+    'Text("Privacy-minimized diagnostics help improve the Terento app and its services.")' \
+    'title: "Send compatibility diagnostics"' \
+    'title: "Send map usage diagnostics"' \
+    'Text("Both are on by default. Turning one off also deletes what is waiting to be sent.")' \
+    'DisclosureGroup("What is sent")' \
+    'diagnosticsSection(title: "Problem with a map?")' \
+    'Text("If an install, update or removal failed, send us the saved report.")' \
+    'Button("Report on GitHub (public)", action: reportOnGitHub)' \
+    'if pendingCount > 0 || actionMessage != nil {' \
+    'Button(isSending ? "Sending…" : "Send now", action: sendDiagnostics)' \
     '.disabled(pendingCount == 0 || isSending)' \
     'await evidenceController.flushPendingUploads()' \
     'await mapStatisticsController.flushPendingEvents()'; do
@@ -26,7 +31,7 @@ done
 
 for text in \
     'Window("Diagnostics", id: "diagnostics")' \
-    'Button("Diagnostics")' \
+    'Button("Diagnostics…")' \
     'openWindow(id: "diagnostics")'; do
     if ! grep -Fq "$text" "$app_source"; then
         print -u2 "FAIL: Diagnostics menu/window wiring is missing: $text"
@@ -34,9 +39,9 @@ for text in \
     fi
 done
 
-if ! grep -Fq 'AboutSecondaryButton(title: "Manage diagnostics")' "$about_source" \
+if ! grep -Fq 'AboutSecondaryButton(title: "Diagnostics")' "$about_source" \
     || ! grep -Fq 'openWindow(id: "diagnostics")' "$about_source"; then
-    print -u2 "FAIL: About does not expose Manage diagnostics"
+    print -u2 "FAIL: About does not open Diagnostics"
     exit 1
 fi
 
@@ -54,6 +59,29 @@ if grep -Fq 'diagnosticsSection(title: "Privacy")' "$diagnostics_source" \
     exit 1
 fi
 
+if [[ "$(grep -o 'privacy-minimized\|Privacy-minimized' "$diagnostics_source" | wc -l | tr -d ' ')" != 1 ]] \
+    || grep -Fq 'minHeight: 600' "$diagnostics_source" \
+    || ! grep -Fq 'minHeight: fittedHeight, idealHeight: fittedHeight, maxHeight: fittedHeight' "$diagnostics_source"; then
+    print -u2 "FAIL: Diagnostics repeats privacy-minimized or does not fit its content"
+    exit 1
+fi
+
+# Three text levels: 18 section titles, 13 body, 12 help; 15 is only the button label.
+for source in "$diagnostics_source" "$about_source"; do
+    if grep -o 'terento\(UI\|Body\)(size: [0-9]*' "$source" | grep -v 'size: \(12\|13\|18\)$' \
+        | grep -qv 'size: 15$' \
+        || [[ "$(grep -c 'terentoUI(size: 15' "$source")" != "$(grep -c '\.frame(height: 44)' "$source")" ]]; then
+        print -u2 "FAIL: $source uses a text size outside 18/13/12"
+        exit 1
+    fi
+done
+
+if ! grep -Fq 'padding: 28,' "$repo_root/app/TerentoCore/Sources/TerentoPoC/Views/SupportReportSheet.swift" \
+    || ! grep -Fq 'SavedSupportReport.noSavedReportLine' "$repo_root/app/TerentoCore/Sources/TerentoPoC/Views/SupportReportSheet.swift"; then
+    print -u2 "FAIL: Send report window is not aligned to 28 or does not say when there is no saved report"
+    exit 1
+fi
+
 print 'PASS: Diagnostics window, default-on controls, manual sending, and deletion boundary contract'
 
 python3 - "$diagnostics_source" <<'PYTHON'
@@ -66,5 +94,7 @@ public = re.sub(r"#if DEBUG\n[\s\S]*?#endif", "", source)
 for field in ['Connected device identity', 'MTP model:', 'XML model:', 'XML part number:', 'USB VID/PID:', 'API catalog candidate:']:
     assert field not in public, field
 assert 'diagnosticsSection(title: "Sharing")' in public
+assert any('DisclosureGroup("Technical details")' in block and 'MTP model:' in block for block in debug), 'device fields are not under Technical details'
+assert 'DiagnosticsActionButton(title: "Send diagnostics")' not in source, 'a disabled Send diagnostics button remains'
 print('PASS: connected-watch technical fields are local-build only; public sharing controls remain')
 PYTHON

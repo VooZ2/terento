@@ -72,7 +72,11 @@ if grep -Fq 'downloadEstimate: isFirstMapSelection' "$connect_screen"; then
 fi
 require "$connect_screen" 'bytes: item.package.expectedDownloadSizeBytes,' 'download estimate does not use the catalog download size'
 require "$connect_screen" 'recentBytesPerSecond: mapEngine.recentDownloadBytesPerSecond)' 'download estimate does not use the measured speed'
-require "$connect_screen" 'if isFirstMapSelection, !plan.selectedItems.isEmpty {' 'keep-connected line is not shown for a first selection'
+# Keep-connected is said only on the Installing screen, not while choosing.
+if grep -Fq 'if isFirstMapSelection, !plan.selectedItems.isEmpty {' "$connect_screen"; then
+    print -u2 "FAIL: the keep-connected line must not show while choosing maps"
+    exit 1
+fi
 require "$map_engine" 'downloadSpeedHistory.record(bytesPerSecond: progress.bytesPerSecond,' 'measured download speed is not recorded'
 # The recommendation highlights and sorts only; it never selects a map.
 if [[ $(grep -c 'isRecommended' "$connect_screen") -ne 1 ]]; then
@@ -93,4 +97,4 @@ for suffix in ("/MapCatalog/FirstMapGuidance.swift",):
 print("PASS: distributed Xcode target includes the first-map guidance")
 PYPROJECT
 
-print "PASS: first-map recommendation and keep-connected wiring; download estimate on every install selection"
+print "PASS: first-map recommendation; keep-connected only while installing; download estimate on every install selection"

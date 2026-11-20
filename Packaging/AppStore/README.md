@@ -28,7 +28,7 @@ drifts from `Release`. A version or build bump must therefore change the
 
 These code paths are removed at compile time, not hidden:
 
-- the update check: no `updates/macos-arm64.json` request, no `Check updates`
+- the update check: no `updates/macos-arm64.json` request, no `Check for Updates…`
   menu item, no About `Update` button or status, no update prompt
   (guideline 2.4.5(vii));
 - the `Donate` links in About and on Maps installed (guideline 3.1.1);
@@ -40,10 +40,12 @@ These code paths are removed at compile time, not hidden:
 Compatibility and update diagnostics, map usage events and first-run funnel
 events are sent only after the person opts in (guideline 5.1.1, GDPR):
 
-- After the first successful installation, while no choice is recorded, the
-  `Map installed` window asks once. `Share install results with Terento`
-  starts unticked; `Done` records `accepted` or `declined` for both streams,
-  and `accepted` also queues that installation's compatibility results.
+- After a successful installation, while no choice is recorded, the
+  `Map installed` page shows a `Share install results with Terento` callout
+  with two equal buttons and nothing pre-selected; `Share` or `Not now`
+  records `accepted` or `declined` for both streams, and `accepted` also
+  queues that installation's compatibility results. Leaving the page without
+  choosing records nothing.
   Diagnostics keeps both checkboxes to change it later.
 - The App Store notice version is 100 (`VersionedEvidenceConsent`,
   `VersionedMapStatisticsConsent`); only `accepted` under that version

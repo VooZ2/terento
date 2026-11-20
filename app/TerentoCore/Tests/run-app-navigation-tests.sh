@@ -44,8 +44,8 @@ if grep -Eq 'case maps|\.maps\b|showingManagedMaps' "$connect_screen" "$sidebar"
     exit 1
 fi
 
-if ! grep -Fq 'return "arrow.down.circle"' "$connect_screen" \
-    || ! grep -Fq 'return "square.stack.3d.up"' "$connect_screen"; then
+if ! grep -Fq 'return Image(systemName: "arrow.down.circle")' "$connect_screen" \
+    || ! grep -Fq 'return Image(systemName: "square.stack.3d.up")' "$connect_screen"; then
     print -u2 "FAIL: Install maps and Manage maps do not use distinct sidebar icons"
     exit 1
 fi
@@ -98,7 +98,7 @@ if ! grep -Fq 'ManageActionButton' "$connect_screen" \
     || ! grep -Fq '.onHover' "$connect_screen" \
     || ! grep -Fq 'action == .update ? 72 : 68' "$connect_screen" \
     || ! grep -Fq 'ManageOperationProgress' "$connect_screen" \
-    || ! grep -Fq 'ProgressView(value: progress.fractionCompleted)' \
+    || ! grep -Fq 'TerentoProgressBar(value: progress.fractionCompleted' \
         "$project_root/Sources/TerentoPoC/Views/ConnectScreen.swift"; then
     print -u2 "FAIL: Manage map actions or real-progress presentation is incomplete"
     exit 1
@@ -165,7 +165,7 @@ if [[ "$finish_content" != *'TerentoPageHeader'* \
     || "$finish_content" != *'InstallationMapsList'* \
     || "$finish_content" != *'InstalledMapsSectionHeader'* \
     || "$finish_content" != *'Back to device'* \
-    || "$finish_content" != *'Your map is ready and verified'* \
+    || "$finish_content" != *'InstallationResultCallout('* \
     || "$finish_content" == *'Installation was verified successfully'* \
     || "$finish_content" == *'.padding(.top, 14)'* ]]; then
     print -u2 "FAIL: completion screen is not using the shared header, map row, and calm completion copy"

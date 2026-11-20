@@ -49,6 +49,12 @@ enum TerentoGeneratedTokens {
         static let uiFontName = "Inter"
         static let monoFontName = "JetBrains Mono"
     }
+
+    enum Radius {
+        static let control: CGFloat = 10
+        static let card: CGFloat = 14
+        static let large: CGFloat = 18
+    }
 }
 
 private extension Color {

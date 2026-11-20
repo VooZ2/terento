@@ -60,8 +60,13 @@ enum TerentoDiagnosticLog {
     static func latestSavedSupportReport() -> SavedSupportReport? {
         guard let markdown = try? String(contentsOf: failureReportURL, encoding: .utf8),
               let data = try? Data(contentsOf: failureSupportReportURL),
-              let saved = try? JSONDecoder().decode(SavedSupportReport.self, from: data),
+              var saved = try? JSONDecoder().decode(SavedSupportReport.self, from: data),
               markdown.hasPrefix("# \(saved.title)\n") else { return nil }
+        // Reports saved before failedAt existed: when the report was saved.
+        if saved.failedAt == nil {
+            saved.failedAt = (try? FileManager.default.attributesOfItem(
+                atPath: failureSupportReportURL.path))?[.modificationDate] as? Date
+        }
         return saved
     }
 
@@ -194,6 +199,7 @@ enum TerentoDiagnosticLog {
         append(lines.joined(separator: "\n"))
         saveFailureReport(InstallationIssueReport.generate(
             identity: identity,
+            mapName: maps.count == 1 ? maps[0].name : nil,
             maps: maps.map { InstallationIssueMap(provider: $0.sourceKind == .custom ? "custom" : $0.providerId,
                 region: $0.sourceKind == .custom ? "custom" : $0.name,
                 package: $0.sourceKind == .custom ? "custom-map" : $0.id,

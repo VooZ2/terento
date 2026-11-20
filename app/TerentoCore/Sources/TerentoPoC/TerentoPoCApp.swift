@@ -87,11 +87,11 @@ struct TerentoPoCApp: App {
                 Button("About Terento") {
                     openWindow(id: "about")
                 }
-                Button("Diagnostics") {
+                Button("Diagnostics…") {
                     openWindow(id: "diagnostics")
                 }
                 #if !TERENTO_APP_STORE
-                Button("Check updates") {
+                Button("Check for Updates…") {
                     appUpdateController.checkForUpdates()
                 }
                 #endif
@@ -192,7 +192,7 @@ final class DeviceOperationActivityMonitor {
         let lifecyclePhases = lifecycle.operations.values.map(\.phase)
         isDeviceWriteActive = DeviceOperationActivityPolicy.writesToDevice(
             mapInstallActive: mapEngine.state == .installing,
-            lifecyclePhases: lifecyclePhases
+            lifecycleOperations: lifecycle.operations.values.map { (action: $0.action, phase: $0.phase) }
         )
         let keepAwake = DeviceOperationActivityPolicy.keepsMacAwake(
             installationPhase: mapEngine.installationPhase,

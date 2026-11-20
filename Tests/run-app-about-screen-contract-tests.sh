@@ -26,7 +26,8 @@ done
 
 if grep -Fq 'aboutSection(title: "Updates")' <<<"$about_content" \
     || ! grep -Fq 'AboutPrimaryButton(title: "Update", action: updateAction)' <<<"$about_content" \
-    || ! grep -Fq 'AboutSecondaryButton(title: "Manage diagnostics")' <<<"$about_content" \
+    || ! grep -Fq 'AboutSecondaryButton(title: "Check for updates", action: updateAction)' <<<"$about_content" \
+    || ! grep -Fq 'AboutSecondaryButton(title: "Diagnostics")' <<<"$about_content" \
     || ! grep -Fq 'private func updateAction()' <<<"$about_content"; then
     print -u2 "FAIL: About does not expose the adjacent Update and diagnostics actions"
     exit 1
@@ -80,7 +81,7 @@ for update_contract in \
 done
 
 for privacy_copy in \
-    'Terento sends privacy-minimised diagnostics by default' \
+    'Terento sends privacy-minimized diagnostics by default' \
     'Device state, maps, manifests, Unit IDs, serial numbers, and local paths stay on this Mac.' \
     'Terento may contact terento.app when the app starts to check whether a newer version is available.' \
     'This request is not used for analytics or user tracking.'; do
@@ -117,7 +118,7 @@ if grep -Fq 'deleteUploadedReportsLink' <<<"$about_content" \
     exit 1
 fi
 
-if ! grep -Fq 'AboutSecondaryButton(title: "Manage diagnostics")' <<<"$about_content" \
+if ! grep -Fq 'AboutSecondaryButton(title: "Diagnostics")' <<<"$about_content" \
     || ! grep -Fq 'openWindow(id: "diagnostics")' <<<"$about_content"; then
     print -u2 "FAIL: About does not expose the Diagnostics settings entry point"
     exit 1

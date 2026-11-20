@@ -87,6 +87,7 @@ struct Stage1ProviderNeutralTests {
         testBundledOpenTopoMapProviderPolicy()
         testMapRandoFixedHeaderAndIdentity()
         testOpenTopoMapIMGMetadataIsIdentified()
+        testUnrecognizedProviderIMGKeepsWholeDescription()
         testOpenTopoMapContourIMGMetadataIsIdentified()
         testOpenTopoMapLegacyIdentityAliasIsScoped()
         testOpenTopoMapCompactDateHeaderIsIdentified()
@@ -110,7 +111,7 @@ struct Stage1ProviderNeutralTests {
         testTolerantDecodingOfUnknownArtifactKinds()
         await testRemoteAcceptanceAndAcquisitionValidation()
 
-        print("PASS: 35 Stage 1 provider-neutral core tests")
+        print("PASS: 36 Stage 1 provider-neutral core tests")
     }
 
     private static func bundledDocument() throws -> [String: Any] {
@@ -690,6 +691,41 @@ struct Stage1ProviderNeutralTests {
             longNameMetadata?.region == "SAINTHELENAASCENSIONANDTRISTANDACUNHA",
             "long OpenTopoMap IMG names use the exact provider filename when the fixed header is truncated"
         )
+    }
+
+    private static func testUnrecognizedProviderIMGKeepsWholeDescription() {
+        // A map from another source (MapForge style, built with mkgmap): the
+        // 50-byte description is split at byte 20 across the binary gap.
+        func image(_ title: String, padding: UInt8) -> [UInt8] {
+            var bytes = Array(repeating: UInt8(0), count: 4096)
+            write("DSKIMG", at: 0x10, to: &bytes)
+            write("GARMIN", at: 0x41, to: &bytes)
+            let header = Array(title.utf8)
+            for index in 0..<50 {
+                bytes[index < 20 ? 0x49 + index : 0x65 + index - 20] = index < header.count ? header[index] : padding
+            }
+            bytes[0x5D] = 0x01 // binary gap byte must never enter the name
+            return bytes
+        }
+
+        let long = GarminIMGMetadataParser().parse(image("MF Leisure with Contours", padding: 32), filename: "mf.img")
+        expect(long?.provider == nil && long?.name == "MF Leisure with Contours",
+            "an unrecognized map keeps its whole header description, not the first 20 bytes")
+
+        let accented = GarminIMGMetadataParser().parse(image("MF Hiking Kranjska Šmarna gora", padding: 0), filename: "pk.img")
+        expect(accented?.name == "MF Hiking Kranjska Šmarna gora",
+            "a UTF-8 character across the 20-byte split survives in the name")
+
+        let short = GarminIMGMetadataParser().parse(image("MF Winter", padding: 0), filename: "w.img")
+        expect(short?.name == "MF Winter", "a short NUL-padded description stays unchanged")
+
+        var otm = Array(repeating: UInt8(0), count: 8192)
+        write("DSKIMG", at: 0x10, to: &otm)
+        write("GARMIN", at: 0x41, to: &otm)
+        write("OpenTopoMap Lithuani", at: 0x49, to: &otm)
+        write("a 2026-05-24", at: 0x65, to: &otm)
+        expect(GarminIMGMetadataParser().parse(otm)?.name == "OpenTopoMap Lithuania",
+            "recognized provider names keep their provider-specific parsing")
     }
 
     private static func testOpenTopoMapContourIMGMetadataIsIdentified() {

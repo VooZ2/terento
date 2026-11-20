@@ -74,7 +74,7 @@ dependency.
 
 ## Implementation defaults
 
-Spacing and radius values in the token files are explicitly marked provisional. The core logo, color family, typography roles, and accessibility derivatives are the validated identity decisions. Final spacing/radius tuning should happen in the real web/product implementation.
+Spacing and radius values in the token files are explicitly marked provisional. The core logo, color family, typography roles, and accessibility derivatives are the validated identity decisions. Final spacing/radius tuning should happen in the real web/product implementation. The website and the native app use the same three radius tokens (`control`, `card`, `large`); app views read them from `TerentoGeneratedTokens.Radius` instead of numeric literals, and only circles and capsules stay outside them.
 
 ## Generated non-app outputs
 

@@ -35,8 +35,8 @@ struct AboutTerentoView: View {
                         Text("Terento")
                             .font(.terentoHeading(size: 30, weight: .semibold))
                             .foregroundStyle(TerentoColors.graphite)
-                        Text("Install maps on Garmin watches, simply.")
-                            .font(.terentoUI(size: 15, weight: .medium))
+                        Text("Install maps on Garmin devices, simply.")
+                            .font(.terentoUI(size: 13, weight: .medium))
                             .foregroundStyle(TerentoColors.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
                         Text(TerentoAppMetadata.displayVersion)
@@ -48,10 +48,15 @@ struct AboutTerentoView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(spacing: 12) {
                         #if !TERENTO_APP_STORE
-                        AboutPrimaryButton(title: "Update", action: updateAction)
-                            .disabled(appUpdateController.isChecking)
+                        // Primary only when there is an update to get.
+                        if case .available = appUpdateController.state {
+                            AboutPrimaryButton(title: "Update", action: updateAction)
+                        } else {
+                            AboutSecondaryButton(title: "Check for updates", action: updateAction)
+                                .disabled(appUpdateController.isChecking)
+                        }
                         #endif
-                        AboutSecondaryButton(title: "Manage diagnostics") {
+                        AboutSecondaryButton(title: "Diagnostics") {
                             openWindow(id: "diagnostics")
                         }
                     }
@@ -94,11 +99,11 @@ struct AboutTerentoView: View {
                     #if TERENTO_APP_STORE
                     // App Store builds share diagnostics only after an opt-in and
                     // compile out the update check.
-                    Text("Terento sends privacy-minimised diagnostics only if you choose to share them, to help improve the app and its services. Device state, maps, manifests, Unit IDs, serial numbers, and local paths stay on this Mac.")
-                        .font(.terentoUI(size: 15, weight: .medium))
+                    Text("Terento sends privacy-minimized diagnostics only if you choose to share them, to help improve the app and its services. Device state, maps, manifests, Unit IDs, serial numbers, and local paths stay on this Mac.")
+                        .font(.terentoUI(size: 13, weight: .regular))
                     #else
-                    Text("Terento sends privacy-minimised diagnostics by default to help improve the app and its services. Device state, maps, manifests, Unit IDs, serial numbers, and local paths stay on this Mac.")
-                        .font(.terentoUI(size: 15, weight: .medium))
+                    Text("Terento sends privacy-minimized diagnostics by default to help improve the app and its services. Device state, maps, manifests, Unit IDs, serial numbers, and local paths stay on this Mac.")
+                        .font(.terentoUI(size: 13, weight: .regular))
                     Text("Terento may contact terento.app when the app starts to check whether a newer version is available. This request is not used for analytics or user tracking.")
                         .font(.terentoUI(size: 13, weight: .regular))
                     #endif
@@ -198,15 +203,15 @@ private struct AboutSecondaryButton: View {
             Text(title)
                 .font(.terentoUI(size: 15, weight: .semibold))
                 .foregroundStyle(isEnabled ? TerentoColors.graphite : TerentoColors.secondaryText)
-                .padding(.horizontal, 18)
-                .frame(height: 46)
+                .padding(.horizontal, 16)
+                .frame(height: 44)
                 .background(
                     isEnabled ? TerentoColors.canvas : TerentoColors.border.opacity(0.55),
-                    in: RoundedRectangle(cornerRadius: 9)
+                    in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control)
                 )
                 .overlay {
-                    RoundedRectangle(cornerRadius: 9)
-                        .stroke(
+                    RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control)
+                        .strokeBorder(
                             isEnabled ? TerentoColors.border : TerentoColors.inactiveBorder,
                             lineWidth: 1
                         )
@@ -227,11 +232,11 @@ private struct AboutPrimaryButton: View {
             Text(title)
                 .font(.terentoUI(size: 15, weight: .semibold))
                 .foregroundStyle(isEnabled ? .white : TerentoColors.secondaryText)
-                .padding(.horizontal, 20)
-                .frame(height: 46)
+                .padding(.horizontal, 16)
+                .frame(height: 44)
                 .background(
                     isEnabled ? TerentoColors.interactive : TerentoColors.border,
-                    in: RoundedRectangle(cornerRadius: 9)
+                    in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control)
                 )
         }
         .buttonStyle(.plain)

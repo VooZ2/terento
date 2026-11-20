@@ -3,10 +3,10 @@ import Foundation
 /// Install selection guidance. Every selectable map shows its download size
 /// and an estimated download time. On a watch with no map installed by
 /// Terento yet, the existing locale recommendation is also highlighted (never
-/// selected automatically) and one line asks to keep the watch connected.
+/// selected automatically). The keep-connected line lives on the Installing
+/// screen, not on the selection list.
 enum FirstMapGuidance {
     static let recommendedLabel = "Recommended for your region"
-    static let keepConnectedLine = "Keep the device connected and the Mac awake until Terento finishes."
     /// Used until a download on this Mac has been measured: 1 MB/s is a
     /// deliberately slow connection, so the estimate errs on the long side.
     static let conservativeBytesPerSecond: Double = 1_000_000

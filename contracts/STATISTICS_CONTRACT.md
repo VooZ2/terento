@@ -34,7 +34,7 @@ Effective date: 2026-09-17
 
 This document is the canonical meaning of Terento's retained statistics. It
 describes read-model classification, not a promise that every installation or
-download is reported. The statistics are privacy-minimised, aggregate evidence
+download is reported. The statistics are privacy-minimized, aggregate evidence
 and may be incomplete because users can disable either telemetry stream,
 reports can be lost, and old releases emitted less information.
 

@@ -629,6 +629,7 @@ private struct MapLifecyclePresentationTestRunner {
             try testManageInventorySearch()
             try testBBBikeManageTypeFilters()
             try testDisconnectInterruptionNotices()
+            try testQARowPresentation()
             print("PASS: \(passed) Stage 5 UI lifecycle presentation tests")
         } catch {
             print("FAIL: \(error)")
@@ -683,4 +684,83 @@ private func testDisconnectInterruptionNotices() throws {
         && MapLifecycleInterruption.notice(action: .update, phase: .failed, fraction: 0) == nil
         && MapLifecycleInterruption.notice(action: .remove, phase: .awaitingConfirmation, fraction: 0) == nil,
         "finished, failed or unconfirmed operations add no disconnect notice")
+}
+
+private func testQARowPresentation() throws {
+    // A1: the download step text follows the step state, not the live engine phase.
+    try require(InstallationDownloadStepPresentation.detail(customOnly: false, stepIsComplete: true, isDownloading: false)
+        == "Download complete", "a finished download step says Download complete once validation starts")
+    try require(InstallationDownloadStepPresentation.detail(customOnly: false, stepIsComplete: false, isDownloading: true)
+        == "Downloading the map package to this Mac", "an active download step says it is downloading")
+    try require(!InstallationDownloadStepPresentation.showsByteLine(current: 0, total: 0)
+        && !InstallationDownloadStepPresentation.showsByteLine(current: 0, total: 4_000)
+        && InstallationDownloadStepPresentation.showsByteLine(current: 1, total: 4_000),
+        "the byte line never shows Zero KB")
+    // Install start: resolving the package shows Downloading as current, not complete then back.
+    try require(InstallationDownloadStepPresentation.displayedPhase(.preparing,
+        resolvingPackage: true, customOnly: false) == .downloading,
+        "resolving a provider package keeps the Downloading step current")
+    try require(InstallationDownloadStepPresentation.displayedPhase(.preparing,
+        resolvingPackage: true, customOnly: true) == .preparing,
+        "a custom-only plan has no download, so Preparing stays current")
+    try require(InstallationDownloadStepPresentation.displayedPhase(.preparing,
+        resolvingPackage: false, customOnly: false) == .preparing,
+        "after the download (validating, extracting, hashing, validated), Preparing is current")
+    try require(InstallationDownloadStepPresentation.displayedPhase(.downloading,
+        resolvingPackage: false, customOnly: false) == .downloading
+        && InstallationDownloadStepPresentation.displayedPhase(.failed,
+            resolvingPackage: true, customOnly: false) == .failed,
+        "other phases are shown as reported")
+
+    // A2: a file written outside this Mac's manifest gets Remove only, with the reason in the row.
+    let resolver = MapLifecyclePresentationResolver()
+    let external = lifecycleItem(installed: installedMap(managementState: .detectedNotManaged),
+        classification: .externalRecognized)
+    let externalUpdate = resolver.resolve(item: external,
+        comparison: comparison(item: installedMap(managementState: .detectedNotManaged), status: .updateAvailable),
+        hasIntegrityRecord: false, hasValidatedUpdateProfile: true, hasStableWatchIdentity: true)
+    try require(!externalUpdate.allows(.update) && externalUpdate.allows(.remove)
+        && externalUpdate.updateNotice == MapLifecyclePresentationResolver.externalUpdateNotice,
+        "an external map with a newer release keeps Remove and explains why Update is not offered")
+    let readOnlyExternal = resolver.resolve(item: external,
+        comparison: comparison(item: installedMap(managementState: .detectedNotManaged), status: .updateAvailable),
+        hasIntegrityRecord: false, hasValidatedUpdateProfile: false)
+    try require(readOnlyExternal.actions.isEmpty && readOnlyExternal.updateNotice == MapLifecyclePresentationResolver.externalUpdateNotice,
+        "a read-only external map with a newer release gets the same reason")
+    let externalCurrent = resolver.resolve(item: external,
+        comparison: comparison(item: installedMap(managementState: .detectedNotManaged), status: .upToDate),
+        hasIntegrityRecord: false, hasValidatedUpdateProfile: true)
+    try require(externalCurrent.updateNotice == nil, "an up-to-date external map shows no update notice")
+    let noProfile = resolver.resolve(item: lifecycleItem(), comparison: comparison(status: .updateAvailable),
+        hasIntegrityRecord: true, hasValidatedUpdateProfile: false)
+    try require(!noProfile.allows(.update) && noProfile.updateNotice?.contains("Safe update is not available") == true,
+        "a managed map without a safe update profile says so in the row")
+    let managedUpdate = resolver.resolve(item: lifecycleItem(), comparison: comparison(status: .updateAvailable),
+        hasIntegrityRecord: true, hasValidatedUpdateProfile: true)
+    try require(managedUpdate.allows(.update) && managedUpdate.updateNotice == nil,
+        "an offered Update needs no extra notice")
+
+    // A3: the Manage row names the BBBike style.
+    let openTopo = MapLifecycleItem(id: "lt", title: "Lithuania", sourceKind: .provider, provider: "BBBike",
+        region: "EUROPE-LITHUANIA-OPENTOPO-LATIN1", version: installedVersion, rawVersion: nil, sizeBytes: 100,
+        installedMaps: [installedMap()], classification: .terentoManaged)
+    let plain = MapLifecycleItem(id: "lt2", title: "Lithuania", sourceKind: .provider, provider: "BBBike",
+        region: "EUROPE-LITHUANIA-BBBIKE-LATIN1", version: installedVersion, rawVersion: nil, sizeBytes: 100,
+        installedMaps: [installedMap()], classification: .terentoManaged)
+    try require(openTopo.manageTitle == "Lithuania · OpenTopoMap" && plain.manageTitle == "Lithuania"
+        && lifecycleItem().manageTitle == "Freizeitkarte Germany",
+        "Manage rows name the BBBike style and leave other providers unchanged")
+
+    // D21: the Remove dialog names the map and gives one plain body line.
+    let removeMeta = MapLifecycleConfirmationCopy.metadata(item: openTopo, provider: "BBBike")
+    try require(removeMeta.hasPrefix("BBBike (OpenTopoMap) · ") && !removeMeta.contains("Lithuania"),
+        "Remove metadata uses the list provider label, not the map again: \(removeMeta)")
+    try require(MapLifecycleConfirmationCopy.metadata(item: plain, provider: "BBBike").hasPrefix("BBBike · "),
+        "standard BBBike has no style suffix")
+    try require(MapLifecycleConfirmationCopy.removeTitle(mapName: "Liechtenstein") == "Remove Liechtenstein?"
+        && MapLifecycleConfirmationCopy.removeTitle(mapName: nil) == "Remove this map?",
+        "Remove title is a question with the map name")
+    try require(MapLifecycleConfirmationCopy.removeMessage(metadata: "BBBike (Ontrail) · 2026-11-18 · 483 KB")
+        == "BBBike (Ontrail) · 2026-11-18 · 483 KB. Other maps stay. This can't be undone.",
+        "Remove body is one line")
 }

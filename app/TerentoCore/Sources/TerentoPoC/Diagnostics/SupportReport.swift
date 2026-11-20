@@ -329,4 +329,33 @@ struct SavedSupportReport: Codable, Equatable, Sendable {
     let category: SupportReportCategory
     let operationID: UUID?
     let report: SupportReportBody
+    // Local only, for the report window's first line; never in the sent payload.
+    var mapName: String? = nil
+    var failedAt: Date? = nil
+
+    /// "Last saved report: removing Andalucía failed · 2026-11-19 20:35" (local
+    /// time). The window's payload createdAt is when the window opened, so the
+    /// failure time is kept here.
+    var summaryLine: String? {
+        let when = failedAt.map { " · " + Self.timeFormatter.string(from: $0) } ?? ""
+        let verb: String?
+        switch report.operation {
+        case .installation: verb = "installing"
+        case .update: verb = "updating"
+        case .removal: verb = "removing"
+        case nil: verb = nil
+        }
+        // Older reports have no map name; "a map" never suggests a specific one.
+        if let verb { return "Last saved report: \(verb) \(mapName ?? "a map") failed\(when)" }
+        return "Last saved report: \(title)\(when)"
+    }
+
+    static let noSavedReportLine = "No saved report."
+
+    private static let timeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd HH:mm"
+        return formatter
+    }()
 }

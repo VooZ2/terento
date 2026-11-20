@@ -94,9 +94,16 @@ require "$connect_screen" 'onSendSupportReport: { sendInstallationSupportReport(
 require "$connect_screen" 'secondaryLabel: "Report issue"' 'the GitHub option must stay in the failure dialog'
 require "$connect_screen" 'Label("Send report to Terento", systemImage: "paperplane")' 'Send report to Terento is not a text link with an icon'
 require "$diagnostics" 'openWindow(id: "support-report")' 'Diagnostics has no Send report to Terento'
-require "$diagnostics" 'DiagnosticsActionButton(title: "Report latest failure")' 'Diagnostics lost the GitHub report option'
+require "$diagnostics" 'Button("Report on GitHub (public)", action: reportOnGitHub)' 'Diagnostics lost the GitHub report option'
+require "$diagnostics" 'TerentoDiagnosticLog.reportLatestFailure()' 'the GitHub option no longer copies the saved report'
 require "$app_source" 'Button("Send Report to Terento…")' 'Help menu has no Send report to Terento'
 require "$app_source" 'Window("Send Report to Terento", id: "support-report")' 'support report window is missing'
+# QA round 3: type levels shared with About and Diagnostics (help 12 secondary, body 13).
+require "$sheet" '.font(.terentoUI(size: 12, weight: .regular))' 'Send report counter is not help text (12)'
+if grep -Eq 'terentoUI\(size: (11|14),' "$sheet"; then
+    print -u2 "FAIL: Send report uses an 11 or 14 pt UI size outside the shared levels"
+    exit 1
+fi
 require "$app_source" 'Button("Report an Issue")' 'Help menu lost the GitHub option'
 require "$sheet" 'Text(controller.payload.previewText)' 'the sheet does not show exactly what will be sent'
 require "$sheet" 'Text("Don'"'"'t include personal information.")' 'the description has no personal-information hint'

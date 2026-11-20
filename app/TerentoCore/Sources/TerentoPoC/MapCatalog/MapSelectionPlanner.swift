@@ -51,6 +51,19 @@ struct MapSelectionItem: Identifiable, Equatable, Sendable {
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
+    /// Install-list status of a catalog row that is already on the device.
+    /// Update itself stays in Manage maps. `updateOffered` is true only when
+    /// Manage maps really offers a safe Update for this map.
+    func alreadyInstalledDetail(updateOffered: Bool) -> String {
+        guard comparison.status == .updateAvailable, let installed = comparison.installedMap else {
+            return "Already installed"
+        }
+        let installedLabel = installed.version.map { "Installed \($0.description)" } ?? "Installed"
+        return updateOffered
+            ? "\(installedLabel) · Update in Manage maps"
+            : "\(installedLabel) · Newer release available"
+    }
+
     var action: MapSelectionAction { lifecycleAction }
 
     /// Optional artifacts are exposed only after they have an independently

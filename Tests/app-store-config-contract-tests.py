@@ -407,19 +407,23 @@ class AppStoreConfigurationContract(unittest.TestCase):
     def test_sharing_prompt_and_review_request_are_app_store_only(self) -> None:
         source = (SWIFT_SOURCES / "Views" / "ConnectScreen.swift").read_text(encoding="utf-8")
         app_store, dmg = active_source(source, APP_STORE_ONLY), active_source(source, DMG_ONLY)
-        for needle in ("InstallSharingDialog(", "requestReview()", '"Share install results with Terento"'):
+        for needle in ("InstallSharingCallout(onDecide: decideInstallSharing)", "requestReview()",
+                       '"Share install results with Terento"', 'SecondaryButton(title: "Share") { onDecide(true) }',
+                       'SecondaryButton(title: "Not now") { onDecide(false) }'):
             self.assertIn(needle, app_store)
             self.assertNotIn(needle, dmg)
-        # Unticked until the person ticks it (no pre-ticked consent).
-        self.assertIn("@State private var share = false", app_store)
+        # A question on the Done page, not a dialog; nothing is pre-selected:
+        # two equal buttons, no checkbox and no default (Return) action.
+        self.assertNotIn("InstallSharingDialog", source)
+        self.assertNotIn("isPresented: $isShowingInstallSharingPrompt", source)
+        callout = app_store[app_store.index("private struct InstallSharingCallout"):]
+        callout = callout[:callout.index("private struct TerentoConfirmationDialog")]
+        for forbidden in ("Toggle(", ".defaultAction", "PrimaryButton", "@State"):
+            self.assertNotIn(forbidden, callout)
         self.assertIn("evidenceController.decideConsent(share ? .accepted : .declined)", app_store)
-        self.assertIn("if mapStatisticsController.store.consent() == nil {\n                        mapStatisticsController.decideConsent(share ? .accepted : .declined)", app_store)
+        self.assertIn("if mapStatisticsController.store.consent() == nil {\n            mapStatisticsController.decideConsent(share ? .accepted : .declined)", app_store)
         self.assertIn("if share { evidenceController.shareOperation(evidenceOperationID) }", app_store)
         self.assertIn("mayRequest: !asksAboutSharing", app_store)
-        self.assertIn('Image("CircleCheck")', app_store)
-        icon = (ROOT / "app/Terento/Assets.xcassets/CircleCheck.imageset/circle-check.svg").read_text(encoding="utf-8")
-        self.assertIn("Font Awesome Free 7.3.1", icon)
-        self.assertIn("CircleCheck.imageset/circle-check.svg", (ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8"))
         # An undecided App Store build shows both Diagnostics boxes unticked;
         # a same-value set from SwiftUI must not turn that into "declined".
         diagnostics = (SWIFT_SOURCES / "Views" / "DiagnosticsView.swift").read_text(encoding="utf-8")

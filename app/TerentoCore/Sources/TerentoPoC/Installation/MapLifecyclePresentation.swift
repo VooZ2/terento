@@ -15,6 +15,9 @@ struct MapLifecycleActionAvailability: Equatable, Sendable {
     let status: String
     let reason: String?
     var updateBlocked: Bool = false
+    /// Set when the catalog has a newer release but Update is not offered,
+    /// so the row can say why instead of showing only Remove.
+    var updateNotice: String? = nil
 
     func allows(_ action: MapLifecycleAction) -> Bool {
         actions.contains(action)
@@ -115,14 +118,18 @@ struct MapLifecyclePresentationResolver: Sendable {
                 return MapLifecycleActionAvailability(
                     actions: [.remove, .recoverOwnership],
                     status: "Recovery available",
-                    reason: "Remove only this map after confirmation, or verify it to restore management."
+                    reason: "Remove only this map after confirmation, or verify it to restore management.",
+                    updateNotice: comparison?.status == .updateAvailable
+                        ? Self.externalUpdateNotice : nil
                 )
             }
 
             return MapLifecycleActionAvailability(
                 actions: [.remove],
                 status: "External map",
-                reason: "Installed outside Terento. Remove only this map after confirmation."
+                reason: "Installed outside Terento. Remove only this map after confirmation.",
+                updateNotice: comparison?.status == .updateAvailable
+                    ? Self.externalUpdateNotice : nil
             )
         }
 
@@ -130,7 +137,9 @@ struct MapLifecyclePresentationResolver: Sendable {
             return MapLifecycleActionAvailability(
                 actions: [],
                 status: item.classification.userLabel,
-                reason: "This map is read-only and will be left unchanged."
+                reason: "This map is read-only and will be left unchanged.",
+                updateNotice: item.classification == .externalRecognized && comparison?.status == .updateAvailable
+                    ? Self.externalUpdateNotice : nil
             )
         }
 
@@ -168,7 +177,7 @@ struct MapLifecyclePresentationResolver: Sendable {
                 status = "Update available"
             case .updateAvailable:
                 status = "Update available"
-                reason = "Safe update is not available for this device yet."
+                reason = Self.noProfileUpdateReason
             case .upToDate:
                 status = "Up to date"
                 reason = "The installed map is current. Replacing it still requires explicit confirmation."
@@ -184,9 +193,19 @@ struct MapLifecyclePresentationResolver: Sendable {
             actions: actions,
             status: status,
             reason: acquisitionAvailability.detailedExplanation ?? reason,
-            updateBlocked: acquisitionAvailability != .available
+            updateBlocked: acquisitionAvailability != .available,
+            updateNotice: comparison?.status == .updateAvailable
+                && acquisitionAvailability == .available
+                && !actions.contains(.update)
+                ? "Newer release available. \(Self.noProfileUpdateReason)" : nil
         )
     }
+
+    static let noProfileUpdateReason = "Safe update is not available for this device yet."
+    /// Update needs this Mac's ownership record; the file was written elsewhere
+    /// (another Mac, the web installer or another app), so only Remove applies.
+    static let externalUpdateNotice = "Newer release available. Terento can only update maps it installed from this Mac."
+
 }
 
 struct MapLifecycleContext: Sendable {
@@ -340,13 +359,17 @@ enum DeviceOperationActivityPolicy {
     /// True while quitting could leave an incomplete map on the watch.
     static func writesToDevice(
         mapInstallActive: Bool,
-        lifecyclePhases: [MapLifecycleOperationPhase]
+        lifecycleOperations: [(action: MapLifecycleAction, phase: MapLifecycleOperationPhase)]
     ) -> Bool {
-        mapInstallActive || lifecyclePhases.contains { phase in
+        mapInstallActive || lifecycleOperations.contains { action, phase in
             switch phase {
             case .removing, .updating, .verifying, .installing, .removingOld, .finishing:
                 return true
-            case .idle, .awaitingConfirmation, .downloading, .preparing, .checking, .completed, .failed:
+            case .checking:
+                // Remove's Checking comes after the delete (post-check and
+                // manifest); Update's Checking is before anything is written.
+                return action == .remove
+            case .idle, .awaitingConfirmation, .downloading, .preparing, .completed, .failed:
                 return false
             }
         }
@@ -389,5 +412,27 @@ enum MapLifecycleInterruption {
         case .transferOwnership, .recoverOwnership:
             return "Your Garmin was disconnected before Terento finished. No map was changed. Plug it back in and try again."
         }
+    }
+}
+
+/// Remove dialog copy: the map name in the title, and one body line with
+/// provider, release and size before what Remove does.
+enum MapLifecycleConfirmationCopy {
+    static func removeTitle(mapName: String?) -> String {
+        guard let mapName, !mapName.isEmpty else { return "Remove this map?" }
+        return "Remove \(mapName)?"
+    }
+
+    /// Provider label as the Manage provider filter shows it ("BBBike (Ontrail)").
+    static func metadata(item: MapLifecycleItem, provider: String?) -> String {
+        let providerLabel = MapProviderDisplay.title(providerID: item.provider ?? "",
+            regionID: item.region, fallback: provider ?? "")
+        return [providerLabel, item.manageMetadataLabel]
+            .filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+
+    static func removeMessage(metadata: String) -> String {
+        let action = "Other maps stay. This can't be undone."
+        return metadata.isEmpty ? action : "\(metadata). \(action)"
     }
 }

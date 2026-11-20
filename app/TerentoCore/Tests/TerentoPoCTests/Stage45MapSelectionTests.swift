@@ -1388,6 +1388,14 @@ struct Stage45MapSelectionTests {
         expect(index.filtered(query: "REUNION").map(\.id) == ["diacritic"], "Query and index share diacritic folding")
         expect(["raw-secret", "maprando", "bbbike", "IGN", "contours"].allSatisfy { index.filtered(query: $0).isEmpty }, "Provider, raw identifiers and style are excluded from geographic search")
         expect(index.filtered(query: "", geography: .asia).map(\.id) == ["raw-secret-b"], "Multi-country row belongs to every relevant geography")
+        let ranked = MapCatalogPresentationIndex(items: MapSelectionPlanner().items(comparisons: [
+            makeComparison(id: "alps", providerID: "openmtbmap", region: "ALPS", name: "Alps", status: .notInstalled, countryCodes: ["AT", "CH", "LI"]),
+            makeComparison(id: "li-north", providerID: "bbbike", region: "LI-N", name: "Liechtenstein North", status: .notInstalled, countryCodes: ["LI"]),
+            makeComparison(id: "li", providerID: "bbbike", region: "LI", name: "Liechtenstein", status: .notInstalled, countryCodes: ["LI"])
+        ], preflightStatuses: [:], recommendedRegionID: nil))
+        expect(ranked.filtered(query: "").map(\.id) == ["alps", "li", "li-north"], "Without a query the list stays alphabetical")
+        expect(ranked.filtered(query: "liechtenstein").map(\.id) == ["li", "li-north", "alps"],
+               "Search ranks the exact name first, then names containing it, then maps that only cover it")
         expect(index.filtered(query: "", geography: .other).map(\.id) == ["unknown"], "Unknown geography remains available in Other")
         expect(index.filtered(query: "France", providerID: "MAPRANDO").count == 1, "Provider and query filters intersect")
         expect(index.geographyOptions.contains(.other), "Other is exposed when needed")

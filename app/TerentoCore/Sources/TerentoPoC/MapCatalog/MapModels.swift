@@ -810,7 +810,7 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
         if let label = releaseMetadata?.versionLabel?.trimmingCharacters(
             in: .whitespacesAndNewlines
         ), Self.isUserFacingReleaseLabel(label) {
-            return label
+            return Self.isoMonthLabel(label) ?? label
         }
 
         // 2000-01 was the historical API serializer fallback. It is not a
@@ -819,6 +819,15 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
             return nil
         }
         return version.description
+    }
+
+    /// One style for month-only releases: provider "3/2026" reads "2026-03",
+    /// like the other dates in the list. Other labels stay provider-native.
+    private static func isoMonthLabel(_ value: String) -> String? {
+        let parts = value.split(separator: "/")
+        guard parts.count == 2, let month = Int(parts[0]), (1...12).contains(month),
+              parts[0].count <= 2, parts[1].count == 4, let year = Int(parts[1]) else { return nil }
+        return String(format: "%04d-%02d", year, month)
     }
 
     private static func isUserFacingReleaseLabel(_ value: String) -> Bool {
@@ -1178,6 +1187,16 @@ enum BBBikeMapType: String, Codable, CaseIterable, Sendable {
         }
     }
     var filterID: String { self == .bbbike ? "bbbike" : "bbbike" + style }
+    /// Style shown next to a region name; nil for the plain BBBike style.
+    /// Plain name for conflict copy; the plain BBBike type has no style name.
+    var versionName: String { styleName ?? "standard BBBike" }
+    var styleName: String? {
+        switch self {
+        case .bbbike: return nil
+        case .ontrail: return "Ontrail"
+        case .opentopo: return "OpenTopoMap"
+        }
+    }
     /// The type named by a BBBike region token such as `EUROPE-ANDORRA-ONTRAIL-LATIN1`.
     init?(regionToken: String) {
         let region = MapIdentity.normalizeRegion(regionToken)
@@ -1284,13 +1303,14 @@ struct BBBikeProviderAdapter: MapProviderAdapter, Sendable {
     }
     static let coexistenceReason = "Select only one BBBike map type for the same region. BBBike, BBBike (Ontrail) and BBBike (OpenTopoMap) cannot be installed together."
     static func installedTypeConflictMessage(for package: MapPackage, installedType: BBBikeMapType) -> String {
-        guard let selectedType = BBBikeMapType(rawValue: package.mapType ?? "") else { return coexistenceReason }
-        return "To install “\(selectedType.title) - \(package.name)”, first remove “\(installedType.title) - \(package.name)” in Manage maps. Only one BBBike map type can be installed for the same region."
+        guard BBBikeMapType(rawValue: package.mapType ?? "") != nil else { return coexistenceReason }
+        return "Can't install next to the \(installedType.versionName) version of this map. Remove that one in Manage maps first."
     }
     static func unverifiedTypeConflictMessage(for package: MapPackage, otherType: BBBikeMapType? = nil) -> String {
-        guard let selectedType = BBBikeMapType(rawValue: package.mapType ?? "") else { return coexistenceReason }
-        let other = otherType.map { "A possible “\($0.title) - \(package.name)” map" } ?? "Another BBBike map of \(package.name)"
-        return "\(other) needs review before installing “\(selectedType.title) - \(package.name)”. Terento has not confirmed ownership of the conflicting file."
+        guard BBBikeMapType(rawValue: package.mapType ?? "") != nil else { return coexistenceReason }
+        let other = otherType.map { "the \($0.versionName) version" } ?? "another version"
+        // Manage offers Remove for such a file; ownership recovery has no button there.
+        return "Can't install next to \(other) of this map on your Garmin. Remove that one in Manage maps first."
     }
     /// The other BBBike type of the same source region that `region` names, if any.
     static func conflictingType(_ package: MapPackage, provider: String?, region: String?) -> BBBikeMapType? {

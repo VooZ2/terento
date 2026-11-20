@@ -105,3 +105,32 @@ struct MapInventoryListPresentationIndex: Sendable {
         return fold(terms.joined(separator: " "))
     }
 }
+
+/// Text of the Install flow's Downloading step. It follows the step's own
+/// state: acquisition and phase publish separately, so a finished step could
+/// otherwise still read "Waiting to download" with "Zero KB of …".
+enum InstallationDownloadStepPresentation {
+    static func detail(customOnly: Bool, stepIsComplete: Bool, isDownloading: Bool) -> String {
+        if customOnly { return "Custom map is already on this Mac" }
+        if stepIsComplete { return "Download complete" }
+        if isDownloading { return "Downloading the map package to this Mac" }
+        return "Waiting to download the selected map"
+    }
+
+    /// The phase the step list shows. Before a provider package downloads, the
+    /// engine reports `.preparing` while it resolves the package, which drew
+    /// Downloading as complete and then stepped back to it. While resolving, the
+    /// list shows the Downloading step as current. The engine phase is unchanged.
+    static func displayedPhase(_ phase: InstallationProcessPhase,
+                               resolvingPackage: Bool,
+                               customOnly: Bool) -> InstallationProcessPhase {
+        guard !customOnly, phase == .preparing, resolvingPackage else { return phase }
+        return .downloading
+    }
+
+    /// The byte line appears once bytes have arrived; ByteCountFormatter
+    /// writes zero as "Zero KB".
+    static func showsByteLine(current: UInt64, total: UInt64) -> Bool {
+        total > 0 && current > 0
+    }
+}
