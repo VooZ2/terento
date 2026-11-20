@@ -14,4 +14,9 @@ class Boundary(unittest.TestCase):
  def test_transition_mode_preserves_app_gate(self):
   m.verify_response('/admin/campaign-links',303,{'Location':'/admin/login','Content-Security-Policy':"script-src 'none'"},b'',False)
   with self.assertRaises(AssertionError):m.verify_response('/admin/campaign-links',200,{},b'',False)
+ def test_app_store_statistics_are_admin_only(self):
+  m.verify_response('/admin/api/app-store',401,{},b'{"error": "unauthorized"}',False)
+  m.verify_response('/admin/api/app-store',302,{'Location':'https://'+m.TEAM+'/cdn-cgi/access/login/api.terento.app'},b'',True)
+  for status,body in [(200,b'{"configured": true}'),(303,b''),(401,b'{"state": "ok"}')]:
+   with self.assertRaises(AssertionError):m.verify_response('/admin/api/app-store',status,{'Location':'/admin/login'},body,False)
 if __name__=='__main__':unittest.main()

@@ -311,7 +311,9 @@ Installs (successful as the value, success rate top right whenever it is
 known, including 0%, `N failed` below in the danger tone only when positive, a
 sparkline of the period's successful results per bucket; one tile per source,
 swapped by the source switch), App downloads (the period's .dmg plus .zip
-increase, with `.dmg N · .zip N` on one line under the value), First run (opened sessions, % allowed, connected; `—`
+increase, with `.dmg N · .zip N` on one line under the value, and ` · App
+Store N` (`—` before Apple reports a day of the period) when App Store
+statistics are set up; the value stays GitHub only), First run (opened sessions, % allowed, connected; `—`
 and `Unavailable` when the funnel cannot be read) and Needs attention (the
 `Now` total, `—` when any row is unavailable). Below 900 px the tiles form two
 columns and each tile puts its top-right fact under the label, so the values
@@ -394,6 +396,16 @@ are one or two words. App downloads means Terento application downloads (GitHub
 `.dmg` and `.zip`, never map downloads), names both in the legend and
 shows its all-time totals and last update in one
 `All time` line, and is omitted when no usable counter or trend data exists.
+With App Store statistics set up it adds a third series, App Store (Lichen
+dark): first-time downloads plus redownloads per reported day, stacked on the
+day or week bucket of Apple's report date, only in day and week buckets and
+only on days Apple has reported (no segment, never a drawn zero, in hour
+buckets or on days not reported yet). Its legend entry is `App Store (daily,
+1–2 days late)`, or `App Store: no data for this period` when the period has
+no App Store segment; the bar's Observed increase stays GitHub only and the
+App Store count is named separately. The `All time` line adds the App Store
+total and `Last update` its last read. Without the settings the card is
+unchanged (owner 2026-11-20).
 The Dashboard First run card is a short review that says whether the First run
 page is worth opening (owner decisions 2026-10-10). Its journey totals
 (`Opened`, the period's distinct sessions; `Connected`; `Allowed`, `—` when the
@@ -592,6 +604,26 @@ unavailable headline block keeps its title for its marks (owner request
    a last line with the update time and `Open Search Console` (new tab).
    Preliminary days appear only in the chart, dotted. All time is weekly in
    the chart.
+9. `App Store` (Apple's App Store Connect Analytics Reports,
+   `/admin/api/app-store`; its own population, statistics contract), after
+   Google Search, with its own period picker in its heading (Last 7 days,
+   Last 30 days, All time; Last 30 days on every page load; the shared Admin
+   period never changes it). The period is the last reported days (Apple is
+   about 1–2 days late). KPI cards Impressions, Product page views,
+   First-time downloads and Conversion (first-time downloads ÷ product page
+   views, change in percentage points), each against as many days just before
+   the period (`vs previous N days`); one line chart on Apple's report dates
+   with Product page views (Interactive Primary) and First-time downloads
+   (Lichen dark), each named in its colour, every day focusable with its date
+   and values (weekly for All time); under it one grey line `App Store Connect
+   · data updated daily, about 1–2 days late`; `Sources` (Apple's source
+   types: page views, first-time downloads, conversion; most downloads first)
+   and `Campaigns` side by side (stacked below 1200 px): campaign tokens
+   grouped Facebook (`fb-*`), Reddit (`rd-*`), Site (`site-*`) and Other, each
+   group row with its total, groups and tokens most first-time downloads
+   first, only tokens with rows, then one grey line `Apple shows a campaign
+   only after a day and at least 5 downloads; small sources may be hidden.`;
+   a last line with the update time and `Open App Store Connect` (new tab).
 
 The page renders at once with every block as a grey skeleton and fills them
 from `/admin/api/umami`; the Umami key stays on the server. A block Umami could
@@ -604,6 +636,12 @@ and token stay on the server): when Search Console fails it shows `Search
 Console unavailable.`, or its last result with a `Search Console unavailable`
 pill and `Last result <time>`; the Umami blocks and the rest of Admin keep
 working.
+App Store loads separately from `/admin/api/app-store`, which reads only
+Terento's own copy of Apple's daily reports (the key stays in the
+scheduler): without settings it shows `App Store statistics are not set
+up.`; set up without reported days `No App Store data yet.`; when the last
+read of Apple failed, the last result with an `App Store unavailable` pill and
+`Last result <time>`, or `App Store unavailable.` with nothing stored.
 
 The First run page (`/admin/first-run`, primary navigation after
 Installations) has the Dashboard period picker (default Last 24 hours; an
@@ -1468,8 +1506,14 @@ rendered by the same route code as for the owner, so every count, period,
 population and deduplication rule in this contract applies unchanged; only the
 transport differs (sanitised plain text or JSON instead of HTML). A change to a
 page changes its agent text with it, without a second implementation. The view
-never offers a write: Resolve, Reopen, Archive, Link issue, Handle and every
-other action stay owner-only behind login and CSRF. Login, setup, logout,
+never offers a write. The token's one write is a separate JSON call that
+resolves one exact installation diagnostic with a closed reason and a note
+marked `Claude agent:` (owner decision 2026-11-20,
+[API](api.md#resolve-one-installation-diagnostic-post-internalattention)); it
+is the same lifecycle change and audit as Admin Resolve and changes no
+installation result or statistic. Admin shows it as resolved `by Claude agent`
+(no Admin user, note marked `Claude agent:`). Reopen, Archive, Link issue, Handle and
+every other action stay owner-only behind login and CSRF. Login, setup, logout,
 account and downloads are not readable. Browser cookies do not apply, so a
 period or time zone must be in the page link.
 

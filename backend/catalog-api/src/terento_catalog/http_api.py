@@ -12,7 +12,7 @@ import time
 import unicodedata
 from collections import defaultdict, deque
 from contextlib import nullcontext
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from email.utils import format_datetime, parsedate_to_datetime
 from http import HTTPStatus
 from http.cookies import SimpleCookie
@@ -95,7 +95,8 @@ from .compatibility_status import calculate_compatibility_status
 from .collect import collect_provider_once
 from .admin_web_installer import web_installer_csv, web_installer_page
 from .admin_visits_map import VISITS_MAP_SVG
-from .admin_website_stats import VISITS_MAP_PATH, search_console_blocks, website_stats_blocks, website_stats_page
+from .admin_website_stats import VISITS_MAP_PATH, app_store_blocks, search_console_blocks, website_stats_blocks, website_stats_page
+from . import asc_stats
 from .umami_stats import UmamiStats
 from .gsc_stats import DEFAULT_PERIOD as GSC_DEFAULT_PERIOD, PERIODS as GSC_PERIODS, GscStats
 from .web_installer import (
@@ -162,6 +163,13 @@ ATTENTION_RATE_LIMIT = 12
 ATTENTION_PAGE_RATE_LIMIT = 60
 # Same-host Admin redirects an agent page read follows (old links, period resets).
 ATTENTION_PAGE_REDIRECTS = 3
+# The agent's one write (POST /internal/attention): Resolve of one installation
+# diagnostic. Owner decision 2026-11-20; Reopen stays in Admin.
+ATTENTION_ACTION_RATE_LIMIT = 10
+ATTENTION_ACTION_FIELDS = frozenset({"action", "diagnosticId", "reason", "note"})
+ATTENTION_ACTION_REASONS = frozenset({"NOT_TERENTO_ISSUE", "DUPLICATE", "HISTORICAL_SUPERSEDED", "FIXED"})
+ATTENTION_ACTION_NOTE_PREFIX = "Claude agent: "
+ATTENTION_ACTION_NOTE_MAX = 500 - len(ATTENTION_ACTION_NOTE_PREFIX)
 # Socket timeout for one blocking read or write. A stalled or slow-loris client
 # cannot pin a server thread indefinitely; large bodies and responses still
 # progress as long as each chunk arrives within this interval.
@@ -265,6 +273,7 @@ class CatalogService:
         admin_read_token_sha256: str | None = None,
         umami_stats: UmamiStats | None = None,
         gsc_stats: GscStats | None = None,
+        app_store_configured: bool = False,
         opentopomap_contour_mode: str = "off",
         opentopomap_contour_allowlist: tuple[str, ...] = (),
         public_base_url: str = "https://api.terento.app",
@@ -289,6 +298,7 @@ class CatalogService:
         self.admin_read_token_sha256 = admin_read_token_sha256
         self.umami_stats = umami_stats
         self.gsc_stats = gsc_stats
+        self.app_store_configured = app_store_configured
         self.opentopomap_contour_mode = opentopomap_contour_mode
         self.opentopomap_contour_allowlist = frozenset(opentopomap_contour_allowlist)
 
@@ -708,6 +718,23 @@ class CatalogService:
             "html": search_console_blocks(snapshot, console_url=stats.console_url if stats else None, period=period),
         }
 
+    def app_store(self, period: str = asc_stats.DEFAULT_PERIOD) -> dict[str, Any]:
+        """App Store (Apple Analytics Reports) for the Admin page: the stored
+        daily rows for its own period (Last 7 days, Last 30 days or All
+        time; not the Admin period), as data and as rendered markup. Reads
+        only the database; never raises; no key or token is involved."""
+        period = period if period in asc_stats.PERIODS else asc_stats.DEFAULT_PERIOD
+        try:
+            snapshot = asc_stats.admin_snapshot(self.database, period, configured=self.app_store_configured)
+        except Exception as error:
+            LOGGER.error("App Store snapshot failed (%s)", type(error).__name__)
+            snapshot = {"period": period, "configured": self.app_store_configured, "state": "unavailable",
+                        "startDate": None, "endDate": None, "previousStartDate": None,
+                        "updatedAt": None, "lastAttemptAt": None, "data": None}
+        iso = lambda value: value.isoformat() if isinstance(value, datetime) else value
+        payload = {key: iso(value) for key, value in snapshot.items() if key != "data"}
+        return {"schemaVersion": 1, **payload, "data": snapshot["data"], "html": app_store_blocks(snapshot)}
+
     def web_installer_export(self, query: dict[str, str]) -> tuple[bytes, str]:
         """Every Web installer record of the page's period as CSV (test records
         excluded) and its file name."""
@@ -731,6 +758,14 @@ class CatalogService:
             summary["trend"], bucket=bucket, since=start, until=until, all_time=period == "all", time_zone=time_zone,
         ) if summary["trend"] else []
         return {**summary, "bucket": bucket}
+
+    def _overview_app_store(self, since: datetime, time_zone: str) -> dict[str, Any]:
+        zone = ZoneInfo(time_zone)
+        today = datetime.now(timezone.utc).astimezone(zone).date()
+        first = since.astimezone(zone).date() if since.year > 1970 else date(2024, 1, 1)
+        summary = asc_stats.dashboard_downloads(self.database, first, today)
+        updated = summary.get("updatedAt")
+        return {**summary, "updatedAt": updated.isoformat() if isinstance(updated, datetime) else updated}
 
     def _overview_all(self, data: dict[str, Any], since: datetime, period: str, time_zone: str) -> dict[str, Any]:
         """Dashboard All view: app and web counts in the app chart grid, and
@@ -1083,6 +1118,10 @@ class CatalogService:
             "providers": providers,
             "system": section("system", system_health, dict(unavailable)),
             "funnel": section("funnel", lambda: self.app_funnel({"period": period, "timeZone": time_zone}), dict(unavailable)),
+            # Apple's App Store downloads beside the GitHub counters (owner
+            # 2026-11-20): reported days only, never added to them.
+            **({"appStoreDownloads": section("appStoreDownloads", lambda: self._overview_app_store(since, time_zone),
+                                             dict(unavailable))} if self.app_store_configured else {}),
             # "data" stays app only and "web" web only; "all" sums both for the
             # default All view and the Activity list (owner decision 2026-10-11).
             # "app" and "appStore" split "data" into the directly downloaded app
@@ -1504,6 +1543,9 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
 
         def do_POST(self) -> None:  # noqa: N802 - stdlib handler API
             request_path = urlsplit(self.path).path
+            if request_path == "/internal/attention":
+                self._handle_attention_action()
+                return
             if request_path == "/internal/operations/observations":
                 self._handle_operational_observation()
                 return
@@ -1623,6 +1665,55 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 return
             LOGGER.info("attention read served")
             self._send_json(HTTPStatus.OK, attention_report(service), send_body=send_body, cache_control="no-store", noindex=True)
+
+        def _handle_attention_action(self) -> None:
+            """Resolve one installation diagnostic for the operator agent.
+
+            The only agent write: one exact result (``result:<operation>:<index>``),
+            a closed reason list and a required note. Evidence and statistics stay
+            unchanged; the audit row has no Admin user and the note names the agent.
+            """
+            reply = lambda status, body: self._send_json(status, body, send_body=True, cache_control="no-store", noindex=True)
+            client = (f"attention-action:{self._client_ip()}", ATTENTION_ACTION_RATE_LIMIT, RATE_LIMIT_WINDOW_SECONDS)
+            if self._rate_limited(client, record=True):
+                return reply(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"})
+            if not self._admin_read_authorized():
+                return reply(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
+            if urlsplit(self.path).query:
+                return reply(HTTPStatus.BAD_REQUEST, {"error": "invalid_action"})
+            document = self._read_json()
+            if document is None:
+                return
+            diagnostic_id = document.get("diagnosticId")
+            note = document.get("note")
+            if (
+                set(document) != ATTENTION_ACTION_FIELDS
+                or document.get("action") != "resolve_installation_diagnostic"
+                or not isinstance(document.get("reason"), str)
+                or document.get("reason") not in ATTENTION_ACTION_REASONS
+                or not isinstance(diagnostic_id, str)
+                or not re.fullmatch(r"result:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:(0|[1-9][0-9]{0,3})", diagnostic_id)
+                or not isinstance(note, str)
+                or not 1 <= len(note.strip()) <= ATTENTION_ACTION_NOTE_MAX
+            ):
+                return reply(HTTPStatus.BAD_REQUEST, {"error": "invalid_action"})
+            try:
+                changed = service.update_diagnostic_lifecycle(
+                    diagnostic_id,
+                    new_status="RESOLVED",
+                    admin_user_id=None,
+                    resolution_reason=document["reason"],
+                    resolution_note=ATTENTION_ACTION_NOTE_PREFIX + note.strip(),
+                )
+            except ValueError:
+                return reply(HTTPStatus.BAD_REQUEST, {"error": "invalid_action"})
+            except Exception:
+                LOGGER.exception("attention action failed")
+                return reply(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "action_unavailable"})
+            if not changed:
+                return reply(HTTPStatus.NOT_FOUND, {"error": "diagnostic_not_found"})
+            LOGGER.info("attention action served action=resolve_installation_diagnostic")
+            reply(HTTPStatus.OK, {"status": "resolved", "diagnosticId": diagnostic_id})
 
         def _handle_attention_page(self, raw_page: str, *, send_body: bool) -> None:
             """One Admin GET page, rendered for the read-only agent and returned as text."""
@@ -1932,6 +2023,12 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
                 # Its own period, never the shared Admin period cookie.
                 self._send_json(HTTPStatus.OK, service.search_console(query.get("period", [""])[-1]),
+                                send_body=send_body, cache_control="no-store", noindex=True)
+                return
+            if request_path in {"/admin/api/app-store", "/admin/api/app-store/"}:
+                query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+                # Its own period, never the shared Admin period cookie.
+                self._send_json(HTTPStatus.OK, service.app_store(query.get("period", [""])[-1]),
                                 send_body=send_body, cache_control="no-store", noindex=True)
                 return
             if request_path in {"/admin/website-stats", "/admin/website-stats/"}:

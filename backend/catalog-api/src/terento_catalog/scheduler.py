@@ -218,6 +218,12 @@ def main() -> None:
         name="map-preview-renderer",
     )
     preview_worker.start()
+    app_store_worker = None
+    if settings.asc is not None:
+        from .asc_stats import run_schedule as run_app_store_schedule
+        app_store_worker = Thread(target=run_app_store_schedule, args=(database, stop, settings.asc),
+                                  daemon=True, name="app-store-stats")
+        app_store_worker.start()
     # Clears the waiting backlog right after a deploy restarts the scheduler.
     _run_identity_auto_resolution(database)
     try:
@@ -228,6 +234,8 @@ def main() -> None:
         recheck_worker.join(timeout=12)
         health_worker.join(timeout=12)
         preview_worker.join(timeout=12)
+        if app_store_worker is not None:
+            app_store_worker.join(timeout=12)
 
 
 if __name__ == "__main__":

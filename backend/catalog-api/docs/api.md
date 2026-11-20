@@ -468,6 +468,68 @@ is logged only as `GSC 403`; other failures log the block and a reason, never
 the key, token, URL or response body. Without `GSC_SERVICE_ACCOUNT_JSON` the
 block shows `Search Console unavailable.` and the rest of Admin works.
 
+## `GET /admin/api/app-store`
+
+The Web visits page's `App Store` block renders as a skeleton and then reads
+`GET /admin/api/app-store?period=` with its own period, `7d`, `30d` or `all`
+(default and any other value `30d`); the shared Admin period and its cookie
+never change it. The route needs the same Admin session and CSRF cookie as the
+pages; without them it is `401 {"error":"unauthorized"}` (checked after every
+API deploy by `scripts/infra/check-admin-boundary.py`). It is no-store,
+noindex and always `200`, and it reads only the database: no key, token or
+Apple request is involved. The answer is `schemaVersion: 1`, `configured`,
+`period`, `state` (`not_set_up`, `waiting`, `ok`, `stale`, `unavailable`),
+`startDate`/`endDate`/`previousStartDate` (Apple's report dates),
+`updatedAt` (last good read of Apple), `lastAttemptAt`, `data` (`totals` and
+`previousTotals` with `impressions`, `product_page_views`,
+`first_time_downloads`, `redownloads` and `conversion` (first-time downloads
+÷ product page views), `days`, `sources`, `campaigns` (groups Facebook `fb-*`,
+Reddit `rd-*`, Site `site-*`, Other, each with its campaigns), `dayCount`;
+`null` without data) and `html` (the rendered block with its period picker).
+The period ends on the last day Apple has reported for both reports (one day
+before the newest processed processing date), so Last 7 days are seven
+reported days and the change compares as many days just before them.
+
+Apple's numbers come from the App Store Connect Analytics Reports API
+(`asc_stats.py`). The scheduler (`terento-catalog-scheduler`, worker
+`app-store-stats`) reads Apple once an hour when `ASC_ISSUER_ID`,
+`ASC_KEY_ID` and `ASC_PRIVATE_KEY` are set: a Sales and Reports team key
+(Issuer ID, Key ID, and the `.p8` key as PEM, its base64 body on one line or
+the path of a secret file; `ASC_APP_ID` defaults to `6828556832`). It signs
+an ES256 JWT (`aud` `appstoreconnect-v1`, 10 minutes, renewed early), sends it
+only to `https://api.appstoreconnect.apple.com` (redirects are refused; pages
+follow `links.next` only on that host) and downloads Apple's report files from
+their presigned HTTPS addresses without `Authorization` (redirects only to
+HTTPS, never with the token). Each request has a 10 s limit and a response cap
+(2 MiB JSON, 32 MiB per gzip file, 256 MiB unpacked). It lists the app's
+report requests (`ONGOING` and a `ONE_TIME_SNAPSHOT` for history), their
+`App Store Discovery and Engagement` and `App Downloads` reports (Standard;
+Detailed only for campaigns, since only Detailed has the Campaign column and
+Apple leaves out its small rows), and their `DAILY` instances, oldest
+processing date first. Every instance is processed once (its id is
+recorded); its gzip TSV segments are checked against Apple's MD5, read by
+column name (unknown columns are ignored) and stored as daily aggregates in
+`app_store_daily_metric` (migration 095): impressions and product page views
+(Event `Impression` and `Page view` on Page Type `Product page`), first-time
+downloads and redownloads (Download Type `First-time download` and
+`Redownload`; updates and restores are not counted), by day, source type,
+campaign, territory and device. A newer processing date replaces a day of the
+same report (Apple: never merge one date across instances); an older one
+leaves it. Rows hold no person, device or account identifier. A failure logs
+only `ASC <reason>` (an HTTP status or a fixed reason), never the key, token,
+URL or body; the stored numbers stay and the block shows them as `stale`.
+
+The report request needs an Admin key once. `terento-catalog-app-store
+request` (in the API image) shows what exists and changes nothing; with
+`--apply --admin-key-id <KEYID>` and the Admin `.p8` on standard input
+(`--admin-key-stdin`) or `--admin-key-file` it creates the missing `ONGOING`
+request (and the history snapshot unless `--no-history`) and prints `created`
+or `already existed`. The Admin key is used for that run only and never
+stored; the server keeps only the Sales and Reports key. `status` prints the
+stored sync state and `fetch` reads Apple once. Without the settings the
+block shows `App Store statistics are not set up.` and the rest of Admin
+works.
+
 ## `POST /internal/web-installer/events` and `POST /internal/web-installer/relay-jobs`
 
 Web installer page events and relay jobs, forwarded by the web installer
@@ -1459,9 +1521,12 @@ the token itself. With a `page` parameter the same route returns one Admin
 page as text instead ([below](#admin-page-text-get-internalattentionpageadmin)). Without a configured digest, or with any other token, the
 route answers `401 {"error":"unauthorized"}`. At most 12 requests per client
 per minute are counted before authorization (`429` above that). The token
-grants no Admin page, form, CSRF token or write; it is independent of the
-Admin login, `OPERATIONS_INGEST_SECRET` and `WEB_INSTALLER_INGEST_SECRET`.
-Rotating or removing the digest and redeploying revokes it.
+grants no Admin login, form or CSRF token and exactly one write, Resolve of one
+installation diagnostic
+([below](#resolve-one-installation-diagnostic-post-internalattention)); it is
+independent of the Admin login, `OPERATIONS_INGEST_SECRET` and
+`WEB_INSTALLER_INGEST_SECRET`. Rotating or removing the digest and redeploying
+revokes it.
 
 `schemaVersion: 1` returns `generatedAt` and six sections. A section whose
 read fails is `{"available": false}`, never a shorter list:
@@ -1483,7 +1548,8 @@ read fails is `{"available": false}`, never a shorter list:
   `fields` and `adminUrl`.
 - `installationProblems`: `total` and up to 50 newest `items`, one per open
   installation problem operation (the `installationIssues` population and
-  unit). Each item has `operationKey`, `occurredAt`, catalog `model`/`variant`
+  unit). Each item has `operationKey`, `diagnosticIds` (the exact open
+  `result:<operation>:<index>` keys of that operation), `occurredAt`, catalog `model`/`variant`
   or the reported identity, `canonicalDeviceModelId`, `reason`, `appVersion`,
   `adminUrl`, and the sanitised `issueTitle`/`issueBody` that Admin prepares
   for a GitHub issue.
@@ -1511,8 +1577,44 @@ is unavailable.
 The response is `Cache-Control: no-store` and `noindex`. It contains no
 serial number, Unit ID, account, local path, raw log, manifest, map content,
 client IP or Admin user data. Reading it changes no diagnostic, report,
-statistic or audit state; resolving, linking and handling stay authenticated
-Admin actions.
+statistic or audit state. Linking, handling, Reopen, Archive and every other
+action stay authenticated Admin actions.
+
+### Resolve one installation diagnostic: `POST /internal/attention`
+
+Owner decision 2026-11-20: the agent may close an installation problem it has
+diagnosed as not a Terento issue, so the owner does not have to click Resolve.
+The same token and route accept one JSON body (`Content-Type:
+application/json`, no query string) with exactly these fields:
+
+```json
+{"action": "resolve_installation_diagnostic",
+ "diagnosticId": "result:2bd926cd-8929-4a10-bf46-9cae7321a8f1:0",
+ "reason": "NOT_TERENTO_ISSUE",
+ "note": "Watch was not visible after a long download (-2); nothing was written."}
+```
+
+- `diagnosticId` is one exact `result:<lowercase operation UUID>:<index>` key
+  from `installationProblems.items[].diagnosticIds`. An operation UUID, `web:`,
+  `legacy:` or any other key is refused, so one call never resolves a batch.
+- `reason` is `NOT_TERENTO_ISSUE`, `DUPLICATE`, `HISTORICAL_SUPERSEDED` or
+  `FIXED` (the Admin reasons without `IDENTITY_CORRECTED` and `OTHER`).
+- `note` is required, 1 to 486 characters after trimming, and is stored as
+  `Claude agent: <note>` (Admin's 500-character note limit).
+
+It runs the same lifecycle change as Admin Resolve: the result becomes
+`RESOLVED` with that reason and note, one lifecycle audit row is written, the
+installation result, statistics and evidence stay unchanged, and an already
+resolved result stays as it is. The audit row and `resolved_by` carry no Admin
+user; the note prefix names the agent, and Admin shows such a result as
+resolved `by Claude agent`. Reopen stays an Admin action, which is
+also the undo. Answers: `200 {"status":"resolved","diagnosticId":…}`, `400
+invalid_action` (any other field, value or shape), `401 unauthorized`, `404
+diagnostic_not_found`, `413`/`415` for a body of the wrong size or type, `429
+rate_limited` (10 per client per minute, counted before authorization, own
+budget) and `503 action_unavailable`. All answers are `no-store` and
+`noindex`. Update diagnostics, support reports and identity reviews have no
+agent write.
 
 ### Admin page text: `GET /internal/attention?page=/admin/...`
 

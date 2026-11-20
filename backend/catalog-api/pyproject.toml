@@ -12,6 +12,8 @@ dependencies = [
   # Search Console token for Admin Google Search (service account, server side only).
   "google-auth[urllib3]==2.50.0",
   "urllib3==2.8.0",
+  # ES256 tokens for Admin App Store statistics (App Store Connect API, server side only).
+  "cryptography==50.0.1",
 ]
 
 [project.optional-dependencies]
@@ -26,6 +28,7 @@ terento-catalog-backfill-sizes = "terento_catalog.backfill_sizes:main"
 terento-catalog-schedule = "terento_catalog.scheduler:main"
 terento-catalog-collect-github-downloads = "terento_catalog.github_downloads:main"
 terento-catalog-asset = "terento_catalog.asset_admin:main"
+terento-catalog-app-store = "terento_catalog.asc_stats:main"
 terento-catalog-audit-opentopomap-contours = "terento_catalog.opentopomap_contour_audit:main"
 
 [tool.setuptools.packages.find]
