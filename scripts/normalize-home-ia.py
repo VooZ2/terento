@@ -663,7 +663,7 @@ def normalize_home(source: str, path: Path, locale: str) -> str:
     values["hero_switch_buttons"] = map_switch(copy["hero_map_alt"], 0, "home-hero")
     # Hero (owner 2026-11-20): on a computer, Apple's Mac App Store badge first (App Store ranking
     # counts store installs; a DMG install gives it nothing), then "Download for Mac" as the
-    # outlined secondary button and "Install from your browser" as a text link. On a phone, where
+    # outlined secondary button (short label "Download .dmg", owner 2026-11-20) and "Install from your browser" as a text link. On a phone, where
     # neither runs, Send this link to your computer + Check compatibility. This is the page's one
     # badge; the Mac app card keeps only "Download for Mac". Campaign ct=site-hero (site-home retired).
     prefix = "" if locale == "en" else f"/{locale}"
@@ -681,7 +681,7 @@ def normalize_home(source: str, path: Path, locale: str) -> str:
         f'width="{APP_STORE["width"]}" height="{APP_STORE["height"]}" alt="{html.escape(badge["alt"])}"{badge_lang}></a>'
     )
     values["hero_download_button"] = COMPONENTS["secondary_action"](
-        copy["download_href"], html.escape(copy["hero_download"]), "hero-download-action",
+        copy["download_href"], html.escape(copy["hero_dmg"]), "hero-download-action",
         'data-umami-event="download-cta-click" data-umami-event-location="home-hero"', "download")
     values["hero_browser_link"] = (
         f'<a class="text-link hero-web-installer-link" href="{copy["web_installer_href"]}" '

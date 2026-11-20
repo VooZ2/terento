@@ -20,7 +20,7 @@ const locales = new Map([
     providerCopy: "Choose maps from available providers. Maps are downloaded from each provider's original source.",
     heroCompatibility: "Check compatibility",
     download: "Download for Mac",
-    heroDownload: "Download for Mac",
+    heroDownload: "Download .dmg",
   }],
   ["de", {
     file: path.join(root, "site", "de", "index.html"),
@@ -36,7 +36,7 @@ const locales = new Map([
     providerCopy: "Wähle Karten der verfügbaren Anbieter. Karten werden von der Originalquelle des jeweiligen Anbieters geladen.",
     heroCompatibility: "Kompatibilität prüfen",
     download: "Für Mac herunterladen",
-    heroDownload: "Für Mac herunterladen",
+    heroDownload: ".dmg herunterladen",
   }],
   ["fr", {
     file: path.join(root, "site", "fr", "index.html"),
@@ -52,7 +52,7 @@ const locales = new Map([
     providerCopy: "Choisissez parmi les fournisseurs disponibles. Les cartes sont téléchargées depuis la source d’origine de chaque fournisseur.",
     heroCompatibility: "Vérifier la compatibilité",
     download: "Télécharger pour Mac",
-    heroDownload: "Télécharger pour Mac",
+    heroDownload: "Télécharger le .dmg",
   }],
   ["pl", {
     file: path.join(root, "site", "pl", "index.html"),
@@ -68,7 +68,7 @@ const locales = new Map([
     providerCopy: "Wybieraj mapy od dostępnych dostawców. Mapy są pobierane z oryginalnego źródła każdego dostawcy.",
     heroCompatibility: "Sprawdź kompatybilność",
     download: "Pobierz na Maca",
-    heroDownload: "Pobierz na Maca",
+    heroDownload: "Pobierz .dmg",
   }],
   ["cs", {
     file: path.join(root, "site", "cs", "index.html"),
@@ -84,7 +84,7 @@ const locales = new Map([
     providerCopy: "Vyberte si mapy od dostupných poskytovatelů. Mapy se stahují z původního zdroje každého poskytovatele.",
     heroCompatibility: "Ověřit kompatibilitu",
     download: "Stáhnout pro Mac",
-    heroDownload: "Stáhnout pro Mac",
+    heroDownload: "Stáhnout .dmg",
   }],
   ["it", {
     file: path.join(root, "site", "it", "index.html"),
@@ -100,7 +100,7 @@ const locales = new Map([
     providerCopy: "Scegli mappe dei provider disponibili. Le mappe vengono scaricate dalla fonte originale di ciascun provider.",
     heroCompatibility: "Verifica la compatibilità",
     download: "Scarica per Mac",
-    heroDownload: "Scarica per Mac",
+    heroDownload: "Scarica il .dmg",
   }],
 ]);
 
