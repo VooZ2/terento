@@ -10,7 +10,7 @@ from .admin_revisions import active_trend_buckets, section_revisions, statistics
 import math
 import re
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 from urllib.parse import quote, urlencode, urlsplit
 from uuid import UUID
@@ -2144,9 +2144,71 @@ def _overview_kpi(label: str, value: str, *, aside: str = "", sub: str = "", dan
     )
 
 
+APP_STORE_LEGEND = "App Store (daily, 1–2 days late)"
+APP_STORE_NO_DATA = "App Store: no data for this period"
+
+
+def _app_store_day_range(app_store: dict[str, Any] | None) -> tuple[date, date] | None:
+    """(first, last) day Apple has reported App Store downloads for."""
+    if not isinstance(app_store, dict) or app_store.get("available") is False:
+        return None
+    try:
+        through = date.fromisoformat(str(app_store.get("reportedThrough") or ""))
+        first = date.fromisoformat(str(app_store.get("firstDay") or app_store.get("reportedThrough")))
+    except ValueError:
+        return None
+    return (first, through) if first <= through else None
+
+
+def _app_store_bucket_counts(
+    app_store: dict[str, Any] | None, trend: list[dict[str, Any]], bucket: str, time_zone: str,
+) -> list[int | None]:
+    """App Store downloads per chart bucket: only in day, week or month
+    buckets, and only the days Apple has reported (an unreported day or an
+    hour bucket has no value, never a drawn zero)."""
+    span = _app_store_day_range(app_store)
+    if span is None or bucket not in {"day", "week", "month"}:
+        return [None] * len(trend)
+    days = (app_store or {}).get("days") or {}
+    zone = ZoneInfo(time_zone)
+    counts: list[int | None] = []
+    for item in trend:
+        start = _parse_timestamp(item.get("bucket"))
+        if start is None:
+            counts.append(None)
+            continue
+        end = _next_overview_bucket(start, bucket, time_zone=time_zone)
+        day, last = start.astimezone(zone).date(), (end - timedelta(seconds=1)).astimezone(zone).date()
+        reported = []
+        while day <= last:
+            if span[0] <= day <= span[1]:
+                reported.append(int(days.get(day.isoformat()) or 0))
+            day += timedelta(days=1)
+        counts.append(sum(reported) if reported else None)
+    return counts
+
+
+def _app_store_period_total(app_store: dict[str, Any] | None, since: Any, time_zone: str) -> int | None:
+    """App Store downloads of the reported days that lie wholly in the
+    period; None when Apple has reported none of them (hourly periods)."""
+    span = _app_store_day_range(app_store)
+    if span is None:
+        return None
+    zone = ZoneInfo(time_zone)
+    start = _parse_timestamp(since)
+    first = span[0]
+    if start is not None and start.year > 1970:
+        local = start.astimezone(zone)
+        first = max(first, local.date() if local.time() == datetime.min.time() else local.date() + timedelta(days=1))
+    if first > span[1]:
+        return None
+    days = (app_store or {}).get("days") or {}
+    return sum(int(count or 0) for day, count in days.items() if first.isoformat() <= day <= span[1].isoformat())
+
+
 def _overview_downloads_chart(
     downloads: dict[str, Any], time_zone: str = "UTC", *, period: str = "24h",
-    grid_start: Any = None, _compact: bool = False,
+    grid_start: Any = None, _compact: bool = False, app_store: dict[str, Any] | None = None,
 ) -> str:
     """``grid_start`` is the first bucket of the map charts beside it: earlier
     buckets without download data stay empty labelled slots, so All time bars
@@ -2167,6 +2229,10 @@ def _overview_downloads_chart(
         "all": "all time",
     }.get(period, "the selected period")
     values = _app_download_counts(trend)
+    store_counts = _app_store_bucket_counts(app_store, trend, chart_bucket, time_zone) if app_store is not None else None
+    if store_counts is not None:
+        # A third series beside the GitHub counters (owner 2026-11-20).
+        values = [counts + (store,) for counts, store in zip(values, store_counts)]
     maximum = max((sum(value for value in series if value is not None) for series in values), default=1) or 1
     # The same round four-step axis as the map trend charts.
     tick_step = _nice_tick_step(maximum)
@@ -2216,7 +2282,7 @@ def _overview_downloads_chart(
     series = (
         (".dmg downloads", "overview-chart-download-dmg"),
         (".zip downloads", "overview-chart-download-zip"),
-    )
+    ) + ((("App Store downloads", "overview-chart-download-app-store"),) if store_counts is not None else ())
     marker_text_end = -math.inf
     for index, (counts, item) in enumerate(zip(values, trend)):
         center = position_center(index)
@@ -2231,8 +2297,12 @@ def _overview_downloads_chart(
         )
         partial_note = " · partial known total" if item.get("partial") else ""
         stack_total = sum(count for count in counts if count is not None)
+        # The observed increase is GitHub's counters only; App Store is
+        # Apple's own population, named beside it.
+        github_counts = counts[:2]
+        github_total = sum(count for count in github_counts if count is not None)
         zero_titles = []
-        for (label, _), count in zip(series, counts):
+        for (label, _), count in zip(series[:2], github_counts):
             if count != 0:
                 continue
             zero_description = (
@@ -2246,10 +2316,11 @@ def _overview_downloads_chart(
         group_title = (
             f"{_overview_chart_bucket_label(item.get('bucket'), chart_bucket, time_zone)}"
             f"{' (in progress)' if in_progress else ''}"
-            f" · Observed increase: {stack_total}"
+            f" · Observed increase: {github_total}"
             + "".join(
-                f" · {label}: {count}" for (label, _), count in zip(series, counts) if count
+                f" · {label}: {count}" for (label, _), count in zip(series[:2], github_counts) if count
             )
+            + (f" · App Store downloads (Apple, daily): {counts[2]}" if len(counts) > 2 and counts[2] is not None else "")
         )
         if zero_titles:
             interval_title = "Download interval: " + " · ".join(zero_titles)
@@ -2260,7 +2331,7 @@ def _overview_downloads_chart(
             + (" (in progress)" if in_progress else ""),
             [(css_class.removeprefix("overview-chart-"), label.removesuffix(" downloads"), count)
              for (label, css_class), count in zip(series, counts)],
-            stack_total if all(count is not None for count in counts) else None,
+            github_total if all(count is not None for count in github_counts) and len(counts) == 2 else None,
         )
         group_accessibility = (
             f" class='overview-chart-group{' is-partial' if in_progress else ''}' role='img' tabindex='0'" + strip_data + " aria-label='"
@@ -2281,13 +2352,16 @@ def _overview_downloads_chart(
                 continue
             segment_x, segment_width, y, height = geometry
             previous_observed_at = item.get("previous_observed_at")
-            if item.get("state") in {"gap", "period_boundary", "partial"} and previous_observed_at is not None:
+            if series_index == 2:
+                title = f"{label}: {count} · Apple App Store, reported days · {time_zone}"
+            elif item.get("state") in {"gap", "period_boundary", "partial"} and previous_observed_at is not None:
                 interval_start = _overview_chart_bucket_label(previous_observed_at, chart_bucket, time_zone)
                 interval_end = _overview_chart_bucket_label(observed_at, chart_bucket, time_zone)
                 title = f"{label}: {count} · observed increase across {interval_start}–{interval_end} · {time_zone} · interval uncertain"
             else:
                 title = f"{label}: {count} · observed increase ending {_overview_chart_bucket_label(observed_at, chart_bucket, time_zone)} · {time_zone}"
-            title += legacy_note + partial_note
+            if series_index < 2:
+                title += legacy_note + partial_note
             bars.append(
                 f"<rect class='{css_class}' data-stack-index='{series_index}' "
                 f"data-stack-total='{stack_total}' x='{segment_x:.1f}' y='{y:.2f}' "
@@ -2331,10 +2405,14 @@ def _overview_downloads_chart(
     return (
         "<div class='overview-chart-wrap'>"
         + svg
-        + _overview_downloads_chart(downloads, time_zone, period=period, grid_start=grid_start, _compact=True)
+        + _overview_downloads_chart(downloads, time_zone, period=period, grid_start=grid_start, _compact=True,
+                                    app_store=app_store)
         + _chart_value_strip()
         + _chart_legend(
-            [("download-dmg", ".dmg", _LEGEND_NAME_ONLY), ("download-zip", ".zip", _LEGEND_NAME_ONLY)],
+            [("download-dmg", ".dmg", _LEGEND_NAME_ONLY), ("download-zip", ".zip", _LEGEND_NAME_ONLY)]
+            + ([("download-app-store",
+                 APP_STORE_LEGEND if any(count is not None for count in store_counts) else APP_STORE_NO_DATA,
+                 _LEGEND_NAME_ONLY)] if store_counts is not None else []),
             label="Terento app download legend",
         )
         + "</div>"
@@ -3065,16 +3143,28 @@ def overview_page(
         value = _optional_nonnegative_int(downloads.get(key))
         return f"{value:,}" if value is not None else "—"
 
+    # App Store downloads (Apple, daily) beside the GitHub counters; only
+    # when App Store statistics are set up (owner 2026-11-20).
+    app_store = overview.get("appStoreDownloads") if isinstance(overview.get("appStoreDownloads"), dict) else None
+    app_store_known = app_store is not None and app_store.get("available") is not False
+    app_store_total = _optional_nonnegative_int((app_store or {}).get("total")) if app_store_known else None
+    app_store_all_time = (
+        f" · App Store <strong>{app_store_total:,}</strong>" if app_store_total is not None
+        else " · App Store <strong>—</strong>") if app_store is not None else ""
+    app_store_update = (app_store or {}).get("updatedAt") if app_store_known else None
+    app_store_last_update = (
+        f" · App Store {_timestamp_markup(app_store_update) if app_store_update else '—'}" if app_store is not None else "")
+
     if not downloads_available:
         downloads_section = _unavailable_card("App downloads", "overview-downloads")
     elif download_has_data:
         downloads_section = _section_card(
             "App downloads",
             # Legend names the series (the tile holds the period increases); one All time line: totals.
-            f"{_overview_downloads_chart(downloads, time_zone, period=period, grid_start=download_grid_start)}"
+            f"{_overview_downloads_chart(downloads, time_zone, period=period, grid_start=download_grid_start, app_store=app_store)}"
             f"<p class='overview-all-time overview-download-all-time'>{_scope_chip('all')}"
-            f"<span>.dmg <strong>{download_total('dmgTotal')}</strong> · .zip <strong>{download_total('zipTotal')}</strong></span>"
-            f"<span class='overview-chart-note'>Last update {_timestamp_markup(download_last_update) if download_last_update is not None else '—'}</span></p>",
+            f"<span>.dmg <strong>{download_total('dmgTotal')}</strong> · .zip <strong>{download_total('zipTotal')}</strong>{app_store_all_time}</span>"
+            f"<span class='overview-chart-note'>Last update {_timestamp_markup(download_last_update) if download_last_update is not None else '—'}{app_store_last_update}</span></p>",
             card_id="overview-downloads",
             css="overview-panel overview-download-panel",
         )
@@ -3090,8 +3180,13 @@ def overview_page(
         dmg, zip_ = _sum_known(app_counts, 0), _sum_known(app_counts, 1)
         headline_tiles.append("<div class='overview-kpi-cell'>" + _overview_kpi(
             "App downloads", "—" if dmg is None and zip_ is None else f"{(dmg or 0) + (zip_ or 0):,}",
-            # Owner 2026-11-03: the .dmg and .zip split shares one line under the number.
-            sub=" · ".join(f"{name} {count:,}" for name, count in ((".dmg", dmg), (".zip", zip_)) if count is not None),
+            # Owner 2026-11-03: the .dmg and .zip split shares one line under the
+            # number. The value stays GitHub only; App Store (Apple's reported
+            # days in the period) is named beside it (owner 2026-11-20).
+            sub=" · ".join(f"{name} {count:,}" for name, count in ((".dmg", dmg), (".zip", zip_)) if count is not None)
+            + ("" if app_store is None else " · App Store " + (
+                f"{store:,}" if (store := _app_store_period_total(app_store if app_store_known else None, overview.get("since"), time_zone)) is not None
+                else "—")),
             spark=_sparkline([sum(value or 0 for value in row) for row in app_counts], partial_last=bool(download_trend) and _bucket_in_progress(
                 download_trend[-1].get("bucket"), str(downloads.get("bucket") or "hour"), time_zone)),
         ) + "</div>")
@@ -10672,6 +10767,7 @@ ADMIN_STYLES += """
 /* Chart palette, one definition (owner 2026-11-03): healthy series recede in pale tones, problems keep their full tone, updates are hatched. */
 .overview-chart-success,.overview-chart-download-success,.overview-chart-download-dmg{fill:color-mix(in srgb,var(--sky) 72%,var(--surface));background:color-mix(in srgb,var(--sky) 72%,var(--surface))}
 .overview-chart-download-zip{fill:color-mix(in srgb,var(--sky) 40%,var(--surface));background:color-mix(in srgb,var(--sky) 40%,var(--surface))}
+.overview-chart-download-app-store{fill:var(--lichen-dark);background:var(--lichen-dark)}
 .overview-chart-custom{fill:var(--lichen);background:var(--lichen)}
 .overview-chart-failed{fill:var(--danger);background:var(--danger)}
 .overview-chart-update{fill:var(--stone-dark);background:var(--stone-dark)}
@@ -11103,8 +11199,12 @@ main.web-visits-page>.web-visits-headline{grid-template-columns:minmax(0,5fr) mi
 .web-visits-gsc-heading{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}.web-visits-gsc-period{margin:0;padding:6px}.web-visits-gsc-heading h2{margin:0 auto 0 0;font-size:clamp(22px,2.2vw,28px);line-height:1.15}
 .web-visits-gsc>.web-installer-grid{gap:var(--admin-card-gap)}.web-visits-gsc-lists{grid-template-columns:minmax(0,3fr) minmax(0,2fr)}
 @media(max-width:1200px){.web-visits-gsc-lists{grid-template-columns:minmax(0,1fr)}}
-#web-visits-gsc-kpis>.admin-metric-row{grid-template-columns:repeat(4,minmax(0,1fr))}
-@media(max-width:700px){#web-visits-gsc-kpis>.admin-metric-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
+#web-visits-gsc-kpis>.admin-metric-row,#web-visits-asc-kpis>.admin-metric-row{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:700px){#web-visits-gsc-kpis>.admin-metric-row,#web-visits-asc-kpis>.admin-metric-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.web-visits-asc-lists{grid-template-columns:repeat(2,minmax(0,1fr))}@media(max-width:1200px){.web-visits-asc-lists{grid-template-columns:minmax(0,1fr)}}
+.gsc-series-views{--gsc-series:var(--interactive)}.gsc-series-downloads{--gsc-series:var(--lichen-dark)}
+.overview-chart-app-store-views{background:var(--interactive)}.overview-chart-app-store-downloads{background:var(--lichen-dark)}
+.asc-table tr.asc-campaign-group td{background:var(--surface-muted)}.asc-campaign{padding-left:12px;overflow-wrap:anywhere}
 .gsc-chart.overview-trend-desktop{height:auto;aspect-ratio:720/252}.overview-chart-wrap>.gsc-chart.overview-trend-wide{aspect-ratio:1200/252}
 @media(min-width:901px) and (max-width:1100px),(max-width:700px){.gsc-chart.overview-trend-mobile{aspect-ratio:360/252}}
 .gsc-series-clicks{--gsc-series:var(--interactive)}.gsc-series-impressions{--gsc-series:var(--stone-dark)}

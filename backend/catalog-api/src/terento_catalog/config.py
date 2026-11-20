@@ -8,6 +8,7 @@ from pathlib import Path
 
 from .umami_stats import UmamiSettings
 from .gsc_stats import GscSettings
+from .asc_stats import AscSettings
 
 # The production API binds only to the private Docker network and Traefik
 # terminates HTTPS, so the direct peer is the proxy. X-Forwarded-For is honoured
@@ -34,6 +35,7 @@ class Settings:
     admin_read_token_sha256: str | None = None
     umami: "UmamiSettings | None" = None
     gsc: "GscSettings | None" = None
+    asc: "AscSettings | None" = None
     opentopomap_contour_mode: str = "off"
     opentopomap_contour_allowlist: tuple[str, ...] = ()
     trusted_proxies: tuple[str, ...] = DEFAULT_TRUSTED_PROXIES
@@ -76,6 +78,7 @@ class Settings:
             admin_read_token_sha256=_optional_sha256("ADMIN_READ_TOKEN_SHA256"),
             umami=UmamiSettings.from_env(),
             gsc=GscSettings.from_env(),
+            asc=AscSettings.from_env(),
             opentopomap_contour_mode=_contour_mode(),
             opentopomap_contour_allowlist=_csv("OPENTOPO_MAP_CONTOUR_ALLOWLIST"),
             map_preview_enabled=_boolean("MAP_PREVIEW_ENABLED", False),

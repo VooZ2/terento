@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Check the public admin gate without granting deployment CI admin access."""
+import json
 import os
 import time
 import urllib.error
@@ -23,6 +24,9 @@ def verify_response(path, status, headers, body, required):
         raise AssertionError('Expected configured Cloudflare Access boundary')
     if path == '/admin/login':
         assert status == 200 and b'<title>Admin sign in \xc2\xb7 Terento</title>' in body
+    elif path.startswith('/admin/api/'):
+        # Admin JSON answers 401 without a session and never carries data.
+        assert status == 401 and json.loads(body or b'null') == {'error': 'unauthorized'}
     else:
         assert status == 303 and headers.get('Location') == '/admin/login'
         assert "script-src 'none'" in headers.get('Content-Security-Policy', '')
@@ -30,7 +34,7 @@ def verify_response(path, status, headers, body, required):
 if __name__ == '__main__':
     required = os.environ.get('TERENTO_ADMIN_ACCESS_REQUIRED', 'false') == 'true'
     opener = urllib.request.build_opener(NoRedirect)
-    for path in ('/admin/login', '/admin/campaign-links'):
+    for path in ('/admin/login', '/admin/campaign-links', '/admin/api/app-store'):
         for attempt in range(3):
             try:
                 response = opener.open(urllib.request.Request('https://api.terento.app' + path, headers={'User-Agent': 'Terento-Deployment-Check/1.0'}), timeout=10)

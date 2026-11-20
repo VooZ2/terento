@@ -116,6 +116,16 @@ libraries in `Terento.app/Contents/Frameworks`.
   cryptography (Apache-2.0 OR BSD-3-Clause), pyasn1 and pyasn1-modules
   (BSD-2-Clause). Their own license and notice requirements remain applicable.
 
+## cryptography
+
+- Version: 50.0.1 (pinned by the backend package)
+- Upstream: <https://github.com/pyca/cryptography>
+- License: Apache License 2.0 OR BSD 3-Clause
+- Use: server-side ES256 signing of App Store Connect API tokens for the
+  Admin App Store statistics (the same package google-auth already installs)
+- Distribution: installed in the catalog API Docker image. Its own license and
+  notice requirements remain applicable.
+
 ## JSON Schema test validation
 
 - Dependency: jsonschema 4.26.0, pinned in the backend `test` optional group
