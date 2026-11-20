@@ -1468,8 +1468,14 @@ rendered by the same route code as for the owner, so every count, period,
 population and deduplication rule in this contract applies unchanged; only the
 transport differs (sanitised plain text or JSON instead of HTML). A change to a
 page changes its agent text with it, without a second implementation. The view
-never offers a write: Resolve, Reopen, Archive, Link issue, Handle and every
-other action stay owner-only behind login and CSRF. Login, setup, logout,
+never offers a write. The token's one write is a separate JSON call that
+resolves one exact installation diagnostic with a closed reason and a note
+marked `Claude agent:` (owner decision 2026-11-20,
+[API](api.md#resolve-one-installation-diagnostic-post-internalattention)); it
+is the same lifecycle change and audit as Admin Resolve and changes no
+installation result or statistic. Admin shows it as resolved `by Claude agent`
+(no Admin user, note marked `Claude agent:`). Reopen, Archive, Link issue, Handle and
+every other action stay owner-only behind login and CSRF. Login, setup, logout,
 account and downloads are not readable. Browser cookies do not apply, so a
 period or time zone must be in the page link.
 
