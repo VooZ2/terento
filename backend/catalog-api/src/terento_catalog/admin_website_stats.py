@@ -4,7 +4,9 @@ Umami's terento.app numbers: a separate population from app and web installer
 statistics. The page renders at once with every block loading; its script then
 reads ``/admin/api/umami`` for the Admin period, which answers with the blocks
 rendered here, so the Umami key never reaches the browser. The Google Search
-block loads the same way from ``/admin/api/gsc`` (Search Console, gsc_stats).
+block loads the same way from ``/admin/api/gsc`` (Search Console, gsc_stats),
+and the App Store block from ``/admin/api/app-store`` (stored Apple Analytics
+Reports rows, asc_stats).
 """
 
 from __future__ import annotations
@@ -39,6 +41,7 @@ from .admin import (
 from .admin_referrer_icons import FONT_AWESOME_BRANDS, SIMPLE_ICONS
 from .admin_web_installer import _duration
 from .gsc_stats import DEFAULT_PERIOD as GSC_DEFAULT_PERIOD, PERIODS as GSC_PERIODS
+from .asc_stats import CONSOLE_URL as ASC_CONSOLE_URL, DEFAULT_PERIOD as ASC_DEFAULT_PERIOD, PERIODS as ASC_PERIODS
 from .statistics_periods import ADMIN_PERIOD_LABELS, ADMIN_PERIODS
 from .admin_visits_map import VISITS_MAP_SVG
 from .map_preview.areas import load_areas
@@ -891,8 +894,10 @@ def website_stats_page(user: dict[str, Any], csrf_token: str, *, period: str, ti
         <template id='website-stats-failed'>{failed}</template>
         {_gsc_loading()}
         <template id='gsc-failed'>{search_console_blocks(None, console_url=None)}</template>
+        {_asc_loading()}
+        <template id='asc-failed'>{app_store_blocks(None)}</template>
       </main>
-      <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_overview_period_script()}{_website_stats_script()}{_gsc_script()}</script>
+      <script nonce="{_ADMIN_NONCE_PLACEHOLDER}">{_overview_period_script()}{_website_stats_script()}{_gsc_script()}{_asc_script()}</script>
     """
     return _layout("Web visits", content, sections={"webVisits": period})
 
@@ -959,9 +964,15 @@ def _gsc_buckets(data: dict[str, Any], start: str, end: str, weekly: bool) -> li
     return buckets
 
 
-def _gsc_chart_svg(buckets: list[dict[str, Any]], width: int, variant: str) -> str:
-    """Clicks over Impressions: two small line charts, each with its own Y
-    axis, under one date axis (not one chart with two Y axes)."""
+GSC_SERIES = (("clicks", "Clicks"), ("impressions", "Impressions"))
+
+
+def _gsc_chart_svg(buckets: list[dict[str, Any]], width: int, variant: str,
+                   series_names: tuple[tuple[str, str], ...] = GSC_SERIES,
+                   aria_label: str = "Google Search clicks and impressions", strip_prefix: str = "gsc") -> str:
+    """Clicks over Impressions (or the two ``series_names``): two small line
+    charts, each with its own Y axis, under one date axis (not one chart with
+    two Y axes)."""
     font = 13 if variant == "mobile" else 11
     # A wide gap and each series in its own colour with a named swatch keep
     # Clicks and Impressions apart (owner 2026-11-14).
@@ -973,7 +984,7 @@ def _gsc_chart_svg(buckets: list[dict[str, Any]], width: int, variant: str) -> s
     prelim = next((index for index, bucket in enumerate(buckets) if bucket["preliminary"]), None)
     parts: list[str] = []
     marks: list[list[tuple[float, float]]] = []
-    for row, (metric, label) in enumerate((("clicks", "Clicks"), ("impressions", "Impressions"))):
+    for row, (metric, label) in enumerate(series_names):
         panel_top = top + row * (panel + gap)
         parts.append(f"<g class='gsc-series-{metric}'>")
         base = panel_top + panel
@@ -1008,11 +1019,11 @@ def _gsc_chart_svg(buckets: list[dict[str, Any]], width: int, variant: str) -> s
     slot = plot_width / max(count - 1, 1) if count > 1 else plot_width
     for index, (x, bucket) in enumerate(zip(xs, buckets)):
         when = bucket["label"] + (" (preliminary)" if bucket["preliminary"] else "")
-        text = f"{when} · Clicks {bucket['clicks']:,} · Impressions {bucket['impressions']:,}"
-        strip = _chart_value_attributes(when, [("gsc-clicks", "Clicks", bucket["clicks"]),
-                                               ("gsc-impressions", "Impressions", bucket["impressions"])], None)
+        text = when + "".join(f" · {label} {bucket[metric]:,}" for metric, label in series_names)
+        strip = _chart_value_attributes(when, [(f"{strip_prefix}-{metric}", label, bucket[metric])
+                                               for metric, label in series_names], None)
         dots = "".join(f"<circle class='gsc-chart-focus gsc-series-{metric}' cx='{x:.1f}' cy='{series[index][1]:.1f}' r='3.5'/>"
-                       for metric, series in zip(("clicks", "impressions"), marks))
+                       for (metric, _), series in zip(series_names, marks))
         parts.append(
             f"<g class='overview-chart-group gsc-chart-day' role='img' tabindex='0'{strip} aria-label='{html.escape(text, quote=True)}'>"
             f"<title>{html.escape(text)}</title><rect class='gsc-chart-hit' x='{max(x - slot / 2, left):.1f}' y='{top - 4}' "
@@ -1022,7 +1033,7 @@ def _gsc_chart_svg(buckets: list[dict[str, Any]], width: int, variant: str) -> s
         parts.append(f"<text x='{xs[index]:.1f}' y='{height - 8}' text-anchor='{anchor}' aria-hidden='true'>"
                      f"{html.escape(texts[index])}</text>")
     return (f"<svg class='overview-trend-chart overview-trend-{variant} gsc-chart' viewBox='0 0 {width} {height}' "
-            f"role='group' aria-label='Google Search clicks and impressions'>{''.join(parts)}</svg>")
+            f"role='group' aria-label='{html.escape(aria_label, quote=True)}'>{''.join(parts)}</svg>")
 
 
 def _gsc_trend(data: dict[str, Any], snapshot: dict[str, Any]) -> str:
@@ -1200,3 +1211,187 @@ def _gsc_script() -> str:
       });
       load();
     })();""" % {"default": GSC_DEFAULT_PERIOD}
+
+
+# App Store (Apple Analytics Reports API, asc_stats): its own block after
+# Google Search, loaded from /admin/api/app-store with its own period picker
+# (Last 7 days, Last 30 days, All time; default Last 30 days): the Admin
+# period does not change it (owner 2026-11-20). Admin reads the stored daily
+# rows only; Apple is read by the scheduler.
+ASC_NOT_SET_UP = "App Store statistics are not set up."
+ASC_UNAVAILABLE = "App Store unavailable."
+ASC_WAITING = "No App Store data yet."
+ASC_NOTE = "App Store Connect · data updated daily, about 1–2 days late"
+ASC_CAMPAIGN_NOTE = "Apple shows a campaign only after a day and at least 5 downloads; small sources may be hidden."
+ASC_SERIES = (("views", "Product page views"), ("downloads", "First-time downloads"))
+
+
+def _asc_period_picker(period: str) -> str:
+    options = "".join(f"<option value='{value}'{' selected' if value == period else ''}>{ADMIN_PERIOD_LABELS[value]}</option>"
+                      for value in ASC_PERIODS)
+    return ("<div class='filter-bar web-visits-gsc-period'><label><span class='sr-only'>App Store period</span>"
+            f"<select id='asc-period' data-admin-dropdown>{options}</select></label></div>")
+
+
+def _asc_section(body: str, marks: str = "", *, period: str, loading: bool = False) -> str:
+    busy = " aria-busy='true'" if loading else ""
+    return (f"<section class='web-visits-gsc web-visits-asc' id='web-visits-asc' aria-labelledby='web-visits-asc-title' "
+            f"data-asc-period='{period}'{busy}>"
+            f"<div class='web-visits-gsc-heading'><h2 id='web-visits-asc-title'>App Store</h2>"
+            f"<span class='web-installer-source'>{_admin_icon('source-appstore')}App Store Connect</span>{marks}"
+            f"{_asc_period_picker(period)}</div>{body}</section>")
+
+
+def _asc_card(name: str, title: str, body: str, css: str = "") -> str:
+    return _section_card(title, body, card_id=f"web-visits-asc-{name}", css=css)
+
+
+def _asc_kpi_panel(body: str) -> str:
+    return f"<section class='admin-card {_HEAD}' id='web-visits-asc-kpis' aria-label='App Store totals'>{body}</section>"
+
+
+def _asc_rate(value: float | None) -> float | None:
+    return None if value is None else round(value * 100, 1)
+
+
+def _asc_kpis(now: dict[str, Any], before: dict[str, Any] | None, period: str, days: int) -> str:
+    """The period's reported days; the change is against as many days just
+    before them."""
+    before = before or {}
+    against = f"previous {days} day{'' if days == 1 else 's'}"
+    delta = lambda current, previous, *args: _delta(current, previous, period, *args, against=against)
+    return _metric_row([
+        _metric_tile("Impressions", now.get("impressions"), secondary=delta(now.get("impressions"), before.get("impressions"))),
+        _metric_tile("Product page views", now.get("product_page_views"),
+                     secondary=delta(now.get("product_page_views"), before.get("product_page_views"))),
+        _metric_tile("First-time downloads", now.get("first_time_downloads"),
+                     secondary=delta(now.get("first_time_downloads"), before.get("first_time_downloads"))),
+        _metric_tile("Conversion", _asc_rate(now.get("conversion")), fmt="rate",
+                     secondary=delta(_asc_rate(now.get("conversion")), _asc_rate(before.get("conversion")), "rate")),
+    ], label="App Store")
+
+
+def _asc_buckets(data: dict[str, Any], start: str, end: str, weekly: bool) -> list[dict[str, Any]]:
+    """One point per reported day (per week for All time); a reported day
+    without rows is 0."""
+    by_day = {item["date"]: item for item in data.get("days") or []}
+    buckets: list[dict[str, Any]] = []
+    day, last = date.fromisoformat(start), date.fromisoformat(end)
+    while day <= last:
+        item = by_day.get(day.isoformat()) or {}
+        key = day - timedelta(days=day.weekday()) if weekly else day
+        if not buckets or buckets[-1]["key"] != key:
+            buckets.append({"key": key, "views": 0, "downloads": 0, "preliminary": False})
+        buckets[-1]["views"] += int(item.get("product_page_views") or 0)
+        buckets[-1]["downloads"] += int(item.get("first_time_downloads") or 0)
+        day += timedelta(days=1)
+    for bucket in buckets:
+        bucket["label"] = ("Week of " if weekly else "") + _day_label(bucket["key"])
+    return buckets
+
+
+def _asc_trend(data: dict[str, Any], snapshot: dict[str, Any]) -> str:
+    buckets = _asc_buckets(data, snapshot["startDate"], snapshot["endDate"], snapshot["period"] == "all")
+    if not buckets or not any(bucket["views"] or bucket["downloads"] for bucket in buckets):
+        return _empty_state("empty", "No product page views in this period.")
+    return ("<div class='overview-chart-wrap'>" + "".join(
+        _gsc_chart_svg(buckets, width, variant, ASC_SERIES, "App Store product page views and first-time downloads", "app-store")
+        for width, variant in ((720, "desktop"), (1200, "wide"), (360, "mobile")))
+        + _chart_value_strip() + f"</div><p class='overview-chart-note'>{html.escape(ASC_NOTE)}</p>")
+
+
+_ASC_COLUMNS = [("Page views", "product_page_views", "count"), ("First-time downloads", "first_time_downloads", "count"),
+                ("Conversion", "conversion", "rate")]
+
+
+def _asc_table(caption: str, heading: str, rows: list[tuple[str, dict[str, Any], str]]) -> str:
+    """rows: (first cell markup, values, row class)."""
+    short = {"First-time downloads": "Downloads", "Page views": "Views", "Conversion": "Conv."}
+    label = lambda text: (f"<span class='gsc-full'>{text}</span><span class='gsc-short' aria-hidden='true'>{short[text]}</span>"
+                          if text in short else html.escape(text))
+    head = f"<th scope='col'>{html.escape(heading)}</th>" + "".join(
+        f"<th scope='col' class='column-number'>{label(text)}</th>" for text, _, _ in _ASC_COLUMNS)
+    body = "".join(
+        f"<tr{f' class={chr(39)}{css}{chr(39)}' if css else ''}><td data-label='{html.escape(heading, quote=True)}'>{cell}</td>"
+        + "".join(f"<td data-label='{html.escape(text, quote=True)}' class='column-number numeric'>{_gsc_number(values.get(key), kind)}</td>"
+                  for text, key, kind in _ASC_COLUMNS) + "</tr>"
+        for cell, values, css in rows)
+    return (f"<div class='table-wrap'><table class='admin-table gsc-table asc-table' data-own-mobile-layout>"
+            f"<caption class='sr-only'>{html.escape(caption)}</caption><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></div>")
+
+
+def _asc_sources(rows: list[dict[str, Any]]) -> str:
+    rows = sorted(rows, key=lambda row: (-row["first_time_downloads"], -row["product_page_views"], row["source"]))
+    rows = [row for row in rows if row["product_page_views"] or row["first_time_downloads"]]
+    if not rows:
+        return _empty_state("empty", "No sources in this period.")
+    return _asc_table("Sources", "Source", [(html.escape(row["source"]), row, "") for row in rows])
+
+
+def _asc_campaigns(groups: list[dict[str, Any]]) -> str:
+    note = f"<p class='overview-chart-note'>{html.escape(ASC_CAMPAIGN_NOTE)}</p>"
+    if not groups:
+        return _empty_state("empty", "No campaigns in this period.") + note
+    rows: list[tuple[str, dict[str, Any], str]] = []
+    for group in groups:
+        rows.append((f"<strong>{html.escape(group['group'])}</strong>", group, "asc-campaign-group"))
+        rows.extend((f"<span class='asc-campaign'>{html.escape(item['campaign'])}</span>", item, "")
+                    for item in group["campaigns"])
+    return _asc_table("Campaigns", "Campaign", rows) + note
+
+
+def app_store_blocks(snapshot: dict[str, Any] | None) -> str:
+    """The App Store block for one snapshot (asc_stats.admin_snapshot)."""
+    snapshot = snapshot or {"state": "unavailable", "period": ASC_DEFAULT_PERIOD}
+    period = snapshot.get("period") if snapshot.get("period") in ASC_PERIODS else ASC_DEFAULT_PERIOD
+    section = lambda body, marks="": _asc_section(body, marks, period=period)
+    link = (f"<a class='section-link' href='{html.escape(ASC_CONSOLE_URL, quote=True)}' target='_blank' "
+            f"rel='noopener noreferrer'>Open App Store Connect&nbsp;{_admin_icon('external')}</a>")
+    state = snapshot.get("state")
+    if state == "not_set_up":
+        return section(_asc_card("unavailable", "App Store Connect", _empty_state("unavailable", ASC_NOT_SET_UP)))
+    updated = _parse_time(snapshot.get("updatedAt"))
+    footer = (f"Updated {_timestamp_markup(updated)} · " if updated else "") + link
+    footer = f"<p class='web-installer-tests muted-value'>{footer}</p>"
+    if state in ("unavailable", "waiting") or not snapshot.get("data"):
+        text = ASC_WAITING if state == "waiting" else ASC_UNAVAILABLE
+        return section(_asc_card("unavailable", "App Store Connect", _empty_state("empty" if state == "waiting" else "unavailable", text))
+                       + footer)
+    marks = "" if state != "stale" else (
+        _status_pill("unknown", "App Store unavailable") + "<span class='admin-metric-secondary'>"
+        + (f"Last result {_timestamp_markup(updated)}" if updated else "Last result —") + "</span>")
+    data = snapshot["data"]
+    kpis = _asc_kpi_panel(_asc_kpis(data["totals"], data.get("previousTotals"), period, int(data.get("dayCount") or 0)))
+    trend = _asc_card("trend", "Trend", _asc_trend(data, snapshot), css="overview-chart-panel")
+    lists = ("<div class='web-installer-grid web-visits-asc-lists'>"
+             + _asc_card("sources", "Sources", _asc_sources(data.get("sources") or []))
+             + _asc_card("campaigns", "Campaigns", _asc_campaigns(data.get("campaigns") or [])) + "</div>")
+    return section(kpis + trend + lists + footer, marks)
+
+
+def _parse_time(value: Any) -> datetime | None:
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    if isinstance(value, str) and value:
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+    return None
+
+
+def _asc_loading(period: str = ASC_DEFAULT_PERIOD) -> str:
+    skeleton = ("<div class='web-visits-skeleton' aria-hidden='true'><span></span><span></span><span></span></div>"
+                "<span class='sr-only'>Loading…</span>")
+    return _asc_section(_asc_kpi_panel(skeleton) + _asc_card("trend", "Trend", skeleton, css="overview-chart-panel")
+                        + "<div class='web-installer-grid web-visits-asc-lists'>" + _asc_card("sources", "Sources", skeleton)
+                        + _asc_card("campaigns", "Campaigns", skeleton) + "</div>", period=period, loading=True)
+
+
+def _asc_script() -> str:
+    """The Google Search loader for the App Store block: its own period
+    (default Last 30 days), its own picker, Unavailable when the read fails."""
+    return (_gsc_script().replace("'/admin/api/gsc'", "'/admin/api/app-store'").replace("#web-visits-gsc", "#web-visits-asc")
+            .replace("#gsc-failed", "#asc-failed").replace("'gsc-period'", "'asc-period'").replace("#gsc-period", "#asc-period")
+            .replace("let period = '%s'" % GSC_DEFAULT_PERIOD, "let period = '%s'" % ASC_DEFAULT_PERIOD))

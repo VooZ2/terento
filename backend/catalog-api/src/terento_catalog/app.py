@@ -39,6 +39,8 @@ def run_server(settings: Settings, database: Database) -> None:
             admin_read_token_sha256=settings.admin_read_token_sha256,
             umami_stats=UmamiStats(settings.umami) if settings.umami else None,
             gsc_stats=GscStats(settings.gsc) if settings.gsc else None,
+            # The API only reads the stored App Store rows; the scheduler reads Apple.
+            app_store_configured=settings.asc is not None,
             opentopomap_contour_mode=settings.opentopomap_contour_mode,
             opentopomap_contour_allowlist=settings.opentopomap_contour_allowlist,
             public_base_url=settings.public_base_url,

@@ -81,7 +81,24 @@ with recent days preliminary and rare queries hidden by Google. It has its own
 period (Last 7 days, Last 30 days by default, All time), never the shared Admin
 period; its totals, changes, queries and pages count final days only, and
 preliminary days appear only in its trend chart. It is never
-added to or reconciled with Umami visitors or any app or web installer count. User-sent support
+added to or reconciled with Umami visitors or any app or web installer count.
+App Store Connect (Apple's Analytics Reports for app `6828556832`, Admin Web
+visits block `App Store` and the Dashboard App downloads App Store series;
+owner request 2026-11-20) is another separate, read-only population owned by
+Apple: App Store impressions, product page views, first-time downloads and
+redownloads per Apple report date, source type, campaign token, territory and
+device, as daily totals with no person, device or account identifier, about
+1–2 days late. Apple's Standard reports give every total; campaigns come
+only from Apple's Detailed reports, which leave out small rows and add noise,
+so a campaign's numbers are lower than and never added to the totals. Its
+Conversion is first-time downloads divided by product page views. It is never
+added to or reconciled with the app population's App Store part (results of
+`+appstore` builds), the GitHub download counters, Umami visitors or any app
+or web installer count: an App Store download is not an install, a first run
+or a GitHub download. On the Dashboard App downloads card it is a third,
+separately named series on reported days only (day and week buckets); the
+tile value and each bar's Observed increase stay GitHub `.dmg` plus `.zip`
+only, and `· App Store N` is shown beside them. User-sent support
 reports ([`SUPPORT_REPORT_CONTRACT.md`](SUPPORT_REPORT_CONTRACT.md)) are not a
 statistical population at all: they are review work only and never change any
 count, rate or chart. Optional installation-report `inventoryMetrics`

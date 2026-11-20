@@ -910,6 +910,165 @@ class Database:
                 )
         return len(normalized)
 
+    # --- App Store statistics (asc_stats.py; Apple's own population) --------
+
+    def app_store_processed_instance_ids(self) -> set[str]:
+        with self.connection() as connection:
+            rows = connection.execute("SELECT instance_id FROM app_store_report_instance").fetchall()
+        return {row["instance_id"] for row in rows}
+
+    def store_app_store_instance(
+        self, *, instance_id: str, kind: str, level: str, processing_date: Any,
+        rows: dict[tuple[str, str, str, str, str, str], int],
+    ) -> int | None:
+        """Store one processed report instance in one transaction.
+
+        Each day in it replaces that day of the same report when this
+        processing date is the same or newer than the stored one; an older
+        instance leaves newer days alone. Returns the days replaced, or None
+        when the instance was already processed (nothing changes)."""
+        metrics = {"engagement": ["impressions", "product_page_views"],
+                   "downloads": ["first_time_downloads", "redownloads"]}[kind]
+        if level not in ("standard", "detailed"):
+            raise ValueError("unknown report level")
+        with self.connection() as connection:
+            connection.execute("SELECT pg_advisory_xact_lock(734820197)")
+            inserted = connection.execute(
+                """
+                INSERT INTO app_store_report_instance (instance_id, report_kind, report_level, processing_date, row_count)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (instance_id) DO NOTHING
+                RETURNING instance_id
+                """,
+                (instance_id, kind, level, processing_date, len(rows)),
+            ).fetchone()
+            if inserted is None:
+                return None
+            by_day: dict[str, list[tuple[tuple[str, str, str, str, str, str], int]]] = {}
+            for key, count in rows.items():
+                if key[1] not in metrics:
+                    raise ValueError("metric does not belong to this report")
+                by_day.setdefault(key[0], []).append((key, count))
+            replaced = 0
+            for day in sorted(by_day):
+                owned = connection.execute(
+                    """
+                    INSERT INTO app_store_report_day (report_kind, report_level, day, processing_date, instance_id)
+                    VALUES (%s, %s, %s, %s, %s)
+                    ON CONFLICT (report_kind, report_level, day) DO UPDATE SET
+                        processing_date = EXCLUDED.processing_date,
+                        instance_id = EXCLUDED.instance_id
+                    WHERE EXCLUDED.processing_date >= app_store_report_day.processing_date
+                    RETURNING day
+                    """,
+                    (kind, level, day, processing_date, instance_id),
+                ).fetchone()
+                if owned is None:
+                    continue
+                connection.execute(
+                    "DELETE FROM app_store_daily_metric WHERE day = %s AND report_level = %s AND metric = ANY(%s)",
+                    (day, level, metrics),
+                )
+                for (_, metric, source_type, campaign, territory, device), count in by_day[day]:
+                    connection.execute(
+                        """
+                        INSERT INTO app_store_daily_metric
+                            (day, report_level, metric, source_type, campaign, territory, device, count)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                        """,
+                        (day, level, metric, source_type, campaign, territory, device, int(count)),
+                    )
+                replaced += 1
+        return replaced
+
+    def record_app_store_sync(
+        self, *, attempted_at: datetime, succeeded: bool, error: str | None, request_state: str | None,
+    ) -> None:
+        with self.connection() as connection:
+            connection.execute(
+                """
+                INSERT INTO app_store_sync_state (id, last_attempt_at, last_success_at, last_error, request_state)
+                VALUES (1, %s, %s, %s, %s)
+                ON CONFLICT (id) DO UPDATE SET
+                    last_attempt_at = EXCLUDED.last_attempt_at,
+                    last_success_at = COALESCE(EXCLUDED.last_success_at, app_store_sync_state.last_success_at),
+                    last_error = EXCLUDED.last_error,
+                    request_state = COALESCE(EXCLUDED.request_state, app_store_sync_state.request_state),
+                    updated_at = now()
+                """,
+                (attempted_at, attempted_at if succeeded else None, (error or None) and str(error)[:200], request_state),
+            )
+
+    def app_store_sync_state(self) -> dict[str, Any] | None:
+        with self.connection() as connection:
+            row = connection.execute(
+                "SELECT last_attempt_at, last_success_at, last_error, request_state FROM app_store_sync_state WHERE id = 1"
+            ).fetchone()
+        return dict(row) if row else None
+
+    def app_store_reported_through(self) -> dict[str, Any]:
+        """The last day Apple has reported per report (Standard): one day
+        before the newest processed processing date."""
+        with self.connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT report_kind, max(processing_date) AS processing_date
+                FROM app_store_report_instance
+                WHERE report_level = 'standard'
+                GROUP BY report_kind
+                """
+            ).fetchall()
+        return {row["report_kind"]: row["processing_date"] - timedelta(days=1) for row in rows if row["processing_date"]}
+
+    def app_store_first_day(self) -> Any:
+        with self.connection() as connection:
+            row = connection.execute(
+                "SELECT min(day) AS day FROM app_store_daily_metric WHERE report_level = 'standard'"
+            ).fetchone()
+        return row["day"] if row else None
+
+    def app_store_daily(self, level: str, first: Any, last: Any) -> list[dict[str, Any]]:
+        """Counts per day, metric, source type and campaign (territories and
+        devices summed) for first..last."""
+        with self.connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT day, metric, source_type, campaign, sum(count)::bigint AS count
+                FROM app_store_daily_metric
+                WHERE report_level = %s AND day BETWEEN %s AND %s
+                GROUP BY day, metric, source_type, campaign
+                ORDER BY day, metric, source_type, campaign
+                """,
+                (level, first, last),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def app_store_download_days(self, first: Any, last: Any) -> dict[Any, int]:
+        """First-time downloads plus redownloads per day (Standard)."""
+        with self.connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT day, sum(count)::bigint AS count
+                FROM app_store_daily_metric
+                WHERE report_level = 'standard' AND metric IN ('first_time_downloads', 'redownloads')
+                  AND day BETWEEN %s AND %s
+                GROUP BY day
+                ORDER BY day
+                """,
+                (first, last),
+            ).fetchall()
+        return {row["day"]: int(row["count"]) for row in rows}
+
+    def app_store_download_total(self) -> int:
+        with self.connection() as connection:
+            row = connection.execute(
+                """
+                SELECT COALESCE(sum(count), 0)::bigint AS count FROM app_store_daily_metric
+                WHERE report_level = 'standard' AND metric IN ('first_time_downloads', 'redownloads')
+                """
+            ).fetchone()
+        return int(row["count"]) if row else 0
+
     def github_downloads_snapshot(
         self,
         *,

@@ -869,3 +869,28 @@ administrator's earlier decision stays. USB `091e:4fb8` stays `PENDING`. No
 result, assignment, statistic or permission changes: the Solar results already
 assigned to the row are correct under the new label. The previous revision
 reads the rows unchanged.
+
+### Migration095: App Store statistics
+
+Additive only: four new tables for Apple's App Store Connect Analytics Reports
+(`asc_stats.py`; separate population, statistics contract). The previous
+revision never reads them, so it keeps working during the migration and after a
+rollback.
+
+- `app_store_daily_metric`: daily aggregates, primary key `(day, report_level,
+  metric, source_type, campaign, territory, device)`, `count > 0`.
+  `report_level` is `standard` (every total) or `detailed` (campaign rows
+  only); `metric` is `impressions`, `product_page_views`,
+  `first_time_downloads` or `redownloads`. Empty text means Apple gave no
+  value. No person, device or account identifier exists in these rows.
+- `app_store_report_day`: which processed instance owns each day of one report
+  (`report_kind` `engagement` or `downloads`, `report_level`, `day`): a newer
+  processing date replaces the day, an older one leaves it (Apple: never merge
+  one date across two instances).
+- `app_store_report_instance`: every processed instance id once, with its
+  report, processing date and row count, so a second run never doubles a
+  count.
+- `app_store_sync_state`: one row with the last read of Apple (attempt, last
+  success, a fixed `last_error` reason of at most 200 characters, never a key,
+  token, URL or body) and the report request state (`active`, `stopped`,
+  `missing`).

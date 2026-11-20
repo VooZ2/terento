@@ -176,6 +176,15 @@ runtime dependencies.
   `GSC_SERVICE_ACCOUNT_JSON` (scope `webmasters.readonly`, property
   `GSC_PROPERTY`); the key and token never reach the browser or the logs
   ([contract](docs/api.md#get-adminapigsc)).
+- `GET /admin/api/app-store` adds the Web visits `App Store` block, and the
+  Dashboard App downloads card an App Store series: Apple's own App Store
+  numbers for Terento (Analytics Reports API), to a signed-in admin only. The
+  scheduler reads Apple hourly with a Sales and Reports key (`ASC_ISSUER_ID`,
+  `ASC_KEY_ID`, `ASC_PRIVATE_KEY`) and stores daily totals; the route reads
+  only the database. The one-time report request needs an Admin key and runs
+  with `terento-catalog-app-store request` (dry run unless `--apply`); that key
+  is passed for one run and never stored
+  ([contract](docs/api.md#get-adminapiapp-store)).
 - `GET /maps/catalog.json` returns an additive provider-neutral `schemaVersion: 2`
   projection while retaining catalog version 1 fields for existing macOS
   clients. The response includes `ETag`, `Last-Modified`, and cache headers and
