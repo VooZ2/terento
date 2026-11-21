@@ -35,7 +35,10 @@ WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY src ./src
 
+# Importing the API reads its package files (the Admin stylesheet):
+# a missing file stops the build instead of production.
 RUN python -m pip install --no-cache-dir . \
+    && python -c "import terento_catalog.http_api" \
     && useradd --system --uid 10001 --no-create-home terento \
     && mkdir -p /var/lib/terento/assets /var/lib/terento/preview-work \
     && chown -R terento:terento /var/lib/terento

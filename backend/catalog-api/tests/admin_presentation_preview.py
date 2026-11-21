@@ -9,6 +9,14 @@ import sys
 from admin_plan_preview import build
 from terento_catalog.admin import (
     _admin_device_payload,
+    account_page,
+    admin_error_page,
+    campaign_links_page,
+    first_run_page,
+    github_issue_queue_page,
+    local_test_data_page,
+    login_page,
+    setup_page,
     _diagnostic_summary_by_identity,
     _map_statistics_summary,
     dashboard_page,
@@ -25,6 +33,7 @@ from terento_catalog.support_report_admin import support_report_detail_page, sup
 from terento_catalog.support_reports import validate_support_report
 from terento_catalog.update_diagnostics import update_diagnostics_page
 from terento_catalog.admin_web_installer import web_installer_page
+from terento_catalog.admin_website_stats import website_stats_page
 from terento_catalog.web_installer import summarize
 
 
@@ -210,6 +219,22 @@ def _today_trend() -> list[dict[str, object]]:
         }
         for hour in range(15)
     ]
+
+
+def _first_run_funnel() -> dict[str, object]:
+    def stage(name, outcomes):
+        return {"stage": name, "outcomes": [{"outcome": outcome, "sessionCount": count} for outcome, count in outcomes]}
+    return {
+        "sessionCount": 5, "neverConnectedSessionCount": 1,
+        "stages": [
+            stage("DEVICE_CONNECT", (("CONNECTED", 4), ("TIMEOUT_NO_USB", 1), ("NOT_MTP_MODE", 0), ("BUSY", 0))),
+            stage("AUTHORIZATION", (("APPROVED", 3), ("PENDING", 1), ("UPDATE_REQUIRED", 0))),
+            stage("CATALOG", (("REMOTE", 4), ("BUNDLED_FALLBACK", 0), ("UPDATE_REQUIRED", 1))),
+            stage("INSTALL_BLOCKED", (("AUTHORIZATION", 0), ("DEVICE_STORAGE", 1), ("LOCAL_CAPABILITY", 0))),
+        ],
+        "modelsNeedingReview": [{"baseModel": "fenix 8", "outcome": "PENDING", "sessionCount": 1}],
+        "journey": {"sessionCount": 5, "connectedSessionCount": 4, "approvedSessionCount": 3},
+    }
 
 
 def _web_installer() -> dict[str, object]:
@@ -661,6 +686,18 @@ def create(root: Path) -> None:
         "updateDiagnostics": [],
     }, user, "fixture"))
     (root / "web-installer.html").write_bytes(web_installer_page(_web_installer(), user, "fixture", period="24h"))
+    # The remaining Admin pages, so the browser check covers every page.
+    (root / "login.html").write_bytes(login_page())
+    (root / "setup.html").write_bytes(setup_page())
+    (root / "account.html").write_bytes(account_page(user, "fixture"))
+    (root / "error.html").write_bytes(admin_error_page(503, "The Dashboard could not be loaded.", user, "fixture"))
+    (root / "campaign-links.html").write_bytes(campaign_links_page(user, "fixture"))
+    (root / "first-run.html").write_bytes(first_run_page(_first_run_funnel(), user, "fixture", period="7d"))
+    (root / "github-issues.html").write_bytes(github_issue_queue_page([], [], user, "fixture"))
+    (root / "local-test-data.html").write_bytes(local_test_data_page({"activity": [{
+        "stream": "Map usage", "release_label": "1.0.0-beta.10-local", "outcome": "FAILED",
+        "event_count": 2, "last_occurred_at": "2026-09-07T16:43:00Z"}]}, user, "fixture"))
+    (root / "web-visits.html").write_bytes(website_stats_page(user, "fixture", period="7d"))
     site_assets = Path(__file__).parents[3] / "site"
     shutil.copytree(site_assets / "assets" / "fonts", root / "fonts", dirs_exist_ok=True)
     shutil.copy2(site_assets / "favicon.ico", root / "favicon.ico")

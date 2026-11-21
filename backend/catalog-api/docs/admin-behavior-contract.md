@@ -1210,6 +1210,10 @@ check time, and post-write objects and check time; they are diagnostics, never
 counts. A successful result with pending identity is not a
 failure.
 
+Known gap (audit 2026-11-20, not changed): `Database._diagnostic_scope` accepts
+`result:<uuid>:<index>`, a raw operation UUID and `legacy:<uuid>`, but not the
+`<uuid>:0` and `event:<uuid>` logical keys that the statistics queries build.
+
 ### Shared installation and update review
 
 Installation and update failures use the same reading order and control patterns:
