@@ -189,7 +189,7 @@ def _build_provider_neutral_catalog(
             or not artifact_source_url
             or artifact_download_size is None
             or (int(artifact_download_size) <= 0 and not (
-                provider_id in {"bbbike", "osmapa", "luckymaps"} and row.get("availability") == "UNAVAILABLE"
+                provider_id in {"bbbike", "osmapa", "luckymaps", "openfietsmap"} and row.get("availability") == "UNAVAILABLE"
                 and row.get("artifact_validation_status") == "UNAVAILABLE"))
         ):
             continue
@@ -246,7 +246,7 @@ def _build_provider_neutral_catalog(
                 # Lucky Maps releases are the IMG creation day.
                 daily = datetime.strptime(release, "%Y-%m-%d")
                 package["version"]["day"] = daily.day
-            if provider_id in {"bbbike", "osmapa"}:
+            if provider_id in {"bbbike", "osmapa", "openfietsmap"}:
                 daily = datetime.strptime(release, "%Y-%m-%d")
                 package["version"]["day"] = daily.day
                 package["mapType"] = row.get("map_type")
@@ -298,7 +298,7 @@ def _build_provider_neutral_catalog(
             # clients accept such a package only as one proof-free artifact
             # and otherwise reject the whole catalog.
             bbbike_unavailable_main = (
-                provider_id in {"bbbike", "osmapa", "luckymaps"}
+                provider_id in {"bbbike", "osmapa", "luckymaps", "openfietsmap"}
                 and str(row.get("artifact_kind") or "") == "main"
                 and str(row.get("artifact_validation_status") or "") in ("UNAVAILABLE", "FAILED")
             )

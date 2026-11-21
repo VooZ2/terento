@@ -172,8 +172,24 @@ LUCKYMAPS = ProviderDefinition(
     default_status="PAUSED",
 )
 
+OPENFIETSMAP = ProviderDefinition(
+    id="openfietsmap", name="OpenFietsMap", adapter_id="openfietsmap",
+    website="https://www.openfietsmap.nl/",
+    catalog_url="https://ligfietser.dev.openstreetmap.org/openfietsmap/",
+    # The source licence is CC BY-NC-SA 3.0 with "further distribution only
+    # with permission"; the author (Minko) gave Terento written permission on
+    # 2026-11-21. Terento stays free and never hosts or mirrors the files.
+    license=("Map data © OpenStreetMap contributors (ODbL); cartography © Openfietsmap.nl, "
+             "CC BY-NC-SA 3.0, listed with the author's permission; contour lines and DEM "
+             "© SRTM/NASA, U.S. Geological Survey and J. de Ferranti (viewfinderpanoramas.org)."),
+    attribution="Map data © OpenStreetMap contributors; cartography © Openfietsmap.nl (CC BY-NC-SA 3.0)",
+    license_url="https://creativecommons.org/licenses/by-nc-sa/3.0/",
+    # Not offered until the hardware activation gate passes.
+    default_status="PAUSED",
+)
+
 KNOWN_PROVIDER_DEFINITIONS: dict[str, ProviderDefinition] = {
-    item.id: item for item in (FREIZEITKARTE, OPENTOPO_MAP, MAPRANDO, BBBIKE, OSMAPA, LUCKYMAPS)
+    item.id: item for item in (FREIZEITKARTE, OPENTOPO_MAP, MAPRANDO, BBBIKE, OSMAPA, LUCKYMAPS, OPENFIETSMAP)
 }
 
 # Main package membership stays independent of optional contour availability.

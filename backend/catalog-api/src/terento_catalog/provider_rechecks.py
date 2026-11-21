@@ -82,6 +82,15 @@ def inspect_artifact(row):
         m = inspect_osmapa(url,*row['provider_region_id'].split('-',1))
         return dict(size_bytes=m.download_size_bytes, install_size_bytes=m.install_size_bytes,
                     install_payload_path=m.payload_path,source_proof=m.source_proof,source_updated_at=m.generated_at)
+    if provider == 'openfietsmap':
+        from .openfietsmap import OpenFietsMapFetcher, inspect_openfietsmap, source_for_url
+        source = source_for_url(url)
+        if source.key != row['provider_region_id']:
+            raise ProviderCollectionError('OpenFietsMap recheck source differs from its package')
+        fetcher = OpenFietsMapFetcher(); fetcher.opener = opener
+        m = inspect_openfietsmap(source, fetcher=fetcher)
+        return dict(size_bytes=m.download_size_bytes, install_size_bytes=m.install_size_bytes,
+                    install_payload_path=m.payload_path,source_proof=m.source_proof,source_updated_at=m.generated_at)
     if provider == 'luckymaps':
         from .luckymaps import LuckyMapsFetcher, SourceRef, inspect_luckymaps, source_url as luckymaps_source
         _, stem = luckymaps_source(url)

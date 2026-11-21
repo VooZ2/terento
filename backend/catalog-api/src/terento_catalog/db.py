@@ -4345,7 +4345,7 @@ class Database:
                         (definition.id, artifact.source_url),
                     )
 
-            if definition.id in {"opentopomap", "maprando", "bbbike", "osmapa", "luckymaps"}:
+            if definition.id in {"opentopomap", "maprando", "bbbike", "osmapa", "luckymaps", "openfietsmap"}:
                 # A complete provider snapshot retires only that provider's stale
                 # package/artifact metadata. It never touches map binaries or
                 # another provider's records.

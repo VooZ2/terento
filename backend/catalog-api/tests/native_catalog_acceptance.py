@@ -2,14 +2,15 @@
 
 Mirrors ``MapCatalogLoader.isCompatible`` in
 ``app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapCatalogLoader.swift`` together
-with ``BBBikeProviderAdapter``/``OSMapaProviderAdapter``/``LuckyMapsProviderAdapter``
+with ``BBBikeProviderAdapter``/``OSMapaProviderAdapter``/``LuckyMapsProviderAdapter``/
+``OpenFietsMapProviderAdapter``
 ``validIdentity`` and
 ``expectedIMGIdentity``,
 ``MapPackage.hasUsableMainArtifact`` and the reviewed provider URL policies.
 Released clients reject the *whole* catalog when one package fails, so a
 backend publication must satisfy every rule for every package. OSMapaPL is
-only published in catalog v5, which app 1.1.0 and later read; Lucky Maps only in
-catalog v6, which the first app with the Lucky Maps adapter reads.
+only published in catalog v5, which app 1.1.0 and later read; Lucky Maps and OpenFietsMap only in
+catalog v6, which the first app with those adapters reads.
 
 Provider-specific IMG identity matching (``MapIdentityMatcher``) is not
 mirrored here; the native released-client gate
@@ -30,6 +31,7 @@ PROVIDER_HOSTS = {
     "bbbike": {"data.bbbike.org"},
     "osmapa": {"osmapa-garmin.las.org.pl"},
     "luckymaps": {"luckymaps.ch"},
+    "openfietsmap": {"ligfietser.dev.openstreetmap.org"},
 }
 LUCKYMAPS_STEM = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,95}")
 LUCKYMAPS_PATH = re.compile(r"^/assets/maps/(?:[A-Za-z0-9][A-Za-z0-9._-]{0,127}/){0,3}([A-Za-z0-9][A-Za-z0-9_-]{0,95})\.img$")
@@ -43,6 +45,22 @@ OSMAPA_FAMILY_IDS = {"podstawowa": 4, "ogonki": 5, "light": 6, "warstwice": 12}
 OSMAPA_PATH = re.compile(
     r"^/products/OSMapaPL(ext)?-(PODSTAWOWA|OGONKI|LIGHT|WARSTWICE)-(20[0-9]{6})V([0-9]+\.[0-9]+)_IMG\.zip$")
 OSMAPA_MAXIMUM_IMG_BYTES = 4_294_967_295
+OFM_DATE = r"([0-9]{2}-[0-9]{2}-20[0-9]{2})"
+# key: (path pattern after /openfietsmap/, payload, family ID, IMG title pattern, mapType)
+OFM_FIXED = {
+    "benelux": (r"benelux/full/OpenFietsMap\.zip", "gmapsupp.img", 10010, rf"OFM_BNL\({OFM_DATE}\)", "ofm-full"),
+    "benelux-light": (r"benelux/light/OpenFietsMap_light\.zip", "gmapsupp.img", 20010, rf"OFM_light\({OFM_DATE}\)", "ofm-light"),
+    "benelux-hiking": (r"benelux/hike/gmapsupp\.zip", "gmapsupp.img", 50010, rf"OFM_hike\({OFM_DATE}\)", "ofm-hiking"),
+    "germany": (rf"germany/OFM_DE\({OFM_DATE}_gps\)\.zip", "Garmin/gmapsupp.img", 4900, rf"OFM_DE\({OFM_DATE}\)", "ofm-full"),
+    "alps": (rf"Alps/OFM_Alps\({OFM_DATE}_gps\)\.zip", "Garmin/gmapsupp.img", 4143, rf"OFM_Alps\({OFM_DATE}\)", "ofm-full"),
+    "atlantic": (rf"Atlantic/OFM_Atlantic\({OFM_DATE}_gps\)\.zip", "garmin/gmapsupp.img", 34351, r"OFM_Atlantic", "ofm-full"),
+    "baleares": (rf"Baleares/OFM_Baleares\({OFM_DATE}_gps\)\.zip", "garmin/gmapsupp.img", 34971, r"OFM_Baleares", "ofm-full"),
+    "iceland": (rf"Iceland/OFM_Iceland\({OFM_DATE}_gps\)\.zip", "garmin/gmapsupp.img", 35400, r"OFM_Island", "ofm-full"),
+}
+OFM_EUROPE = ("gb", "n", "w", "c", "sw", "se", "e")
+OFM_EUROPE_PATH = re.compile(r"EU_(20[0-9]{2})/([0-9]{4})/GPS/OFM\(EU(20[0-9]{2})_(GB|N|W|C|SW|SE|E)_GPS\)\.zip")
+OFM_PROOF_STRINGS = ("sourceURL", "etag", "lastModified", "payloadPath", "crc32", "sourceIdentity", "area",
+                     "mapType", "imgTitle", "generatedAt", "revision")
 
 
 def _provider(value: Any) -> str:
@@ -286,6 +304,147 @@ def _luckymaps_proof_matches(artifact: dict[str, Any], stem: str, kind: str, cre
     )
 
 
+def ofm_keys() -> set[str]:
+    return set(OFM_FIXED) | {"europe-" + area for area in OFM_EUROPE}
+
+
+def ofm_valid_identity(package: dict[str, Any]) -> bool:
+    key = str(package.get("providerRegionId") or "")
+    expected_type = OFM_FIXED[key][4] if key in OFM_FIXED else "ofm-full"
+    return (
+        _provider(package.get("providerId")) == "openfietsmap"
+        and key in ofm_keys()
+        and package.get("id") == "openfietsmap-" + key
+        and package.get("canonicalRegionId") == key.upper()
+        and package.get("region") == key.upper()
+        and package.get("mapType") == expected_type
+        and package.get("geographicRegionId") == key.upper()
+        and bool(package.get("countryCodes")) and "RU" not in package.get("countryCodes")
+        and (package.get("version") or {}).get("day") is not None
+    )
+
+
+def ofm_reviewed_source(url: Any):
+    """(key, payload, family ID, title pattern, filename or folder date, Europe year) of a reviewed URL."""
+    text = str(url or "")
+    parts = urlsplit(text)
+    try:
+        port = parts.port
+    except ValueError:
+        return None
+    root = "/openfietsmap/"
+    if (parts.scheme != "https" or parts.netloc != "ligfietser.dev.openstreetmap.org"
+            or port is not None or parts.query or parts.fragment or "%" in text or "?" in text or "#" in text
+            or not parts.path.startswith(root)):
+        return None
+    path = parts.path[len(root):]
+    for key, (pattern, payload, family_id, title, _) in OFM_FIXED.items():
+        match = re.fullmatch(pattern, path)
+        if match:
+            dated = None
+            if match.groups():
+                try:
+                    dated = datetime.strptime(match[1], "%d-%m-%Y").date()
+                except ValueError:
+                    return None
+            return key, payload, family_id, title, dated, None
+    match = OFM_EUROPE_PATH.fullmatch(path)
+    if not match or match[1] != match[3]:
+        return None
+    year, area = int(match[1]), match[4]
+    try:
+        folder = datetime(year, int(match[2][:2]), int(match[2][2:])).date()
+    except ValueError:
+        return None
+    return ("europe-" + area.lower(), "garmin/gmapsupp.img", year * 10 + OFM_EUROPE.index(area.lower()) + 1,
+            re.escape(f"OFM(EU{year}_{area})"), folder, year)
+
+
+def ofm_proof_decodes(proof: Any) -> bool:
+    return (
+        isinstance(proof, dict)
+        and all(isinstance(proof.get(key), str) for key in OFM_PROOF_STRINGS)
+        and _uint(proof.get("downloadSizeBytes"), 2**64 - 1)
+        and _uint(proof.get("installSizeBytes"), 2**64 - 1)
+        and _uint(proof.get("familyId"), 2**16 - 1)
+        and type(proof.get("headerIdentityValidated")) is bool
+    )
+
+
+def _ofm_proof_matches(package: dict[str, Any]) -> bool:
+    main = _main(package) or {}
+    proof = main.get("sourceProof")
+    if not ofm_proof_decodes(proof) or not ofm_valid_identity(package):
+        return False
+    key = package["providerRegionId"]
+    source = ofm_reviewed_source(proof.get("sourceURL"))
+    version = package.get("version") or {}
+    try:
+        released = datetime(int(version.get("year") or 0), int(version.get("month") or 0),
+                            int(version.get("day") or 0)).date()
+        datetime.fromisoformat(str(proof.get("generatedAt")).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return False
+    if source is None or source[0] != key:
+        return False
+    _, payload, family_id, title_pattern, dated, year = source
+    title = re.fullmatch(title_pattern, proof["imgTitle"])
+    if title is None:
+        return False
+    if year is not None:
+        dates_match = dated <= released <= dated.fromordinal(dated.toordinal() + 3)
+    else:
+        title_date = datetime.strptime(title[1], "%d-%m-%Y").date() if title.groups() else None
+        published = title_date or dated
+        dates_match = published == released and (dated is None or title_date is None or dated == title_date)
+    etag = proof.get("etag")
+    install_size = proof.get("installSizeBytes")
+    download_size = proof.get("downloadSizeBytes")
+    return (
+        dates_match
+        and proof.get("sourceURL") == _download_url(package)
+        and isinstance(etag, str) and etag.startswith('"') and etag.endswith('"') and len(etag) > 2
+        and proof["lastModified"] != ""
+        and proof["generatedAt"].startswith(released.isoformat() + "T")
+        and proof.get("sourceIdentity") == f"openfietsmap:{key}"
+        and proof.get("area") == key and proof.get("mapType") == package.get("mapType")
+        and proof.get("familyId") == family_id
+        and proof.get("headerIdentityValidated") is True
+        and proof.get("payloadPath") == payload
+        and main.get("installPayloadPath") == payload
+        and download_size == (package.get("downloadSizeBytes") or package.get("sizeBytes"))
+        and install_size == package.get("installSizeBytes")
+        and download_size > 0
+        and 0x1000 <= install_size <= OSMAPA_MAXIMUM_IMG_BYTES
+        and bool(re.fullmatch(r"[0-9a-f]{8}", proof["crc32"]))
+        and bool(re.fullmatch(r"[a-f0-9]{64}", proof["revision"]))
+    )
+
+
+def openfietsmap_rejections(package: dict[str, Any]) -> list[str]:
+    if not ofm_valid_identity(package):
+        return ["openfietsmap identity"]
+    main = _main(package)
+    artifacts = package.get("artifacts") or []
+    if main is None or not (main.get("sourceURL") or main.get("sourceUrl")):
+        return ["no usable main artifact"]
+    reasons = []
+    if len(artifacts) != 1:
+        reasons.append("openfietsmap package must have exactly one artifact")
+    source = ofm_reviewed_source(_download_url(package))
+    if source is None or source[0] != package["providerRegionId"]:
+        reasons.append("download URL outside reviewed provider policy")
+    if main.get("validationState") == "unavailable":
+        if main.get("sourceProof") is not None:
+            reasons.append("unavailable openfietsmap main artifact must not carry sourceProof")
+        return reasons
+    if main.get("validationState") == "failed":
+        reasons.append("openfietsmap main artifact is not usable")
+    if not _ofm_proof_matches(package):
+        reasons.append("openfietsmap source proof does not establish the IMG identity")
+    return reasons
+
+
 def luckymaps_rejections(package: dict[str, Any]) -> list[str]:
     reasons = []
     if not luckymaps_valid_identity(package):
@@ -321,6 +480,8 @@ def package_rejections(package: dict[str, Any]) -> list[str]:
     main = _main(package)
     if provider == "luckymaps":
         return luckymaps_rejections(package)
+    if provider == "openfietsmap":
+        return openfietsmap_rejections(package)
     if provider == "bbbike" and main is not None and main.get("validationState") == "unavailable":
         reasons = []
         if not bbbike_valid_identity(package):
@@ -386,6 +547,9 @@ def catalog_rejections(catalog: dict[str, Any]) -> list[str]:
     luckymaps = [str(p.get("providerRegionId") or "").lower() for p in packages if _provider(p.get("providerId")) == "luckymaps"]
     if len(set(luckymaps)) != len(luckymaps):
         reasons.append("luckymaps identities must be unique")
+    ofm = [p.get("providerRegionId") for p in packages if _provider(p.get("providerId")) == "openfietsmap"]
+    if len(set(ofm)) != len(ofm):
+        reasons.append("openfietsmap identities must be unique")
     for package in packages:
         reasons.extend(f"{package.get('id')}: {reason}" for reason in package_rejections(package))
     return reasons
