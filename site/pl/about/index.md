@@ -51,7 +51,7 @@ Jeśli masz pytania lub uwagi, możesz się ze mną skontaktować tutaj:
 
 Terento jest bezpłatne i takie zostanie. Jeśli Ci pomaga, darowizna pomaga opłacić serwer instalatora webowego i podglądów map oraz członkostwo w programie deweloperskim Apple, którego wymaga aplikacja na Maca. Darowizny niczego nie odblokowują.
 
-[Postaw mi kawę](https://buymeacoffee.com/vooz2)
+[Postaw mi kawę](https://buymeacoffee.com/vooz2) [Daj gwiazdkę na GitHubie](https://github.com/VooZ2/terento)
 
 ## Pisali o Terento
 

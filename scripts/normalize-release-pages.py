@@ -67,6 +67,18 @@ def link(label: str, href: str, event: str, location: str, extra_class: str = ""
             f'data-umami-event-location="{location}">{html.escape(label)}</a>')
 
 
+# "Star on GitHub" (owner 2026-11-21): a plain text link to the repository on Download, About and the
+# web installer's done step only. rel is noopener without noreferrer, so GitHub can show terento.app
+# as the referring site. No separator glyph (Download has no middle dots): the two links share a span that styles.css
+# spaces like other link groups and that wraps as a whole.
+REPOSITORY_URL = "https://github.com/VooZ2/terento"
+
+
+def star_link(label: str, location: str) -> str:
+    return (f'<a class="text-link" href="{REPOSITORY_URL}" target="_blank" rel="noopener" '
+            f'data-umami-event="github-star-click" data-umami-event-location="{location}">{html.escape(label)}</a>')
+
+
 def fill(template: str, **links: str) -> str:
     text = html.escape(template, quote=False)
     for key, value in links.items():
@@ -116,7 +128,8 @@ def render_main(locale: str, release: dict[str, object], dmg_url: str, notes_url
     button = COMPONENTS["store_download"](dmg_url, html.escape(c["download"]), "download-v2-primary", 'rel="noopener noreferrer"')
     # Hero (round 4): H1, lead, Download for Mac beside Apple's badge, one text link. The release
     # line (matches softwareVersion) sits under "What you need"; its "What's new" link opens the
-    # GitHub release page, which shows each file's SHA-256 (round 5: no checksum block here).
+    # GitHub release page, which shows each file's SHA-256 (round 5: no checksum block here), then
+    # "Star on GitHub".
     return (
         '<main id="main-content" class="download-main download-v2"><div class="shell">'
         '<section class="download-v2-hero page-hero page-hero-grid"><div class="hero-copy download-v2-copy">'
@@ -129,7 +142,8 @@ def render_main(locale: str, release: dict[str, object], dmg_url: str, notes_url
         '<section class="col-6 download-v2-needs" aria-labelledby="download-needs-title">'
         f'<h2 id="download-needs-title">{html.escape(c["needs_title"])}</h2>'
         f'<p class="download-release">{release_text} '
-        f'<a class="text-link" href="{notes_url}" rel="noopener noreferrer">{html.escape(c["notes"])}</a></p>'
+        f'<span class="download-release-links"><a class="text-link" href="{notes_url}" rel="noopener noreferrer">{html.escape(c["notes"])}</a>'
+        f' {star_link(c["star"], "download-version")}</span></p>'
         f'<ul class="checklist">{needs}</ul>'
         + link(c["compat_label"], f"{root}compatibility/", "compatibility-link-click", "download-page", " download-info-link")
         + '</section>'

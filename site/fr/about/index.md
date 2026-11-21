@@ -51,7 +51,7 @@ Si vous avez des questions ou des remarques, vous pouvez me joindre ici :
 
 Terento est gratuit et le restera. S’il vous est utile, un don aide à payer le serveur de l’installateur web et des aperçus de cartes, ainsi que l’adhésion développeur Apple nécessaire à l’application Mac. Les dons ne débloquent rien.
 
-[Offrez-moi un café](https://buymeacoffee.com/vooz2)
+[Offrez-moi un café](https://buymeacoffee.com/vooz2) [Ajoutez une étoile sur GitHub](https://github.com/VooZ2/terento)
 
 ## Présenté sur
 

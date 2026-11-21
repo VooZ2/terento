@@ -15,7 +15,7 @@ Terento zeigt eine verbundene Garmin-Uhr unter macOS
 
 ## Das brauchst du
 
-Neueste Version **v1.2.2**, 20. November 2026. [Was ist neu](https://github.com/VooZ2/terento/releases/tag/v1.2.2-build49)
+Neueste Version **v1.2.2**, 20. November 2026. [Was ist neu](https://github.com/VooZ2/terento/releases/tag/v1.2.2-build49) [Auf GitHub einen Stern geben](https://github.com/VooZ2/terento)
 
 - Einen Mac mit Apple Silicon
 - macOS 13 oder neuer

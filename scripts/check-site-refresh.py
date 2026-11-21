@@ -202,7 +202,7 @@ def main(argv: list[str] | None = None) -> int:
             notes.append(f"umami events removed as expected: {sorted(set(removed) & allowed_removed)}")
         if set(removed) - allowed_removed:
             problems.append(f"umami events removed: {sorted(set(removed) - allowed_removed)}")
-        if new_names - {"send-to-computer-click"}:
+        if new_names - {"send-to-computer-click", "github-star-click"}:
             problems.append(f"new umami event names: {sorted(new_names)}")
         if added:
             notes.append(f"umami events added: {added}")

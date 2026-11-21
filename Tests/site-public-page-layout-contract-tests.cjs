@@ -8,7 +8,7 @@ const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "u
 const styles = read("site/styles.css");
 const shellSource = read("site/site-shell.js");
 const languageSource = read("site/language.js");
-const styleVersion = "20261119-site-refresh-v9";
+const styleVersion = "20261121-github-star-v1";
 const mobileLanguageNames = { en: "English", de: "Deutsch", fr: "Français", pl: "Polski", cs: "Čeština", it: "Italiano" };
 
 const cssBlock = (selector) => {
@@ -113,7 +113,9 @@ for (const [locale, contract] of Object.entries(locales)) {
   assert.ok(release, `${locale} release line`);
   assert.ok(release.includes(`<a class="text-link" href="${manifest.releaseNotesURL}" rel="noopener noreferrer">`), `${locale} "What's new" opens the GitHub release page`);
   assert.match(manifest.releaseNotesURL, /^https:\/\/github\.com\/VooZ2\/terento\/releases\/tag\//);
-  if (locale === "en") assert.equal(release.replace(/<[^>]+>/g, ""), "Latest version v1.2.2, November 20, 2026. What’s new");
+  if (locale === "en") assert.equal(release.replace(/<[^>]+>/g, ""), "Latest version v1.2.2, November 20, 2026. What’s new Star on GitHub");
+  assert.ok(release.includes(`<span class="download-release-links"><a class="text-link" href="${manifest.releaseNotesURL}"`), `${locale} "What's new" and "Star on GitHub" wrap together`);
+  assert.ok(release.endsWith(`</a> <a class="text-link" href="https://github.com/VooZ2/terento" target="_blank" rel="noopener" data-umami-event="github-star-click" data-umami-event-location="download-version">${copy.star}</a></span></p>`), `${locale} "Star on GitHub" follows "What's new"`);
   const links = [...main.matchAll(/<a class="text-link( download-info-link)?" href="([^"]+)" data-umami-event="([^"]+)" data-umami-event-location="([^"]+)">/g)].map((m) => [m[2], m[3], m[4], Boolean(m[1])]);
   assert.deepEqual(links, [
     [`${contract.root}install/`, "web-installer-link-click", "download-page", false],
@@ -264,6 +266,41 @@ for (const locale of Object.keys(locales)) {
   assert.match(html, /\/assets\/social\/(?:email|linkedin|reddit|buymeacoffee)\.svg/);
   assert.doesNotMatch(html, /href="mailto:hello@terento\.app"/);
   assert.doesNotMatch(html, /Your device, ready for where you['’]re going|Open source by choice|Open source par choix|Open source od podstaw|Open source jako základ|Open source alla base/);
+}
+
+// "Star on GitHub" (owner 2026-11-21): one plain text link to the repository on Download (release line)
+// and About (donation card) in every locale, with its Umami event and location; no other page and
+// never the Home hero.
+const starLabels = { en: "Star on GitHub", de: "Auf GitHub einen Stern geben", fr: "Ajoutez une étoile sur GitHub", pl: "Daj gwiazdkę na GitHubie", cs: "Dejte hvězdičku na GitHubu", it: "Metti una stella su GitHub" };
+const starPages = new Map();
+for (const locale of Object.keys(locales)) {
+  const prefix = locale === "en" ? "" : `${locale}/`;
+  starPages.set(`site/${prefix}download/index.html`, ["download-version", starLabels[locale]]);
+  starPages.set(`site/${prefix}about/index.html`, ["about-support", starLabels[locale]]);
+}
+const sitePages = [];
+const walk = (dir) => {
+  for (const entry of fs.readdirSync(path.join(root, dir), { withFileTypes: true })) {
+    const relative = `${dir}/${entry.name}`;
+    if (entry.isDirectory()) walk(relative);
+    else if (entry.name.endsWith(".html")) sitePages.push(relative);
+  }
+};
+walk("site");
+for (const page of sitePages) {
+  const html = read(page);
+  const stars = [...html.matchAll(/<a [^>]*data-umami-event="github-star-click"[^>]*>[^<]*<\/a>/g)].map((m) => m[0]);
+  const expected = starPages.get(page);
+  if (!expected) {
+    assert.equal(stars.length, 0, `${page} has no "Star on GitHub" link`);
+    continue;
+  }
+  const [location, label] = expected;
+  assert.deepEqual(stars, [`<a class="text-link" href="https://github.com/VooZ2/terento" target="_blank" rel="noopener" data-umami-event="github-star-click" data-umami-event-location="${location}">${label}</a>`], `${page} has one "Star on GitHub" text link`);
+  if (location === "about-support") {
+    const donate = html.match(/<div class="card about-donate">[\s\S]*?<\/div>/)[0];
+    assert.match(donate, /data-umami-event="donate"[^>]*>[\s\S]*?<\/a>\s*<a class="text-link" href="https:\/\/github\.com\/VooZ2\/terento"/, `${page} "Star on GitHub" sits beside the coffee link`);
+  }
 }
 
 console.log("Public page intro and Download link layout contracts passed for all six locales.");
