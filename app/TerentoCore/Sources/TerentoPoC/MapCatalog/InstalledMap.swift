@@ -127,6 +127,7 @@ struct GarminIMGMetadataParser: Sendable {
 
         if let metadata = mapRandoMetadata(bytes) { return metadata }
         if let metadata = OSMapaIMGMetadata.metadata(bytes) { return metadata }
+        if let metadata = OpenFietsMapIMGMetadata.metadata(bytes) { return metadata }
         if let metadata = BBBikeIMGMetadata.standaloneMetadata(bytes) { return metadata }
 
         let description = text(bytes, offset: 0x49, length: 20)
@@ -1063,6 +1064,56 @@ enum LuckyMapsIMGMetadata {
                 rawVersion: nil, version: nil, identifier: title, productId: nil, familyId: nil
             )
         }
+    }
+}
+
+/// OpenFietsMap headers name the map in the description (`OFM_BNL(21-11-2026)`,
+/// `OFM(EU2026_C)`, `OFM_Island`), carry the build date at 0x39 and name one
+/// MDR family ID. A map is recognized only when title and family ID are one
+/// reviewed package; anything else is left to the generic parser.
+enum OpenFietsMapIMGMetadata {
+    static func title(_ bytes: [UInt8]) -> String? {
+        guard OSMapaIMGMetadata.isGarminIMG(bytes) else { return nil }
+        func trimmed(_ field: ArraySlice<UInt8>) -> [UInt8] {
+            var value = Array(field)
+            while let last = value.last, last == 0x20 || last == 0 { value.removeLast() }
+            return value
+        }
+        let first = trimmed(bytes[0x49..<0x5D])
+        let continuation = trimmed(bytes[0x65..<0x83])
+        let title: [UInt8]
+        if first.count == 20 {
+            title = first + continuation
+        } else {
+            guard continuation.isEmpty else { return nil }
+            title = first
+        }
+        guard title.starts(with: Array("OFM".utf8)) else { return nil }
+        return String(bytes: title, encoding: .ascii)
+    }
+
+    /// The package key a header names, from its title and MDR family ID.
+    static func key(title: String, familyIDs: Set<UInt16>) -> String? {
+        guard familyIDs.count == 1, let family = familyIDs.first else { return nil }
+        for area in OpenFietsMapProviderAdapter.fixedAreas where area.familyID == family {
+            guard let groups = OpenFietsMapProviderAdapter.fullMatch(area.title, title) else { continue }
+            if let text = groups.first ?? nil, OpenFietsMapProviderAdapter.day(text) == nil { return nil }
+            return area.key
+        }
+        guard let groups = OpenFietsMapProviderAdapter.fullMatch(#"OFM\(EU(20[0-9]{2})_(GB|N|W|C|SW|SE|E)\)"#, title),
+              groups.count == 2, let yearText = groups[0], let year = Int(yearText), let area = groups[1],
+              OpenFietsMapProviderAdapter.europeFamilyID(year: year, area: area) == family else { return nil }
+        return "europe-" + area.lowercased()
+    }
+
+    static func metadata(_ bytes: [UInt8]) -> GarminIMGMetadata? {
+        guard let title = title(bytes), let version = OSMapaIMGMetadata.version(bytes), version.day != nil,
+              let key = key(title: title, familyIDs: OSMapaIMGMetadata.mdrFamilyIDs(bytes)) else { return nil }
+        return GarminIMGMetadata(
+            name: "OpenFietsMap \(title)", provider: "OpenFietsMap", region: key.uppercased(),
+            family: "OpenFietsMap", rawVersion: version.description, version: version,
+            identifier: title, productId: nil, familyId: OSMapaIMGMetadata.mdrFamilyIDs(bytes).first
+        )
     }
 }
 

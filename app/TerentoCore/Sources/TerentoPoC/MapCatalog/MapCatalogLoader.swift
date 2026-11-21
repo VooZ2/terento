@@ -495,6 +495,12 @@ struct MapCatalogClientCompatibilityValidator: Sendable {
                 && package.mainArtifact?.carriesSourceProof == false
                 && package.mainArtifact?.sourceURL.flatMap(LuckyMapsProviderAdapter.reviewedSource) == package.providerRegionId
         }
+        if MapIdentity.normalizeProvider(package.providerId) == "openfietsmap",
+           package.mainArtifact?.validationState == .unavailable {
+            return OpenFietsMapProviderAdapter.validIdentity(package) && package.artifacts.count == 1
+                && package.mainArtifact?.carriesSourceProof == false
+                && package.mainArtifact?.sourceURL.flatMap(OpenFietsMapProviderAdapter.reviewedSource)?.key == package.providerRegionId
+        }
         let providerID = MapIdentity.normalizeProvider(package.providerId)
         guard let adapter = providerRegistry.adapter(for: providerID),
               let sourcePolicy = sourcePolicyRegistry.policy(for: providerID),
@@ -519,10 +525,10 @@ struct MapCatalogClientCompatibilityValidator: Sendable {
         )
     }
 
-    /// Two BBBike, OSMapaPL or Lucky Maps packages claiming one IMG identity
-    /// are ambiguous; neither can be installed safely.
+    /// Two BBBike, OSMapaPL, Lucky Maps or OpenFietsMap packages claiming one
+    /// IMG identity are ambiguous; neither can be installed safely.
     private func duplicateBBBikeIdentityPackageIDs(_ packages: [MapPackage]) -> Set<String> {
-        let bbbike = packages.filter { ["bbbike", "osmapa", "luckymaps"].contains(MapIdentity.normalizeProvider($0.providerId)) }
+        let bbbike = packages.filter { ["bbbike", "osmapa", "luckymaps", "openfietsmap"].contains(MapIdentity.normalizeProvider($0.providerId)) }
         let grouped = Dictionary(grouping: bbbike.compactMap { package in
             package.identity.map { ($0, package.id) }
         }, by: \.0)

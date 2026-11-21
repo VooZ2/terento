@@ -238,7 +238,13 @@ each file (map and optional `-ct` contour add-on) to its URL, size, title,
 creation day and Garmin family ID, and the Mac rechecks size, header, MDR and
 MPS family, area and publisher (and SHA-256 once published) before writing.
 On rescan a Lucky Maps file is Terento's only through its exact manifest
-record; the same bytes under another name stay an outside map. OpenTopoMap
+record; the same bytes under another name stay an outside map. OpenFietsMap
+(catalog-v6, provider PAUSED until activated) publishes GPS ZIP archives with
+one `gmapsupp.img` beside readme files; before extraction the Mac checks the
+archive's central directory (reviewed payload path, CRC-32 and size, only
+reviewed side files, no second IMG), then the whole IMG's size, CRC-32,
+header title, build day and MDR family ID. Its titles name the map, so an
+OpenFietsMap file on a watch is recognized from its header. OpenTopoMap
 and Lucky Maps contours are optional source-validated components, not a
 Debug-only feature.
 Compatible local IMG imports have no automatic provider update path.
@@ -524,7 +530,7 @@ code fix. No new release or API deployment is implied. See
 ## Catalog and privacy contracts
 
 The current app uses `/maps/catalog-v6.json` (1.3.0 and later: v5 plus Lucky
-Maps); 1.1.0 to 1.2.x use `/maps/catalog-v5.json` and 1.0.1 used
+Maps and OpenFietsMap); 1.1.0 to 1.2.x use `/maps/catalog-v5.json` and 1.0.1 used
 `/maps/catalog-v4.json`. Legacy v2 to v5 routes retain
 provider sets understood by older clients. The full bundled fallback is a
 native decoder projection; it must not be silently rewritten into an API schema.
