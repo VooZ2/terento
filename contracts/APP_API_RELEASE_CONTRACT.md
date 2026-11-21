@@ -12,6 +12,11 @@ inserted `PAUSED`; activating it is a separate owner decision. When 1.3.0 is
 published, add its tag to `contracts/released-catalog-clients.json` with
 `catalog-v6.json`.
 
+OpenFietsMap (`openfietsmap`, migration 098) joins the same catalog-v6
+projection, also inserted `PAUSED`: 15 GPS packages from the author's server,
+each proof binding the ZIP payload path, CRC-32, IMG title, build day and
+Garmin family ID. The live-catalog gate allows `openfietsmap` in v6 only.
+
 ## 1.2.3 server-first acceptance
 
 Not deployed yet. Deploy and verify this API before any client that sends it

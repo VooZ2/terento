@@ -91,6 +91,7 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
     let sourceProof: BBBikeSourceProof?
     let osmapaSourceProof: OSMapaSourceProof?
     let luckyMapsSourceProof: LuckyMapsSourceProof?
+    let openFietsMapSourceProof: OpenFietsMapSourceProof?
     /// The catalog sent a non-null `sourceProof`, even one neither proof type
     /// could decode. An unavailable artifact must not carry one at all.
     let carriesSourceProof: Bool
@@ -114,6 +115,7 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
         sourceProof: BBBikeSourceProof? = nil,
         osmapaSourceProof: OSMapaSourceProof? = nil,
         luckyMapsSourceProof: LuckyMapsSourceProof? = nil,
+        openFietsMapSourceProof: OpenFietsMapSourceProof? = nil,
         carriesSourceProof: Bool? = nil
     ) {
         self.id = id
@@ -134,8 +136,10 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
         self.sourceProof = sourceProof
         self.osmapaSourceProof = osmapaSourceProof
         self.luckyMapsSourceProof = luckyMapsSourceProof
+        self.openFietsMapSourceProof = openFietsMapSourceProof
         self.carriesSourceProof = carriesSourceProof
-            ?? (sourceProof != nil || osmapaSourceProof != nil || luckyMapsSourceProof != nil)
+            ?? (sourceProof != nil || osmapaSourceProof != nil || luckyMapsSourceProof != nil
+                || openFietsMapSourceProof != nil)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -178,6 +182,7 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
             sourceProof: try? container.decodeIfPresent(BBBikeSourceProof.self, forKey: .sourceProof),
             osmapaSourceProof: try? container.decodeIfPresent(OSMapaSourceProof.self, forKey: .sourceProof),
             luckyMapsSourceProof: try? container.decodeIfPresent(LuckyMapsSourceProof.self, forKey: .sourceProof),
+            openFietsMapSourceProof: try? container.decodeIfPresent(OpenFietsMapSourceProof.self, forKey: .sourceProof),
             carriesSourceProof: container.contains(.sourceProof) && (try? container.decodeNil(forKey: .sourceProof)) == false
         )
     }
@@ -205,6 +210,8 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
             try container.encode(osmapaSourceProof, forKey: .sourceProof)
         } else if let luckyMapsSourceProof {
             try container.encode(luckyMapsSourceProof, forKey: .sourceProof)
+        } else if let openFietsMapSourceProof {
+            try container.encode(openFietsMapSourceProof, forKey: .sourceProof)
         } else if carriesSourceProof {
             // Keep the marker: an undecodable proof re-decodes as carried.
             try container.encode([String: String](), forKey: .sourceProof)
@@ -364,7 +371,8 @@ struct MapProviderRegistry: Sendable {
         MapRandoProviderAdapter(),
         BBBikeProviderAdapter(),
         OSMapaProviderAdapter(),
-        LuckyMapsProviderAdapter()
+        LuckyMapsProviderAdapter(),
+        OpenFietsMapProviderAdapter()
     ])
 
     init(adapters: [any MapProviderAdapter]) {
@@ -946,7 +954,7 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
         // Existing providers retain their reviewed catalog contract, including
         // source-unavailable MapRando rows. BBBike and OSMapaPL unavailable source
         // metadata is visible but never a usable install artifact.
-        if ["bbbike", "osmapa", "luckymaps"].contains(MapIdentity.normalizeProvider(providerId)),
+        if ["bbbike", "osmapa", "luckymaps", "openfietsmap"].contains(MapIdentity.normalizeProvider(providerId)),
            mainArtifact.validationState == .unavailable || mainArtifact.validationState == .failed { return false }
         return mainArtifact.sourceURL != nil || mainArtifact.localURL != nil
     }
@@ -1260,6 +1268,7 @@ enum MapProviderDisplay {
         case "bbbike": return "BBBike"
         case "osmapa": return "OSMapaPL"
         case "luckymaps": return "Lucky Maps"
+        case "openfietsmap": return "OpenFietsMap"
         default: return "The map provider"
         }
     }
@@ -1719,5 +1728,216 @@ struct LuckyMapsProviderAdapter: MapProviderAdapter, Sendable {
             for family in families { owners[family, default: []].append(package.id) }
         }
         return Set(owners.values.filter { $0.count > 1 }.flatMap { $0 })
+    }
+}
+
+/// Catalog proof for one OpenFietsMap GPS archive. The server measured the
+/// ZIP central directory and the first 4 KiB of the IMG; the client binds the
+/// downloaded archive and the whole extracted IMG (size, CRC-32, header title,
+/// creation date and MDR family ID) to it again before any watch write.
+struct OpenFietsMapSourceProof: Codable, Equatable, Sendable {
+    let sourceURL: URL
+    let etag: String
+    let lastModified: String
+    let downloadSizeBytes: UInt64
+    let installSizeBytes: UInt64
+    let payloadPath: String
+    let crc32: String
+    let sourceIdentity: String
+    let area: String
+    let mapType: String
+    let familyId: UInt16
+    let imgTitle: String
+    let generatedAt: String
+    let headerIdentityValidated: Bool
+    let revision: String
+}
+
+/// One reviewed OpenFietsMap GPS download: its package key, the payload path
+/// inside the archive, the Garmin family ID and the IMG title rule.
+struct OpenFietsMapSource: Equatable, Sendable {
+    let key: String
+    let payloadPath: String
+    let familyID: UInt16
+    /// Full-match pattern for the IMG title; group 1 is a `dd-mm-yyyy` date when present.
+    let titlePattern: String
+    /// The date in the file name, or the Europe release folder date.
+    let publishedDate: MapVersion?
+    /// Set for the yearly Europe areas.
+    let europeYear: Int?
+}
+
+/// OpenFietsMap (openfietsmap.nl, author's written permission 2026-11-21)
+/// publishes GPS ZIP archives with one `gmapsupp.img` and a few readme files.
+/// Titles name the map (`OFM_BNL(21-11-2026)`, `OFM(EU2026_C)`), so a map on
+/// a watch is recognized from its header and MDR family ID. Europe areas get
+/// a new folder and family ID (year × 10 + area) every year; the package key
+/// stays, so an update replaces the managed file of the same key.
+struct OpenFietsMapProviderAdapter: MapProviderAdapter, Sendable {
+    let id = "openfietsmap"
+    static let sourceHost = "ligfietser.dev.openstreetmap.org"
+    static let rootPath = "/openfietsmap/"
+    static let maximumIMGBytes: UInt64 = 4_294_967_295
+    static let datePattern = "([0-9]{2}-[0-9]{2}-20[0-9]{2})"
+    static let europeAreas = ["gb", "n", "w", "c", "sw", "se", "e"]
+
+    /// key, path below `/openfietsmap/`, payload, family ID, title pattern, map type.
+    static let fixedAreas: [(key: String, path: String, payload: String, familyID: UInt16, title: String, mapType: String)] = [
+        ("benelux", #"benelux/full/OpenFietsMap\.zip"#, "gmapsupp.img", 10010, #"OFM_BNL\("# + datePattern + #"\)"#, "ofm-full"),
+        ("benelux-light", #"benelux/light/OpenFietsMap_light\.zip"#, "gmapsupp.img", 20010, #"OFM_light\("# + datePattern + #"\)"#, "ofm-light"),
+        ("benelux-hiking", #"benelux/hike/gmapsupp\.zip"#, "gmapsupp.img", 50010, #"OFM_hike\("# + datePattern + #"\)"#, "ofm-hiking"),
+        ("germany", #"germany/OFM_DE\("# + datePattern + #"_gps\)\.zip"#, "Garmin/gmapsupp.img", 4900, #"OFM_DE\("# + datePattern + #"\)"#, "ofm-full"),
+        ("alps", #"Alps/OFM_Alps\("# + datePattern + #"_gps\)\.zip"#, "Garmin/gmapsupp.img", 4143, #"OFM_Alps\("# + datePattern + #"\)"#, "ofm-full"),
+        ("atlantic", #"Atlantic/OFM_Atlantic\("# + datePattern + #"_gps\)\.zip"#, "garmin/gmapsupp.img", 34351, #"OFM_Atlantic"#, "ofm-full"),
+        ("baleares", #"Baleares/OFM_Baleares\("# + datePattern + #"_gps\)\.zip"#, "garmin/gmapsupp.img", 34971, #"OFM_Baleares"#, "ofm-full"),
+        ("iceland", #"Iceland/OFM_Iceland\("# + datePattern + #"_gps\)\.zip"#, "garmin/gmapsupp.img", 35400, #"OFM_Island"#, "ofm-full"),
+    ]
+    static let europePathPattern = #"EU_(20[0-9]{2})/([0-9]{4})/GPS/OFM\(EU(20[0-9]{2})_(GB|N|W|C|SW|SE|E)_GPS\)\.zip"#
+
+    static var keys: Set<String> {
+        Set(fixedAreas.map(\.key) + europeAreas.map { "europe-" + $0 })
+    }
+
+    static func mapType(forKey key: String) -> String? {
+        if let area = fixedAreas.first(where: { $0.key == key }) { return area.mapType }
+        return europeAreas.contains(where: { "europe-" + $0 == key }) ? "ofm-full" : nil
+    }
+
+    static func europeFamilyID(year: Int, area: String) -> UInt16? {
+        guard let index = europeAreas.firstIndex(of: area.lowercased()), (2000...6000).contains(year) else { return nil }
+        return UInt16(year * 10 + index + 1)
+    }
+
+    /// Full-string regular expression match; returns the capture groups.
+    static func fullMatch(_ pattern: String, _ text: String) -> [String?]? {
+        guard let regex = try? NSRegularExpression(pattern: "^(?:" + pattern + ")$"),
+              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) else { return nil }
+        return (1..<match.numberOfRanges).map { index in
+            Range(match.range(at: index), in: text).map { String(text[$0]) }
+        }
+    }
+
+    /// `21-11-2026` → 2026-11-21, rejecting impossible dates.
+    static func day(_ text: String) -> MapVersion? {
+        let parts = text.split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 3 else { return nil }
+        var components = DateComponents()
+        components.calendar = Calendar(identifier: .gregorian)
+        components.timeZone = TimeZone(identifier: "UTC")
+        (components.year, components.month, components.day) = (parts[2], parts[1], parts[0])
+        guard components.isValidDate else { return nil }
+        return MapVersion(year: parts[2], month: parts[1], day: parts[0])
+    }
+
+    /// The reviewed source of a URL: HTTPS on the author's host, below
+    /// `/openfietsmap/`, one of the reviewed GPS file names, no query, port or escapes.
+    static func reviewedSource(_ url: URL) -> OpenFietsMapSource? {
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              components.scheme == "https", components.host == sourceHost,
+              components.user == nil, components.password == nil, components.port == nil,
+              components.query == nil, components.fragment == nil,
+              !url.absoluteString.contains("%"), components.path.hasPrefix(rootPath) else { return nil }
+        let path = String(components.path.dropFirst(rootPath.count))
+        for area in fixedAreas {
+            guard let groups = fullMatch(area.path, path) else { continue }
+            var published: MapVersion?
+            if let text = groups.first ?? nil {
+                guard let value = day(text) else { return nil }
+                published = value
+            }
+            return OpenFietsMapSource(key: area.key, payloadPath: area.payload, familyID: area.familyID,
+                                      titlePattern: area.title, publishedDate: published, europeYear: nil)
+        }
+        guard let groups = fullMatch(europePathPattern, path), groups.count == 4,
+              let yearText = groups[0], let folder = groups[1], groups[2] == yearText, let area = groups[3],
+              let year = Int(yearText), let family = europeFamilyID(year: year, area: area),
+              let month = Int(folder.prefix(2)), let dayOfMonth = Int(folder.suffix(2)),
+              let published = day(String(format: "%02d-%02d-%04d", dayOfMonth, month, year)) else { return nil }
+        return OpenFietsMapSource(key: "europe-" + area.lowercased(), payloadPath: "garmin/gmapsupp.img",
+                                  familyID: family, titlePattern: NSRegularExpression.escapedPattern(for: "OFM(EU\(year)_\(area))"),
+                                  publishedDate: published, europeYear: year)
+    }
+
+    static func validIdentity(_ package: MapPackage) -> Bool {
+        let key = package.providerRegionId
+        return MapIdentity.normalizeProvider(package.providerId) == "openfietsmap"
+            && keys.contains(key)
+            && package.id == "openfietsmap-" + key
+            && package.canonicalRegionId == key.uppercased()
+            && package.regionId == key.uppercased()
+            && package.mapType == mapType(forKey: key)
+            && !package.countryCodes.isEmpty
+            && !package.countryCodes.contains(where: { $0.uppercased() == "RU" })
+            && package.version.day != nil
+    }
+
+    /// The release date of a header title for this source, cross-checked as
+    /// the server does: Europe areas are built up to three days after their
+    /// folder date; other files carry one date in the title and/or file name.
+    static func releaseDate(title: String, source: OpenFietsMapSource) -> MapVersion?? {
+        guard let groups = fullMatch(source.titlePattern, title) else { return nil }
+        if source.europeYear != nil { return .some(nil) }
+        var published = source.publishedDate
+        if let text = groups.first ?? nil {
+            guard let titleDate = day(text), published == nil || published == titleDate else { return nil }
+            published = titleDate
+        }
+        return .some(published)
+    }
+
+    static func dayDistance(from start: MapVersion, to end: MapVersion) -> Int? {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        func date(_ version: MapVersion) -> Date? {
+            guard let day = version.day else { return nil }
+            return calendar.date(from: DateComponents(year: version.year, month: version.month, day: day))
+        }
+        guard let first = date(start), let second = date(end) else { return nil }
+        return calendar.dateComponents([.day], from: first, to: second).day
+    }
+
+    /// The package release must match the published dates of its source.
+    static func releaseMatches(_ version: MapVersion, title: String, source: OpenFietsMapSource) -> Bool {
+        guard let published = releaseDate(title: title, source: source) else { return false }
+        if source.europeYear != nil {
+            guard let folder = source.publishedDate, let distance = dayDistance(from: folder, to: version) else { return false }
+            return (0...3).contains(distance)
+        }
+        return published == version
+    }
+
+    func canonicalRegionIdentity(for package: MapPackage) -> CanonicalMapRegionIdentity? {
+        if package.countryCodes.contains(where: { $0.uppercased() == "RU" }) {
+            return CanonicalMapRegionIdentity(countryCode: "RU")
+        }
+        return package.countryCodes.first.map { CanonicalMapRegionIdentity(countryCode: $0) }
+    }
+
+    func expectedIMGIdentity(for package: MapPackage) -> MapIdentity? {
+        guard Self.validIdentity(package), package.artifacts.count == 1,
+              let artifact = package.mainArtifact, artifact.required,
+              artifact.validationState == .validated,
+              artifact.sourceProof == nil, artifact.osmapaSourceProof == nil, artifact.luckyMapsSourceProof == nil,
+              let proof = artifact.openFietsMapSourceProof,
+              proof.sourceURL == package.downloadURL, artifact.sourceURL == proof.sourceURL,
+              let source = Self.reviewedSource(proof.sourceURL), source.key == package.providerRegionId,
+              Self.releaseMatches(package.version, title: proof.imgTitle, source: source),
+              proof.etag.hasPrefix("\""), proof.etag.hasSuffix("\""), proof.etag.count > 2,
+              !proof.lastModified.isEmpty,
+              ISO8601DateFormatter().date(from: proof.generatedAt) != nil,
+              proof.generatedAt.hasPrefix(package.version.description + "T"),
+              proof.sourceIdentity == "openfietsmap:\(source.key)",
+              proof.area == source.key, proof.mapType == package.mapType,
+              proof.familyId == source.familyID,
+              proof.headerIdentityValidated,
+              proof.payloadPath == source.payloadPath,
+              proof.downloadSizeBytes == package.expectedDownloadSizeBytes,
+              proof.installSizeBytes == package.installSizeBytes,
+              proof.downloadSizeBytes > 0, proof.installSizeBytes >= 0x1000,
+              proof.installSizeBytes <= Self.maximumIMGBytes,
+              artifact.checksum == nil,
+              proof.crc32.range(of: #"^[0-9a-f]{8}$"#, options: .regularExpression) != nil,
+              proof.revision.range(of: #"^[a-f0-9]{64}$"#, options: .regularExpression) != nil else { return nil }
+        return package.identity
     }
 }

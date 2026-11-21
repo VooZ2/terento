@@ -47,7 +47,9 @@ struct MapSourceValidator: Sendable {
     ) throws -> ValidatedMapSource {
         let isBBBike = MapIdentity.normalizeProvider(expectedPackage.providerId) == "bbbike"
         let isOSMapa = MapIdentity.normalizeProvider(expectedPackage.providerId) == "osmapa"
-        let inspected = try inspect(fileURL: fileURL, computeMD5: isBBBike, computeCRC32: isOSMapa, onProgress: onProgress)
+        let isOpenFietsMap = MapIdentity.normalizeProvider(expectedPackage.providerId) == "openfietsmap"
+        let inspected = try inspect(fileURL: fileURL, computeMD5: isBBBike, computeCRC32: isOSMapa || isOpenFietsMap,
+                                    onProgress: onProgress)
         if isBBBike {
             return try validateBBBike(fileURL: fileURL, expectedPackage: expectedPackage, inspected: inspected)
         }
@@ -56,6 +58,9 @@ struct MapSourceValidator: Sendable {
         }
         if MapIdentity.normalizeProvider(expectedPackage.providerId) == "luckymaps" {
             return try validateLuckyMaps(fileURL: fileURL, expectedPackage: expectedPackage, inspected: inspected)
+        }
+        if isOpenFietsMap {
+            return try validateOpenFietsMap(fileURL: fileURL, expectedPackage: expectedPackage, inspected: inspected)
         }
 
         guard let metadata = parser.parse(
@@ -176,6 +181,28 @@ struct MapSourceValidator: Sendable {
             throw MapSourceValidationError.identityMismatch
         }
         guard artifact.kind == .contours || metadata.version == package.version else {
+            throw MapSourceValidationError.versionMismatch
+        }
+        return ValidatedMapSource(url: fileURL, sizeBytes: inspected.sizeBytes, sha256: inspected.sha256, metadata: metadata)
+    }
+
+    /// The whole IMG is bound to the catalog proof: size and CRC-32 of the
+    /// author's file, its header title, the MDR family ID of the package and
+    /// a creation date equal to the package release.
+    private func validateOpenFietsMap(fileURL: URL, expectedPackage package: MapPackage,
+        inspected: InspectedSource) throws -> ValidatedMapSource {
+        guard OpenFietsMapProviderAdapter().expectedIMGIdentity(for: package) != nil,
+              let proof = package.mainArtifact?.openFietsMapSourceProof,
+              fileURL.lastPathComponent == proof.payloadPath.split(separator: "/").last.map(String.init),
+              inspected.sizeBytes == proof.installSizeBytes,
+              inspected.crc32 == proof.crc32,
+              OpenFietsMapIMGMetadata.title(inspected.prefix) == proof.imgTitle,
+              OSMapaIMGMetadata.mdrFamilyIDs(inspected.prefix) == [proof.familyId],
+              let metadata = OpenFietsMapIMGMetadata.metadata(inspected.prefix),
+              MapIdentity.normalizeRegion(metadata.region ?? "") == MapIdentity.normalizeRegion(package.canonicalRegionId) else {
+            throw MapSourceValidationError.identityMismatch
+        }
+        guard metadata.version == package.version else {
             throw MapSourceValidationError.versionMismatch
         }
         return ValidatedMapSource(url: fileURL, sizeBytes: inspected.sizeBytes, sha256: inspected.sha256, metadata: metadata)

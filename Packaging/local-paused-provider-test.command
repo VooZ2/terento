@@ -11,6 +11,6 @@ fi
 
 # The only supported way to install a provider the server still holds PAUSED
 # from a local Debug artifact. Release builds ignore this variable.
-export TERENTO_DEBUG_UNPAUSE_PROVIDERS="${TERENTO_DEBUG_UNPAUSE_PROVIDERS:-luckymaps}"
+export TERENTO_DEBUG_UNPAUSE_PROVIDERS="${TERENTO_DEBUG_UNPAUSE_PROVIDERS:-luckymaps,openfietsmap}"
 
 exec "$app/Contents/MacOS/Terento"

@@ -65,7 +65,7 @@ if sys.argv[2].endswith('/maps/catalog-v5.json'):
         raise SystemExit('v5 catalog must not expose providers unknown to 1.1.0 clients')
 if sys.argv[2].endswith('/maps/catalog-v6.json'):
     ids = {provider.get('id') for provider in providers}
-    if ids - {'freizeitkarte', 'opentopomap', 'maprando', 'bbbike', 'osmapa', 'luckymaps'}:
+    if ids - {'freizeitkarte', 'opentopomap', 'maprando', 'bbbike', 'osmapa', 'luckymaps', 'openfietsmap'}:
         raise SystemExit('v6 catalog must not expose providers unknown to 1.3.0 clients')
 for provider in providers:
     print(f"Catalog provider {provider.get('id', '<missing>')}: {len(provider.get('maps', []))} maps")
