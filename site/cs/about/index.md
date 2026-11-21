@@ -51,7 +51,7 @@ Pokud máte otázky nebo zpětnou vazbu, můžete se mi ozvat tady:
 
 Terento je zdarma a zdarma zůstane. Pokud vám pomáhá, příspěvek pomůže zaplatit server pro webový instalátor a náhledy map a také členství v Apple Developer Program, které aplikace pro Mac potřebuje. Příspěvky nic neodemykají.
 
-[Kupte mi kávu](https://buymeacoffee.com/vooz2)
+[Kupte mi kávu](https://buymeacoffee.com/vooz2) [Dejte hvězdičku na GitHubu](https://github.com/VooZ2/terento)
 
 ## Psali o Terento
 

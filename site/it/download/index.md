@@ -15,7 +15,7 @@ Terento mostra uno smartwatch Garmin collegato su macOS
 
 ## Cosa ti serve
 
-Ultima versione **v1.2.2**, il 20 novembre 2026. [Novità](https://github.com/VooZ2/terento/releases/tag/v1.2.2-build49)
+Ultima versione **v1.2.2**, il 20 novembre 2026. [Novità](https://github.com/VooZ2/terento/releases/tag/v1.2.2-build49) [Metti una stella su GitHub](https://github.com/VooZ2/terento)
 
 - Un Mac con Apple Silicon
 - macOS 13 o successivo

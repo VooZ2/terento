@@ -18,7 +18,7 @@ REDDIT_URL = "https://www.reddit.com/user/MrDonas/"
 BASE_URL = "https://terento.app"
 ABOUT_SLUG = "about/"
 SHELL_VERSION = "20260905-in-page-language-v1"
-STYLE_VERSION = "20261119-site-refresh-v9"
+STYLE_VERSION = "20261121-github-star-v1"
 UMAMI_SCRIPT_VERSION = "20261114-umami-monitoring"
 SOCIAL_IMAGE = "/assets/social/terento-og.png"
 EMAIL_ADDRESS = "hello@terento.app"
@@ -65,6 +65,7 @@ COPY = {
         "email": "Email",
         "donate_text": "Terento is free and stays free. If it helps you, a donation helps pay for the server behind the web installer and map previews, and for the Apple developer membership the Mac app needs. Donations don’t unlock anything.",
         "donate": "Buy me a coffee",
+        "star": "Star on GitHub",
         "main_heading": "What Terento is, and what it isn’t",
         "is_title": "What it is",
         "is_items": [
@@ -109,6 +110,7 @@ COPY = {
         "email": "E-Mail",
         "donate_text": "Terento ist kostenlos und bleibt es. Wenn es dir hilft, trägt eine Spende den Server hinter dem Web-Installer und den Kartenvorschauen sowie die Apple-Entwicklermitgliedschaft, die die Mac-App braucht. Spenden schalten nichts frei.",
         "donate": "Spendier mir einen Kaffee",
+        "star": "Auf GitHub einen Stern geben",
         "main_heading": "Was Terento ist und was nicht",
         "is_title": "Was es ist",
         "is_items": [
@@ -153,6 +155,7 @@ COPY = {
         "email": "E-mail",
         "donate_text": "Terento est gratuit et le restera. S’il vous est utile, un don aide à payer le serveur de l’installateur web et des aperçus de cartes, ainsi que l’adhésion développeur Apple nécessaire à l’application Mac. Les dons ne débloquent rien.",
         "donate": "Offrez-moi un café",
+        "star": "Ajoutez une étoile sur GitHub",
         "main_heading": "Ce qu’est Terento, et ce qu’il n’est pas",
         "is_title": "Ce qu’il est",
         "is_items": [
@@ -197,6 +200,7 @@ COPY = {
         "email": "E-mail",
         "donate_text": "Terento jest bezpłatne i takie zostanie. Jeśli Ci pomaga, darowizna pomaga opłacić serwer instalatora webowego i podglądów map oraz członkostwo w programie deweloperskim Apple, którego wymaga aplikacja na Maca. Darowizny niczego nie odblokowują.",
         "donate": "Postaw mi kawę",
+        "star": "Daj gwiazdkę na GitHubie",
         "main_heading": "Czym Terento jest, a czym nie jest",
         "is_title": "Czym jest",
         "is_items": [
@@ -241,6 +245,7 @@ COPY = {
         "email": "E-mail",
         "donate_text": "Terento je zdarma a zdarma zůstane. Pokud vám pomáhá, příspěvek pomůže zaplatit server pro webový instalátor a náhledy map a také členství v Apple Developer Program, které aplikace pro Mac potřebuje. Příspěvky nic neodemykají.",
         "donate": "Kupte mi kávu",
+        "star": "Dejte hvězdičku na GitHubu",
         "main_heading": "Co Terento je a co není",
         "is_title": "Co je",
         "is_items": [
@@ -285,6 +290,7 @@ COPY = {
         "email": "Email",
         "donate_text": "Terento è gratuito e lo resterà. Se ti è utile, una donazione aiuta a pagare il server dell’installer web e delle anteprime delle mappe, e l’iscrizione da sviluppatore Apple di cui ha bisogno l’app Mac. Le donazioni non sbloccano nulla.",
         "donate": "Offrimi un caffè",
+        "star": "Metti una stella su GitHub",
         "main_heading": "Cos’è Terento, e cosa non è",
         "is_title": "Cos’è",
         "is_items": [
@@ -414,9 +420,11 @@ def render(locale: str, copy: dict[str, object]) -> str:
             </div>
           </div>'''
     # Round 6 (owner): the donation block is a card in the right third, top-aligned with the story.
+    # "Star on GitHub" (owner 2026-11-21) is the free way to support: a text link beside the coffee link.
     donate = f'''        <div class="card about-donate">
           <p>{esc(copy["donate_text"])}</p>
           <a class="about-social-link about-social-link--donate" href="https://buymeacoffee.com/vooz2" target="_blank" rel="noopener noreferrer" data-umami-event="donate" data-umami-event-location="about-story" data-umami-event-channel="donate"><img src="/assets/social/buymeacoffee.svg" alt="" width="16" height="16"><span>{esc(copy["donate"])}</span></a>
+          <a class="text-link" href="https://github.com/VooZ2/terento" target="_blank" rel="noopener" data-umami-event="github-star-click" data-umami-event-location="about-support">{esc(copy["star"])}</a>
         </div>'''
     return f'''<!doctype html>
 <html lang="{locale}" data-language="{locale}" data-page="about">

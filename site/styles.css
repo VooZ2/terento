@@ -4709,6 +4709,12 @@ a.chip {
   margin: 0 0 20px;
 }
 
+/* "Star on GitHub" after "What's new" (owner 2026-11-21): two plain text links, spaced like the other
+   link groups, with no separator glyph. */
+#main-content .download-v2 .download-release .text-link + .text-link {
+  margin-inline-start: 16px;
+}
+
 /* Phones: the "Last install" line wraps instead of cutting the date. */
 @media (max-width: 640px) {
   .watch-card .watch-card-meta {

@@ -15,7 +15,7 @@ Terento zobrazuje připojené hodinky Garmin v macOS
 
 ## Co budete potřebovat
 
-Nejnovější verze **v1.2.2**, 20. listopadu 2026. [Co je nového](https://github.com/VooZ2/terento/releases/tag/v1.2.2-build49)
+Nejnovější verze **v1.2.2**, 20. listopadu 2026. [Co je nového](https://github.com/VooZ2/terento/releases/tag/v1.2.2-build49) [Dejte hvězdičku na GitHubu](https://github.com/VooZ2/terento)
 
 - Mac s Apple Silicon
 - macOS 13 nebo novější

@@ -51,7 +51,7 @@ Se hai domande o feedback, puoi contattarmi qui:
 
 Terento è gratuito e lo resterà. Se ti è utile, una donazione aiuta a pagare il server dell’installer web e delle anteprime delle mappe, e l’iscrizione da sviluppatore Apple di cui ha bisogno l’app Mac. Le donazioni non sbloccano nulla.
 
-[Offrimi un caffè](https://buymeacoffee.com/vooz2)
+[Offrimi un caffè](https://buymeacoffee.com/vooz2) [Metti una stella su GitHub](https://github.com/VooZ2/terento)
 
 ## In evidenza su
 

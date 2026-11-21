@@ -51,7 +51,7 @@ If you have questions or feedback, you can reach me here:
 
 Terento is free and stays free. If it helps you, a donation helps pay for the server behind the web installer and map previews, and for the Apple developer membership the Mac app needs. Donations don’t unlock anything.
 
-[Buy me a coffee](https://buymeacoffee.com/vooz2)
+[Buy me a coffee](https://buymeacoffee.com/vooz2) [Star on GitHub](https://github.com/VooZ2/terento)
 
 ## Featured on
 
