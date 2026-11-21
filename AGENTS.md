@@ -128,6 +128,51 @@ identity-review, privacy, and device-safety invariants intact; a green deploy or
 one visible row is not proof that the full workflow works. Do not duplicate
 scoped Admin implementation rules here.
 
+## Mac app release branches
+
+Owner rule 2026-11-22. Every app version is collected in one branch and gets
+one CI run at the end.
+
+- All Mac app changes for a version go into one branch named
+  `release-<version>` (for example `release-1.3.0`) and one PR to `main` with
+  the same title. No separate PR to `main` per fix.
+- Scope: the Mac app and what ships inside it. API (`backend/catalog-api`),
+  Admin and the website keep their own PRs and deploys as today. If one change
+  touches both the app and API/Admin/web, split it: the app part goes into
+  `release-<version>`, the rest into its own PR.
+- Fixes go as commits to `release-<version>`. Before each push, run every test
+  suite you can run in your environment. Keep separate, clearly described
+  commits.
+- After each push tell the owner the commit. A `-local` version is built on the
+  owner's Mac from that branch, the macOS test suites run there, and the app is
+  tested live. Never ask for screenshots.
+- Open the PR `release-<version>` → `main` only when QA is clean (CI runs on
+  draft PRs to `main` too): one full CI run, then merge.
+- Exception: a critical bug (crash, maps fail to install, data loss) gets its
+  own PR to `main` right away, from a `hotfix-<version>-<topic>` branch.
+- Keep `release-<version>` up to date with `main` (merge `main` into it, never
+  force-push), so the final PR has no surprises.
+
+## Branch names
+
+Owner rule 2026-11-22. Every new branch is named by the area it changes:
+
+- `release-<version>`: the Mac app and what ships inside it, one branch per app
+  version (see above). Example: `release-1.3.0`.
+- `hotfix-<version>-<topic>`: a critical Mac app bug that goes to `main` right
+  away (crash, maps fail to install, data loss). Example:
+  `hotfix-1.3.1-install-crash`.
+- `api/<topic>`: backend, catalog API and Admin. Example:
+  `api/luckymaps-catalog-v6`.
+- `web/<topic>`: website and web installer. Example: `web/provider-cards`.
+- `docs/<topic>`: repository documentation only (AGENTS.md, READMEs, guides).
+- `<topic>` is short, lowercase, words joined by hyphens, and says what
+  changes. No random suffixes and no `claude/` or `project-thread` prefixes.
+- A change that touches more than one area is split by area, one branch per
+  area, as the release rule already says.
+- An environment that starts on an automatic `claude/...` branch creates the
+  named branch from it, pushes there and opens the PR from the named branch.
+
 ## Git and workspace hygiene
 
 - `origin/main` is the canonical integrated Terento source state and the only
