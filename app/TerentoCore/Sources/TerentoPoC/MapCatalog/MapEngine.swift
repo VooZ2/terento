@@ -1077,6 +1077,12 @@ final class MapEngine: ObservableObject {
         )
     }
 
+    /// Garmin-installed images for the read-only Manage section. They are
+    /// never part of `mapLifecycleInventory()`, so no action can target them.
+    func garminSystemMaps() -> [GarminSystemMap] {
+        result?.scan.garminMaps ?? []
+    }
+
     /// Builds the single inventory used by the lifecycle screen. The view
     /// must not rebuild ownership or comparison state independently because
     /// doing so could make a destructive action disagree with the scanner.

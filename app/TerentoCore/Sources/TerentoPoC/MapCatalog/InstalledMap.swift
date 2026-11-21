@@ -624,6 +624,13 @@ struct GarminMapScanner: Sendable {
     ) -> MapScanResult {
         let mapFiles = files.filter(isMapFile)
         let candidateFiles = mapFiles.filter { !isKnownGarminOwned($0) }
+        // Garmin-owned images are listed from the file inventory only. They
+        // never join `candidateFiles`, so no prefix read reaches them, and they
+        // stay out of `installedMaps`/`otherMaps`, which feed every lifecycle,
+        // conflict and storage decision.
+        let garminMaps = mapFiles.filter(isKnownGarminOwned)
+            .map { GarminSystemMap(path: $0.path, filename: $0.filename, sizeBytes: $0.sizeBytes) }
+            .sorted { $0.sortKey < $1.sortKey }
         var inspectedFiles: [InstalledMapFile] = []
         var installedMaps: [InstalledMap] = []
         var otherMaps: [InstalledMap] = []
@@ -759,7 +766,8 @@ struct GarminMapScanner: Sendable {
             installedMaps: installedMaps,
             otherMaps: otherMaps,
             parsingFailures: unrecognizedIMGFiles,
-            skippedUnrecognizedProviderFiles: skippedUnrecognizedProviderFiles
+            skippedUnrecognizedProviderFiles: skippedUnrecognizedProviderFiles,
+            garminMaps: garminMaps
         )
     }
 
@@ -834,6 +842,9 @@ struct MapScanResult: Sendable, Equatable {
     let otherMaps: [InstalledMap]
     let parsingFailures: Int
     let skippedUnrecognizedProviderFiles: Int
+    /// Garmin-installed images, shown read-only in Manage. They are still
+    /// counted in `skippedUnrecognizedProviderFiles`, as before.
+    var garminMaps: [GarminSystemMap] = []
 
     var scanEvidence: EvidenceResult {
         .pass
@@ -841,6 +852,63 @@ struct MapScanResult: Sendable, Equatable {
 
     var imgParsingEvidence: EvidenceResult {
         parsingFailures == 0 ? .pass : .fail
+    }
+}
+
+/// A map or system image that Garmin installed. It is built only from the file
+/// listing (path, filename, size): its content is never read. It has no
+/// lifecycle identity, ownership or actions, so Remove, Update and storage
+/// planning cannot reach it. The name comes from the known Garmin filename;
+/// region or product names are never guessed.
+struct GarminSystemMap: Identifiable, Equatable, Sendable {
+    let path: String
+    let filename: String
+    let sizeBytes: UInt64
+
+    var id: String { path }
+
+    var title: String { Self.title(forFilename: filename) }
+
+    static func title(forFilename filename: String) -> String {
+        switch filename.lowercased() {
+        case "gmapbmap.img": return "Base map"
+        case "gmapdem.img": return "Elevation data"
+        case "gmaptz.img": return "Time zones"
+        case "gmap3d.img": return "3D data"
+        default: return "Garmin map"
+        }
+    }
+
+    var formattedSize: String? {
+        guard sizeBytes > 0 else { return nil }
+        return ByteCountFormatter.string(
+            fromByteCount: Int64(min(sizeBytes, UInt64(Int64.max))),
+            countStyle: .decimal
+        )
+    }
+
+    /// Named images first, then "Garmin map" rows by filename.
+    fileprivate var sortKey: String {
+        let named = title != "Garmin map"
+        return (named ? "0 " : "1 ") + title.lowercased() + " " + filename.lowercased() + " " + path.lowercased()
+    }
+
+    /// Manage search. These are Garmin's own fixed filenames, so unlike
+    /// imported maps the filename is searchable. A provider filter hides them:
+    /// they belong to no community provider.
+    static func filtered(_ maps: [GarminSystemMap], query: String, providerID: String = "") -> [GarminSystemMap] {
+        guard providerID.isEmpty else { return [] }
+        let terms = fold(query).split(whereSeparator: \.isWhitespace).map(String.init)
+        guard !terms.isEmpty else { return maps }
+        return maps.filter { map in
+            let text = fold([map.title, map.filename, "Garmin"].joined(separator: " "))
+            return terms.allSatisfy { text.contains($0) }
+        }
+    }
+
+    private static func fold(_ value: String) -> String {
+        value.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_US_POSIX"))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 
