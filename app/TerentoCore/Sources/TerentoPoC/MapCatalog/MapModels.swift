@@ -90,6 +90,7 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
     let validationState: MapArtifactValidationState
     let sourceProof: BBBikeSourceProof?
     let osmapaSourceProof: OSMapaSourceProof?
+    let luckyMapsSourceProof: LuckyMapsSourceProof?
     /// The catalog sent a non-null `sourceProof`, even one neither proof type
     /// could decode. An unavailable artifact must not carry one at all.
     let carriesSourceProof: Bool
@@ -112,6 +113,7 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
         validationState: MapArtifactValidationState = .notValidated,
         sourceProof: BBBikeSourceProof? = nil,
         osmapaSourceProof: OSMapaSourceProof? = nil,
+        luckyMapsSourceProof: LuckyMapsSourceProof? = nil,
         carriesSourceProof: Bool? = nil
     ) {
         self.id = id
@@ -131,7 +133,9 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
         self.validationState = validationState
         self.sourceProof = sourceProof
         self.osmapaSourceProof = osmapaSourceProof
-        self.carriesSourceProof = carriesSourceProof ?? (sourceProof != nil || osmapaSourceProof != nil)
+        self.luckyMapsSourceProof = luckyMapsSourceProof
+        self.carriesSourceProof = carriesSourceProof
+            ?? (sourceProof != nil || osmapaSourceProof != nil || luckyMapsSourceProof != nil)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -173,6 +177,7 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
             validationState: try container.decodeIfPresent(MapArtifactValidationState.self, forKey: .validationState) ?? .notValidated,
             sourceProof: try? container.decodeIfPresent(BBBikeSourceProof.self, forKey: .sourceProof),
             osmapaSourceProof: try? container.decodeIfPresent(OSMapaSourceProof.self, forKey: .sourceProof),
+            luckyMapsSourceProof: try? container.decodeIfPresent(LuckyMapsSourceProof.self, forKey: .sourceProof),
             carriesSourceProof: container.contains(.sourceProof) && (try? container.decodeNil(forKey: .sourceProof)) == false
         )
     }
@@ -198,6 +203,8 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
             try container.encode(sourceProof, forKey: .sourceProof)
         } else if let osmapaSourceProof {
             try container.encode(osmapaSourceProof, forKey: .sourceProof)
+        } else if let luckyMapsSourceProof {
+            try container.encode(luckyMapsSourceProof, forKey: .sourceProof)
         } else if carriesSourceProof {
             // Keep the marker: an undecodable proof re-decodes as carried.
             try container.encode([String: String](), forKey: .sourceProof)
@@ -356,7 +363,8 @@ struct MapProviderRegistry: Sendable {
         OpenTopoMapProviderAdapter(),
         MapRandoProviderAdapter(),
         BBBikeProviderAdapter(),
-        OSMapaProviderAdapter()
+        OSMapaProviderAdapter(),
+        LuckyMapsProviderAdapter()
     ])
 
     init(adapters: [any MapProviderAdapter]) {
@@ -938,7 +946,7 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
         // Existing providers retain their reviewed catalog contract, including
         // source-unavailable MapRando rows. BBBike and OSMapaPL unavailable source
         // metadata is visible but never a usable install artifact.
-        if ["bbbike", "osmapa"].contains(MapIdentity.normalizeProvider(providerId)),
+        if ["bbbike", "osmapa", "luckymaps"].contains(MapIdentity.normalizeProvider(providerId)),
            mainArtifact.validationState == .unavailable || mainArtifact.validationState == .failed { return false }
         return mainArtifact.sourceURL != nil || mainArtifact.localURL != nil
     }
@@ -1241,6 +1249,7 @@ enum MapProviderDisplay {
         case "maprando": return "MapRando"
         case "bbbike": return "BBBike"
         case "osmapa": return "OSMapaPL"
+        case "luckymaps": return "Lucky Maps"
         default: return "The map provider"
         }
     }
@@ -1550,5 +1559,156 @@ struct OSMapaProviderAdapter: MapProviderAdapter, Sendable {
         }
         guard let style = styles.first(where: { style in styles.filter { $0 == style }.count > 1 }) else { return nil }
         return "Select either Poland or Poland with border areas for \(style.title). These maps cannot be installed together."
+    }
+}
+
+/// Catalog proof for one Lucky Maps IMG (main map or contour add-on). The
+/// server measured the fixed header and the MPS product file; the client
+/// binds the whole downloaded file to it again before any watch write.
+struct LuckyMapsSourceProof: Codable, Equatable, Sendable {
+    let sourceURL: URL
+    let etag: String
+    let lastModified: String
+    let downloadSizeBytes: UInt64
+    let installSizeBytes: UInt64
+    let sourceIdentity: String
+    let familyId: UInt16
+    let imgTitle: String
+    let createdAt: String
+    let publisher: String
+    /// Present only once the provider publishes checksums.
+    let sha256: String?
+    let headerIdentityValidated: Bool
+    let revision: String
+}
+
+/// Lucky Maps (luckymaps.ch) publishes raw mkgmap IMG files. The header
+/// description is only the file stem, so provider identity comes from the
+/// reviewed catalog proof during acquisition and from the exact manifest
+/// record on rescan. Contours are an optional add-on artifact `<stem>-ct.img`.
+struct LuckyMapsProviderAdapter: MapProviderAdapter, Sendable {
+    let id = "luckymaps"
+    let usesRawIMGDownload = true
+    static let sourceHost = "luckymaps.ch"
+    static let publisher = "luckymaps.ch"
+    static let maximumIMGBytes: UInt64 = 4_294_967_295
+    static let stemPattern = #"^[A-Za-z0-9][A-Za-z0-9_-]{0,95}$"#
+    static let sourcePathPattern = #"^/assets/maps/(?:[A-Za-z0-9][A-Za-z0-9._-]{0,127}/){0,3}([A-Za-z0-9][A-Za-z0-9_-]{0,95})\.img$"#
+
+    static func isStem(_ value: String) -> Bool {
+        value.range(of: stemPattern, options: .regularExpression) != nil
+    }
+
+    static func packageID(stem: String) -> String {
+        let token = stem.lowercased()
+            .replacingOccurrences(of: "[^a-z0-9]+", with: "-", options: .regularExpression)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "-"))
+        return "luckymaps-" + token
+    }
+
+    /// `SouthDE_AT_FL` → `SOUTHDE-AT-FL`, as the API publishes it.
+    static func canonicalRegion(stem: String) -> String {
+        stem.uppercased()
+            .replacingOccurrences(of: "[^A-Z0-9]+", with: "-", options: .regularExpression)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "-"))
+    }
+
+    /// The file stem of a reviewed source URL: HTTPS on luckymaps.ch, below
+    /// `/assets/maps/` in at most three folders, no query, port or escapes.
+    static func reviewedSource(_ url: URL) -> String? {
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              components.scheme == "https", components.host == sourceHost,
+              components.user == nil, components.password == nil, components.port == nil,
+              components.query == nil, components.fragment == nil,
+              !url.absoluteString.contains("%"),
+              let regex = try? NSRegularExpression(pattern: sourcePathPattern) else { return nil }
+        let path = components.path
+        guard let match = regex.firstMatch(in: path, range: NSRange(path.startIndex..., in: path)),
+              let stemRange = Range(match.range(at: 1), in: path) else { return nil }
+        return String(path[stemRange])
+    }
+
+    static func validIdentity(_ package: MapPackage) -> Bool {
+        let stem = package.providerRegionId
+        return MapIdentity.normalizeProvider(package.providerId) == "luckymaps"
+            && isStem(stem)
+            && package.id == packageID(stem: stem)
+            && package.identifier == stem
+            && package.canonicalRegionId == canonicalRegion(stem: stem)
+            && package.version.day != nil
+    }
+
+    /// One artifact's proof: the exact reviewed file, its title and MPS
+    /// identity, and sizes that match the catalog artifact.
+    static func proofIsValid(_ artifact: MapArtifact, fileStem: String, kind: MapArtifactKind,
+                             created: MapVersion?) -> Bool {
+        guard artifact.kind == kind, artifact.sourceProof == nil, artifact.osmapaSourceProof == nil,
+              artifact.validationState == .validated,
+              let proof = artifact.luckyMapsSourceProof,
+              let url = artifact.sourceURL, proof.sourceURL == url, reviewedSource(url) == fileStem,
+              proof.sourceIdentity == "luckymaps:\(fileStem):\(kind.rawValue)",
+              proof.imgTitle == fileStem, proof.publisher == publisher,
+              proof.headerIdentityValidated, proof.familyId > 0,
+              proof.downloadSizeBytes >= 0x1000, proof.downloadSizeBytes <= maximumIMGBytes,
+              proof.installSizeBytes == proof.downloadSizeBytes,
+              artifact.downloadSizeBytes == proof.downloadSizeBytes,
+              artifact.sizeBytes == proof.installSizeBytes,
+              proof.etag.hasPrefix("\""), proof.etag.hasSuffix("\""), proof.etag.count > 2,
+              !proof.lastModified.isEmpty,
+              let createdAt = MapRandoVersionParser().parseISO(proof.createdAt),
+              created == nil || createdAt == created,
+              proof.revision.range(of: #"^[a-f0-9]{64}$"#, options: .regularExpression) != nil else { return false }
+        if let sha256 = proof.sha256 {
+            return sha256.range(of: #"^[0-9a-f]{64}$"#, options: .regularExpression) != nil
+                && artifact.checksum == sha256
+        }
+        return artifact.checksum == nil
+    }
+
+    func canonicalRegionIdentity(for package: MapPackage) -> CanonicalMapRegionIdentity? {
+        let token = MapIdentity.normalizeRegion(package.providerRegionId)
+        if token.contains("CRIMEA") || token.contains("KRYM") {
+            return CanonicalMapRegionIdentity(countryCode: "UA", locality: "CRIMEA")
+        }
+        if token.contains("RUSSIA") || package.countryCodes.contains(where: { $0.uppercased() == "RU" }) {
+            return CanonicalMapRegionIdentity(countryCode: "RU")
+        }
+        return package.countryCodes.first.map { CanonicalMapRegionIdentity(countryCode: $0) }
+    }
+
+    /// Accepts a catalog package (main plus optional contours) and the
+    /// single-artifact package acquisition derives for either file.
+    func expectedIMGIdentity(for package: MapPackage) -> MapIdentity? {
+        guard Self.validIdentity(package) else { return nil }
+        let stem = package.providerRegionId
+        let mains = package.artifacts.filter { $0.kind == .main }
+        let contours = package.artifacts.filter { $0.kind == .contours }
+        guard !package.artifacts.isEmpty, mains.count <= 1, contours.count <= 1,
+              mains.count + contours.count == package.artifacts.count,
+              let primary = mains.first ?? contours.first,
+              package.downloadURL == primary.sourceURL,
+              package.expectedDownloadSizeBytes == primary.downloadSizeBytes else { return nil }
+        if let main = mains.first {
+            guard main.required,
+                  Self.proofIsValid(main, fileStem: stem, kind: .main, created: package.version) else { return nil }
+        }
+        if let contour = contours.first {
+            guard !contour.required,
+                  Self.proofIsValid(contour, fileStem: stem + "-ct", kind: .contours, created: nil),
+                  contour.luckyMapsSourceProof?.familyId != mains.first?.luckyMapsSourceProof?.familyId
+            else { return nil }
+        }
+        return package.identity
+    }
+
+    /// Two packages naming one Garmin family ID would hide each other on a
+    /// watch; neither is installable. The server already withholds them.
+    static func duplicateFamilyPackageIDs(_ packages: [MapPackage]) -> Set<String> {
+        var owners: [UInt16: [String]] = [:]
+        for package in packages where MapIdentity.normalizeProvider(package.providerId) == "luckymaps" {
+            let families = Set(package.artifacts.compactMap { $0.luckyMapsSourceProof?.familyId })
+            for family in families { owners[family, default: []].append(package.id) }
+        }
+        return Set(owners.values.filter { $0.count > 1 }.flatMap { $0 })
     }
 }

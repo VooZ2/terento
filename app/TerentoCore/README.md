@@ -232,8 +232,15 @@ map of that type, an unreadable map file or another map with the same ID stops
 the install, and nothing is removed automatically. The download must be the
 single `gmapsupp.img` named by the catalog proof; size, CRC-32, header title,
 release date and the MDR and MPS map IDs are checked on the Mac before
-writing. OpenTopoMap
-contours are optional source-validated components, not a Debug-only feature.
+writing. Lucky Maps (catalog-v6, provider PAUSED until activated) publishes
+raw IMG files whose header names only the file stem; the catalog proof binds
+each file (map and optional `-ct` contour add-on) to its URL, size, title,
+creation day and Garmin family ID, and the Mac rechecks size, header, MDR and
+MPS family, area and publisher (and SHA-256 once published) before writing.
+On rescan a Lucky Maps file is Terento's only through its exact manifest
+record; the same bytes under another name stay an outside map. OpenTopoMap
+and Lucky Maps contours are optional source-validated components, not a
+Debug-only feature.
 Compatible local IMG imports have no automatic provider update path.
 
 Install Maps provides geographic and provider/type filtering, local search
@@ -514,8 +521,9 @@ code fix. No new release or API deployment is implied. See
 
 ## Catalog and privacy contracts
 
-The current app uses `/maps/catalog-v5.json` (1.1.0 and later; 1.0.1 used
-`/maps/catalog-v4.json`). Legacy v2, v3 and v4 routes retain
+The current app uses `/maps/catalog-v6.json` (1.3.0 and later: v5 plus Lucky
+Maps); 1.1.0 to 1.2.x use `/maps/catalog-v5.json` and 1.0.1 used
+`/maps/catalog-v4.json`. Legacy v2 to v5 routes retain
 provider sets understood by older clients. The full bundled fallback is a
 native decoder projection; it must not be silently rewritten into an API schema.
 See [shared contracts](../../contracts/README.md).

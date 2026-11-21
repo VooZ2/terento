@@ -337,6 +337,8 @@ struct ReviewedProviderURLPolicy: Sendable {
 
     static let osmapa = ReviewedProviderURLPolicy(allowedHosts: [OSMapaProviderAdapter.sourceHost])
 
+    static let luckyMaps = ReviewedProviderURLPolicy(allowedHosts: [LuckyMapsProviderAdapter.sourceHost])
+
     let allowedHosts: Set<String>
 
     init(allowedHosts: Set<String>) {
@@ -372,6 +374,9 @@ struct ReviewedProviderURLPolicy: Sendable {
         if host == OSMapaProviderAdapter.sourceHost, OSMapaProviderAdapter.reviewedSource(url) == nil {
             throw MapAcquisitionError.untrustedSourceURL(url.absoluteString)
         }
+        if host == LuckyMapsProviderAdapter.sourceHost, LuckyMapsProviderAdapter.reviewedSource(url) == nil {
+            throw MapAcquisitionError.untrustedSourceURL(url.absoluteString)
+        }
     }
 }
 
@@ -385,7 +390,8 @@ struct ReviewedProviderURLPolicyRegistry: Sendable {
             "opentopomap": .openTopoMap,
             "maprando": .mapRando,
             "bbbike": .bbbike,
-            "osmapa": .osmapa
+            "osmapa": .osmapa,
+            "luckymaps": .luckyMaps
         ]
     )
 
@@ -567,7 +573,8 @@ private final class ReviewedProviderRedirectDelegate: NSObject, URLSessionTaskDe
             try policy.validate(url)
             // Proof-bound providers are measured without redirects.
             guard !policy.allowedHosts.contains("data.bbbike.org"),
-                  !policy.allowedHosts.contains(OSMapaProviderAdapter.sourceHost) else {
+                  !policy.allowedHosts.contains(OSMapaProviderAdapter.sourceHost),
+                  !policy.allowedHosts.contains(LuckyMapsProviderAdapter.sourceHost) else {
                 throw MapAcquisitionError.untrustedSourceURL(url.absoluteString)
             }
             completionHandler(request)
@@ -1966,6 +1973,10 @@ struct MapPackageAcquirer: Sendable {
            OSMapaProviderAdapter().expectedIMGIdentity(for: acquisitionPackage) == nil {
             throw MapAcquisitionError.invalidPackage("The OSMapaPL source proof is incomplete. Refresh the catalog.")
         }
+        if MapIdentity.normalizeProvider(acquisitionPackage.providerId) == "luckymaps",
+           LuckyMapsProviderAdapter().expectedIMGIdentity(for: acquisitionPackage) == nil {
+            throw MapAcquisitionError.invalidPackage("The Lucky Maps source proof is incomplete. Refresh the catalog.")
+        }
         let acquisitionWorkspace: MapAcquisitionWorkspace
         do {
             if let suppliedWorkspace = requestedWorkspace {
@@ -2099,6 +2110,10 @@ struct MapPackageAcquirer: Sendable {
            (format != .zip || downloadSize != package.expectedDownloadSizeBytes) {
             throw MapAcquisitionError.invalidPackage("The OSMapaPL package changed. Refresh the catalog.")
         }
+        if MapIdentity.normalizeProvider(package.providerId) == "luckymaps",
+           (format != .rawIMG || downloadSize != package.expectedDownloadSizeBytes) {
+            throw MapAcquisitionError.invalidPackage("The Lucky Maps file changed. Refresh the catalog.")
+        }
         let imgURL: URL
         switch format {
         case .rawIMG:
@@ -2136,6 +2151,17 @@ struct MapPackageAcquirer: Sendable {
         if MapIdentity.normalizeProvider(package.providerId) == "bbbike",
            let context = BBBikeMapMetadata(package: package),
            let value = BBBikeIMGMetadata.metadata(try MapPackageFormat.readPrefix(from: imgURL, maxLength: GarminIMGMetadataParser.prefixLength), context: context, version: package.version) {
+            metadata = value
+        } else if MapIdentity.normalizeProvider(package.providerId) == "luckymaps" {
+            // The header names only the file stem; the reviewed proof supplies the provider.
+            guard let artifact = selectedArtifact ?? package.mainArtifact,
+                  let value = LuckyMapsIMGMetadata.metadata(
+                    try MapPackageFormat.readPrefix(from: imgURL, maxLength: GarminIMGMetadataParser.prefixLength),
+                    regionId: package.canonicalRegionId, kind: artifact.kind),
+                  value.identifier == (artifact.kind == .main ? package.providerRegionId : package.providerRegionId + "-ct")
+            else {
+                throw MapAcquisitionError.invalidPackage("The Lucky Maps file changed. Refresh the catalog.")
+            }
             metadata = value
         } else {
             metadata = try self.metadata(for: imgURL)

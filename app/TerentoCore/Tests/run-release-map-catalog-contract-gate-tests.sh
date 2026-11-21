@@ -13,6 +13,8 @@ monitor_workflow="$repo_root/.github/workflows/map-catalog-contract.yml"
 grep -Fq 'https://api.terento.app/maps/catalog-v4.json' "$live_gate"
 grep -Fq 'https://api.terento.app/maps/catalog-v5.json' "$live_gate"
 grep -Fq 'v5 catalog must not expose providers unknown to 1.1.0 clients' "$live_gate"
+grep -Fq 'https://api.terento.app/maps/catalog-v6.json' "$live_gate"
+grep -Fq 'v6 catalog must not expose providers unknown to 1.3.0 clients' "$live_gate"
 grep -Fq 'v3 catalog must not expose providers unknown to beta.11 clients' "$live_gate"
 if ! grep -Fq 'node_bin="${TERENTO_NODE_BIN:-}"' "$release_script" \
     || ! grep -Fq 'command -v node || command -v nodejs' "$release_script" \

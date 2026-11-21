@@ -143,7 +143,7 @@ struct MapLifecycleItem: Identifiable, Equatable, Sendable {
     }
 
     private var hasInstalledContours: Bool {
-        guard MapIdentity.normalizeProvider(provider ?? "") == "opentopomap" else {
+        guard ["opentopomap", "luckymaps"].contains(MapIdentity.normalizeProvider(provider ?? "")) else {
             return false
         }
 

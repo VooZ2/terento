@@ -193,7 +193,13 @@ struct MapCatalogLoader: Sendable {
             return nil
         }
         #endif
-        return URLComponents(string: "https://api.terento.app/maps/catalog-v5.json")?.url
+        var components = URLComponents(string: "https://api.terento.app/maps/catalog-v6.json")
+        // The server leaves a never-activated provider out of the catalog;
+        // a Debug hardware test names it to see it (still PAUSED there).
+        if let preview = MapCatalogDebugUnpause.previewQuery(MapCatalogDebugUnpause.providerIDs) {
+            components?.queryItems = [URLQueryItem(name: "preview", value: preview)]
+        }
+        return components?.url
     }()
 
     let endpoint: URL?
@@ -413,6 +419,7 @@ struct MapCatalogClientCompatibilityValidator: Sendable {
     func isCompatible(_ catalog: MapCatalog) -> Bool {
         guard satisfiesCatalogInvariants(catalog), !catalog.packages.isEmpty else { return false }
         return duplicateBBBikeIdentityPackageIDs(catalog.packages).isEmpty
+            && LuckyMapsProviderAdapter.duplicateFamilyPackageIDs(catalog.packages).isEmpty
             && catalog.packages.allSatisfy(isPackageCompatible)
     }
 
@@ -439,6 +446,7 @@ struct MapCatalogClientCompatibilityValidator: Sendable {
     func acceptCompatiblePackages(_ catalog: MapCatalog) -> MapCatalogAcceptance? {
         guard satisfiesCatalogInvariants(catalog) else { return nil }
         let duplicateIdentities = duplicateBBBikeIdentityPackageIDs(catalog.packages)
+            .union(LuckyMapsProviderAdapter.duplicateFamilyPackageIDs(catalog.packages))
         let accepted = catalog.packages.filter {
             !duplicateIdentities.contains($0.id) && isPackageCompatible($0)
         }
@@ -481,6 +489,12 @@ struct MapCatalogClientCompatibilityValidator: Sendable {
             return OSMapaProviderAdapter.validIdentity(package) && package.artifacts.count == 1
                 && package.mainArtifact?.carriesSourceProof == false
         }
+        if MapIdentity.normalizeProvider(package.providerId) == "luckymaps",
+           package.mainArtifact?.validationState == .unavailable {
+            return LuckyMapsProviderAdapter.validIdentity(package) && package.artifacts.count == 1
+                && package.mainArtifact?.carriesSourceProof == false
+                && package.mainArtifact?.sourceURL.flatMap(LuckyMapsProviderAdapter.reviewedSource) == package.providerRegionId
+        }
         let providerID = MapIdentity.normalizeProvider(package.providerId)
         guard let adapter = providerRegistry.adapter(for: providerID),
               let sourcePolicy = sourcePolicyRegistry.policy(for: providerID),
@@ -505,10 +519,10 @@ struct MapCatalogClientCompatibilityValidator: Sendable {
         )
     }
 
-    /// Two BBBike or OSMapaPL packages claiming one IMG identity are
-    /// ambiguous; neither can be installed safely.
+    /// Two BBBike, OSMapaPL or Lucky Maps packages claiming one IMG identity
+    /// are ambiguous; neither can be installed safely.
     private func duplicateBBBikeIdentityPackageIDs(_ packages: [MapPackage]) -> Set<String> {
-        let bbbike = packages.filter { ["bbbike", "osmapa"].contains(MapIdentity.normalizeProvider($0.providerId)) }
+        let bbbike = packages.filter { ["bbbike", "osmapa", "luckymaps"].contains(MapIdentity.normalizeProvider($0.providerId)) }
         let grouped = Dictionary(grouping: bbbike.compactMap { package in
             package.identity.map { ($0, package.id) }
         }, by: \.0)
@@ -697,6 +711,11 @@ enum MapCatalogDebugUnpause {
     #else
     static let providerIDs: Set<String> = []
     #endif
+
+    /// `nil` when no provider is named, which is always so in Release builds.
+    static func previewQuery(_ ids: Set<String>) -> String? {
+        ids.isEmpty ? nil : ids.sorted().joined(separator: ",")
+    }
 
     static func parse(_ value: String?) -> Set<String> {
         Set((value ?? "").split(separator: ",")
