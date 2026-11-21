@@ -160,10 +160,11 @@ enum SupportReportSource {
     /// latest connection attempt (`nil` when there are none).
     @MainActor
     static func latest(outbox: SupportReportOutbox = SupportReportOutbox(),
-                       connectionFacts: SupportConnectionFacts = SupportConnectionFactsStore.latest)
+                       connectionFacts: SupportConnectionFacts? = nil)
         -> (payload: SupportReportPayload, allowsCategoryChoice: Bool, summary: String?,
             connectionReport: SupportReportBody?) {
         let saved = TerentoDiagnosticLog.latestSavedSupportReport()
+        let facts = connectionFacts ?? SupportConnectionFactsStore.latest
         // An unsent report is offered again first; its id is unchanged, so a
         // report that did arrive is not stored twice.
         if let unsent = outbox.load() {
@@ -176,7 +177,7 @@ enum SupportReportSource {
         }
         return (SupportReportPayload(category: .other, operationID: nil, userMessage: nil,
                                      report: .minimal()), true, SavedSupportReport.noSavedReportLine,
-                connectionFacts.isEmpty ? nil : connectionFacts.reportBody())
+                facts.isEmpty ? nil : facts.reportBody())
     }
 }
 
