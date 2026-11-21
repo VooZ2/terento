@@ -2,12 +2,14 @@
 
 Mirrors ``MapCatalogLoader.isCompatible`` in
 ``app/TerentoCore/Sources/TerentoPoC/MapCatalog/MapCatalogLoader.swift`` together
-with ``BBBikeProviderAdapter``/``OSMapaProviderAdapter`` ``validIdentity`` and
+with ``BBBikeProviderAdapter``/``OSMapaProviderAdapter``/``LuckyMapsProviderAdapter``
+``validIdentity`` and
 ``expectedIMGIdentity``,
 ``MapPackage.hasUsableMainArtifact`` and the reviewed provider URL policies.
 Released clients reject the *whole* catalog when one package fails, so a
 backend publication must satisfy every rule for every package. OSMapaPL is
-only published in catalog v5, which app 1.1.0 and later read.
+only published in catalog v5, which app 1.1.0 and later read; Lucky Maps only in
+catalog v6, which the first app with the Lucky Maps adapter reads.
 
 Provider-specific IMG identity matching (``MapIdentityMatcher``) is not
 mirrored here; the native released-client gate
@@ -27,7 +29,10 @@ PROVIDER_HOSTS = {
     "maprando": {"ravenfeld.fr"},
     "bbbike": {"data.bbbike.org"},
     "osmapa": {"osmapa-garmin.las.org.pl"},
+    "luckymaps": {"luckymaps.ch"},
 }
+LUCKYMAPS_STEM = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,95}")
+LUCKYMAPS_PATH = re.compile(r"^/assets/maps/(?:[A-Za-z0-9][A-Za-z0-9._-]{0,127}/){0,3}([A-Za-z0-9][A-Za-z0-9_-]{0,95})\.img$")
 BBBIKE_MAP_TYPES = {"bbbike-latin1", "ontrail-latin1", "opentopo-latin1"}
 BBBIKE_PATH = re.compile(
     r"^(?:africa|asia|australia-oceania|central-america|europe|north-america|south-america|antarctica)"
@@ -228,10 +233,94 @@ def _osmapa_proof_matches(package: dict[str, Any]) -> bool:
     )
 
 
+def luckymaps_package_id(stem: str) -> str:
+    return "luckymaps-" + re.sub(r"[^a-z0-9]+", "-", stem.lower()).strip("-")
+
+
+def luckymaps_valid_identity(package: dict[str, Any]) -> bool:
+    stem = package.get("providerRegionId")
+    return (isinstance(stem, str) and bool(LUCKYMAPS_STEM.fullmatch(stem))
+            and _provider(package.get("providerId")) == "luckymaps"
+            and package.get("id") == luckymaps_package_id(stem)
+            and package.get("identifier") == stem)
+
+
+def luckymaps_reviewed_source(url: Any) -> str | None:
+    """Return the file stem of a reviewed Lucky Maps IMG URL."""
+    if not isinstance(url, str):
+        return None
+    parts = urlsplit(url)
+    if (parts.scheme != "https" or parts.netloc != "luckymaps.ch" or parts.query or parts.fragment
+            or "%" in parts.path):
+        return None
+    match = LUCKYMAPS_PATH.fullmatch(parts.path)
+    return match[1] if match else None
+
+
+def _luckymaps_proof_matches(artifact: dict[str, Any], stem: str, kind: str, created: str | None) -> bool:
+    proof = artifact.get("sourceProof")
+    url = artifact.get("sourceURL") or artifact.get("sourceUrl")
+    if not isinstance(proof, dict) or luckymaps_reviewed_source(url) != stem:
+        return False
+    size = proof.get("downloadSizeBytes")
+    sha = proof.get("sha256")
+    family = proof.get("familyId")
+    return (
+        proof.get("sourceURL") == url
+        and proof.get("sourceIdentity") == f"luckymaps:{stem}:{kind}"
+        and proof.get("imgTitle") == stem
+        and proof.get("publisher") == "luckymaps.ch"
+        and proof.get("headerIdentityValidated") is True
+        and _uint(family, 65535) and family > 0
+        and _uint(size, OSMAPA_MAXIMUM_IMG_BYTES) and size >= 0x1000
+        and proof.get("installSizeBytes") == size
+        and artifact.get("installSizeBytes") == size and artifact.get("downloadSizeBytes") == size
+        and isinstance(proof.get("etag"), str) and bool(proof["etag"]) and not proof["etag"].startswith("W/")
+        and isinstance(proof.get("lastModified"), str) and bool(proof["lastModified"])
+        and isinstance(proof.get("createdAt"), str) and bool(re.fullmatch(r"20[0-9]{2}-[0-9]{2}-[0-9]{2}", proof["createdAt"]))
+        and (created is None or proof["createdAt"] == created)
+        and (sha is None or (isinstance(sha, str) and bool(re.fullmatch(r"[0-9a-f]{64}", sha))
+                             and artifact.get("checksumSha256") == sha))
+        and (sha is not None or artifact.get("checksumSha256") is None)
+        and isinstance(proof.get("revision"), str) and bool(re.fullmatch(r"[a-f0-9]{64}", proof["revision"]))
+    )
+
+
+def luckymaps_rejections(package: dict[str, Any]) -> list[str]:
+    reasons = []
+    if not luckymaps_valid_identity(package):
+        return ["luckymaps identity"]
+    stem = package["providerRegionId"]
+    artifacts = package.get("artifacts") or []
+    main = _main(package)
+    if main is None:
+        return ["no usable main artifact"]
+    if main.get("validationState") == "unavailable":
+        if len(artifacts) != 1:
+            reasons.append("unavailable luckymaps package must have exactly one artifact")
+        if main.get("sourceProof") is not None:
+            reasons.append("unavailable luckymaps main artifact must not carry sourceProof")
+        if luckymaps_reviewed_source(main.get("sourceURL") or main.get("sourceUrl")) != stem:
+            reasons.append("download URL outside reviewed provider policy")
+        return reasons
+    if main.get("validationState") == "failed":
+        reasons.append("luckymaps main artifact is not usable")
+    if not _luckymaps_proof_matches(main, stem, "main", package.get("release")):
+        reasons.append("luckymaps source proof does not establish the IMG identity")
+    others = [item for item in artifacts if item is not main]
+    if len(others) > 1 or any(item.get("kind") != "contours" or item.get("required") is not False for item in others):
+        reasons.append("luckymaps package may only add one optional contours artifact")
+    elif others and not _luckymaps_proof_matches(others[0], stem + "-ct", "contours", None):
+        reasons.append("luckymaps contour proof does not establish the IMG identity")
+    return reasons
+
+
 def package_rejections(package: dict[str, Any]) -> list[str]:
     """Return why a released client would reject this package (empty when accepted)."""
     provider = _provider(package.get("providerId"))
     main = _main(package)
+    if provider == "luckymaps":
+        return luckymaps_rejections(package)
     if provider == "bbbike" and main is not None and main.get("validationState") == "unavailable":
         reasons = []
         if not bbbike_valid_identity(package):
@@ -294,6 +383,9 @@ def catalog_rejections(catalog: dict[str, Any]) -> list[str]:
     osmapa = [p.get("providerRegionId") for p in packages if _provider(p.get("providerId")) == "osmapa"]
     if len(set(osmapa)) != len(osmapa):
         reasons.append("osmapa identities must be unique")
+    luckymaps = [str(p.get("providerRegionId") or "").lower() for p in packages if _provider(p.get("providerId")) == "luckymaps"]
+    if len(set(luckymaps)) != len(luckymaps):
+        reasons.append("luckymaps identities must be unique")
     for package in packages:
         reasons.extend(f"{package.get('id')}: {reason}" for reason in package_rejections(package))
     return reasons

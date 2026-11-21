@@ -1852,6 +1852,61 @@ checking `osmapa` (or any provider outside a projection) never changes
 (v1) or BBBike changes, so their `updatedAt` may move earlier once; their
 provider content is unchanged.
 
+### Lucky Maps v6 projection
+
+`/maps/catalog-v6.json` is the v5 provider set plus `luckymaps` (Lucky Maps,
+https://luckymaps.ch). `catalog.json` and v3 to v5 never contain `luckymaps`;
+released 1.1.0 to 1.2.x clients request v5. Migration 097 registers the
+provider `PAUSED`, so every v6 Lucky Maps package carries
+`downloadBlockReason=PROVIDER_PAUSED` until the owner activates it.
+
+The source is one JSON index, `https://luckymaps.ch/assets/maps.json`, read
+tolerantly: either a list of groups (`name`, `update`/`updated`, `children`)
+or a flat list whose items name their own `group`. In each region `map` and
+optional `contour` are either a file name relative to `/assets/maps/` or an
+object with `url` (relative or absolute), optional positive integer `size` and
+optional lower- or upper-case hex `sha256`. Every file must be
+`https://luckymaps.ch/assets/maps/[<folder>/…]<stem>.img` (at most three plain
+folder segments, no query, port, user info, percent-encoding or redirect). A
+contour pairs only with `<stem>-ct.img`. A malformed or duplicate region is
+left out and logged; it never hides the others.
+
+One package per region: id `luckymaps-<stem lower-cased, non-alphanumerics to
+->`, `providerRegionId`/`identifier` = the file stem as published (for example
+`US-West`, `SouthDE_AT_FL`), `region`/`canonicalRegionId` the upper-cased stem.
+Name, country codes and region kind come from the reviewed table
+`luckymaps_geography.py`; a new region keeps the index name and unknown
+geography. Release and `version` are the main IMG creation day. The main map is
+a required raw IMG artifact; the contour IMG is an optional `contours`
+artifact (published whenever it is `VALIDATED`; the OpenTopoMap contour rollout
+mode does not apply) with its own creation month as `version`.
+
+Collection is one index GET plus one 4 KiB ranged GET per file (IMG header and
+FAT). When the file's URL, strong ETag, Last-Modified and length differ from the
+stored proof, one more bounded ranged GET (at most 64 KiB) reads the MPS
+product subfile. Each response must be HTTP 206 with the exact requested
+`Content-Range`, a strong ETag and Last-Modified; an IMG of 4 GiB or more is
+never offered. The IMG must be unencrypted, its stitched description must equal
+the stem, the main map must name exactly one MDR family ID and the contour none,
+and every MPS map and family record must name that one family ID, the area
+`<stem>` and the publisher `luckymaps.ch`. When the index gives `size`, it must
+equal the served length. `sourceProof` records URL, ETag, Last-Modified, sizes,
+`sourceIdentity` (`luckymaps:<stem>:main` or `luckymaps:<stem>-ct:contours`),
+family ID, title, `createdAt`, publisher, the author's `sha256` (or null) and a
+revision. `checksumSha256` is published only when the author supplies it;
+Terento never computes it here. Native acquisition validates the whole download
+(and the SHA-256 when present) before any write.
+
+Two regions whose maps share one family ID are both withheld from acquisition
+(listed `UNAVAILABLE` if known before, otherwise omitted). Two contour files
+that share a family ID cannot coexist on a watch, so neither contour is offered
+until the author gives them distinct IDs (measured 2026-11-21: 25049 is used by
+`fr-corse-ct` and `SouthDE_AT_FL-ct`, 25050 by `Alps-ct` and `fr-guyane-ct`).
+HTTP 403, 429 or 5xx on the index or any range closes the source gate: the run
+fails and the previous snapshot stays. A main file that fails validation is
+not offered; if it was known before, it stays `UNAVAILABLE` as a single
+proof-free main artifact. Compatibility events accept `luckymaps`.
+
 ### Acquisition lifecycle extension
 
 Schema1 additionally accepts paired optional `acquisitionId` (random UUID) and

@@ -39,6 +39,12 @@ ALLOWED_SOURCES: dict[str, tuple[set[str], re.Pattern[str]]] = {
         {"data.bbbike.org"},
         re.compile(r"/osm/garmin/region/[a-z0-9/_-]+\.osm\.garmin-(?:bbbike|ontrail|opentopo)-latin1\.zip"),
     ),
+    # Main IMG and its paired contour IMG (preview overlay); the author agreed
+    # to short-lived preview copies on 2026-11-18 despite robots.txt.
+    "luckymaps": (
+        {"luckymaps.ch"},
+        re.compile(r"/assets/maps/(?:[A-Za-z0-9][A-Za-z0-9._-]*/){0,3}[A-Za-z0-9][A-Za-z0-9_-]*\.img"),
+    ),
     # Main styles only; WARSTWICE contour lines are not a preview style.
     "osmapa": (
         {"osmapa-garmin.las.org.pl"},

@@ -10,6 +10,7 @@ Python, Swift and JavaScript do not load JSON Schema validators.
 | `map-catalog.schema.json` | `GET /maps/catalog-v3.json` | same body versions; Freizeitkarte, OpenTopoMap, MapRando |
 | `map-catalog.schema.json` | `GET /maps/catalog-v4.json` | same body versions; adds BBBike and its two map types |
 | `map-catalog.schema.json` | `GET /maps/catalog-v5.json` | same body versions; adds OSMapaPL (`osmapa`), its four map types and `conflictGroup`; for 1.1.0 and later |
+| `map-catalog.schema.json` | `GET /maps/catalog-v6.json` | same body versions; adds Lucky Maps (`luckymaps`, raw IMG main map plus optional contours IMG); for the first app version with the Lucky Maps adapter |
 | `device-catalog.schema.json` | `GET /devices/catalog.json` | independent `catalogVersion: 2` |
 | `installation-policy.schema.json` | `GET /devices/installation-policy.json` | public-read `schemaVersion: 3`, capability-derived native write policy |
 | `compatibility-event.schema.json` | `POST /compatibility/events` request body | accepted versions 1–4; current emitter uses 4 |
