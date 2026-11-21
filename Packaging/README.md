@@ -45,7 +45,9 @@ The next candidate is **1.2.3 / build 50** on the `stable` channel (see
 #760: downloads kept for Try again for 6 hours and across a disconnect before
 any write, the "Terento can no longer see your device" message, the inventory
 rule and side in the failure context, the reconnect-wait funnel outcome and
-connection facts in a Help-menu `CONNECTION` support report. It adds the
+connection facts in a Help-menu `CONNECTION` support report; and of #765: a
+read-only "Garmin maps" section in Manage maps (merged after #760, before this
+candidate). It adds the
 `inventoryRule`/`inventorySide` fields and the `RECONNECT_WAIT` funnel stage
 (migration 096), so the API from #760 must be deployed and verified before the
 candidate is published; it still reads `catalog-v5.json`. Public metadata
