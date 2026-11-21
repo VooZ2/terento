@@ -4710,9 +4710,11 @@ a.chip {
 }
 
 /* "Star on GitHub" after "What's new" (owner 2026-11-21): two plain text links, spaced like the other
-   link groups, with no separator glyph. */
-#main-content .download-v2 .download-release .text-link + .text-link {
-  margin-inline-start: 16px;
+   link groups, with no separator glyph; the pair wraps to the next line as a whole, never indented. */
+.download-release-links {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0 16px;
 }
 
 /* Phones: the "Last install" line wraps instead of cutting the date. */

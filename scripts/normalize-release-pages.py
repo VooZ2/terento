@@ -69,7 +69,8 @@ def link(label: str, href: str, event: str, location: str, extra_class: str = ""
 
 # "Star on GitHub" (owner 2026-11-21): a plain text link to the repository on Download, About and the
 # web installer's done step only. rel is noopener without noreferrer, so GitHub can show terento.app
-# as the referring site. No separator glyph (Download has no middle dots): styles.css spaces the two links.
+# as the referring site. No separator glyph (Download has no middle dots): the two links share a span that styles.css
+# spaces like other link groups and that wraps as a whole.
 REPOSITORY_URL = "https://github.com/VooZ2/terento"
 
 
@@ -141,8 +142,8 @@ def render_main(locale: str, release: dict[str, object], dmg_url: str, notes_url
         '<section class="col-6 download-v2-needs" aria-labelledby="download-needs-title">'
         f'<h2 id="download-needs-title">{html.escape(c["needs_title"])}</h2>'
         f'<p class="download-release">{release_text} '
-        f'<a class="text-link" href="{notes_url}" rel="noopener noreferrer">{html.escape(c["notes"])}</a>'
-        f' {star_link(c["star"], "download-version")}</p>'
+        f'<span class="download-release-links"><a class="text-link" href="{notes_url}" rel="noopener noreferrer">{html.escape(c["notes"])}</a>'
+        f' {star_link(c["star"], "download-version")}</span></p>'
         f'<ul class="checklist">{needs}</ul>'
         + link(c["compat_label"], f"{root}compatibility/", "compatibility-link-click", "download-page", " download-info-link")
         + '</section>'
