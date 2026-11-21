@@ -57,6 +57,26 @@ jobs:
             }
           ' "$pglite_root"
           echo "PGLITE_MODULE_PATH=$pglite_root/node_modules/@electric-sql/pglite" >> "$GITHUB_ENV"
+      - name: Install pinned Playwright for the Admin browser check
+        env:
+          PLAYWRIGHT_VERSION: "1.63.0"
+          PLAYWRIGHT_INTEGRITY: "sha512-+7ziBLidS4NaNCdt57SUDT+wYmmd5fmiQejUic/kb+YsYSCPyOOE9sebzMjNmQrsnNpDJqd4WHvV/8lfKfUDUg=="
+        run: |
+          set -euo pipefail
+          playwright_root="$RUNNER_TEMP/terento-playwright"
+          mkdir -p "$playwright_root"
+          npm install --prefix "$playwright_root" --no-save --ignore-scripts \
+            --no-audit --no-fund "playwright@$PLAYWRIGHT_VERSION"
+          node -e '
+            const lock = require(process.argv[1] + "/node_modules/.package-lock.json");
+            const entry = lock.packages["node_modules/playwright"] || {};
+            if (entry.version !== process.env.PLAYWRIGHT_VERSION || entry.integrity !== process.env.PLAYWRIGHT_INTEGRITY) {
+              console.error("Playwright version or integrity mismatch", entry.version, entry.integrity);
+              process.exit(1);
+            }
+          ' "$playwright_root"
+          "$playwright_root/node_modules/.bin/playwright" install --with-deps chromium
+          echo "TERENTO_PLAYWRIGHT_MODULE=$playwright_root/node_modules/playwright" >> "$GITHUB_ENV"
       - name: Run backend suite
         env:
           CI: "true"

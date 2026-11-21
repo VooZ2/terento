@@ -35,4 +35,4 @@ terento-catalog-audit-opentopomap-contours = "terento_catalog.opentopomap_contou
 where = ["src"]
 
 [tool.setuptools.package-data]
-terento_catalog = ["migrations/*.sql", "static/map/*", "map_preview/areas.json"]
+terento_catalog = ["migrations/*.sql", "static/map/*", "static/admin/*", "map_preview/areas.json"]

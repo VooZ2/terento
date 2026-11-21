@@ -105,8 +105,10 @@ class AdminFilterDropdownTests(unittest.TestCase):
         "provider-package-page-size", "map-statistics-provider",
         "map-statistics-event", "map-statistics-outcome", "diagnostic-history-page-size",
         "diagnostic-state-filter", "device-family", "device-support", "device-status",
-        "device-mobile-sort",
+        "device-mobile-sort", "gsc-period", "asc-period",
     }
+    # Signed-out pages have no filters and do not load the Admin scripts.
+    SIGNED_OUT = {"login.html", "setup.html"}
 
     @classmethod
     def setUpClass(cls):
@@ -121,6 +123,8 @@ class AdminFilterDropdownTests(unittest.TestCase):
         script = _admin_dropdown_script()
         self.assertGreater(len(self.pages), 20)
         for name, body in self.pages.items():
+            if name in self.SIGNED_OUT:
+                continue
             with self.subTest(page=name):
                 tags = re.findall(r'<script nonce="[^"]+">([\s\S]*?)</script>', body)
                 self.assertTrue(any(script in tag for tag in tags), "dropdown script missing or without nonce")

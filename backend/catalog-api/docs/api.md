@@ -352,7 +352,9 @@ map as `/admin/map-assets/world-map.<hash>.js` (`<hash>` = the first 16 hex
 digits of the content SHA-256, so a change is a new URL). Both are served
 behind the same session and CSRF checks as the other map assets with
 `Cache-Control: private, max-age=31536000, immutable`. The sign-in and setup
-pages keep the same CSS inline because that route needs a session.
+pages keep the same CSS inline because that route needs a session. The stylesheet source is
+`src/terento_catalog/static/admin/admin.css` (package data), behind the generated
+brand tokens.
 
 ## `GET https://api.terento.app/admin/first-run`
 

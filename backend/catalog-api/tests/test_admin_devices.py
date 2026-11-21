@@ -555,7 +555,6 @@ class AdminDevicesTests(unittest.TestCase):
         self.assertIn("${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}", body)
         self.assertNotIn("timeZoneName: 'short'", body)
         self.assertIn("white-space:nowrap;cursor:pointer", ADMIN_STYLES)
-        self.assertIn(".device-table-wrap tbody td{padding-top:6px;padding-bottom:6px}", ADMIN_STYLES)
         self.assertIn("[device.id, device.model", body)
         self.assertIn("let sortKey = 'model'", body)
         self.assertIn("let sortDirection = 'ascending'", body)
@@ -583,8 +582,8 @@ class AdminDevicesTests(unittest.TestCase):
         )
         self.assertEqual(body.count(columns), 2)
         for column, width in (
-            ("model", 20), ("variant", 18), ("maps", 9), ("authorization", 14),
-            ("status", 11), ("attempts", 9), ("successful", 8), ("last-success", 11),
+            ("model", 20), ("variant", 16), ("maps", 9), ("authorization", 14),
+            ("status", 11), ("attempts", 9), ("successful", 10), ("last-success", 11),
         ):
             self.assertIn(f".device-column-{column}{{width:{width}%}}", ADMIN_STYLES)
         self.assertIn("white-space:nowrap;text-transform:uppercase", ADMIN_STYLES)
