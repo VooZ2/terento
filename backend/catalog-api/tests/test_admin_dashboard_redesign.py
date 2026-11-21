@@ -53,6 +53,11 @@ def _funnel(**counts):
                 {"outcome": "DEVICE_STORAGE", "sessionCount": counts.get("device_storage", 0)},
                 {"outcome": "LOCAL_CAPABILITY", "sessionCount": counts.get("local_capability", 0)},
             ]},
+            {"stage": "RECONNECT_WAIT", "outcomes": [
+                {"outcome": "SHOWN", "sessionCount": counts.get("reconnect_shown", 0)},
+                {"outcome": "RESUMED", "sessionCount": counts.get("reconnect_resumed", 0)},
+                {"outcome": "TIMED_OUT", "sessionCount": counts.get("reconnect_timed_out", 0)},
+            ]},
         ],
         "modelsNeedingReview": counts.get("models", []),
         **({"journey": {"sessionCount": counts.get("sessions", 0),
@@ -266,7 +271,7 @@ class DashboardPresentationTests(unittest.TestCase):
 
     FIRST_RUN = dict(
         sessions=5, connected=4, never_connected=1, no_usb=1, approved=3, pending=1, remote=4,
-        catalog_update=1, device_storage=1, journey_approved=3,
+        catalog_update=1, device_storage=1, journey_approved=3, reconnect_shown=2, reconnect_resumed=1,
         models=[{"baseModel": "fenix 8", "outcome": "PENDING", "sessionCount": 1,
                  "catalogStatus": "NOT_IN_CATALOG"}],
         never={"sessionCount": 1, "withoutConnectionSignalCount": 0,
@@ -350,7 +355,7 @@ class DashboardPresentationTests(unittest.TestCase):
         self.assertIn("<span aria-hidden='true'>=</span> Same as previous 7 days</span>", tiles)
         self.assertIn("data-tone='danger'", tiles)  # measured losses above zero
         cards = ["Why not connected", "Connection problems", "Permission check", "Waiting models",
-                 "Map list", "Install blocked"]
+                 "Map list", "Install blocked", "Reconnect wait"]
         card_positions = [main.index(f"-title'>{title}</h2>") for title in cards]
         self.assertEqual(card_positions, sorted(card_positions))
         self.assertNotIn("web-installer-part", main)
@@ -358,7 +363,7 @@ class DashboardPresentationTests(unittest.TestCase):
             self.assertNotIn(heading, main)
         grid = main.split("<div class='web-installer-grid'>", 1)[1]
         self.assertEqual(main.count("<div class='web-installer-grid'>"), 1)
-        self.assertEqual(grid.count("<section class='admin-card"), 6)
+        self.assertEqual(grid.count("<section class='admin-card"), 7)
         # Number columns share one width so side-by-side cards line up.
         self.assertIn(".first-run-table{table-layout:fixed}.first-run-table th.column-number{width:112px}", ADMIN_STYLES)
         self.assertNotIn("<h3>", main)
@@ -383,6 +388,8 @@ class DashboardPresentationTests(unittest.TestCase):
                       "<td>Not in catalog</td><td class='column-number'>1</td></tr>", card("first-run-models"))
         self.assertIn(row("Loaded", 4, "80%"), card("first-run-catalog"))
         self.assertIn(row("Watch storage full", 1, "20%"), card("first-run-blocked"))
+        reconnect = card("first-run-reconnect")
+        self.assertIn(row("Asked to reconnect", 2, "40%") + row("Continued after reconnect", 1, "20%"), reconnect)
         for hidden in ("Not in file-transfer mode", "Watch in use by another app", "Built-in copy",
                        "Not allowed for this watch", "Watch not identified", "Update required<"):
             self.assertNotIn(hidden, main)  # zero outcomes are not listed
@@ -452,7 +459,7 @@ class DashboardPresentationTests(unittest.TestCase):
         # Older payload: no never-connected breakdown, so that card says so.
         self.assertIn("Every session connected a watch.",
                       page.split("id='first-run-not-connected'", 1)[1].split("</section>", 1)[0])
-        for card_id in ("first-run-catalog", "first-run-blocked"):
+        for card_id in ("first-run-catalog", "first-run-blocked", "first-run-reconnect"):
             self.assertIn("Nothing in this period.", page.split(f"id='{card_id}'", 1)[1].split("</section>", 1)[0])
         all_connected = first_run_page(_funnel(sessions=3, connected=3, never_connected=0, remote=3,
                                                blocked_authorization=1, local_capability=2),

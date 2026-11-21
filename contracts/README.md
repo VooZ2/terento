@@ -285,6 +285,20 @@ are matched case-insensitively; a path, filename or unlisted name is never
 sent. It is a diagnostic observation only and never tolerates or authorizes a
 change.
 
+Optional `inventoryRule` and `inventorySide` (apps newer than 1.2.2) are
+allowed only with `inventory-ambiguous`. `inventoryRule` names the inventory
+coherence rule that rejected one side of the comparison: `malformed-location`
+(an entry with an invalid storage, path or filename), `ambiguous-handle` (a
+zero or repeated object handle), `ambiguous-location` (a location listed twice
+or under two spellings where that is not tolerated), `missing-ancestor` (an
+entry whose parent folder is not listed) or `ancestor-not-directory` (a parent
+that is not a folder); each of these requires `inventorySide`, `baseline` for
+the inventory read before the write or `live` for the inventory compared with
+it. `unresolved-difference` means both inventories were coherent but no added,
+removed or changed object explains the refusal; it has no side. Rule names are
+diagnostic observations only; they never tolerate or authorize a change, and no
+path, filename or object handle is sent.
+
 Optional `targetPresent`, `targetUnique`, `targetKindMatches`,
 `targetFilenameMatches`, `targetSizeMatches`, `targetPathMatches` and
 `targetItemIDMatches` are nullable booleans. Unknown is omitted or null, not

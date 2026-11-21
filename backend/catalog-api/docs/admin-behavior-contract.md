@@ -666,9 +666,9 @@ fills the card width from 1240 px instead of sitting narrow in the middle
 (owner decision 2026-10-11): one stacked bar per hour
 (Today, Last 24 hours), day (Last 7 days), week (Last 30 days) or month (All
 time), `Connected` in the success colour and `Never connected` in the failed
-colour. Then six cards in one grid, two side by side above 900 px, in journey
+colour. Then seven cards in one grid, two side by side above 900 px, in journey
 order: `Why not connected`, `Connection problems`, `Permission check`,
-`Waiting models`, `Map list`, `Install blocked`; card titles are the only
+`Waiting models`, `Map list`, `Install blocked`, `Reconnect wait`; card titles are the only
 headings (owner decision 2026-10-10). Every outcome card is a table with
 Result, Sessions and Share, largest first; zero rows are omitted and an empty
 card says so. The page has no explanatory text: no lead, card notes or
@@ -678,7 +678,7 @@ before any watch signal` for never-connected sessions with no connection
 signal, with the share of the never-connected count (without such sessions it
 says `Every session connected a watch.`). `Connection problems` lists every
 non-connected `DEVICE_CONNECT` outcome across all sessions. `Permission check`
-(the `AUTHORIZATION` stage), `Map list` (`CATALOG`) and `Install blocked` show
+(the `AUTHORIZATION` stage), `Map list` (`CATALOG`), `Install blocked` and `Reconnect wait` show
 their shares of the period's sessions. `Waiting models` lists the models
 waiting for review, most sessions first: the model linking to Devices filtered
 by that name, its Permission check result (Pending, Unknown model or
@@ -693,7 +693,10 @@ get ready`, `Not in file-transfer mode`, `Watch in use by another app`,
 `Several Garmins`, `Disconnected after connecting`, `Stopped responding`; Map
 list `Loaded`, `Partly loaded`, `Built-in copy`, `App update required`;
 Install blocked `Not allowed for this watch`, `Watch storage full`, `Mac
-storage problem`, `Map not verified`, `Watch not identified`, `Other`. The
+storage problem`, `Map not verified`, `Watch not identified`, `Other`;
+Reconnect wait (`RECONNECT_WAIT`, apps newer than 1.2.2) `Asked to reconnect`,
+`Continued after reconnect`, `Cancelled`, `Didn't come back in time`,
+`Different device connected`, as shares of the period's sessions. The
 Dashboard and First run page freshness revisions for First run cover exactly
 these displayed values, without zero trend buckets that only move with the
 rolling window. It never mixes into install counts. A failed sub-query renders that card as `Unavailable` with a Retry link
