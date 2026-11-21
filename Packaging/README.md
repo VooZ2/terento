@@ -197,7 +197,7 @@ A provider the server holds `PAUSED` stays visible but cannot be installed.
 To hardware-test it before activation, put
 `Packaging/local-paused-provider-test.command` beside a Debug `*-local`
 `Terento.app` and start the app with it. It sets the Debug-only
-`TERENTO_DEBUG_UNPAUSE_PROVIDERS` (default `osmapa`), which lifts only the
+`TERENTO_DEBUG_UNPAUSE_PROVIDERS` (default `luckymaps`), which lifts only the
 `PROVIDER_PAUSED` reason for the named providers; `RETIRED`, other block
 reasons, region policy and installation authorization still apply, and the
 server state is not changed. Launching `Terento.app` directly keeps the

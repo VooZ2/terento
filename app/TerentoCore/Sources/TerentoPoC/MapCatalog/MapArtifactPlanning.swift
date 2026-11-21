@@ -146,6 +146,7 @@ extension MapArtifact {
             validationState: validationState,
             sourceProof: sourceProof,
             osmapaSourceProof: osmapaSourceProof,
+            luckyMapsSourceProof: luckyMapsSourceProof,
             carriesSourceProof: carriesSourceProof
         )
     }
@@ -169,6 +170,7 @@ extension MapArtifact {
             validationState: validationState,
             sourceProof: sourceProof,
             osmapaSourceProof: osmapaSourceProof,
+            luckyMapsSourceProof: luckyMapsSourceProof,
             carriesSourceProof: carriesSourceProof
         )
     }
