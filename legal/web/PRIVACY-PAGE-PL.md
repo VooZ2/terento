@@ -15,7 +15,7 @@ W aplikacji pobranej z terento.app dwa strumienie są domyślnie włączone, aby
 
 Raporty nie zawierają Garmin Unit IDs, wartości numerów seryjnych, kont, lokalnych ścieżek, map ani surowych logów. Raporty indywidualne są prywatne; publikowane są tylko sprawdzone zbiorcze wyniki zgodności. Podstawą jest uzasadniony interes w poprawie niezawodności i obsługi urządzeń, zgodnie z art. 6 ust. 1 lit. f RODO.
 
-**Wersja z Mac App Store.** Oba strumienie są wyłączone, dopóki nie zdecydujesz się udostępniać danych. Po pierwszej udanej instalacji mapy Terento pyta jeden raz, czy udostępniać wyniki instalacji Terento; pole nie jest zaznaczone. Po jego zaznaczeniu oba strumienie zostają włączone i udostępniana jest także ta instalacja. Wybór można zmienić w dowolnym momencie w **Terento → Diagnostics**. W tej wersji podstawą jest zgoda, zgodnie z art. 6 ust. 1 lit. a RODO; jej wycofanie zatrzymuje przyszłe wysyłanie i nie wpływa na dane już wysłane. Raporty z tej wersji mają w wersji aplikacji oznaczenie App Store.
+**Wersja z Mac App Store.** Oba strumienie są wyłączone, dopóki nie zdecydujesz się udostępniać danych. Po udanej instalacji lub aktualizacji mapy Terento pyta, czy udostępniać wyniki instalacji Terento; nic nie jest wybrane z góry. **Share** włącza oba strumienie i udostępnia także tę instalację lub aktualizację; **Don't share** pozostawia oba wyłączone. Po **Not now** nic nie jest udostępniane, a Terento zapyta jeszcze raz po następnej udanej instalacji lub aktualizacji, potem już nie. Wersje do 1.2.2 włącznie pytają tylko po instalacji, oferują tylko **Share** i **Not now** i zapisują **Not now** jako brak zgody na udostępnianie. Wybór można zmienić w dowolnym momencie w **Terento → Diagnostics**. W tej wersji podstawą jest zgoda, zgodnie z art. 6 ust. 1 lit. a RODO; jej wycofanie zatrzymuje przyszłe wysyłanie i nie wpływa na dane już wysłane. Raporty z tej wersji mają w wersji aplikacji oznaczenie App Store.
 
 ## Instalator webowy
 
@@ -51,7 +51,7 @@ Zgłoszenie GitHub jest oddzielne od automatycznej diagnostyki: sprawdzasz i wys
 
 ## Raporty pomocy
 
-Gdy aplikacja oferuje wysłanie raportu pomocy do Terento, raport jest wysyłany tylko wtedy, gdy zdecydujesz się go wysłać po zapoznaniu się z jego treścią. Zawiera oczyszczone informacje o problemie używane także w raportach GitHub: wersje aplikacji i macOS, model i wariant zegarka, etap, który się nie powiódł, kategorię i komunikat błędu, dostawcę i region mapy oraz czasy, a także opcjonalny opis. Nie zawiera numerów seryjnych, Unit IDs, danych kont, lokalnych ścieżek, surowych logów ani map; konto GitHub nie jest potrzebne. Nie podawaj w opisie danych osobowych.
+Gdy aplikacja oferuje wysłanie raportu pomocy do Terento, raport jest wysyłany tylko wtedy, gdy zdecydujesz się go wysłać po zapoznaniu się z jego treścią. Zawiera oczyszczone informacje o problemie używane także w raportach GitHub: wersje aplikacji i macOS, model i wariant zegarka, etap, który się nie powiódł, kategorię i komunikat błędu, dostawcę i region mapy oraz czasy, a także opcjonalny opis. Nie zawiera numerów seryjnych, Unit IDs, danych kont, lokalnych ścieżek, surowych logów ani map; konto GitHub nie jest potrzebne. Nie podawaj w opisie danych osobowych. Od wersji 1.2.3 wersja z Mac App Store proponuje to po nieudanej instalacji, dopóki nie udostępniasz wyników instalacji.
 
 Raporty pomocy służą wyłącznie do diagnozy zgłoszonego problemu, nie są używane w statystykach i są przechowywane przez 12 miesięcy. Dostęp ma administracja projektu, która widzi raport razem z diagnostyką tej samej instalacji lub aktualizacji, aby zbadać problem. Adres IP jest używany w pamięci serwera, aby ograniczyć ponowne wysyłanie; nie jest zapisywany z raportem ani w bazie danych i jest okresowo usuwany, także przy ponownym uruchomieniu serwera. Podstawą jest uzasadniony interes w odpowiedzi na zgłoszenie i utrzymaniu aplikacji, zgodnie z art. 6 ust. 1 lit. f RODO.
 
@@ -79,4 +79,4 @@ Zgodność może obejmować oczyszczoną nazwę modelu MTP, USB VID/PID, transpo
 
 Raporty mogą dodatkowo zawierać oryginalny opis modelu z XML (do 160 znaków) i kod produktu modelu (do 64 liter ASCII, cyfr lub łączników). Dane te określają model produktu, a nie pojedynczy zegarek. Pełne dokumenty XML, Unit ID i numery seryjne są wykluczone. Powiązania kodów modeli i poprawki administratora są przechowywane oddzielnie od oryginalnego raportu.
 
-Aktualizacja: 18 listopada 2026 r.
+Aktualizacja: 21 listopada 2026 r.

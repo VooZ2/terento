@@ -138,6 +138,11 @@ final class MapLifecycleViewModel: ObservableObject {
     /// the user starts another operation.
     @Published private(set) var interruptedOperationNotice: String?
 
+    /// The last map update that finished and verified in this session, so
+    /// the screen can count it as one successful map operation, exactly like
+    /// a completed installation. Failed and interrupted updates never set it.
+    @Published private(set) var lastSuccessfulUpdate: SuccessfulMapUpdate?
+
     /// "<Map> removed." for a few seconds after a removal is confirmed; the
     /// row itself leaves the list on the refresh.
     @Published private(set) var removalNotice: String?
@@ -1001,6 +1006,7 @@ final class MapLifecycleViewModel: ObservableObject {
                     progress: nil,
                     message: "The map was updated and verified."
                 )
+                lastSuccessfulUpdate = SuccessfulMapUpdate(operationID: mapStatisticsOperationID)
                 mapEngine.refreshCurrentDeviceMaps()
             } else {
                 setOperation(
@@ -1055,6 +1061,13 @@ final class MapLifecycleViewModel: ObservableObject {
         )
     }
 
+}
+
+/// One verified map update. `operationID` is the update's report and map
+/// usage operation, so sharing chosen after it can queue that update's
+/// results.
+struct SuccessfulMapUpdate: Equatable, Sendable {
+    let operationID: UUID
 }
 
 private extension MapLifecycleItem {

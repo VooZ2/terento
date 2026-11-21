@@ -90,7 +90,8 @@ require() {
     fi
 }
 
-require "$connect_screen" 'onSendSupportReport: { sendInstallationSupportReport(for: selectedInstallationPlan) }' 'failure dialog has no Send report to Terento'
+require "$connect_screen" 'onSendSupportReport: offersInstallationSupportReport' 'failure dialog has no Send report to Terento'
+require "$connect_screen" '? { sendInstallationSupportReport(for: selectedInstallationPlan) } : nil' 'failure dialog does not send this failure'
 require "$connect_screen" 'secondaryLabel: "Report issue"' 'the GitHub option must stay in the failure dialog'
 require "$connect_screen" 'Label("Send report to Terento", systemImage: "paperplane")' 'Send report to Terento is not a text link with an icon'
 require "$diagnostics" 'openWindow(id: "support-report")' 'Diagnostics has no Send report to Terento'

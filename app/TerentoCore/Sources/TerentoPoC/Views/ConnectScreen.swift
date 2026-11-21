@@ -77,7 +77,9 @@ struct ConnectScreen: View {
     @State private var diagnosticLogMessage: String?
     @State private var isShowingInstallationFailure = false
     #if TERENTO_APP_STORE
-    @State private var isShowingInstallSharingPrompt = false
+    /// The sharing question waiting for an answer, after the installation or
+    /// update it would share. Shown on that operation's page only.
+    @State private var sharingQuestion: SharingQuestion?
     @Environment(\.requestReview) private var requestReview
     #endif
     @State private var supportReportPayload: SupportReportPayload?
@@ -406,14 +408,36 @@ struct ConnectScreen: View {
             if phase == .completed {
                 selectedSection = .installMaps
                 localInstallStep = .done
+                // A partial installation is not a successful operation.
                 #if TERENTO_APP_STORE
-                handleSuccessfulInstallation()
+                if hasPartialInstallation {
+                    sharingQuestion = nil
+                } else {
+                    handleSuccessfulOperation(operationID: evidenceOperationID, isUpdate: false)
+                }
                 #else
                 showsDonationLine = !hasPartialInstallation
-                    && DonationPromptPolicy.recordSuccessfulInstallation(version: TerentoTelemetryMetadata.version)
+                    && DonationPromptPolicy.recordSuccessfulOperation(version: TerentoTelemetryMetadata.version)
                 #endif
             }
         }
+        // A verified map update counts like a completed installation.
+        .onChange(of: lifecycleViewModel.lastSuccessfulUpdate) { update in
+            #if TERENTO_APP_STORE
+            if let update { handleSuccessfulOperation(operationID: update.operationID, isUpdate: true) }
+            #else
+            if update != nil {
+                DonationPromptPolicy.recordSuccessfulOperation(version: TerentoTelemetryMetadata.version, mayShow: false)
+            }
+            #endif
+        }
+        #if TERENTO_APP_STORE
+        // Leaving Manage maps without choosing leaves the question unanswered,
+        // like leaving the Done page; it counts as one of the two asks.
+        .onChange(of: selectedSection) { section in
+            if section != .manageMaps, sharingQuestion?.isUpdate == true { sharingQuestion = nil }
+        }
+        #endif
         .onChange(of: lifecycleViewModel.isBusy) { _ in
             updatePresenceMonitoring(for: mapEngine.state)
         }
@@ -452,7 +476,8 @@ struct ConnectScreen: View {
                     isShowingInstallationFailure = false
                 } : nil,
                 helpTopic: installationFailureHelpTopic,
-                onSendSupportReport: { sendInstallationSupportReport(for: selectedInstallationPlan) }
+                onSendSupportReport: offersInstallationSupportReport
+                    ? { sendInstallationSupportReport(for: selectedInstallationPlan) } : nil
             )
             .sheet(item: $supportReportPayload) { payload in
                 SupportReportSheet(controller: SupportReportController(payload: payload),
@@ -464,26 +489,38 @@ struct ConnectScreen: View {
     }
 
     #if TERENTO_APP_STORE
-    /// App Store builds ask about sharing once, after the first successful
-    /// installation, and later let macOS decide whether to ask for a rating.
-    private func handleSuccessfulInstallation() {
-        let asksAboutSharing = evidenceController.needsSharingDecision
-        if AppStoreReviewPolicy.recordSuccessfulInstallation(
-            version: TerentoTelemetryMetadata.version, mayRequest: !asksAboutSharing) {
+    /// After one successful installation or update, App Store builds show at
+    /// most one thing: the sharing question while no choice is recorded
+    /// (asked twice at most), otherwise, from the second success and once
+    /// per version, the macOS rating request (AppStoreReviewPolicy).
+    private func handleSuccessfulOperation(operationID: UUID, isUpdate: Bool) {
+        switch AppStoreReviewPolicy.recordSuccessfulOperation(
+            version: TerentoTelemetryMetadata.version,
+            sharingUndecided: evidenceController.needsSharingDecision) {
+        case .sharingQuestion:
+            sharingQuestion = SharingQuestion(operationID: operationID, isUpdate: isUpdate)
+        case .review:
+            sharingQuestion = nil
             requestReview()
+        case .none:
+            sharingQuestion = nil
         }
-        isShowingInstallSharingPrompt = asksAboutSharing
     }
 
-    /// Share or Not now in the Done page callout; nothing is pre-selected.
-    private func decideInstallSharing(_ share: Bool) {
+    /// Share, Not now or Don't share in the sharing callout; nothing is
+    /// pre-selected. Not now records no choice: the question comes back once,
+    /// after the next successful operation, and then no more.
+    private func decideSharing(_ decision: SharingDecision) {
+        guard let question = sharingQuestion else { return }
+        sharingQuestion = nil
+        guard decision != .notNow else { return }
+        let share = decision == .share
         evidenceController.decideConsent(share ? .accepted : .declined)
         // A map usage refusal carried over from the DMG app stands.
         if mapStatisticsController.store.consent() == nil {
             mapStatisticsController.decideConsent(share ? .accepted : .declined)
         }
-        if share { evidenceController.shareOperation(evidenceOperationID) }
-        isShowingInstallSharingPrompt = false
+        if share { evidenceController.shareOperation(question.operationID) }
     }
     #endif
 
@@ -1333,6 +1370,14 @@ struct ConnectScreen: View {
                     .padding(.top, 10)
                     .accessibilityElement(children: .combine)
                 }
+                #if TERENTO_APP_STORE
+                // After a verified update the question sits above the list,
+                // as it sits on the Done page after an installation.
+                if let sharingQuestion, sharingQuestion.isUpdate {
+                    InstallSharingCallout(onDecide: decideSharing)
+                        .padding(.top, 10)
+                }
+                #endif
                 ScrollView {
                     managedMapGroups(lifecycleInventory)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -2999,6 +3044,18 @@ struct ConnectScreen: View {
             : "GitHub could not be opened. Please try again."
     }
 
+    /// The failure dialog offers to send this one report to Terento. App
+    /// Store builds offer it only while results are not shared (declined or
+    /// not chosen yet); sending it is a one-time choice and changes no
+    /// sharing choice. Shared results already reach Terento.
+    private var offersInstallationSupportReport: Bool {
+        #if TERENTO_APP_STORE
+        return !evidenceController.compatibilitySharingEnabled
+        #else
+        return true
+        #endif
+    }
+
     /// The same sanitised report as the GitHub option, as a support report.
     private func sendInstallationSupportReport(for plan: InstallationPlan?) {
         let draft = retainedInstallationFailure?.issueDraft ?? installationIssueDraft(for: plan)
@@ -3085,8 +3142,8 @@ struct ConnectScreen: View {
                         .padding(.top, TerentoPageLayout.sectionSpacing)
 
                     #if TERENTO_APP_STORE
-                    if isShowingInstallSharingPrompt {
-                        InstallSharingCallout(onDecide: decideInstallSharing)
+                    if let sharingQuestion, !sharingQuestion.isUpdate {
+                        InstallSharingCallout(onDecide: decideSharing)
                             .padding(.top, TerentoPageLayout.sectionSpacing)
                     }
                     #endif
@@ -3544,12 +3601,12 @@ private struct InstallationFailureDialog: View {
     var helpTopic: TroubleshootingTopic? = nil
     var onSendSupportReport: (() -> Void)? = nil
 
-    #if TERENTO_APP_STORE
-    // App Store builds compile out sending reports to Terento.
-    private static let reportGuidance = "Report issue copies the full report and opens GitHub. If the form is not filled in, click its report field and press ⌘A, then ⌘V. Review before submitting."
-    #else
-    private static let reportGuidance = "Report issue copies the full report and opens GitHub. If the form is not filled in, click its report field and press ⌘A, then ⌘V. Review before submitting. No GitHub account? Send the report to Terento instead."
-    #endif
+    private static let gitHubReportGuidance = "Report issue copies the full report and opens GitHub. If the form is not filled in, click its report field and press ⌘A, then ⌘V. Review before submitting."
+
+    private var reportGuidance: String {
+        onSendSupportReport == nil ? Self.gitHubReportGuidance
+            : Self.gitHubReportGuidance + " No GitHub account? Send the report to Terento instead."
+    }
 
     private var primaryAction: (label: String, action: () -> Void)? {
         if let onTryAgain { return ("Try again", onTryAgain) }
@@ -3559,7 +3616,7 @@ private struct InstallationFailureDialog: View {
 
     private var supportingMessage: String? {
         [safetyMessage, onManageMaps == nil ? nil : InstallationFailure.leftoverMapFollowUp,
-         Self.reportGuidance, reportError]
+         reportGuidance, reportError]
             .compactMap { value in
                 let normalized = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                 return normalized.isEmpty ? nil : normalized
@@ -3594,11 +3651,26 @@ private struct InstallationFailureDialog: View {
 }
 
 #if TERENTO_APP_STORE
-/// Shown on the Done page after the first successful installation in App
-/// Store builds, until the person chooses. Nothing is pre-selected: Share
-/// and Not now carry equal weight and neither is the default action.
+/// The answer to the sharing question. Not now records no choice.
+private enum SharingDecision: Equatable {
+    case share
+    case notNow
+    case dontShare
+}
+
+/// A sharing question waiting after one successful operation: on the Done
+/// page after an installation, above the list in Manage maps after an update.
+private struct SharingQuestion: Equatable {
+    let operationID: UUID
+    let isUpdate: Bool
+}
+
+/// Shown in App Store builds after a successful installation or update while
+/// no sharing choice is recorded, at most twice (AppStoreReviewPolicy).
+/// Nothing is pre-selected: Share, Not now and Don't share carry equal
+/// weight and none is the default action.
 private struct InstallSharingCallout: View {
-    let onDecide: (Bool) -> Void
+    let onDecide: (SharingDecision) -> Void
 
     private var shareDetails: AttributedString {
         var link = AttributedString("Privacy Policy ↗")
@@ -3621,8 +3693,9 @@ private struct InstallSharingCallout: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             HStack(spacing: 10) {
-                SecondaryButton(title: "Share") { onDecide(true) }
-                SecondaryButton(title: "Not now") { onDecide(false) }
+                SecondaryButton(title: "Share") { onDecide(.share) }
+                SecondaryButton(title: "Not now") { onDecide(.notNow) }
+                SecondaryButton(title: "Don't share") { onDecide(.dontShare) }
             }
         }
         .padding(16)
@@ -3687,12 +3760,7 @@ private struct TerentoConfirmationDialog: View {
         onSendSupportReport: (() -> Void)? = nil
     ) {
         self.helpTopic = helpTopic
-        #if TERENTO_APP_STORE
-        // App Store builds compile out sending reports to Terento.
-        self.onSendSupportReport = nil
-        #else
         self.onSendSupportReport = onSendSupportReport
-        #endif
         self.icon = icon
         self.iconIsAsset = iconIsAsset
         self.role = role
