@@ -661,7 +661,20 @@ struct GarminMapScanner: Sendable {
             let restoredBBBike = exactBBBikeRecords.count == 1 ? exactBBBikeRecords.first.flatMap { record in
                 record.bbbikeMetadata.flatMap { BBBikeIMGMetadata.metadata(prefixes[file.stableIdentity] ?? [], context: $0, version: record.version) }
             } : nil
-            let metadata = restoredBBBike ?? parser.parse(
+            // Lucky Maps headers name only the file stem: identity is restored
+            // from one exact manifest record and corroborated by the header.
+            let exactLuckyMapsRecords = ownershipRecords.filter {
+                MapIdentity.normalizeProvider($0.providerId) == "luckymaps"
+                    && $0.devicePath == file.path && $0.filename == file.filename && $0.sizeBytes == file.sizeBytes
+                    && file.filename.hasPrefix("terento_luckymaps_")
+                    && TerentoManagedFilenameGenerator().artifactKind(for: file.filename) == ($0.artifactKind ?? .main)
+            }
+            let restoredLuckyMaps = restoredBBBike == nil && exactLuckyMapsRecords.count == 1
+                ? exactLuckyMapsRecords.first.flatMap { record in
+                    LuckyMapsIMGMetadata.metadata(prefixes[file.stableIdentity] ?? [], regionId: record.regionId,
+                                                  kind: record.artifactKind ?? .main)
+                } : nil
+            let metadata = restoredBBBike ?? restoredLuckyMaps ?? parser.parse(
                 prefixes[file.stableIdentity] ?? [],
                 filename: file.filename
             )
@@ -995,6 +1008,58 @@ struct GarminIMGPrefixEvidence: Equatable, Sendable {
         }
         self.init(isGarminIMG: true, osmapa: OSMapaIMGMetadata.marker(prefix),
                   mdrFamilyIDs: OSMapaIMGMetadata.mdrFamilyIDs(prefix))
+    }
+}
+
+/// Lucky Maps IMG headers: the description is the source file stem
+/// (`andorra`, `andorra-ct`), the creation date at 0x39 is the release, and a
+/// main map names exactly one MDR family ID while a contour file names none.
+/// The header alone never says "Lucky Maps"; callers pass the catalog or
+/// manifest region it must match.
+enum LuckyMapsIMGMetadata {
+    static func title(_ bytes: [UInt8]) -> String? {
+        guard OSMapaIMGMetadata.isGarminIMG(bytes) else { return nil }
+        func trimmed(_ field: ArraySlice<UInt8>) -> [UInt8] {
+            var value = Array(field)
+            while let last = value.last, last == 0x20 || last == 0 { value.removeLast() }
+            return value
+        }
+        let first = trimmed(bytes[0x49..<0x5D])
+        let continuation = trimmed(bytes[0x65..<0x83])
+        let title: [UInt8]
+        if first.count == 20 {
+            title = first + continuation
+        } else {
+            guard continuation.isEmpty else { return nil }
+            title = first
+        }
+        guard let text = String(bytes: title, encoding: .ascii), LuckyMapsProviderAdapter.isStem(text) else { return nil }
+        return text
+    }
+
+    static func metadata(_ bytes: [UInt8], regionId: String, kind: MapArtifactKind) -> GarminIMGMetadata? {
+        guard let title = title(bytes) else { return nil }
+        let region = MapIdentity.normalizeRegion(regionId)
+        let families = OSMapaIMGMetadata.mdrFamilyIDs(bytes)
+        guard !region.isEmpty else { return nil }
+        switch kind {
+        case .main:
+            guard MapIdentity.normalizeRegion(title) == region, families.count == 1,
+                  let version = OSMapaIMGMetadata.version(bytes) else { return nil }
+            return GarminIMGMetadata(
+                name: "Lucky Maps \(title)", provider: "Lucky Maps", region: region, family: "Lucky Maps",
+                rawVersion: version.description, version: version, identifier: title,
+                productId: nil, familyId: families.first
+            )
+        case .contours:
+            // Contour headers carry an older creation date that is not the package release.
+            guard MapIdentity.normalizeRegion(title) == region + "CT", title.hasSuffix("-ct"), families.isEmpty,
+                  OSMapaIMGMetadata.version(bytes) != nil else { return nil }
+            return GarminIMGMetadata(
+                name: "Lucky Maps \(title)", provider: "Lucky Maps", region: region, family: "Lucky Maps",
+                rawVersion: nil, version: nil, identifier: title, productId: nil, familyId: nil
+            )
+        }
     }
 }
 

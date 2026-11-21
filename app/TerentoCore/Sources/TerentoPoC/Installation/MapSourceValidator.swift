@@ -54,6 +54,9 @@ struct MapSourceValidator: Sendable {
         if isOSMapa {
             return try validateOSMapa(fileURL: fileURL, expectedPackage: expectedPackage, inspected: inspected)
         }
+        if MapIdentity.normalizeProvider(expectedPackage.providerId) == "luckymaps" {
+            return try validateLuckyMaps(fileURL: fileURL, expectedPackage: expectedPackage, inspected: inspected)
+        }
 
         guard let metadata = parser.parse(
             inspected.prefix,
@@ -148,6 +151,31 @@ struct MapSourceValidator: Sendable {
             throw MapSourceValidationError.identityMismatch
         }
         guard metadata.version == package.version else {
+            throw MapSourceValidationError.versionMismatch
+        }
+        return ValidatedMapSource(url: fileURL, sizeBytes: inspected.sizeBytes, sha256: inspected.sha256, metadata: metadata)
+    }
+
+    /// The whole IMG is bound to its artifact proof: size, SHA-256 when the
+    /// provider publishes one, header title, MDR and MPS family ID, MPS area
+    /// and publisher. A main map's creation date must be the package release.
+    private func validateLuckyMaps(fileURL: URL, expectedPackage package: MapPackage,
+        inspected: InspectedSource) throws -> ValidatedMapSource {
+        let artifact = package.artifacts.count == 1 ? package.artifacts.first : package.mainArtifact
+        guard LuckyMapsProviderAdapter().expectedIMGIdentity(for: package) != nil,
+              let artifact, let proof = artifact.luckyMapsSourceProof,
+              inspected.sizeBytes == proof.installSizeBytes,
+              proof.sha256 == nil || inspected.sha256 == proof.sha256,
+              let metadata = LuckyMapsIMGMetadata.metadata(inspected.prefix, regionId: package.canonicalRegionId,
+                                                           kind: artifact.kind),
+              metadata.identifier == proof.imgTitle,
+              artifact.kind == .contours || OSMapaIMGMetadata.mdrFamilyIDs(inspected.prefix) == [proof.familyId],
+              let product = try? LuckyMapsIMGInspection.product(fileURL: fileURL),
+              product.familyID == proof.familyId,
+              product.areas == [proof.imgTitle] else {
+            throw MapSourceValidationError.identityMismatch
+        }
+        guard artifact.kind == .contours || metadata.version == package.version else {
             throw MapSourceValidationError.versionMismatch
         }
         return ValidatedMapSource(url: fileURL, sizeBytes: inspected.sizeBytes, sha256: inspected.sha256, metadata: metadata)
@@ -267,6 +295,34 @@ enum OSMapaIMGInspection {
     enum Failure: Error { case invalidIMG }
 
     static func mpsFamilyIDs(fileURL: URL) throws -> Set<UInt16> {
+        let mps = try mpsBytes(fileURL: fileURL)
+        func require(_ condition: Bool) throws {
+            guard condition else { throw Failure.invalidIMG }
+        }
+        func number(_ bytes: [UInt8], _ offset: Int, _ count: Int) throws -> Int {
+            try require(offset >= 0 && offset + count <= bytes.count)
+            return (0..<count).reduce(0) { $0 | Int(bytes[offset + $1]) << ($1 * 8) }
+        }
+        var families = Set<UInt16>()
+        var kinds = Set<UInt8>()
+        var cursor = 0
+        while cursor < mps.count {
+            let kind = mps[cursor]
+            let length = try number(mps, cursor + 1, 2)
+            try require(cursor + 3 + length <= mps.count)
+            if kind == 0x4C || kind == 0x46 {
+                try require(length >= 4)
+                families.insert(UInt16(try number(mps, cursor + 5, 2)))
+                kinds.insert(kind)
+            }
+            cursor += 3 + length
+        }
+        try require(kinds == [0x4C, 0x46])
+        return families
+    }
+
+    /// The raw `MAKEGMAP.MPS` bytes, read block by block through the FAT.
+    static func mpsBytes(fileURL: URL) throws -> [UInt8] {
         let handle = try FileHandle(forReadingFrom: fileURL)
         defer { try? handle.close() }
         let size = try handle.seekToEnd()
@@ -309,21 +365,57 @@ enum OSMapaIMGInspection {
             offset += 0x200
         }
         guard let mps else { throw Failure.invalidIMG }
+        return mps
+    }
+}
+
+/// Lucky Maps product file: every map (`L`) record names one family ID, an
+/// area equal to the file stem and the `luckymaps.ch` publisher; the family
+/// (`F`) record names the same family and publisher. Mirrors the server check.
+enum LuckyMapsIMGInspection {
+    enum Failure: Error { case invalidProduct }
+
+    static func product(fileURL: URL) throws -> (familyID: UInt16, areas: Set<String>) {
+        let mps = try OSMapaIMGInspection.mpsBytes(fileURL: fileURL)
+        return try product(mps)
+    }
+
+    static func product(_ mps: [UInt8]) throws -> (familyID: UInt16, areas: Set<String>) {
+        func require(_ condition: Bool) throws {
+            guard condition else { throw Failure.invalidProduct }
+        }
+        func number(_ bytes: [UInt8], _ offset: Int, _ count: Int) throws -> Int {
+            try require(offset >= 0 && offset + count <= bytes.count)
+            return (0..<count).reduce(0) { $0 | Int(bytes[offset + $1]) << ($1 * 8) }
+        }
+        let publisher = Array(LuckyMapsProviderAdapter.publisher.utf8)
         var families = Set<UInt16>()
-        var kinds = Set<UInt8>()
+        var areas = Set<String>()
+        var publisherFound = false
         var cursor = 0
-        while cursor < mps.count {
+        while cursor + 3 <= mps.count, mps[cursor] != 0 {
             let kind = mps[cursor]
             let length = try number(mps, cursor + 1, 2)
             try require(cursor + 3 + length <= mps.count)
-            if kind == 0x4C || kind == 0x46 {
-                try require(length >= 4)
-                families.insert(UInt16(try number(mps, cursor + 5, 2)))
-                kinds.insert(kind)
+            let record = Array(mps[(cursor + 3)..<(cursor + 3 + length)])
+            if kind == 0x4C {
+                try require(length >= 8)
+                families.insert(UInt16(try number(record, 2, 2)))
+                let strings = record[8...].split(separator: 0, omittingEmptySubsequences: false).map { Array($0) }
+                try require(strings.count >= 3 && strings[2] == publisher)
+                guard let area = String(bytes: strings[1], encoding: .isoLatin1) else { throw Failure.invalidProduct }
+                areas.insert(area)
+            } else if kind == 0x46 {
+                try require(length >= 5)
+                families.insert(UInt16(try number(record, 2, 2)))
+                let name = record[4...].split(separator: 0, maxSplits: 1, omittingEmptySubsequences: false).first.map { Array($0) } ?? []
+                publisherFound = publisherFound || name == publisher
             }
             cursor += 3 + length
         }
-        try require(kinds == [0x4C, 0x46])
-        return families
+        guard families.count == 1, let family = families.first, !areas.isEmpty, publisherFound else {
+            throw Failure.invalidProduct
+        }
+        return (family, areas)
     }
 }

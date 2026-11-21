@@ -260,7 +260,9 @@ def luckymaps_valid_identity(package: dict[str, Any]) -> bool:
     return (isinstance(stem, str) and bool(LUCKYMAPS_STEM.fullmatch(stem))
             and _provider(package.get("providerId")) == "luckymaps"
             and package.get("id") == luckymaps_package_id(stem)
-            and package.get("identifier") == stem)
+            and package.get("identifier") == stem
+            and package.get("canonicalRegionId") == re.sub(r"[^A-Z0-9]+", "-", stem.upper()).strip("-")
+            and isinstance(package.get("version"), dict) and package["version"].get("day") is not None)
 
 
 def luckymaps_reviewed_source(url: Any) -> str | None:
@@ -284,7 +286,8 @@ def _luckymaps_proof_matches(artifact: dict[str, Any], stem: str, kind: str, cre
     sha = proof.get("sha256")
     family = proof.get("familyId")
     return (
-        proof.get("sourceURL") == url
+        artifact.get("validationState") == "validated"
+        and proof.get("sourceURL") == url
         and proof.get("sourceIdentity") == f"luckymaps:{stem}:{kind}"
         and proof.get("imgTitle") == stem
         and proof.get("publisher") == "luckymaps.ch"
@@ -471,6 +474,8 @@ def luckymaps_rejections(package: dict[str, Any]) -> list[str]:
         reasons.append("luckymaps package may only add one optional contours artifact")
     elif others and not _luckymaps_proof_matches(others[0], stem + "-ct", "contours", None):
         reasons.append("luckymaps contour proof does not establish the IMG identity")
+    elif others and others[0]["sourceProof"].get("familyId") == main["sourceProof"].get("familyId"):
+        reasons.append("luckymaps contour must not share the map family ID")
     return reasons
 
 
@@ -547,6 +552,11 @@ def catalog_rejections(catalog: dict[str, Any]) -> list[str]:
     luckymaps = [str(p.get("providerRegionId") or "").lower() for p in packages if _provider(p.get("providerId")) == "luckymaps"]
     if len(set(luckymaps)) != len(luckymaps):
         reasons.append("luckymaps identities must be unique")
+    lucky_families = [family for p in packages if _provider(p.get("providerId")) == "luckymaps"
+                      for family in {a.get("sourceProof", {}).get("familyId") for a in p.get("artifacts") or []
+                                     if isinstance(a.get("sourceProof"), dict)}]
+    if len(set(lucky_families)) != len(lucky_families):
+        reasons.append("luckymaps Garmin family IDs must be unique")
     ofm = [p.get("providerRegionId") for p in packages if _provider(p.get("providerId")) == "openfietsmap"]
     if len(set(ofm)) != len(ofm):
         reasons.append("openfietsmap identities must be unique")
