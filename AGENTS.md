@@ -47,6 +47,9 @@ Use this order when sources disagree:
   filesystem mechanics.
 - Every status has explicit text and an icon; color is supporting information,
   never the only status signal.
+- Do not add explanatory or helper text to the UI (captions, subtitles, hints)
+  unless the owner asks for it. If one seems needed, propose the exact wording
+  and wait for the owner's yes.
 - Public claims must match functionality available in the current release.
   Beta limitations must remain truthful.
 - Internal compatibility classifications must not be turned into a broad public

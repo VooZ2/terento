@@ -63,7 +63,7 @@ struct ConnectScreen: View {
     // Read-only Garmin images. Kept apart from the lifecycle inventory so no
     // Remove, Update or storage path can reach them.
     @State private var managedGarminMaps: [GarminSystemMap] = []
-    @State private var filteredGarminMaps: [GarminSystemMap] = []
+    @State private var visibleGarminSummary: GarminMapsSummary?
     // The map in the last Remove dialog, and maps removed since the last fresh list.
     @State private var removingManagedMapID: String?
     @State private var removedManagedMapIDs: Set<String> = []
@@ -85,6 +85,8 @@ struct ConnectScreen: View {
     /// The sharing question waiting for an answer, after the installation or
     /// update it would share. Shown on that operation's page only.
     @State private var sharingQuestion: SharingQuestion?
+    /// The operation whose rating request waits until its page is on screen.
+    @State private var pendingReviewRequest: UUID?
     @Environment(\.requestReview) private var requestReview
     #endif
     @State private var supportReportPayload: SupportReportPayload?
@@ -437,6 +439,16 @@ struct ConnectScreen: View {
             #endif
         }
         #if TERENTO_APP_STORE
+        // The rating request runs outside any view update, once the page of
+        // the operation (Map installed, or Manage maps after an update) has
+        // been on screen for a moment. Navigation state is not touched here.
+        .task(id: pendingReviewRequest) {
+            guard pendingReviewRequest != nil else { return }
+            try? await Task.sleep(for: AppStoreReviewPolicy.requestDelay)
+            guard !Task.isCancelled, pendingReviewRequest != nil else { return }
+            pendingReviewRequest = nil
+            requestReview()
+        }
         // Leaving Manage maps without choosing leaves the question unanswered,
         // like leaving the Done page; it counts as one of the two asks.
         .onChange(of: selectedSection) { section in
@@ -506,7 +518,11 @@ struct ConnectScreen: View {
             sharingQuestion = SharingQuestion(operationID: operationID, isUpdate: isUpdate)
         case .review:
             sharingQuestion = nil
-            requestReview()
+            // Not from here: this runs inside the view update that opens
+            // Map installed. Requested here, the 1.2.3 local test lost the
+            // Done page. The request waits for `.task(id: pendingReviewRequest)`
+            // instead, after the page is on screen.
+            pendingReviewRequest = operationID
         case .none:
             sharingQuestion = nil
         }
@@ -1255,7 +1271,7 @@ struct ConnectScreen: View {
         filteredManagedInventory = managedPresentationIndex.map {
             withoutRemovedMaps($0.filtered(query: managedSearchText, providerID: managedProviderID))
         }
-        filteredGarminMaps = GarminSystemMap.filtered(managedGarminMaps,
+        visibleGarminSummary = GarminMapsSummary.visible(managedGarminMaps,
             query: managedSearchText, providerID: managedProviderID)
         if managedFiltersAreActive, let inventory = filteredManagedInventory {
             expandedProviderMapGroups.formUnion(inventory.providerGroups.map(\.id))
@@ -1316,9 +1332,9 @@ struct ConnectScreen: View {
                 .accessibilityLabel("Installed map provider")
             }
             HStack {
-                let count = GarminSystemMap.manageListCount(
+                let count = GarminMapsSummary.manageListCount(
                     lifecycleItemCount: filteredManagedInventory?.allItems.count ?? 0,
-                    visibleGarminMaps: filteredGarminMaps
+                    visibleGarminSummary: visibleGarminSummary
                 )
                 Text("\(count) \(count == 1 ? "map" : "maps")")
                     .foregroundStyle(TerentoColors.secondaryText)
@@ -1532,21 +1548,14 @@ struct ConnectScreen: View {
                     )
                 }
 
-                if !filteredGarminMaps.isEmpty {
-                    // Read-only: no buttons, no context menu, no selection.
+                if let garminSummary = visibleGarminSummary {
+                    // Read-only: one summary row, no buttons, no context menu, no selection.
                     TerentoMapSection(
                         title: "Garmin maps",
-                        count: filteredGarminMaps.count,
+                        count: 1,
                         isExpanded: $garminMapsExpanded
                     ) {
-                        Text("Installed by Garmin. Terento does not change these.")
-                            .font(.terentoUI(size: 13, weight: .medium))
-                            .foregroundStyle(TerentoColors.secondaryText)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .padding(.bottom, 4)
-                        ForEach(filteredGarminMaps) { map in
-                            GarminSystemMapRow(map: map)
-                        }
+                        GarminMapsSummaryRow(summary: garminSummary)
                     }
                     .padding(
                         .top,
@@ -1556,7 +1565,7 @@ struct ConnectScreen: View {
                     )
                 }
 
-                if lifecycleInventory.allItems.isEmpty && filteredGarminMaps.isEmpty {
+                if lifecycleInventory.allItems.isEmpty && visibleGarminSummary == nil {
                     MapStatusRow(
                         title: managedFiltersAreActive ? "No matching maps" : "No maps detected",
                         detail: managedFiltersAreActive
@@ -3714,13 +3723,13 @@ private struct InstallSharingCallout: View {
         link.link = TerentoAppLinks.privacyFromApp
         link.foregroundColor = TerentoColors.interactive
         link.font = Font.terentoUI(size: 12, weight: .semibold)
-        return AttributedString("Device model and software, map name, result, and app versions. Never serial numbers, Unit IDs or files. Change anytime in Diagnostics. ") + link
+        return AttributedString("Share whether installs work on your watch, so we can fix problems faster. No serial numbers or files. ") + link
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Share install results with Terento")
+                Text("Help improve Terento")
                     .font(.terentoUI(size: 15, weight: .semibold))
                     .foregroundStyle(TerentoColors.graphite)
                     .accessibilityAddTraits(.isHeader)
@@ -4854,19 +4863,15 @@ private struct ManageMapRow: View {
     }
 }
 
-/// A Garmin-installed image in Manage: name, filename and size only. It takes
-/// no actions and has no context menu.
-private struct GarminSystemMapRow: View {
-    let map: GarminSystemMap
-
-    private var detail: String {
-        [map.filename, map.formattedSize].compactMap { $0 }.joined(separator: " · ")
-    }
+/// All Garmin-installed images in Manage as one row: file count and total size
+/// only. It takes no actions and has no context menu.
+private struct GarminMapsSummaryRow: View {
+    let summary: GarminMapsSummary
 
     var body: some View {
         TerentoMapRow(
-            title: map.title,
-            detail: detail,
+            title: GarminMapsSummary.title,
+            detail: summary.detail,
             contentSpacing: 9,
             rowVerticalPadding: 10
         ) {
@@ -4879,7 +4884,7 @@ private struct GarminSystemMapRow: View {
             EmptyView()
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(map.title), \(detail)")
+        .accessibilityLabel("\(GarminMapsSummary.title), \(summary.detail)")
     }
 }
 

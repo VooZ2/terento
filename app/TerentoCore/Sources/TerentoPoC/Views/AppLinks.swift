@@ -54,6 +54,9 @@ enum AppStoreReviewPolicy {
     /// Asked after the first success and once more after a Not now. After
     /// that it is not asked again and nothing is sent.
     static let maximumSharingQuestions = 2
+    /// The rating request waits this long after the success page appears, so
+    /// it is never made inside the view update that shows the page.
+    static let requestDelay: Duration = .seconds(1)
 
     /// Counts one successful installation or update and returns the one
     /// thing to show after it. `sharingUndecided` is true while no sharing

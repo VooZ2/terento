@@ -771,14 +771,16 @@ The Done page has no subtitle after a complete installation (the title says it)
 and gives the next step from the install guides: eject it here, then unplug it,
 turn the new map on in the device's map settings, restart the device if it is
 not listed. In App Store builds a successful installation or verified update
-also shows a "Share install results with Terento" callout while no choice is
+also shows a "Help improve Terento" callout while no choice is
 recorded (under those steps, or above the Manage maps list after an update),
 with three equal buttons, Share, Not now and Don't share; nothing is
 pre-selected. Not now, or leaving the page, records no choice and the callout
 comes back once after the next successful operation, then never again. From the
 second successful operation, once per version and never after the same
 operation as the callout, the app asks macOS for the rating prompt
-(`AppStoreReviewPolicy`, Packaging/AppStore/README.md).
+(`AppStoreReviewPolicy`, Packaging/AppStore/README.md). It asks one second
+after the success page is on screen, never inside the view update that opens
+it: asked there, the 1.2.3 local test lost the Map installed page.
 A map from an unrecognized provider is named by its whole IMG header
 description (20 bytes at 0x49 joined with the 31-byte continuation at 0x65,
 decoded as UTF-8). Recognized providers keep their own parsing. For an

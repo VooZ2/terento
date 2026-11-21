@@ -46,7 +46,7 @@ events are sent only after the person opts in (guideline 5.1.1, GDPR):
 
 - A successful operation is a completed installation (not a partial one) or
   a verified map update. After one, while no choice is recorded, the app
-  shows a `Share install results with Terento` callout: on `Map installed`
+  shows a `Help improve Terento` callout: on `Map installed`
   after an installation, above the list in Manage maps after an update. It
   has three equal buttons and nothing pre-selected. `Share` or `Don't share`
   records `accepted` or `declined` for both streams, and `accepted` also
@@ -77,7 +77,9 @@ events are sent only after the person opts in (guideline 5.1.1, GDPR):
   app asks macOS for the system rating prompt (`requestReview`, guideline
   5.6.1); macOS shows it at most three times a year. One operation is followed
   by at most one of the two: while the sharing callout shows, the request
-  waits for the next successful operation. The count keeps the 1.2.x key
+  waits for the next successful operation. The request is made one second
+  after `Map installed` (or Manage maps after an update) is on screen, never
+  inside the view update that opens the page. The count keeps the 1.2.x key
   `AppStoreSuccessfulInstallCount`. About links to the App Store review page
   instead of `Donate`.
 

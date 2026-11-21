@@ -579,6 +579,8 @@ struct AppUpdateTests {
         let (defaults, suite) = testDefaults("appstore-first")
         defer { defaults.removePersistentDomain(forName: suite) }
         expect(AppStoreReviewPolicy.firstRequestAfterInstalls == 2, "the rating request starts at the second success")
+        expect(AppStoreReviewPolicy.requestDelay == .seconds(1),
+               "the rating request waits until the success page is on screen")
         expect(appStoreSuccess(defaults, undecided: true) == .sharingQuestion,
                "the first success asks about sharing")
         print("PASS: App Store first success asks about sharing")
