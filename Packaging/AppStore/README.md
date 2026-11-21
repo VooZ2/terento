@@ -33,7 +33,7 @@ These code paths are removed at compile time, not hidden:
   (guideline 2.4.5(vii));
 - the `Donate` links in About and on Maps installed (guideline 3.1.1).
 
-Support reports to Terento are not compiled out (from 1.2.3). The
+Support reports to Terento are not compiled out (from 1.3.0). The
 installation failure dialog offers `Send report to Terento` while results
 are not shared (declined or not chosen yet): it sends only that failure's
 report after the person reviews it and presses Send, and changes no sharing
@@ -59,7 +59,7 @@ events are sent only after the person opts in (guideline 5.1.1, GDPR):
   and nothing is sent (`AppStoreReviewPolicy`, local
   `AppStoreSharingQuestionShownCount`).
   Diagnostics keeps both checkboxes to change it later.
-- The App Store notice version is 101 from 1.2.3 (100 in 1.2.x;
+- The App Store notice version is 101 from 1.3.0 (100 in 1.2.x;
   `AppStoreConsentNotice`, used by `VersionedEvidenceConsent` and
   `VersionedMapStatisticsConsent`); only `accepted` under the current version
   permits sharing. At start-up (`AppStoreConsentNotice.migration`):

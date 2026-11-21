@@ -660,11 +660,11 @@ struct AppUpdateTests {
         print("PASS: App Store count carries over from 1.2.x")
     }
 
-    /// A 1.2.x refusal (notice 100) may have been the old Not now, so 1.2.3
+    /// A 1.2.x refusal (notice 100) may have been the old Not now, so 1.3.0
     /// asks once more; Don't share under the current notice is final.
     private static func testAppStoreOldRefusalAsksAgainNewRefusalIsFinal() {
         expect(AppStoreConsentNotice.currentVersion == 101 && AppStoreConsentNotice.firstQuestionVersion == 100,
-               "1.2.3 raises the App Store notice from 100 to 101")
+               "1.3.0 raises the App Store notice from 100 to 101")
         let old = AppStoreConsentNotice.migration(noticeVersion: 100, declined: true)
         expect(old == .undecided, "a 1.2.x refusal becomes undecided at start-up")
         let (oldDefaults, oldSuite) = testDefaults("appstore-old-declined")

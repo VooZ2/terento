@@ -1,9 +1,9 @@
 # App–API compatibility and release contract
 
-## 1.2.3 server-first acceptance
+## 1.3.0 server-first acceptance
 
 Not deployed yet. Deploy and verify this API before any client that sends it
-is published; the 1.2.3 app is the first client that does. It adds:
+is published; the 1.3.0 app is the first client that does. It adds:
 
 - the optional protection fields `inventoryRule` and `inventorySide`, only
   with `inventory-ambiguous` ([shared contract](README.md#structured-installation-failure-context)):
@@ -18,7 +18,7 @@ is published; the 1.2.3 app is the first client that does. It adds:
 The 1.2.2 API rejects both with `400`. A rejected installation report or
 funnel event is parked on the Mac and offered again only within the limits of
 "Rejected telemetry parking" (three times per build, ten times overall), so it
-can be lost if this API is not deployed first. The 1.2.3 connection facts in a
+can be lost if this API is not deployed first. The 1.3.0 connection facts in a
 Help-menu `CONNECTION` support report use only existing report fields, so they
 need no API change. No route or other payload changes.
 

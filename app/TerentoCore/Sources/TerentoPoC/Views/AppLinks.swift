@@ -18,7 +18,7 @@ enum TerentoAppLinks {
     static let feedbackAddress = "hello@terento.app"
 
     /// Help > Send Feedback…: a mail draft whose body is only the app version
-    /// and build, e.g. "Terento 1.2.3 (50)". No device data or identifiers.
+    /// and build, e.g. "Terento 1.3.0 (50)". No device data or identifiers.
     /// The default mail app opens it, also from the sandboxed App Store build.
     static func feedbackMail(version: String, build: String) -> URL {
         // Only unreserved characters stay literal, so a value can never add

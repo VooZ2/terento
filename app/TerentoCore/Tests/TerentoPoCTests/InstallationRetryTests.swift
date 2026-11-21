@@ -368,7 +368,7 @@ struct InstallationRetryTests {
         engine.purgeRetainedArtifacts()
     }
 
-    /// 1.2.3: a device that disappears after a long download but before any
+    /// 1.3.0: a device that disappears after a long download but before any
     /// write (waiting for confirmation, or the pre-write check) no longer
     /// costs the download.
     @MainActor static func testDisconnectBeforeWriteKeepsDownloads() async throws {

@@ -519,7 +519,7 @@ struct ConnectScreen: View {
         case .review:
             sharingQuestion = nil
             // Not from here: this runs inside the view update that opens
-            // Map installed. Requested here, the 1.2.3 local test lost the
+            // Map installed. Requested here, the 2026-11-21 local test lost the
             // Done page. The request waits for `.task(id: pendingReviewRequest)`
             // instead, after the page is on screen.
             pendingReviewRequest = operationID

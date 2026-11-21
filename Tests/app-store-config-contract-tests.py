@@ -365,7 +365,7 @@ class AppStoreConfigurationContract(unittest.TestCase):
             source = (SWIFT_SOURCES / path).read_text(encoding="utf-8")
             app_store, dmg = active_source(source, APP_STORE_ONLY), active_source(source, DMG_ONLY)
             # Notice numbers never overlap, so a copied DMG choice is recognisable.
-            # 1.2.3 raised the App Store notice to 101 (AppStoreConsentNotice).
+            # 1.3.0 raised the App Store notice to 101 (AppStoreConsentNotice).
             self.assertIn("static let currentNoticeVersion = AppStoreConsentNotice.currentVersion", app_store)
             self.assertIn(f"static let currentNoticeVersion = {dmg_version}", dmg)
             self.assertIn("return consent?.choice == .accepted && consent?.noticeVersion == currentNoticeVersion", app_store)
@@ -478,7 +478,7 @@ class AppStoreConfigurationContract(unittest.TestCase):
         # update both go through it. A partial installation does not.
         self.assertIn("case .sharingQuestion:\n            sharingQuestion = SharingQuestion(operationID: operationID, isUpdate: isUpdate)", app_store)
         # The rating request never runs inside the view update that opens
-        # Map installed (the 1.2.3 local test lost the Done page that way): the
+        # Map installed (the 2026-11-21 local test lost the Done page that way): the
         # success handler only marks it, and a task asks after a delay.
         handler = app_store[app_store.index("private func handleSuccessfulOperation("):]
         handler = handler[:handler.index("private func decideSharing(")]
