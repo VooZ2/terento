@@ -40,6 +40,22 @@ same override is used by the web, native, backend, and release checks.
 
 ## Full release validation
 
+The next candidate is **1.2.3 / build 50** on the `stable` channel (see
+[versioning](../VERSIONING.md); a fix release). It carries the changes of
+#760: downloads kept for Try again for 6 hours and across a disconnect before
+any write, the "Terento can no longer see your device" message, the inventory
+rule and side in the failure context, the reconnect-wait funnel outcome and
+connection facts in a Help-menu `CONNECTION` support report; and of #765: a
+read-only "Garmin maps" section in Manage maps (merged after #760, before this
+candidate). It adds the
+`inventoryRule`/`inventorySide` fields and the `RECONNECT_WAIT` funnel stage
+(migration 096), so the API from #760 must be deployed and verified before the
+candidate is published; it still reads `catalog-v5.json`. Public metadata
+continues to identify 1.2.2 until signed, notarized artifacts exist, and the
+draft release-note section stays marked as a draft until then. The AppStore
+configuration carries the same 1.2.3 / 50 identity; the App Store build is
+prepared separately from the same tag.
+
 The published release is **1.2.2 / build 49** on the `stable` channel (see
 [versioning](../VERSIONING.md)), from GitHub-verified source
 `b612cf5c8e49c96b1ee2d1076a8a496449186bcc` (main after PR #747, tag
