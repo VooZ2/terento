@@ -65,7 +65,9 @@ struct AppUpdateTests {
         testAppStoreNeverAsksAndRequestsReviewTogether()
         testAppStoreReviewAtMostOncePerVersion()
         testAppStoreCountCarriesOverFromInstallCount()
-        print("PASS: 29 app update tests")
+        testAppStoreOldRefusalAsksAgainNewRefusalIsFinal()
+        testAppStoreConsentMigrationKeepsOptInAndDirectDownloadRefusal()
+        print("PASS: 31 app update tests")
     }
 
     private static func testSameVersionIsUpToDate() throws {
@@ -653,6 +655,45 @@ struct AppUpdateTests {
                "one install counted by 1.2.x plus one success requests a rating")
         expect(defaults.integer(forKey: "AppStoreSuccessfulInstallCount") == 2, "the count continues")
         print("PASS: App Store count carries over from 1.2.x")
+    }
+
+    /// A 1.2.x refusal (notice 100) may have been the old Not now, so 1.2.3
+    /// asks once more; Don't share under the current notice is final.
+    private static func testAppStoreOldRefusalAsksAgainNewRefusalIsFinal() {
+        expect(AppStoreConsentNotice.currentVersion == 101 && AppStoreConsentNotice.firstQuestionVersion == 100,
+               "1.2.3 raises the App Store notice from 100 to 101")
+        let old = AppStoreConsentNotice.migration(noticeVersion: 100, declined: true)
+        expect(old == .undecided, "a 1.2.x refusal becomes undecided at start-up")
+        let (oldDefaults, oldSuite) = testDefaults("appstore-old-declined")
+        defer { oldDefaults.removePersistentDomain(forName: oldSuite) }
+        // An existing 1.2.x user already has successful installs counted.
+        oldDefaults.set(3, forKey: AppStoreReviewPolicy.successfulInstallCountKey)
+        expect(appStoreSuccess(oldDefaults, undecided: old == .undecided) == .sharingQuestion,
+               "after an old refusal the next success shows the sharing question")
+
+        let new = AppStoreConsentNotice.migration(noticeVersion: 101, declined: true)
+        expect(new == .unchanged, "a refusal under the current notice is kept as it is")
+        let (newDefaults, newSuite) = testDefaults("appstore-new-declined")
+        defer { newDefaults.removePersistentDomain(forName: newSuite) }
+        let after = (1...4).map { _ in appStoreSuccess(newDefaults, undecided: new == .undecided) }
+        expect(!after.contains(.sharingQuestion), "after Don't share the question is never shown again")
+        print("PASS: App Store old refusal asks again, Don't share is final")
+    }
+
+    private static func testAppStoreConsentMigrationKeepsOptInAndDirectDownloadRefusal() {
+        expect(AppStoreConsentNotice.migration(noticeVersion: 100, declined: false) == .keepAccepted,
+               "a 1.2.x opt-in stands")
+        expect(AppStoreConsentNotice.migration(noticeVersion: 101, declined: false) == .unchanged,
+               "an opt-in under the current notice is unchanged")
+        for dmgNotice in [1, 2, 4] {
+            expect(AppStoreConsentNotice.migration(noticeVersion: dmgNotice, declined: true) == .keepDeclined,
+                   "a refusal copied from the direct-download app stands")
+            expect(AppStoreConsentNotice.migration(noticeVersion: dmgNotice, declined: false) == .undecided,
+                   "a direct-download opt-out notice choice is not an App Store opt-in")
+        }
+        expect(AppStoreConsentNotice.migration(noticeVersion: nil, declined: false) == .undecided,
+               "no recorded choice stays undecided")
+        print("PASS: App Store consent migration keeps opt-ins and copied refusals")
     }
 
     private static func expect(_ condition: Bool, _ message: String) {

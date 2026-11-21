@@ -368,7 +368,8 @@ struct VersionedEvidenceConsent: Codable, Equatable, Sendable {
     /// App Store builds share only after an explicit opt-in. Their notice
     /// numbers never overlap the direct-download app's, so a choice copied
     /// from that app's container is recognised as made under its notice.
-    static let currentNoticeVersion = 100
+    /// 101 from 1.2.3, when Don't share became a separate, final answer.
+    static let currentNoticeVersion = AppStoreConsentNotice.currentVersion
     #else
     static let currentNoticeVersion = 4
     #endif
@@ -517,24 +518,37 @@ final class LocalInstallationEvidenceStore: @unchecked Sendable {
 
     func migrateConsentToCurrentNotice() throws {
         #if TERENTO_APP_STORE
-        // A choice copied from the direct-download app was made under its
-        // opt-out notice. Only a refusal carries over; everything else asks
-        // again, and nothing queued under the old notice is ever sent.
+        // AppStoreConsentNotice.migration: a 1.2.x opt-in stands, a 1.2.x
+        // refusal asks again, a refusal copied from the direct-download app
+        // stands, and nothing queued without a standing opt-in is ever sent.
         try lock.withLock {
             var file = try loadUnlocked()
-            guard file.consent?.noticeVersion != VersionedEvidenceConsent.currentNoticeVersion,
+            let migration = AppStoreConsentNotice.migration(
+                noticeVersion: file.consent?.noticeVersion, declined: file.consent?.choice == .declined)
+            guard migration != .unchanged,
                   file.consent != nil || !file.pendingUploadEventIDs.isEmpty || file.parkedUploads != nil else {
                 return
             }
-            file.consent = file.consent.flatMap { consent in
-                consent.choice == .declined ? VersionedEvidenceConsent(
-                    noticeVersion: VersionedEvidenceConsent.currentNoticeVersion,
-                    choice: .declined,
-                    decidedAt: consent.decidedAt
-                ) : nil
+            switch migration {
+            case .unchanged:
+                return
+            case .keepAccepted:
+                file.consent = file.consent.map { consent in
+                    VersionedEvidenceConsent(noticeVersion: VersionedEvidenceConsent.currentNoticeVersion,
+                                             choice: .accepted, decidedAt: consent.decidedAt)
+                }
+            case .keepDeclined:
+                file.consent = file.consent.map { consent in
+                    VersionedEvidenceConsent(noticeVersion: VersionedEvidenceConsent.currentNoticeVersion,
+                                             choice: .declined, decidedAt: consent.decidedAt)
+                }
+                file.pendingUploadEventIDs.removeAll()
+                file.parkedUploads = nil
+            case .undecided:
+                file.consent = nil
+                file.pendingUploadEventIDs.removeAll()
+                file.parkedUploads = nil
             }
-            file.pendingUploadEventIDs.removeAll()
-            file.parkedUploads = nil
             try saveUnlocked(file)
         }
         #else

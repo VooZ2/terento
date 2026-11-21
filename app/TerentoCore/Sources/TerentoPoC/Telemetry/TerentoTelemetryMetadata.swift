@@ -78,6 +78,40 @@ enum TerentoTelemetryMetadata {
     }
 }
 
+/// What an App Store build does at start-up with a sharing choice that was
+/// recorded under an earlier notice. One rule for both diagnostic streams
+/// (`VersionedEvidenceConsent`, `VersionedMapStatisticsConsent`).
+enum AppStoreConsentNotice {
+    /// The 1.2.x question: Share or Not now, and Not now was recorded as a
+    /// refusal.
+    static let firstQuestionVersion = 100
+    /// From 1.2.3: Share, Not now or Don't share. Not now records nothing and
+    /// Don't share is final.
+    static let currentVersion = 101
+
+    enum Migration: Equatable, Sendable {
+        /// Recorded under the current notice: nothing changes.
+        case unchanged
+        /// An opt-in under the 1.2.x notice stands, with what it queued.
+        case keepAccepted
+        /// A refusal copied from the direct-download app stands; queues go.
+        case keepDeclined
+        /// No choice: the sharing question is asked again; queues go.
+        case undecided
+    }
+
+    /// `noticeVersion` is nil when no choice is recorded. A refusal under the
+    /// 1.2.x notice may have been a Not now, so it becomes undecided and the
+    /// person is asked once more with the new question. Any other notice
+    /// number is the direct-download app's, where only a refusal carries over.
+    static func migration(noticeVersion: Int?, declined: Bool) -> Migration {
+        guard let noticeVersion else { return .undecided }
+        if noticeVersion == currentVersion { return .unchanged }
+        if noticeVersion == firstQuestionVersion { return declined ? .undecided : .keepAccepted }
+        return declined ? .keepDeclined : .undecided
+    }
+}
+
 private extension String {
     var nonEmpty: String? { isEmpty ? nil : self }
 }

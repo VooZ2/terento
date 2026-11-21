@@ -10,6 +10,7 @@ mkdir -p "$CLANG_MODULE_CACHE_PATH"
 swiftc \
     -module-name TerentoAppUpdateTests \
     "$project_root/Sources/TerentoPoC/Views/AppLinks.swift" \
+    "$project_root/Sources/TerentoPoC/Telemetry/TerentoTelemetryMetadata.swift" \
     "$project_root/Tests/TerentoPoCTests/AppUpdateTests.swift" \
     -o "$binary_path"
 
