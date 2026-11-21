@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "status": "published",
   "published": {
-    "commit": "3f216c263fd1ffef3ef7dba2b75c1aa4047c66a8",
+    "commit": "9a4a19cadd9ef1dc06556dc2721fd8127c7518c3",
     "pages": [
       {
         "path": "/",
@@ -553,8 +553,8 @@
         "file": "site/privacy/index.html",
         "locale": "en",
         "indexable": false,
-        "fingerprint": "0b46c2a49e969ee0f473a2ac93c701d9947d7915228dbdb892792cafe8e76cbe",
-        "lastmod": "2026-11-18"
+        "fingerprint": "21d0ecd8117697382ffd9f6120dd5ee059e242b66a7394e1a56753ca6ec2ee55",
+        "lastmod": "2026-11-21"
       }
     ]
   },
@@ -9253,21 +9253,27 @@
         "fingerprint": "ce6ab5e1c17100c5ca7f28878bc76dc8d3c5f76e622145b779eb9a16dc60715a",
         "status": 200,
         "acceptedAt": "2026-11-20T19:16:12Z"
+      },
+      {
+        "url": "https://terento.app/privacy/",
+        "fingerprint": "21d0ecd8117697382ffd9f6120dd5ee059e242b66a7394e1a56753ca6ec2ee55",
+        "status": 200,
+        "acceptedAt": "2026-11-21T13:52:29Z"
       }
     ],
     "pending": [],
-    "lastSubmissionAt": "2026-11-20T19:16:11Z",
-    "lastSuccessfulSubmissionAt": "2026-11-20T19:16:11Z",
+    "lastSubmissionAt": "2026-11-21T13:52:28Z",
+    "lastSuccessfulSubmissionAt": "2026-11-21T13:52:28Z",
     "lastResult": "submitted",
     "lastErrorCode": null
   },
   "lastRun": {
-    "at": "2026-11-20T19:16:12Z",
+    "at": "2026-11-21T13:52:29Z",
     "status": "accepted",
     "bootstrap": false,
-    "planned": 6,
-    "accepted": 6,
+    "planned": 1,
+    "accepted": 1,
     "pending": 0,
-    "previousAccepted": 1443
+    "previousAccepted": 1449
   }
 }
