@@ -44,6 +44,7 @@ struct ConnectScreen: View {
     @State private var selectedInstallationPlan: InstallationPlan?
     @State private var importedMapsExpanded = false
     @State private var externalMapsExpanded = false
+    @State private var garminMapsExpanded = false
     @State private var expandedProviderMapGroups: Set<String> = []
     @State private var customMapImportExpanded = false
     @State private var customMapImportDidContinue = false
@@ -59,6 +60,10 @@ struct ConnectScreen: View {
     @State private var managedInventory: MapLifecycleInventory?
     @State private var managedPresentationIndex: MapInventoryListPresentationIndex?
     @State private var filteredManagedInventory: MapLifecycleInventory?
+    // Read-only Garmin images. Kept apart from the lifecycle inventory so no
+    // Remove, Update or storage path can reach them.
+    @State private var managedGarminMaps: [GarminSystemMap] = []
+    @State private var filteredGarminMaps: [GarminSystemMap] = []
     // The map in the last Remove dialog, and maps removed since the last fresh list.
     @State private var removingManagedMapID: String?
     @State private var removedManagedMapIDs: Set<String> = []
@@ -638,6 +643,7 @@ struct ConnectScreen: View {
         if section == .manageMaps {
             importedMapsExpanded = false
             externalMapsExpanded = false
+            garminMapsExpanded = false
             expandedProviderMapGroups.formUnion(mapEngine.availableMapProviders.map(\.id))
         }
 
@@ -1233,6 +1239,7 @@ struct ConnectScreen: View {
         if inventory == nil, managedInventory != nil, isReadingDeviceMaps { return }
         removedManagedMapIDs = []
         managedInventory = inventory
+        managedGarminMaps = inventory == nil ? [] : mapEngine.garminSystemMaps()
         keptManagedAvailability = Dictionary((inventory?.allItems ?? []).map {
             ($0.id, lifecycleViewModel.availability(for: $0))
         }, uniquingKeysWith: { first, _ in first })
@@ -1248,10 +1255,13 @@ struct ConnectScreen: View {
         filteredManagedInventory = managedPresentationIndex.map {
             withoutRemovedMaps($0.filtered(query: managedSearchText, providerID: managedProviderID))
         }
+        filteredGarminMaps = GarminSystemMap.filtered(managedGarminMaps,
+            query: managedSearchText, providerID: managedProviderID)
         if managedFiltersAreActive, let inventory = filteredManagedInventory {
             expandedProviderMapGroups.formUnion(inventory.providerGroups.map(\.id))
             importedMapsExpanded = true
             externalMapsExpanded = true
+            garminMapsExpanded = true
         }
     }
 
@@ -1306,7 +1316,10 @@ struct ConnectScreen: View {
                 .accessibilityLabel("Installed map provider")
             }
             HStack {
-                let count = filteredManagedInventory?.allItems.count ?? 0
+                let count = GarminSystemMap.manageListCount(
+                    lifecycleItemCount: filteredManagedInventory?.allItems.count ?? 0,
+                    visibleGarminMaps: filteredGarminMaps
+                )
                 Text("\(count) \(count == 1 ? "map" : "maps")")
                     .foregroundStyle(TerentoColors.secondaryText)
                 Spacer()
@@ -1354,7 +1367,7 @@ struct ConnectScreen: View {
             }
 
             if let lifecycleInventory = filteredManagedInventory {
-                if !(managedInventory?.allItems.isEmpty ?? true) {
+                if !(managedInventory?.allItems.isEmpty ?? true) || !managedGarminMaps.isEmpty {
                     managedCatalogToolbar
                         .padding(.top, TerentoPageLayout.firstSectionTopPadding)
                 }
@@ -1519,7 +1532,31 @@ struct ConnectScreen: View {
                     )
                 }
 
-                if lifecycleInventory.allItems.isEmpty {
+                if !filteredGarminMaps.isEmpty {
+                    // Read-only: no buttons, no context menu, no selection.
+                    TerentoMapSection(
+                        title: "Garmin maps",
+                        count: filteredGarminMaps.count,
+                        isExpanded: $garminMapsExpanded
+                    ) {
+                        Text("Installed by Garmin. Terento does not change these.")
+                            .font(.terentoUI(size: 13, weight: .medium))
+                            .foregroundStyle(TerentoColors.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.bottom, 4)
+                        ForEach(filteredGarminMaps) { map in
+                            GarminSystemMapRow(map: map)
+                        }
+                    }
+                    .padding(
+                        .top,
+                        hasProviderMaps || !importedMaps.isEmpty || !externalMaps.isEmpty
+                            ? TerentoPageLayout.sectionSpacing
+                            : TerentoPageLayout.firstSectionTopPadding
+                    )
+                }
+
+                if lifecycleInventory.allItems.isEmpty && filteredGarminMaps.isEmpty {
                     MapStatusRow(
                         title: managedFiltersAreActive ? "No matching maps" : "No maps detected",
                         detail: managedFiltersAreActive
@@ -4814,6 +4851,35 @@ private struct ManageMapRow: View {
         case .transferOwnership, .recoverOwnership:
             break
         }
+    }
+}
+
+/// A Garmin-installed image in Manage: name, filename and size only. It takes
+/// no actions and has no context menu.
+private struct GarminSystemMapRow: View {
+    let map: GarminSystemMap
+
+    private var detail: String {
+        [map.filename, map.formattedSize].compactMap { $0 }.joined(separator: " · ")
+    }
+
+    var body: some View {
+        TerentoMapRow(
+            title: map.title,
+            detail: detail,
+            contentSpacing: 9,
+            rowVerticalPadding: 10
+        ) {
+            Image(systemName: "map")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(TerentoColors.secondaryText)
+                .frame(width: 24, height: 24)
+                .accessibilityHidden(true)
+        } trailing: {
+            EmptyView()
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(map.title), \(detail)")
     }
 }
 
