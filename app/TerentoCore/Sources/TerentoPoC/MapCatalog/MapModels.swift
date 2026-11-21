@@ -817,8 +817,8 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
     var displayVersionLabel: String? {
         if let label = releaseMetadata?.versionLabel?.trimmingCharacters(
             in: .whitespacesAndNewlines
-        ), Self.isUserFacingReleaseLabel(label) {
-            return Self.isoMonthLabel(label) ?? label
+        ), Self.isUserFacingReleaseLabel(label), !Self.isReleaseNumberOfYear(label) {
+            return label
         }
 
         // 2000-01 was the historical API serializer fallback. It is not a
@@ -829,13 +829,14 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
         return version.description
     }
 
-    /// One style for month-only releases: provider "3/2026" reads "2026-03",
-    /// like the other dates in the list. Other labels stay provider-native.
-    private static func isoMonthLabel(_ value: String) -> String? {
-        let parts = value.split(separator: "/")
-        guard parts.count == 2, let month = Int(parts[0]), (1...12).contains(month),
-              parts[0].count <= 2, parts[1].count == 4, let year = Int(parts[1]) else { return nil }
-        return String(format: "%04d-%02d", year, month)
+    /// Freizeitkarte names its releases "3/2026": the third release of 2026,
+    /// not March. Its maps say "Release 26.09" (the OpenStreetMap data month),
+    /// which is the normalized `version`, so the list shows that instead and
+    /// Install maps, Manage maps and Remove name the same release.
+    private static func isReleaseNumberOfYear(_ value: String) -> Bool {
+        let parts = value.split(separator: "/", omittingEmptySubsequences: false)
+        return parts.count == 2 && (1...2).contains(parts[0].count) && parts[1].count == 4
+            && parts.allSatisfy { $0.allSatisfy(\.isASCII) && $0.allSatisfy(\.isNumber) }
     }
 
     private static func isUserFacingReleaseLabel(_ value: String) -> Bool {
