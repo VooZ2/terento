@@ -180,7 +180,7 @@ RATE_LIMIT_SWEEP_INTERVAL = 1000
 
 # Providers a Debug build may name in `?preview=` to see while they have never
 # been ACTIVE. Only providers of the newest projection; anything else is ignored.
-CATALOG_PREVIEW_PROVIDERS = frozenset({"luckymaps"})
+CATALOG_PREVIEW_PROVIDERS = frozenset({"luckymaps", "openfietsmap"})
 
 
 def _never_activated(row: dict[str, Any]) -> bool:
@@ -401,6 +401,7 @@ class CatalogService:
 
     def catalog_response(self, *, include_maprando: bool = False, include_bbbike: bool = False,
                          include_osmapa: bool = False, include_luckymaps: bool = False,
+                         include_openfietsmap: bool = False,
                          include_bbbike_opentopo: bool = False,
                          preview: frozenset[str] = frozenset()) -> tuple[bytes, str, datetime]:
         rows, updated_at = self.database.catalog_snapshot()
@@ -415,6 +416,8 @@ class CatalogService:
             allowed.add("osmapa")
         if include_luckymaps:
             allowed.add("luckymaps")
+        if include_openfietsmap:
+            allowed.add("openfietsmap")
         rows = [row for row in rows if row["provider_id"] in allowed]
         # A provider that has never been ACTIVE shows nothing to users: no
         # filter entry and no unavailable rows. A Debug build asks for it by
@@ -454,10 +457,10 @@ class CatalogService:
                                      include_bbbike_opentopo=True)
 
     def catalog_v6_response(self, preview: frozenset[str] = frozenset()) -> tuple[bytes, str, datetime]:
-        # v6 = v5 + Lucky Maps; released clients (v5 and older) never see it.
+        # v6 = v5 + Lucky Maps + OpenFietsMap; released clients (v5 and older) never see them.
         return self.catalog_response(include_maprando=True, include_bbbike=True, include_osmapa=True,
-                                     include_luckymaps=True, include_bbbike_opentopo=True,
-                                     preview=preview)
+                                     include_luckymaps=True, include_openfietsmap=True,
+                                     include_bbbike_opentopo=True, preview=preview)
 
     def device_catalog_response(self) -> tuple[bytes, str, datetime]:
         rows, updated_at = self.database.device_catalog_snapshot()
@@ -620,6 +623,9 @@ class CatalogService:
         elif provider_id == "luckymaps":
             from .luckymaps import LuckyMapsProviderAdapter
             adapter = LuckyMapsProviderAdapter()
+        elif provider_id == "openfietsmap":
+            from .openfietsmap import OpenFietsMapProviderAdapter
+            adapter = OpenFietsMapProviderAdapter()
         elif provider_id == "maprando":
             from .maprando import MapRandoProviderAdapter
             adapter = MapRandoProviderAdapter()

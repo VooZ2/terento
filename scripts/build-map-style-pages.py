@@ -80,6 +80,27 @@ OPTIONAL_STYLES = {
             "it": "Una mappa più leggera che occupa meno spazio.",
         }),
     },
+    # Catalog-v6 providers; each stays out of the viewer until the manifest lists its style.
+    "openfietsmap": {
+        "openfietsmap": ("OpenFietsMap", {
+            "en": "A cycling map with routes and node networks.",
+            "de": "Eine Radkarte mit Radrouten und Knotenpunktnetzen.",
+            "fr": "Une carte vélo avec itinéraires et réseaux de points-nœuds.",
+            "pl": "Mapa rowerowa z trasami i sieciami węzłów.",
+            "cs": "Cyklomapa s trasami a uzlovými sítěmi.",
+            "it": "Una mappa per la bici con percorsi e reti a nodi.",
+        }),
+    },
+    "luckymaps": {
+        "luckymaps": ("Lucky Maps", {
+            "en": "The Freizeitkarte look for regions around the world.",
+            "de": "Der Freizeitkarte-Stil für Regionen auf der ganzen Welt.",
+            "fr": "Le style Freizeitkarte pour des régions du monde entier.",
+            "pl": "Styl Freizeitkarte dla regionów na całym świecie.",
+            "cs": "Styl Freizeitkarte pro regiony po celém světě.",
+            "it": "Lo stile Freizeitkarte per regioni di tutto il mondo.",
+        }),
+    },
 }
 
 COPY: dict[str, dict[str, object]] = {
