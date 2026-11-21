@@ -426,11 +426,14 @@ class AppStoreConfigurationContract(unittest.TestCase):
 
         common_head = ["Terento Website", "Troubleshooting", "Documentation", "Divider()", "Send Feedback…"]
         self.assertEqual(help_items(APP_STORE_ONLY), common_head + [
-            "Rate Terento on the App Store…", "Divider()", "Report an Issue", "GitHub Repository"])
+            "Rate on App Store…", "Divider()", "Report an Issue", "Star on GitHub…"])
         self.assertEqual(help_items(DMG_ONLY), common_head + [
-            "Divider()", "Report an Issue", "Send Report to Terento…", "GitHub Repository"])
+            "Divider()", "Report an Issue", "Send Report to Terento…", "Star on GitHub…"])
         app_store = active_source(source, APP_STORE_ONLY)
         self.assertIn("openExternalURL(TerentoAppLinks.appStoreReview)", app_store)
+        for defined in (APP_STORE_ONLY, DMG_ONLY):
+            self.assertIn('Button("Star on GitHub…") {\n                    openExternalURL(TerentoAppLinks.repository)',
+                          active_source(source, defined))
         self.assertEqual(source.count("TerentoAppLinks.feedbackMail("), 1)
         links = (SWIFT_SOURCES / "Views" / "AppLinks.swift").read_text(encoding="utf-8")
         self.assertIn('static let feedbackAddress = "hello@terento.app"', links)
