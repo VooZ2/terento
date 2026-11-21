@@ -14,7 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCALES = ("en", "de", "fr", "pl", "cs", "it")
-PROVIDER_SCRIPT_VERSION = "20261119-compare-card-v1"
+PROVIDER_SCRIPT_VERSION = "20261121-catalog-v6"
 FEATURE_SCRIPT_VERSION = "20261105-home-map-switch-v4"
 NUMBERS_SCRIPT_VERSION = "20261119-home-numbers-v2"
 ASSET_VERSION = "20261106-home-watch-srcset"
@@ -577,6 +577,86 @@ for _locale, (_summary, _benefits) in OSMAPA_CARD_COPY.items():
         "benefits": _benefits,
     }
 
+# OpenFietsMap and Lucky Maps ship hidden like OSMapaPL; provider-list.js shows
+# each card once catalog-v6 lists that provider as active.
+OPENFIETSMAP_CARD_COPY = {
+    "en": ("For cycling in the Netherlands, Belgium and across Europe.", [
+        "Cycle routes and node networks clearly marked",
+        "Benelux in a full or light version, plus a hiking layer",
+        "Contour lines and relief shading included",
+    ]),
+    "de": ("Zum Radfahren in den Niederlanden, in Belgien und in ganz Europa.", [
+        "Radrouten und Knotenpunktnetze gut sichtbar",
+        "Benelux als volle oder leichte Karte, dazu eine Wanderebene",
+        "Mit Höhenlinien und Reliefschattierung",
+    ]),
+    "fr": ("Pour le vélo aux Pays-Bas, en Belgique et dans toute l’Europe.", [
+        "Itinéraires cyclables et réseaux de points-nœuds bien visibles",
+        "Benelux en version complète ou légère, plus une couche randonnée",
+        "Courbes de niveau et ombrage du relief inclus",
+    ]),
+    "pl": ("Na rower w Holandii, Belgii i w całej Europie.", [
+        "Wyraźnie zaznaczone trasy rowerowe i sieci węzłów",
+        "Benelux w wersji pełnej lub lekkiej oraz warstwa szlaków pieszych",
+        "Z poziomicami i cieniowaniem rzeźby terenu",
+    ]),
+    "cs": ("Na kolo v Nizozemsku, Belgii a po celé Evropě.", [
+        "Výrazně vyznačené cyklotrasy a uzlové sítě",
+        "Benelux v plné nebo lehké verzi a k tomu vrstva pěších tras",
+        "S vrstevnicemi a stínováním reliéfu",
+    ]),
+    "it": ("Per andare in bici nei Paesi Bassi, in Belgio e in tutta Europa.", [
+        "Percorsi ciclabili e reti a nodi ben visibili",
+        "Benelux in versione completa o leggera, più un livello escursionistico",
+        "Curve di livello e ombreggiatura del rilievo incluse",
+    ]),
+}
+LUCKYMAPS_CARD_COPY = {
+    "en": ("Freizeitkarte-style maps for hiking and cycling, for regions around the world.", [
+        "The Freizeitkarte look, also outside Europe",
+        "Regional maps, for example one for each US state",
+        "Contour lines as a separate package",
+    ]),
+    "de": ("Karten im Freizeitkarte-Stil zum Wandern und Radfahren, für Regionen auf der ganzen Welt.", [
+        "Der Freizeitkarte-Stil, auch außerhalb Europas",
+        "Regionalkarten, zum Beispiel eine für jeden US-Bundesstaat",
+        "Höhenlinien als eigenes Paket",
+    ]),
+    "fr": ("Des cartes au style Freizeitkarte pour la randonnée et le vélo, pour des régions du monde entier.", [
+        "Le style Freizeitkarte, aussi hors d’Europe",
+        "Cartes régionales, par exemple une par État américain",
+        "Courbes de niveau dans un paquet séparé",
+    ]),
+    "pl": ("Mapy w stylu Freizeitkarte na piesze i rowerowe wycieczki, dla regionów na całym świecie.", [
+        "Styl Freizeitkarte, także poza Europą",
+        "Mapy regionów, na przykład osobna dla każdego stanu USA",
+        "Poziomice jako osobny pakiet",
+    ]),
+    "cs": ("Mapy ve stylu Freizeitkarte na pěší a cyklistické výlety, pro regiony po celém světě.", [
+        "Styl Freizeitkarte, i mimo Evropu",
+        "Regionální mapy, například jedna pro každý stát USA",
+        "Vrstevnice jako samostatný balíček",
+    ]),
+    "it": ("Mappe in stile Freizeitkarte per escursioni a piedi e in bici, per regioni di tutto il mondo.", [
+        "Lo stile Freizeitkarte, anche fuori dall’Europa",
+        "Mappe regionali, per esempio una per ogni stato USA",
+        "Curve di livello in un pacchetto separato",
+    ]),
+}
+for _provider_id, _name, _copy in (
+    ("openfietsmap", "OpenFietsMap", OPENFIETSMAP_CARD_COPY),
+    ("luckymaps", "Lucky Maps", LUCKYMAPS_CARD_COPY),
+):
+    for _locale, (_summary, _benefits) in _copy.items():
+        PROVIDER_CARD_COPY[_locale][_provider_id] = {
+            "name": _name,
+            "count_template": PROVIDER_CARD_COPY[_locale]["maprando"]["count_template"],
+            "summary": _summary,
+            "benefits": _benefits,
+        }
+# Cards that stay hidden in the generated page until the catalog lists their provider as active.
+HIDDEN_UNTIL_ACTIVE = {"osmapa", "openfietsmap", "luckymaps"}
+
 MAPRANDO_LANGUAGE_NOTES = {'en': 'Some map labels are in French.', 'de': 'Einige Kartenbeschriftungen sind auf Französisch.', 'fr': 'Certains libellés de la carte sont en français.', 'pl': 'Niektóre opisy na mapie są po francusku.', 'cs': 'Některé popisky mapy jsou ve francouzštině.', 'it': 'Alcune etichette della mappa sono in francese.'}
 
 def provider_card_addon(locale: str, provider_id: str, contour_count: bool = True) -> str:
@@ -598,7 +678,7 @@ def provider_card_addon(locale: str, provider_id: str, contour_count: bool = Tru
 
 def provider_cards_markup(locale: str, copy: dict[str, str]) -> str:
     cards = []
-    for provider_id in ("freizeitkarte", "opentopomap", "maprando", "bbbike-all", "osmapa"):
+    for provider_id in ("freizeitkarte", "opentopomap", "maprando", "bbbike-all", "osmapa", "openfietsmap", "luckymaps"):
         provider = PROVIDER_CARD_COPY[locale][provider_id]
         fallback_count = {"freizeitkarte": "63", "opentopomap": "177"}.get(provider_id)
         count_markup = provider["count_template"].replace("{count}", fallback_count) if fallback_count else ""
@@ -612,7 +692,7 @@ def provider_cards_markup(locale: str, copy: dict[str, str]) -> str:
         elif provider_id.startswith("bbbike"):
             map_type = {"bbbike-ontrail": "ontrail-latin1", "bbbike-opentopo": "opentopo-latin1"}.get(provider_id, "bbbike-latin1")
             type_attributes = f' data-provider-type="{map_type}" hidden'
-        if provider_id == "osmapa":
+        if provider_id in HIDDEN_UNTIL_ACTIVE:
             type_attributes = " hidden"
         thumb = CARD_THUMBNAILS.get(provider_id)
         thumb_markup = f'''<div class="card-media"><img src="/assets/home/maps-{thumb}.webp?v={ASSET_VERSION}" width="640" height="400" alt="{html.escape(copy["card_map_alt"].replace("{name}", provider["name"]))}" loading="lazy" decoding="async"></div>

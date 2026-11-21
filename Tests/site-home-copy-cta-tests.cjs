@@ -195,7 +195,14 @@ for (const [locale, expected] of locales) {
   assert.ok(providerSection, `${locale}: missing provider cards section`);
   assert.match(providerSection, new RegExp(`<h2 id="providers-title">${expected.providerTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/h2>`));
   assert.match(providerSection, new RegExp(`<p class="provider-copy">${expected.providerCopy.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}<\\/p>`));
-  assert.equal((providerSection.match(/<article class="provider-card[ "]/g) || []).length, 5, `${locale}: one card per provider`);
+  assert.equal((providerSection.match(/<article class="provider-card[ "]/g) || []).length, 7, `${locale}: one card per provider`);
+  for (const [id, name] of [["openfietsmap", "OpenFietsMap"], ["luckymaps", "Lucky Maps"]]) {
+    const card = providerSection.match(new RegExp(`<article class="provider-card[^"]*" data-provider-card="${id}" hidden>[\\s\\S]*?<\\/article>`))?.[0];
+    assert.ok(card, `${locale}: ${name} stays hidden until catalog-v6 lists it as active`);
+    assert.ok(card.includes(`<h3>${name}</h3>`));
+    assert.doesNotMatch(card, /<img /, `${locale}: ${name} has no thumbnail before its previews exist`);
+    assert.doesNotMatch(card, /luckymaps\.ch/, `${locale}: no Lucky Maps link before the owner approves one`);
+  }
   const osmapa = providerSection.match(/<article class="provider-card[^"]*" data-provider-card="osmapa" hidden>[\s\S]*?<\/article>/)?.[0];
   assert.ok(osmapa, `${locale}: OSMapaPL stays hidden until the catalog lists it as active`);
   assert.ok(osmapa.includes("<h3>OSMapaPL</h3>"));
@@ -215,12 +222,12 @@ for (const [locale, expected] of locales) {
   assert.doesNotMatch(otm, /<details[^>]*\bopen(?:\s|=|>)/);
   assert.match(otm, /<summary[^>]*>[\s\S]*provider-card-badge[\s\S]*provider-addon-title[\s\S]*<\/summary>\s*<p class="provider-addon-copy">/);
   assert.doesNotMatch(providerSection, /data-provider-card="opentopomap-contours"|type="checkbox"|role="switch"/);
-  assert.equal((providerSection.match(/class="provider-benefits"/g) || []).length, 5);
-  assert.equal((providerSection.match(/<li>/g) || []).length, 15);
+  assert.equal((providerSection.match(/class="provider-benefits"/g) || []).length, 7);
+  assert.equal((providerSection.match(/<li>/g) || []).length, 21);
   for (const list of providerSection.matchAll(/<ul class="provider-benefits">([\s\S]*?)<\/ul>/g)) {
     assert.equal((list[1].match(/<li>/g) || []).length, 3, `${locale}: exactly three benefits per map`);
   }
-  assert.equal((providerSection.match(/class="provider-summary"/g) || []).length, 5);
+  assert.equal((providerSection.match(/class="provider-summary"/g) || []).length, 7);
   assert.doesNotMatch(providerSection, /data-provider-previous|data-provider-next/);
   // Round 6 (owner): "Compare map styles live" is a card in the grid's last row (no separate row under it);
   // href and Umami event unchanged. Its span fills the row: 3 visible providers in the static HTML.
@@ -229,7 +236,7 @@ for (const [locale, expected] of locales) {
   assert.ok(compareCard, `${locale}: Compare card is the last item of the provider grid`);
   assert.equal(compareCard[2], String(3 - ((providerSection.match(/<article class="provider-card[^"]*" data-provider-card="[^"]+">/g) || []).length % 3)), `${locale}: Compare card fills the last row`);
   assert.match(compareCard[1], new RegExp(`<div class="card-media home-compare-media"><img src="/assets/home/maps-[a-z-]+\\.webp[^"]*"[^>]*><img src="/assets/home/maps-[a-z-]+\\.webp[^"]*"[^>]*></div>[\\s\\S]*<h3><a class="home-compare-link" href="${locale === "en" ? "" : `/${locale}`}/map-styles/" data-umami-event="maps-link-click" data-umami-event-location="home-providers">[^<]+</a></h3>\\s*<p class="home-compare-line">[^<]+</p>`));
-  assert.match(page, /provider-list\.js\?v=20261119-compare-card-v1/);
+  assert.match(page, /provider-list\.js\?v=20261121-catalog-v6/);
   assert.match(fs.readFileSync(path.join(root, "site", "provider-list.js"), "utf8"), /compare\.dataset\.span = String\(3 - \(cards\.filter\(\(card\) => !card\.hidden\)\.length % 3\)\)/, "provider-list.js keeps the Compare card filling the last row");
   assert.match(providerSection, /data-count-template="[^"]*\{count\}[^"]*"/);
   assert.match(providerSection, /63/);
