@@ -158,7 +158,7 @@ struct VersionedMapStatisticsConsent: Codable, Equatable, Sendable {
     #if TERENTO_APP_STORE
     /// App Store builds share only after an explicit opt-in; see
     /// `VersionedEvidenceConsent.currentNoticeVersion`.
-    static let currentNoticeVersion = 100
+    static let currentNoticeVersion = AppStoreConsentNotice.currentVersion
     #else
     static let currentNoticeVersion = 2
     #endif
@@ -315,25 +315,40 @@ final class LocalMapStatisticsEventStore: @unchecked Sendable {
 
     func migrateConsentToCurrentNotice() throws {
         #if TERENTO_APP_STORE
-        // Only a refusal copied from the direct-download app carries over;
-        // nothing queued under its opt-out notice is ever sent.
+        // The rule shared with compatibility diagnostics
+        // (AppStoreConsentNotice.migration); nothing queued without a
+        // standing opt-in is ever sent.
         try lock.withLock {
             var file = try loadUnlocked()
-            guard file.consent?.noticeVersion != VersionedMapStatisticsConsent.currentNoticeVersion,
+            let migration = AppStoreConsentNotice.migration(
+                noticeVersion: file.consent?.noticeVersion, declined: file.consent?.choice == .declined)
+            guard migration != .unchanged,
                   file.consent != nil || !file.pendingEvents.isEmpty || file.parkedEvents != nil
                     || !(file.activeAcquisitions ?? []).isEmpty else {
                 return
             }
-            file.consent = file.consent.flatMap { consent in
-                consent.choice == .declined ? VersionedMapStatisticsConsent(
-                    noticeVersion: VersionedMapStatisticsConsent.currentNoticeVersion,
-                    choice: .declined,
-                    decidedAt: consent.decidedAt
-                ) : nil
+            switch migration {
+            case .unchanged:
+                return
+            case .keepAccepted:
+                file.consent = file.consent.map { consent in
+                    VersionedMapStatisticsConsent(noticeVersion: VersionedMapStatisticsConsent.currentNoticeVersion,
+                                                  choice: .accepted, decidedAt: consent.decidedAt)
+                }
+            case .keepDeclined:
+                file.consent = file.consent.map { consent in
+                    VersionedMapStatisticsConsent(noticeVersion: VersionedMapStatisticsConsent.currentNoticeVersion,
+                                                  choice: .declined, decidedAt: consent.decidedAt)
+                }
+                file.pendingEvents.removeAll()
+                file.activeAcquisitions = []
+                file.parkedEvents = nil
+            case .undecided:
+                file.consent = nil
+                file.pendingEvents.removeAll()
+                file.activeAcquisitions = []
+                file.parkedEvents = nil
             }
-            file.pendingEvents.removeAll()
-            file.activeAcquisitions = []
-            file.parkedEvents = nil
             try saveUnlocked(file)
         }
         #else
