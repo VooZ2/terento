@@ -414,11 +414,44 @@ class AppStoreConfigurationContract(unittest.TestCase):
         self.assertIn("} else if Self.allowsOfficialProductMedia,", registry)
         self.assertIn("|| match.asset.source?.sourceType != .officialProductMedia else {", registry)
 
+    def test_help_menu_order_per_build(self) -> None:
+        source = (SWIFT_SOURCES / "TerentoPoCApp.swift").read_text(encoding="utf-8")
+
+        def help_items(defined: set[str]) -> list[str]:
+            active = active_source(source, defined)
+            block = active[active.index("CommandGroup(replacing: .help) {"):]
+            block = block[:block.index("\n            }\n")]
+            items = re.findall(r'Button\("([^"]+)"\)|(Divider\(\))', block)
+            return [label or divider for label, divider in items]
+
+        common_head = ["Terento Website", "Troubleshooting", "Documentation", "Divider()", "Send Feedback…"]
+        self.assertEqual(help_items(APP_STORE_ONLY), common_head + [
+            "Rate on App Store…", "Divider()", "Report an Issue", "Star on GitHub…"])
+        self.assertEqual(help_items(DMG_ONLY), common_head + [
+            "Divider()", "Report an Issue", "Send Report to Terento…", "Star on GitHub…"])
+        app_store = active_source(source, APP_STORE_ONLY)
+        self.assertIn("openExternalURL(TerentoAppLinks.appStoreReview)", app_store)
+        for defined in (APP_STORE_ONLY, DMG_ONLY):
+            self.assertIn('Button("Star on GitHub…") {\n                    openExternalURL(TerentoAppLinks.repository)',
+                          active_source(source, defined))
+        self.assertEqual(source.count("TerentoAppLinks.feedbackMail("), 1)
+        links = (SWIFT_SOURCES / "Views" / "AppLinks.swift").read_text(encoding="utf-8")
+        self.assertIn('static let feedbackAddress = "hello@terento.app"', links)
+        # The mail draft carries only the version and build.
+        mail = links[links.index("static func feedbackMail("):]
+        mail = mail[:mail.index("\n    }\n")]
+        self.assertIn('encode("Terento \\(version) (\\(build))")', mail)
+        for forbidden in ("serial", "Unit", "model", "device", "identity"):
+            self.assertNotIn(forbidden, mail)
+        # A mailto link opened with NSWorkspace needs no sandbox entitlement.
+        self.assertEqual(load_plist(ROOT / "app/Terento/Terento-AppStore.entitlements"), APP_ENTITLEMENTS)
+
     def test_sharing_prompt_and_review_request_are_app_store_only(self) -> None:
         source = (SWIFT_SOURCES / "Views" / "ConnectScreen.swift").read_text(encoding="utf-8")
         app_store, dmg = active_source(source, APP_STORE_ONLY), active_source(source, DMG_ONLY)
         for needle in ("InstallSharingCallout(onDecide: decideSharing)", "requestReview()",
-                       '"Share install results with Terento"', 'SecondaryButton(title: "Share") { onDecide(.share) }',
+                       '"Help improve Terento"',
+                       '"Share whether installs work on your watch, so we can fix problems faster. No serial numbers or files. "', 'SecondaryButton(title: "Share") { onDecide(.share) }',
                        'SecondaryButton(title: "Not now") { onDecide(.notNow) }',
                        'SecondaryButton(title: "Don\'t share") { onDecide(.dontShare) }'):
             self.assertIn(needle, app_store)
@@ -444,8 +477,23 @@ class AppStoreConfigurationContract(unittest.TestCase):
         # the rating request, and a completed installation and a verified
         # update both go through it. A partial installation does not.
         self.assertIn("case .sharingQuestion:\n            sharingQuestion = SharingQuestion(operationID: operationID, isUpdate: isUpdate)", app_store)
-        self.assertIn("case .review:\n            sharingQuestion = nil\n            requestReview()", app_store)
+        # The rating request never runs inside the view update that opens
+        # Map installed (the 1.2.3 local test lost the Done page that way): the
+        # success handler only marks it, and a task asks after a delay.
+        handler = app_store[app_store.index("private func handleSuccessfulOperation("):]
+        handler = handler[:handler.index("private func decideSharing(")]
+        self.assertIn("case .review:\n            sharingQuestion = nil\n", handler)
+        self.assertIn("pendingReviewRequest = operationID", handler)
+        self.assertNotIn("requestReview()", handler)
         self.assertEqual(app_store.count("requestReview()"), 1)
+        task = app_store[app_store.index(".task(id: pendingReviewRequest) {"):]
+        task = task[:task.index("requestReview()") + len("requestReview()")]
+        self.assertIn("try? await Task.sleep(for: AppStoreReviewPolicy.requestDelay)", task)
+        self.assertLess(task.index("Task.sleep"), task.index("pendingReviewRequest = nil"))
+        for forbidden in ("selectedSection", "localInstallStep", "selectedInstallationPlan"):
+            self.assertNotIn(forbidden, task)
+        links = (SWIFT_SOURCES / "Views" / "AppLinks.swift").read_text(encoding="utf-8")
+        self.assertIn("static let requestDelay: Duration = .seconds(1)", links)
         self.assertIn("if hasPartialInstallation {\n                    sharingQuestion = nil\n                } else {\n                    handleSuccessfulOperation(operationID: evidenceOperationID, isUpdate: false)", app_store)
         self.assertIn(".onChange(of: lifecycleViewModel.lastSuccessfulUpdate) { update in\n            #if TERENTO_APP_STORE\n            if let update { handleSuccessfulOperation(operationID: update.operationID, isUpdate: true) }", source)
         # The definition and its two callers: installation and update.

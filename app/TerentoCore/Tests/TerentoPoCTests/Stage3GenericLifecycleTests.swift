@@ -24,8 +24,8 @@ struct Stage3GenericLifecycleTests {
         testOptionalContourFailureIsTypedAsPackageWarning()
         testVersionlessContourLifecycleMatch()
         testGarminImagesAreListedReadOnlyAndNeverRead()
-        testGarminMapSearchAndNames()
-        testManageListCountIncludesGarminRows()
+        testGarminMapsSummaryRow()
+        testManageListCountIncludesGarminRow()
         print("PASS: 18 Stage 3 generic lifecycle tests")
     }
 
@@ -80,37 +80,47 @@ struct Stage3GenericLifecycleTests {
                "gmapsupp.img stays in content classification")
     }
 
-    private static func testGarminMapSearchAndNames() {
-        let names = ["gmapbmap.img": "Base map", "GMAPDEM.IMG": "Elevation data", "gmaptz.img": "Time zones",
-                     "gmap3d.img": "3D data", "gmappmap.img": "Garmin map", "gmapprom.img": "Garmin map",
-                     "gmaprgn.img": "Garmin map", "D1234567A.img": "Garmin map"]
-        expect(names.allSatisfy { GarminSystemMap.title(forFilename: $0.key) == $0.value },
-               "Garmin rows use known names and Garmin map otherwise")
-        let maps = ["gmapbmap.img", "gmapdem.img", "D1234567A.img"].map {
-            GarminSystemMap(path: "/GARMIN/" + $0, filename: $0, sizeBytes: 1)
-        }
-        expect(GarminSystemMap.filtered(maps, query: "").count == 3
-                && GarminSystemMap.filtered(maps, query: "garmin").count == 3
-                && GarminSystemMap.filtered(maps, query: "base map").map(\.filename) == ["gmapbmap.img"]
-                && GarminSystemMap.filtered(maps, query: "elevation").map(\.filename) == ["gmapdem.img"]
-                && GarminSystemMap.filtered(maps, query: "d1234567a").map(\.filename) == ["D1234567A.img"]
-                && GarminSystemMap.filtered(maps, query: "lithuania").isEmpty,
-               "Manage search finds Garmin rows by name and filename")
-        expect(GarminSystemMap.filtered(maps, query: "", providerID: "openTopoMap").isEmpty,
-               "a provider filter hides Garmin rows")
+    private static func testGarminMapsSummaryRow() {
+        let maps = [
+            GarminSystemMap(path: "/GARMIN/gmapbmap.img", filename: "gmapbmap.img", sizeBytes: 2_000_000_000),
+            GarminSystemMap(path: "/GARMIN/gmaptz.img", filename: "gmaptz.img", sizeBytes: 150_000_000),
+            GarminSystemMap(path: "/GARMIN/D1234567A.img", filename: "D1234567A.img", sizeBytes: 50_000_000)
+        ]
+        let summary = GarminMapsSummary(maps)
+        let size = ByteCountFormatter.string(fromByteCount: 2_200_000_000, countStyle: .decimal)
+        expect(summary?.fileCount == 3 && summary?.totalSizeBytes == 2_200_000_000
+                && summary?.detail == "Preinstalled · 3 files · \(size)"
+                && GarminMapsSummary.title == "Garmin maps",
+               "one Garmin maps row sums every listed file in the Manage size format")
+        expect(GarminMapsSummary([maps[0]])?.detail.contains("· 1 file ·") == true
+                && GarminMapsSummary([GarminSystemMap(path: "/GARMIN/gmapdem.img", filename: "gmapdem.img", sizeBytes: 0)])?.detail
+                    == "Preinstalled · 1 file"
+                && GarminMapsSummary([]) == nil,
+               "one file is singular, a zero size is left out, and no files means no row")
+        expect(GarminMapsSummary([GarminSystemMap(path: "/a", filename: "a.img", sizeBytes: .max),
+                                  GarminSystemMap(path: "/b", filename: "b.img", sizeBytes: 1)])?.totalSizeBytes == .max,
+               "the total size saturates instead of overflowing")
+        expect(GarminMapsSummary.visible(maps, query: "") == summary
+                && GarminMapsSummary.visible(maps, query: "garmin") == summary
+                && GarminMapsSummary.visible(maps, query: "preinstalled") == summary
+                && GarminMapsSummary.visible(maps, query: "lithuania") == nil
+                && GarminMapsSummary.visible([], query: "") == nil,
+               "Manage search matches the Garmin maps row by its visible words")
+        expect(GarminMapsSummary.visible(maps, query: "", providerID: "openTopoMap") == nil,
+               "a provider filter hides the Garmin maps row")
     }
 
-    private static func testManageListCountIncludesGarminRows() {
+    private static func testManageListCountIncludesGarminRow() {
         let maps = ["gmapbmap.img", "gmapdem.img", "D1234567A.img"].map {
             GarminSystemMap(path: "/GARMIN/" + $0, filename: $0, sizeBytes: 1)
         }
         func count(_ lifecycleRows: Int, _ query: String, _ provider: String = "") -> Int {
-            GarminSystemMap.manageListCount(lifecycleItemCount: lifecycleRows,
-                visibleGarminMaps: GarminSystemMap.filtered(maps, query: query, providerID: provider))
+            GarminMapsSummary.manageListCount(lifecycleItemCount: lifecycleRows,
+                visibleGarminSummary: GarminMapsSummary.visible(maps, query: query, providerID: provider))
         }
-        expect(count(2, "") == 5 && count(0, "base map") == 1 && count(0, "lithuania") == 0
+        expect(count(2, "") == 3 && count(0, "garmin") == 1 && count(0, "lithuania") == 0
                 && count(2, "", "openTopoMap") == 2,
-               "the Manage map count includes the Garmin rows that search and filters leave visible")
+               "the Manage map count includes the one Garmin row when search and filters leave it visible")
     }
 
     private static func testVersionlessContourLifecycleMatch() {

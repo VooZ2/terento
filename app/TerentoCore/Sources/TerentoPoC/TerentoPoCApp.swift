@@ -106,6 +106,18 @@ struct TerentoPoCApp: App {
                 Button("Documentation") {
                     openExternalURL(TerentoAppLinks.documentation)
                 }
+                Divider()
+                Button("Send Feedback…") {
+                    openExternalURL(TerentoAppLinks.feedbackMail(
+                        version: TerentoTelemetryMetadata.version,
+                        build: TerentoTelemetryMetadata.build))
+                }
+                #if TERENTO_APP_STORE
+                Button("Rate on App Store…") {
+                    openExternalURL(TerentoAppLinks.appStoreReview)
+                }
+                #endif
+                Divider()
                 Button("Report an Issue") {
                     openExternalURL(TerentoAppLinks.issues)
                 }
@@ -114,7 +126,7 @@ struct TerentoPoCApp: App {
                     openWindow(id: "support-report")
                 }
                 #endif
-                Button("GitHub Repository") {
+                Button("Star on GitHub…") {
                     openExternalURL(TerentoAppLinks.repository)
                 }
             }
