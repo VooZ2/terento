@@ -33,6 +33,7 @@ struct SupportReportTests {
         produced.append(try testInstallationReportMirrorsTheGitHubReport())
         produced.append(testUpdateReportOmitsInstallOnlyFacts())
         produced.append(testMinimalReport())
+        produced.append(testHelpMenuConnectionFacts())
         produced.append(testMapScanReport())
         produced.append(testMapScanReportReachesHelpMenu())
         testTextRules()
@@ -231,6 +232,57 @@ struct SupportReportTests {
         expect(payload.releaseLabel.hasSuffix("-local") && payload.appBuild.hasSuffix("-local"),
             "local builds are marked through the existing release label")
         return payload
+    }
+
+    @MainActor
+    static func testHelpMenuConnectionFacts() -> SupportReportPayload {
+        let facts = SupportConnectionFacts(connectOutcome: "BUSY", errorCategory: "watch_busy",
+            nativeCode: "terento_snapshot:-5", identity: identity, garminOnUSB: true,
+            conflictingApps: ["Garmin Express"])
+        let body = facts.reportBody(operatingSystem: "Version 26.0 (Build 25A354)")
+        expect(body.title == "Connecting the device" && body.stage == "Device connection"
+            && body.errorCategory == "watch_busy" && body.errorCodes == ["CONNECT_BUSY", "terento_snapshot:-5"],
+            "a connection report names the connect outcome, detection class and native code")
+        expect(body.device?.mtpModel == "fenix 8 - 47mm" && body.device?.firmware == "2244",
+            "a connection report names the watch as read")
+        expect(body.lifecycleFacts == ["Garmin on USB: yes", "Apps that can hold the device: Garmin Express"],
+            "a connection report says whether a Garmin was on USB and which apps can hold it")
+        expect(body.operation == nil && body.writeStarted == nil && body.maps == nil && body.failureContext == nil,
+            "a connection report writes nothing, so it states no operation or write facts")
+        expect(SupportConnectionFacts().reportBody(operatingSystem: "macOS") == SupportReportBody(macOSVersion: "macOS"),
+            "without facts the report stays minimal")
+        let hostile = SupportConnectionFacts(connectOutcome: "BUSY /Users/me", nativeCode: "file:///x",
+            conflictingApps: ["/Users/me/Evil.app"])
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.withoutEscapingSlashes]
+        let hostileJSON = String(data: try! encoder.encode(hostile.reportBody(operatingSystem: "macOS")),
+                                 encoding: .utf8) ?? ""
+        expect(!hostileJSON.contains("/Users/") && !hostileJSON.contains("file://"),
+            "connection facts never carry a local path")
+
+        let minimal = SupportReportPayload(category: .other, operationID: nil, userMessage: nil,
+                                           report: .minimal(macOSVersion: "macOS"))
+        let controller = SupportReportController(payload: minimal, allowsCategoryChoice: true, connectionReport: body)
+        expect(controller.payload.report == minimal.report, "OTHER keeps the minimal report")
+        controller.category = .connection
+        expect(controller.payload.category == .connection && controller.payload.report == body,
+            "Connecting the device sends the connection facts the preview shows")
+        let saved = SupportReportController(payload: minimal, allowsCategoryChoice: false, connectionReport: body)
+        saved.category = .connection
+        expect(saved.payload.report == minimal.report, "a saved report is never replaced by connection facts")
+
+        if TerentoDiagnosticLog.latestSavedSupportReport() == nil {
+            let outboxRoot = FileManager.default.temporaryDirectory.appendingPathComponent("terento-support-\(UUID().uuidString)")
+            defer { try? FileManager.default.removeItem(at: outboxRoot) }
+            let source = SupportReportSource.latest(outbox: SupportReportOutbox(rootURL: outboxRoot), connectionFacts: facts)
+            expect(source.allowsCategoryChoice && source.connectionReport?.errorCodes == body.errorCodes,
+                "the Help menu offers the connection facts when no failure was saved")
+            let empty = SupportReportSource.latest(outbox: SupportReportOutbox(rootURL: outboxRoot),
+                                                   connectionFacts: SupportConnectionFacts())
+            expect(empty.connectionReport == nil, "no connection facts, no connection report")
+        }
+        controller.userMessage = "The watch is not found."
+        return controller.payload
     }
 
     static func testTextRules() {

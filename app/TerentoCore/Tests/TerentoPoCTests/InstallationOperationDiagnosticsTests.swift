@@ -1028,6 +1028,26 @@ private actor DelayedAuthorizationResponse {
                 }
             }
         }
+        for (code, visible) in [(Int32(-2), false), (-3, false), (-10, true)] {
+            do {
+                let _: Int = try MapEngine.readAtInstallationBoundary(.initialSnapshot, componentKind: .main) {
+                    throw MTPTransport.nativeReadError(message: "No Garmin MTP device found", result: code,
+                        operation: .snapshot, namespace: .terentoSnapshot, boundary: .initialSnapshot, category: 1)
+                }
+                fatalError("read unexpectedly succeeded")
+            } catch {
+                let classified = MapEngine.readFailureDiagnostic(error)
+                let message = MapEngine.watchNotVisibleMessage(classified)
+                check(visible ? message == nil : message == MapEngine.watchNotVisibleText + " No map was written.",
+                      "only snapshot -2/-3 at the install boundary says Terento can no longer see the device")
+                if !visible {
+                    check(MapEngine.watchNotVisibleMessage(classified, afterEarlierWrite: true) == MapEngine.watchNotVisibleText,
+                          "after an earlier component was written it does not claim no map was written")
+                    check(MapEngine.watchNotVisibleText.hasPrefix("Terento can no longer see your device."),
+                          "the plain words the owner asked for")
+                }
+            }
+        }
         for presence in [InstallationFailureContext.DevicePresence.unknown, .absent] {
             let operation = InstallationOperationDiagnostics(operationID: UUID(), identity: identity,
                 plan: plan(), controller: controller)

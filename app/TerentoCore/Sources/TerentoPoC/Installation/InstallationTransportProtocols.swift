@@ -429,6 +429,24 @@ struct InstallationProtectionContext: Codable, Equatable, Sendable {
         case garminOther = "garmin-other"
         case outsideGarmin = "outside-garmin"
     }
+    /// Only with `inventory-ambiguous`: the inventory coherence rule that
+    /// rejected one side of the comparison (`ProtectedMapInventory.Invalid`),
+    /// or `unresolved-difference` when both sides were coherent but no added,
+    /// removed or changed object explains the refusal. A rule name only.
+    enum InventoryRule: String, Codable, Sendable, CaseIterable {
+        case malformedLocation = "malformed-location"
+        case ambiguousHandle = "ambiguous-handle"
+        case ambiguousLocation = "ambiguous-location"
+        case missingAncestor = "missing-ancestor"
+        case ancestorIsNotDirectory = "ancestor-not-directory"
+        case unresolvedDifference = "unresolved-difference"
+    }
+    /// The inventory that broke the rule: the one read before the write
+    /// (`baseline`) or the one it was compared with (`live`).
+    enum InventorySide: String, Codable, Sendable, CaseIterable {
+        case baseline = "baseline"
+        case live = "live"
+    }
 
     let protectionBoundary: Boundary
     let protectionReason: Reason
@@ -439,6 +457,8 @@ struct InstallationProtectionContext: Codable, Equatable, Sendable {
     let removedObjectCount: Int?
     let changedObjectCount: Int?
     let affectedFolder: AffectedFolder?
+    let inventoryRule: InventoryRule?
+    let inventorySide: InventorySide?
     let targetPresent: Bool?
     let targetUnique: Bool?
     let targetKindMatches: Bool?
@@ -457,6 +477,8 @@ struct InstallationProtectionContext: Codable, Equatable, Sendable {
         removedObjectCount: Int? = nil,
         changedObjectCount: Int? = nil,
         affectedFolder: AffectedFolder? = nil,
+        inventoryRule: InventoryRule? = nil,
+        inventorySide: InventorySide? = nil,
         targetPresent: Bool? = nil,
         targetUnique: Bool? = nil,
         targetKindMatches: Bool? = nil,
@@ -474,6 +496,8 @@ struct InstallationProtectionContext: Codable, Equatable, Sendable {
         self.removedObjectCount = removedObjectCount
         self.changedObjectCount = changedObjectCount
         self.affectedFolder = affectedFolder
+        self.inventoryRule = inventoryRule
+        self.inventorySide = inventorySide
         self.targetPresent = targetPresent
         self.targetUnique = targetUnique
         self.targetKindMatches = targetKindMatches

@@ -40,8 +40,17 @@ structured `failureContext` when the read carried one; it writes nothing, so no
 write or cleanup facts are sent. A map catalog that could not load is not a
 watch failure and saves no report. A scan that refreshes the watch after an
 operation keeps that operation's saved report. "Send report to Terento" from
-the Help menu offers the latest saved report; without one it sends `OTHER`
-with only `macOSVersion` and the user's description.
+the Help menu offers the latest saved report. Without one the user chooses the
+category (default `OTHER`): `OTHER` sends only `macOSVersion` and the user's
+description; in apps newer than 1.2.2 "Connecting the device" (`CONNECTION`)
+also sends what this launch already knows about the latest connection attempt,
+with no `operationId` or `operation`: title `Connecting the device`, stage
+`Device connection`, the detection class as `errorCategory`, `errorCodes`
+`CONNECT_<funnel outcome>` (for example `CONNECT_BUSY`) plus the native
+`namespace:code` when known, the watch as read, and `lifecycleFacts`
+`Garmin on USB: yes|no` and `Apps that can hold the device: <fixed app names>`.
+These are existing fields, so the API needs no change. Without any connection
+facts it is the minimal report.
 
 The Mac App Store build (from 1.2.3) offers "Send report to Terento" only in
 the installation failure dialog, and only while compatibility results are not

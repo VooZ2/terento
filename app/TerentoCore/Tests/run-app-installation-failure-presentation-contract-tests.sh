@@ -114,6 +114,12 @@ require_source 'if appUpdateController.openDownload(for: update) {' 'Download do
 require_source 'appUpdateController.deferPrompt(for: update)' 'Later does not defer the offer'
 require_source '_ = appUpdateController.openReleaseNotes(for: update)' 'release notes do not use the validated link'
 require_source 'watchReconnectFollowUp = endFollowUp(for: wait, decision: .keepWaiting)' 'Cancel skips the failure dialog and its Report issue'
+# The wait reports its start and its end to the funnel (RECONNECT_WAIT), once each.
+require_source 'watchReconnectWait = wait
+                    mapEngine.recordReconnectWait(.shown)' 'the reconnect wait is not reported when it appears'
+require_source 'mapEngine.recordReconnectWait(WatchReconnectWaitPolicy.funnelOutcome(for: .keepWaiting))' 'Cancel of the reconnect wait is not reported'
+require_source 'mapEngine.recordReconnectWait(WatchReconnectWaitPolicy.funnelOutcome(for: decision))' 'the end of the reconnect wait is not reported'
+[[ "$(grep -c 'mapEngine.recordReconnectWait(' "$connect_screen")" == 3 ]] || { print -u2 'FAIL: the reconnect wait reports its outcome more than once'; exit 1; }
 require_source 'Text("Nothing was written to your device. Terento waits up to 5 minutes.")' 'the reconnect wait does not say that nothing was written'
 [[ "$(grep -c 'Button' <<< "$reconnect_dialog")" == 1 ]] && grep -Fq 'SecondaryButton(title: "Cancel", action: onCancel)' <<< "$reconnect_dialog" \
     || { print -u2 'FAIL: the reconnect wait offers an action other than Cancel'; exit 1; }

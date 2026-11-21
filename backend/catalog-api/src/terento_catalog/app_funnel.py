@@ -38,6 +38,9 @@ FUNNEL_OUTCOMES: dict[str, frozenset[str]] = {
     "INSTALL_BLOCKED": frozenset({
         "AUTHORIZATION", "DEVICE_STORAGE", "MAC_STORAGE", "CATALOG_UNVERIFIED", "LOCAL_CAPABILITY", "OTHER",
     }),
+    # Apps newer than 1.2.2: the "Reconnect your device" wait after a stop
+    # before any write (shown, then how it ended).
+    "RECONNECT_WAIT": frozenset({"SHOWN", "RESUMED", "CANCELLED", "TIMED_OUT", "DIFFERENT_DEVICE"}),
 }
 _UUID_TEXT = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
 _POSTGRES_INTEGER_MAX = 2_147_483_647

@@ -57,6 +57,16 @@ AFFECTED_FOLDERS = (
     'map-file', 'garmin-root', 'garmin-other', 'outside-garmin',
 )
 DELTA_REASONS = ('non-target-object-added', 'preexisting-object-removed', 'preexisting-object-changed')
+# protection.inventoryRule (apps newer than 1.2.2), only with inventory-ambiguous:
+# the inventory coherence rule that rejected one side of the comparison, or
+# unresolved-difference when both sides were coherent but no added, removed or
+# changed object explains the refusal. protection.inventorySide names the side
+# whose inventory broke the rule. Rule names only; never a path or filename.
+INVENTORY_RULES = (
+    'malformed-location', 'ambiguous-handle', 'ambiguous-location',
+    'missing-ancestor', 'ancestor-not-directory', 'unresolved-difference',
+)
+INVENTORY_SIDES = ('baseline', 'live')
 COUNT_FIELDS = ('beforeObjectCount', 'afterObjectCount', 'addedObjectCount', 'removedObjectCount', 'changedObjectCount')
 TARGET_FIELDS = ('targetPresent', 'targetUnique', 'targetKindMatches', 'targetFilenameMatches', 'targetSizeMatches', 'targetPathMatches', 'targetItemIDMatches')
 BOUNDARY_STAGES = {
@@ -100,7 +110,8 @@ def validate_context(context: Any) -> None:
     if 'protection' not in context:
         return
     protection = context['protection']
-    allowed = set(PROTECTION_ENUMS) | set(COUNT_FIELDS) | set(TARGET_FIELDS) | {'stableIdentityComparisonVersion', 'affectedFolder'}
+    allowed = set(PROTECTION_ENUMS) | set(COUNT_FIELDS) | set(TARGET_FIELDS) | {
+        'stableIdentityComparisonVersion', 'affectedFolder', 'inventoryRule', 'inventorySide'}
     if not isinstance(protection, dict) or set(protection) - allowed:
         raise ValueError('invalid_protection_fields')
     if not set(PROTECTION_ENUMS) <= set(protection):
@@ -119,6 +130,20 @@ def validate_context(context: Any) -> None:
         or protection['protectionReason'] not in DELTA_REASONS
     ):
         raise ValueError('invalid_affected_folder')
+    if 'inventoryRule' in protection and (
+        protection['inventoryRule'] not in INVENTORY_RULES
+        or protection['protectionReason'] != 'inventory-ambiguous'
+    ):
+        raise ValueError('invalid_inventory_rule')
+    if 'inventorySide' in protection and protection['inventorySide'] not in INVENTORY_SIDES:
+        raise ValueError('invalid_inventory_side')
+    # A broken rule names its side; an unresolved difference has none.
+    if 'inventoryRule' in protection and (
+        ('inventorySide' in protection) == (protection['inventoryRule'] == 'unresolved-difference')
+    ):
+        raise ValueError('inconsistent_inventory_side')
+    if 'inventorySide' in protection and 'inventoryRule' not in protection:
+        raise ValueError('inconsistent_inventory_side')
     if 'stableIdentityComparisonVersion' in protection and not _integer(protection['stableIdentityComparisonVersion'], 1, 2):
         raise ValueError('invalid_comparison_version')
     expected = {'prewrite_protection': 'pre-write', 'postwrite_protection': 'post-write', 'target_validation': 'post-write'}.get(context['boundary'])

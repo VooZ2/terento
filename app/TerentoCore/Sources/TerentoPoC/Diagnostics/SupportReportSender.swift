@@ -106,13 +106,18 @@ final class SupportReportController: ObservableObject {
     @Published var category: SupportReportCategory
     let allowsCategoryChoice: Bool
     private var basePayload: SupportReportPayload
+    /// Sent instead of the minimal report when the user picks "Connecting
+    /// the device" and no failure was saved; the preview shows it as sent.
+    private let connectionReport: SupportReportBody?
     private let uploader: any SupportReportUploading
     private let outbox: SupportReportOutbox
 
     init(payload: SupportReportPayload, allowsCategoryChoice: Bool = false,
+         connectionReport: SupportReportBody? = nil,
          uploader: any SupportReportUploading = HTTPSupportReportUploader(),
          outbox: SupportReportOutbox = SupportReportOutbox()) {
         basePayload = payload
+        self.connectionReport = allowsCategoryChoice ? connectionReport : nil
         category = payload.category
         userMessage = payload.userMessage ?? ""
         self.allowsCategoryChoice = allowsCategoryChoice
@@ -126,7 +131,12 @@ final class SupportReportController: ObservableObject {
                              createdAt: Self.date(basePayload.createdAt), appBuild: basePayload.appBuild,
                              releaseLabel: basePayload.releaseLabel, category: category,
                              operationID: basePayload.operationId.flatMap(UUID.init(uuidString:)),
-                             userMessage: userMessage, report: basePayload.report)
+                             userMessage: userMessage, report: report)
+    }
+
+    private var report: SupportReportBody {
+        guard category == .connection, let connectionReport else { return basePayload.report }
+        return connectionReport
     }
 
     var canSend: Bool { state == .editing || isFailed }

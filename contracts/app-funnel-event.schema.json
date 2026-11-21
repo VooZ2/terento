@@ -38,7 +38,8 @@
         "DEVICE_CONNECT",
         "AUTHORIZATION",
         "CATALOG",
-        "INSTALL_BLOCKED"
+        "INSTALL_BLOCKED",
+        "RECONNECT_WAIT"
       ]
     },
     "outcome": {
@@ -48,10 +49,12 @@
         "AUTHORIZATION",
         "BUNDLED_FALLBACK",
         "BUSY",
+        "CANCELLED",
         "CATALOG_UNAVAILABLE",
         "CATALOG_UNVERIFIED",
         "CONNECTED",
         "DEVICE_STORAGE",
+        "DIFFERENT_DEVICE",
         "DISCONNECTED",
         "FAILED",
         "LOCAL_CAPABILITY",
@@ -63,6 +66,9 @@
         "PENDING",
         "REMOTE",
         "REMOTE_PARTIAL",
+        "RESUMED",
+        "SHOWN",
+        "TIMED_OUT",
         "TIMEOUT_NO_USB",
         "TIMEOUT_USB_PRESENT",
         "UNKNOWN_MODEL",
@@ -207,6 +213,31 @@
               "LOCAL_CAPABILITY",
               "MAC_STORAGE",
               "OTHER"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "stage": {
+            "const": "RECONNECT_WAIT"
+          }
+        },
+        "required": [
+          "stage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "outcome": {
+            "enum": [
+              "CANCELLED",
+              "DIFFERENT_DEVICE",
+              "RESUMED",
+              "SHOWN",
+              "TIMED_OUT"
             ]
           }
         }

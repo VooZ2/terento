@@ -951,7 +951,8 @@ def _failure_context_fields(result: dict[str, Any], key: str, *, technical: bool
         )))
         fields.extend((name, protection.get(name)) for name in (
             'protectionBoundary', 'stableIdentityComparisonVersion', 'beforeObjectCount', 'afterObjectCount',
-            'addedObjectCount', 'removedObjectCount', 'changedObjectCount', 'affectedFolder', 'targetPresent', 'targetUnique',
+            'addedObjectCount', 'removedObjectCount', 'changedObjectCount', 'affectedFolder', 'inventoryRule', 'inventorySide',
+            'targetPresent', 'targetUnique',
             'targetKindMatches', 'targetFilenameMatches', 'targetSizeMatches', 'targetPathMatches', 'targetItemIDMatches',
         ))
     return [(label, 'unavailable' if value is None else value) for label, value in fields]
@@ -2626,6 +2627,10 @@ _FUNNEL_GROUPS: tuple[tuple[str, str, dict[str, str]], ...] = (
         "MAC_STORAGE": "Mac storage problem", "CATALOG_UNVERIFIED": "Map not verified",
         "LOCAL_CAPABILITY": "Watch not identified", "OTHER": "Other",
     }),
+    ("Reconnect wait", "RECONNECT_WAIT", {
+        "SHOWN": "Asked to reconnect", "RESUMED": "Continued after reconnect", "CANCELLED": "Cancelled",
+        "TIMED_OUT": "Didn't come back in time", "DIFFERENT_DEVICE": "Different device connected",
+    }),
 )
 # What the current policy says about a waiting model (diagnostic only).
 _FUNNEL_MODEL_STATUS = {
@@ -2749,12 +2754,13 @@ def _funnel_delta(current: int | None, previous: int | None, period: str) -> str
 # permission, maps.
 _FUNNEL_CARDS = (
     "Why not connected", "Connection problems", "Permission check", "Waiting models",
-    "Map list", "Install blocked",
+    "Map list", "Install blocked", "Reconnect wait",
 )
 _FUNNEL_CARD_IDS = {
     "Why not connected": "first-run-not-connected", "Connection problems": "first-run-connection",
     "Permission check": "first-run-permission", "Waiting models": "first-run-models",
     "Map list": "first-run-catalog", "Install blocked": "first-run-blocked",
+    "Reconnect wait": "first-run-reconnect",
 }
 _FUNNEL_EMPTY = {
     "Why not connected": "Every session connected a watch.",

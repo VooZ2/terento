@@ -35,7 +35,7 @@ oversized body `413`, a wrong content type `415`, and the per-client limit
 | `occurredAt` | RFC 3339 UTC timestamp (`Z` or `+00:00`), not before 2026-08-01T00:00:00Z |
 | `appBuild` | non-blank string, at most 80 characters |
 | `releaseLabel` | strict SemVer; a label ending in `-local` is stored as local test data |
-| `stage` | `DEVICE_CONNECT`, `AUTHORIZATION`, `CATALOG` or `INSTALL_BLOCKED` |
+| `stage` | `DEVICE_CONNECT`, `AUTHORIZATION`, `CATALOG`, `INSTALL_BLOCKED` or `RECONNECT_WAIT` |
 | `outcome` | one of the stage's outcomes below |
 | `baseModel` | optional normalized Garmin base model (for example `fenix 8`, `Forerunner 965`), at most 80 characters; only for `DEVICE_CONNECT=CONNECTED` and `AUTHORIZATION` |
 | `droppedPackageCount` | optional integer ≥ 0; only for `CATALOG=REMOTE_PARTIAL` |
@@ -48,6 +48,17 @@ Optional fields may be omitted or `null`.
 | `AUTHORIZATION` | `APPROVED`, `PENDING`, `OUT_OF_SCOPE`, `UNKNOWN_MODEL`, `AMBIGUOUS`, `CATALOG_UNAVAILABLE`, `UPDATE_REQUIRED` |
 | `CATALOG` | `REMOTE`, `REMOTE_PARTIAL`, `BUNDLED_FALLBACK`, `UPDATE_REQUIRED` |
 | `INSTALL_BLOCKED` | `AUTHORIZATION`, `DEVICE_STORAGE`, `MAC_STORAGE`, `CATALOG_UNVERIFIED`, `LOCAL_CAPABILITY`, `OTHER` |
+| `RECONNECT_WAIT` | `SHOWN`, `RESUMED`, `CANCELLED`, `TIMED_OUT`, `DIFFERENT_DEVICE` |
+
+`RECONNECT_WAIT` (apps newer than 1.2.2; migration 096) describes the
+"Reconnect your device" wait that replaces the failure dialog after a stop
+before any write (a busy watch, a watch no longer visible, or an unplug):
+`SHOWN` when the wait appears, then how it ended: `RESUMED` (the same watch
+came back and the installation started again as a new operation),
+`CANCELLED` (the person pressed Cancel), `TIMED_OUT` (5 minutes without the
+same watch ready) or `DIFFERENT_DEVICE`. The first stop keeps its own
+installation report; the wait never changes it, and a resumed installation is
+counted by its own operation, not here.
 
 The app sends at most one event per (stage, outcome, baseModel) per session,
 through the same durable queue and parking rules as other telemetry.
@@ -58,7 +69,8 @@ Migration 070 adds `app_funnel_event` (`event_id` primary key, `session_id`,
 `occurred_at`, `received_at`, `app_build`, `release_label`, `is_local_test`,
 `stage`, `outcome`, `base_model`, `dropped_package_count`). Database checks repeat
 the stage/outcome and field-placement rules. Rows are deleted 24 months after
-receipt, like the other telemetry streams. Local test rows are retained until
+receipt, like the other telemetry streams. Migration 096 widens the stage and outcome
+checks for `RECONNECT_WAIT` without changing any stored row. Local test rows are retained until
 that retention and are excluded from every read model; the admin local-test
 purge does not yet include this table.
 

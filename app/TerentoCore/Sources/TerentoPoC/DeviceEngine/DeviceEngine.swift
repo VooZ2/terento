@@ -317,6 +317,7 @@ final class DeviceEngine: ObservableObject {
                 guard !Task.isCancelled, state == .detecting else { return }
                 let failure = DeviceDetectionErrorClassifier.classify(error)
                 errorMessage = error.localizedDescription
+                recordConnectionFacts(failedRead: error, as: failure)
                 appendLog(
                     isImmediateFirstRead
                         ? "Immediate read did not connect: \(failure); settling before the next read"
@@ -406,8 +407,47 @@ final class DeviceEngine: ObservableObject {
 
     private func reportConnectOutcome(_ outcome: DeviceConnectOutcome) {
         lastConnectOutcome = outcome
+        recordConnectionFacts(outcome: outcome)
         appendLog("Connect outcome: \(outcome.rawValue)")
         connectOutcomeHandler?(outcome)
+    }
+
+    /// Keeps what a Help-menu "Connecting the device" report sends when no
+    /// failure was saved: closed values the app already has, never a path,
+    /// serial or log line.
+    private func recordConnectionFacts(failedRead error: Error, as failure: DeviceDetectionErrorClass) {
+        var facts = SupportConnectionFactsStore.latest
+        facts.errorCategory = failure.mapScanReportCategory
+        let context = (error as? any InstallationFailureContextProviding)?.failureContext
+        if let namespace = context?.nativeCodeNamespace, let code = context?.nativeResultCode {
+            facts.nativeCode = "\(namespace.rawValue):\(code)"
+        } else {
+            facts.nativeCode = nil
+        }
+        facts.garminOnUSB = lastDetectionUSBPresence
+        SupportConnectionFactsStore.latest = facts
+    }
+
+    private func recordConnectionFacts(outcome: DeviceConnectOutcome) {
+        var facts = SupportConnectionFactsStore.latest
+        facts.connectOutcome = AppFunnelDeviceConnectOutcome(deviceConnectOutcome: outcome.rawValue)?.rawValue
+        switch outcome {
+        case .connected:
+            facts.errorCategory = nil
+            facts.nativeCode = nil
+            facts.conflictingApps = []
+            facts.garminOnUSB = true
+            facts.identity = compatibility?.identity
+        case .busy, .timeoutUSBPresent:
+            // The same apps the failure message names.
+            facts.conflictingApps = MTPConnectionConflictDiagnostics.runningApplicationNames()
+            facts.garminOnUSB = lastDetectionUSBPresence
+        case .timeoutNoUSB:
+            facts.garminOnUSB = false
+        case .multipleDevices, .notMTPMode, .disconnected, .failed:
+            facts.garminOnUSB = lastDetectionUSBPresence
+        }
+        SupportConnectionFactsStore.latest = facts
     }
 
     /// Keeps the timer that ends an in-flight read in step with the policy's

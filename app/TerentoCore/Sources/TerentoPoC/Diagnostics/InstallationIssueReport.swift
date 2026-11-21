@@ -329,6 +329,8 @@ enum InstallationIssueReport {
             ("Removed object count", count(protection?.removedObjectCount)),
             ("Changed object count", count(protection?.changedObjectCount)),
             ("Affected folder", protection?.affectedFolder?.rawValue),
+            ("Inventory rule", protection?.inventoryRule?.rawValue),
+            ("Inventory side", protection?.inventorySide?.rawValue),
             ("Target present", flag(protection?.targetPresent)),
             ("Target unique", flag(protection?.targetUnique)),
             ("Target kind matches", flag(protection?.targetKindMatches)),

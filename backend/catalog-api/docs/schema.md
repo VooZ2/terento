@@ -894,3 +894,12 @@ rollback.
   success, a fixed `last_error` reason of at most 200 characters, never a key,
   token, URL or body) and the report request state (`active`, `stopped`,
   `missing`).
+
+### Migration096: app funnel reconnect wait
+
+Expand only: widens the `app_funnel_event` stage and stage/outcome checks of
+Migration070 to accept the stage `RECONNECT_WAIT` with the outcomes `SHOWN`,
+`RESUMED`, `CANCELLED`, `TIMED_OUT` and `DIFFERENT_DEVICE` (apps newer than
+1.2.2). No column, index or stored value changes; every row the previous
+revision writes stays valid, so it keeps working during the migration and after
+a rollback. Meaning: `contracts/APP_FUNNEL_CONTRACT.md`.

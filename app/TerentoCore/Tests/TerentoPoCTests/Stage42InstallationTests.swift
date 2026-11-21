@@ -437,11 +437,19 @@ struct Stage42InstallationTests {
                 if reason == .inventoryAmbiguous {
                     passed += expect(protection?.addedObjectCount == nil && protection?.removedObjectCount == nil
                         && protection?.changedObjectCount == nil, "ambiguous pairing omits delta counts")
+                    // The duplicated location is in the inventory read at this boundary.
+                    passed += expect(protection?.inventoryRule == .ambiguousLocation
+                        && protection?.inventorySide == .live,
+                        "ambiguous pairing names the broken inventory rule and its side")
                 } else if reason != .targetPresentBeforeWrite {
                     passed += expect(protection?.addedObjectCount == (reason == .nonTargetObjectAdded ? 1 : 0)
                         && protection?.removedObjectCount == (reason == .preexistingObjectRemoved ? 1 : 0)
                         && protection?.changedObjectCount == (reason == .preexistingObjectChanged ? 1 : 0),
                         "non-target delta counts describe the current comparison")
+                }
+                if reason != .inventoryAmbiguous {
+                    passed += expect(protection?.inventoryRule == nil && protection?.inventorySide == nil,
+                        "\(reason.rawValue) names no inventory rule")
                 }
                 let decidesByDelta = [.nonTargetObjectAdded, .preexistingObjectRemoved, .preexistingObjectChanged].contains(reason)
                 passed += expect(protection?.affectedFolder == (decidesByDelta ? .mapFile : nil),
