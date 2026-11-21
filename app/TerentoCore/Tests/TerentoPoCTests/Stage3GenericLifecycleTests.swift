@@ -23,7 +23,94 @@ struct Stage3GenericLifecycleTests {
         testManagedPackageComponentsShareOneLifecycleRow()
         testOptionalContourFailureIsTypedAsPackageWarning()
         testVersionlessContourLifecycleMatch()
-        print("PASS: 15 Stage 3 generic lifecycle tests")
+        testGarminImagesAreListedReadOnlyAndNeverRead()
+        testGarminMapSearchAndNames()
+        testManageListCountIncludesGarminRows()
+        print("PASS: 18 Stage 3 generic lifecycle tests")
+    }
+
+    /// Garmin images come from the file listing only: no prefix read, kept in
+    /// `garminMaps`, never in `otherMaps` or the lifecycle inventory.
+    private static func testGarminImagesAreListedReadOnlyAndNeverRead() {
+        let garminPaths = [
+            "/GARMIN/gmapbmap.img", "/GARMIN/gmapdem.img", "/GARMIN/gmaptz.img", "/GARMIN/gmap3d.img",
+            "/GARMIN/gmappmap.img", "/GARMIN/gmapprom.img", "/GARMIN/gmaprgn.img",
+            "/GARMIN/D1234567A.img", "/GARMIN/MAP/d0099000.img"
+        ]
+        let communityPaths = ["/GARMIN/gmapsupp.img", "/GARMIN/custom.img"]
+        let files = (garminPaths + communityPaths).enumerated().map { index, path in
+            DeviceFile(itemID: UInt32(500 + index), parentID: 1, storageID: 1, path: path,
+                filename: URL(fileURLWithPath: path).lastPathComponent,
+                sizeBytes: UInt64(1_000_000 * (index + 1)), isFolder: false)
+        }
+        let reader = RecordingReader(files: files, prefix: makeIMGData())
+        let scan = GarminMapScanner().scan(files: files, reader: reader, recognizedProviderIDs: ["freizeitkarte"])
+        let garmin = Set(garminPaths)
+
+        // (a) Garmin images land in garminMaps only.
+        expect(Set(scan.garminMaps.map(\.path)) == garmin && scan.garminMaps.count == garminPaths.count,
+               "D*.img and gmap*.img images are listed in garminMaps")
+        expect(!(scan.otherMaps + scan.installedMaps).contains { garmin.contains($0.sourceFile.path) }
+                && !scan.files.contains { garmin.contains($0.path) },
+               "Garmin images never join otherMaps, installedMaps or inspected files")
+        expect(scan.garminMaps.allSatisfy { map in
+            files.first { $0.path == map.path }.map { $0.sizeBytes == map.sizeBytes && $0.filename == map.filename } == true
+        }, "Garmin rows carry the listed filename and size")
+        expect(scan.skippedUnrecognizedProviderFiles == garminPaths.count + scan.otherMaps.count,
+               "the skipped unrecognized/system count is unchanged")
+
+        // (b) Their content is never read, not even a prefix.
+        expect(reader.requestedPaths.isDisjoint(with: garmin),
+               "no prefix read reaches a Garmin image")
+        expect(reader.requestedPaths == Set(communityPaths),
+               "community images are still read for classification")
+
+        // (c) No lifecycle item, so no Remove or Update can target them.
+        let lifecycle = MapLifecycleInventoryBuilder().build(
+            from: MapInventoryListBuilder().build(scan: scan, comparisons: [])
+        )
+        expect(!lifecycle.allItems.contains { item in item.installedMaps.contains { garmin.contains($0.sourceFile.path) } }
+                && scan.garminMaps.allSatisfy { lifecycle.item(id: $0.id) == nil },
+               "Garmin images have no lifecycle item and no Remove action")
+
+        // (d) gmapsupp.img keeps content classification.
+        expect(scan.files.contains { $0.path == "/GARMIN/gmapsupp.img" }
+                && scan.otherMaps.contains { $0.sourceFile.path == "/GARMIN/gmapsupp.img" }
+                && !scan.garminMaps.contains { $0.filename == "gmapsupp.img" },
+               "gmapsupp.img stays in content classification")
+    }
+
+    private static func testGarminMapSearchAndNames() {
+        let names = ["gmapbmap.img": "Base map", "GMAPDEM.IMG": "Elevation data", "gmaptz.img": "Time zones",
+                     "gmap3d.img": "3D data", "gmappmap.img": "Garmin map", "gmapprom.img": "Garmin map",
+                     "gmaprgn.img": "Garmin map", "D1234567A.img": "Garmin map"]
+        expect(names.allSatisfy { GarminSystemMap.title(forFilename: $0.key) == $0.value },
+               "Garmin rows use known names and Garmin map otherwise")
+        let maps = ["gmapbmap.img", "gmapdem.img", "D1234567A.img"].map {
+            GarminSystemMap(path: "/GARMIN/" + $0, filename: $0, sizeBytes: 1)
+        }
+        expect(GarminSystemMap.filtered(maps, query: "").count == 3
+                && GarminSystemMap.filtered(maps, query: "garmin").count == 3
+                && GarminSystemMap.filtered(maps, query: "base map").map(\.filename) == ["gmapbmap.img"]
+                && GarminSystemMap.filtered(maps, query: "elevation").map(\.filename) == ["gmapdem.img"]
+                && GarminSystemMap.filtered(maps, query: "d1234567a").map(\.filename) == ["D1234567A.img"]
+                && GarminSystemMap.filtered(maps, query: "lithuania").isEmpty,
+               "Manage search finds Garmin rows by name and filename")
+        expect(GarminSystemMap.filtered(maps, query: "", providerID: "openTopoMap").isEmpty,
+               "a provider filter hides Garmin rows")
+    }
+
+    private static func testManageListCountIncludesGarminRows() {
+        let maps = ["gmapbmap.img", "gmapdem.img", "D1234567A.img"].map {
+            GarminSystemMap(path: "/GARMIN/" + $0, filename: $0, sizeBytes: 1)
+        }
+        func count(_ lifecycleRows: Int, _ query: String, _ provider: String = "") -> Int {
+            GarminSystemMap.manageListCount(lifecycleItemCount: lifecycleRows,
+                visibleGarminMaps: GarminSystemMap.filtered(maps, query: query, providerID: provider))
+        }
+        expect(count(2, "") == 5 && count(0, "base map") == 1 && count(0, "lithuania") == 0
+                && count(2, "", "openTopoMap") == 2,
+               "the Manage map count includes the Garmin rows that search and filters leave visible")
     }
 
     private static func testVersionlessContourLifecycleMatch() {
@@ -647,5 +734,37 @@ private struct FixtureReader: DeviceFileReader {
         Dictionary(uniqueKeysWithValues: files.map {
             ($0.stableIdentity, Array(prefix.prefix(maxLength)))
         })
+    }
+}
+
+/// Records every path whose prefix the scanner asks for.
+private final class RecordingReader: DeviceFileReader, @unchecked Sendable {
+    private let files: [DeviceFile]
+    private let prefix: [UInt8]
+    private let lock = NSLock()
+    private var paths: Set<String> = []
+
+    init(files: [DeviceFile], prefix: [UInt8]) {
+        self.files = files
+        self.prefix = prefix
+    }
+
+    var requestedPaths: Set<String> {
+        lock.lock(); defer { lock.unlock() }
+        return paths
+    }
+
+    func readFileInventory() throws -> [DeviceFile] {
+        files
+    }
+
+    func readFilePrefix(for file: DeviceFile, maxLength: Int) throws -> [UInt8] {
+        lock.lock(); paths.insert(file.path); lock.unlock()
+        return Array(prefix.prefix(maxLength))
+    }
+
+    func readFilePrefixes(for files: [DeviceFile], maxLength: Int) throws -> [DeviceFileIdentity: [UInt8]] {
+        lock.lock(); paths.formUnion(files.map(\.path)); lock.unlock()
+        return Dictionary(uniqueKeysWithValues: files.map { ($0.stableIdentity, Array(prefix.prefix(maxLength))) })
     }
 }

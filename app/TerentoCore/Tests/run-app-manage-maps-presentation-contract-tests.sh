@@ -72,6 +72,14 @@ require_text '? "This can take a minute."' "$connect_screen" "reading card lacks
 reject_text 'Map information will appear here when your device is ready.' "$connect_screen" "reading card repeats itself"
 require_text 'TextField("Search installed maps", text: $managedSearchText)' "$connect_screen" "Manage search placeholder differs from its label"
 
+# Garmin-installed images: one read-only section after External maps.
+require_text 'title: "Garmin maps"' "$connect_screen" "Garmin maps section is missing"
+require_text 'Text("Installed by Garmin. Terento does not change these.")' "$connect_screen" "Garmin maps section text is missing"
+require_text 'isExpanded: $garminMapsExpanded' "$connect_screen" "Garmin maps section does not collapse like the others"
+require_text 'if lifecycleInventory.allItems.isEmpty && filteredGarminMaps.isEmpty {' "$connect_screen" "empty state shows next to Garmin rows"
+require_text 'filteredGarminMaps = GarminSystemMap.filtered(managedGarminMaps,' "$connect_screen" "Manage search does not reach Garmin rows"
+require_text 'visibleGarminMaps: filteredGarminMaps' "$connect_screen" "the Manage map count leaves out Garmin rows"
+
 print "PASS: Manage maps simplified action contract"
 
 python3 - "$connect_screen" <<'PYTEST'
@@ -85,4 +93,14 @@ assert "progress.detail ?? operation.message" in component, "checking needs an a
 assert 'Text("0%")' not in component, "an unmeasured operation must not show a percentage (same rule as install steps)"
 assert "TerentoProgressBar(value: 0" in component, "initial operations must still show an empty determinate bar"
 print("PASS: determinate Manage maps progress, description and initial state")
+
+groups = source.split("private func managedMapGroups(", 1)[1].split("private func confirmationItem(", 1)[0]
+assert groups.index('title: "External maps"') < groups.index('title: "Garmin maps"'), "Garmin maps must follow External maps"
+section = groups.split('title: "Garmin maps"', 1)[1].split("if lifecycleInventory.allItems.isEmpty", 1)[0]
+row = source.split("private struct GarminSystemMapRow: View {", 1)[1].split("private struct ", 1)[0]
+for forbidden in ("Button", "contextMenu", "onRemove", "onUpdate", "ManageAction", "lifecycleViewModel", "onTapGesture", "selection"):
+    assert forbidden not in row, f"Garmin rows must not offer {forbidden}"
+    assert forbidden not in section, f"the Garmin section must not offer {forbidden}"
+assert "GarminSystemMapRow(map: map)" in section, "Garmin rows must use the read-only row"
+print("PASS: Garmin maps are read-only rows after External maps")
 PYTEST
