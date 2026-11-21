@@ -321,6 +321,68 @@ extension SupportReportBody {
     }
 }
 
+/// What the app already knows about the latest connection attempt, for a
+/// "Connecting the device" report sent from the Help menu when no failure was
+/// saved (apps newer than 1.2.2). Closed, sanitised values only: the connect
+/// outcome as the funnel names it, the detection class, the native
+/// `namespace:code`, the watch as read, whether a Garmin was on USB and the
+/// fixed names of apps that can hold the device. No serial, path or log.
+struct SupportConnectionFacts: Equatable, Sendable {
+    /// `AppFunnelDeviceConnectOutcome` raw value, for example `BUSY`.
+    var connectOutcome: String?
+    /// `DeviceDetectionErrorClass.mapScanReportCategory` of the last failed read.
+    var errorCategory: String?
+    /// Native `namespace:code` of the last failed read, for example `terento_snapshot:-5`.
+    var nativeCode: String?
+    var identity: DeviceIdentity?
+    var garminOnUSB: Bool?
+    var conflictingApps: [String] = []
+
+    static let title = "Connecting the device"
+    static let stage = "Device connection"
+
+    var isEmpty: Bool {
+        connectOutcome == nil && errorCategory == nil && nativeCode == nil && identity == nil
+            && garminOnUSB == nil && conflictingApps.isEmpty
+    }
+
+    /// The body a CONNECTION report sends. It writes nothing, so it carries
+    /// no operation, write or cleanup facts.
+    func reportBody(operatingSystem: String = ProcessInfo.processInfo.operatingSystemVersionString) -> SupportReportBody {
+        var body = SupportReportBody.minimal(macOSVersion: operatingSystem)
+        guard !isEmpty else { return body }
+        body.title = Self.title
+        body.stage = Self.stage
+        body.errorCategory = SupportReportText.code(errorCategory)
+        var seen = Set<String>()
+        let codes = [connectOutcome.map { "CONNECT_" + $0 }, nativeCode]
+            .compactMap { SupportReportText.code($0) }
+            .filter { seen.insert($0).inserted }
+        body.errorCodes = codes.isEmpty ? nil : codes
+        if let identity {
+            let device = SupportReportDevice(
+                model: SupportReportText.clean(identity.presentationModel, max: 120),
+                variant: SupportReportText.clean(identity.variant, max: 120),
+                family: SupportReportText.clean(identity.family, max: 120),
+                firmware: SupportReportText.clean(identity.firmware, max: 40),
+                mtpModel: SupportReportText.clean(identity.model, max: 120))
+            body.device = device.isEmpty ? nil : device
+        }
+        var facts: [String] = []
+        if let garminOnUSB { facts.append("Garmin on USB: \(garminOnUSB ? "yes" : "no")") }
+        let apps = conflictingApps.compactMap { SupportReportText.clean($0, max: 80) }.prefix(4)
+        if !apps.isEmpty { facts.append("Apps that can hold the device: \(apps.joined(separator: ", "))") }
+        body.lifecycleFacts = facts.isEmpty ? nil : facts
+        return body
+    }
+}
+
+/// The latest connection facts, kept in memory for this launch only.
+@MainActor
+enum SupportConnectionFactsStore {
+    static var latest = SupportConnectionFacts()
+}
+
 /// What a saved failure report adds for "Send report to Terento": the
 /// structured report and the ids of the failed operation, kept beside
 /// failure-report.md.

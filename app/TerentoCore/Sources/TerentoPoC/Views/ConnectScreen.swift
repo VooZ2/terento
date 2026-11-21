@@ -396,6 +396,7 @@ struct ConnectScreen: View {
                 installationFailureSnapshot = makeInstallationFailureSnapshot()
                 if let wait = makeWatchReconnectWait() {
                     watchReconnectWait = wait
+                    mapEngine.recordReconnectWait(.shown)
                 } else {
                     isShowingInstallationFailure = true
                 }
@@ -560,6 +561,7 @@ struct ConnectScreen: View {
                         // Cancel ends the wait with the failure dialog, as before
                         // the wait existed, so Report issue stays available.
                         watchReconnectFollowUp = endFollowUp(for: wait, decision: .keepWaiting)
+                        mapEngine.recordReconnectWait(WatchReconnectWaitPolicy.funnelOutcome(for: .keepWaiting))
                         endWatchReconnectWait()
                     }
                 )
@@ -769,6 +771,7 @@ struct ConnectScreen: View {
         case .differentWatch, .timedOut:
             watchReconnectFollowUp = endFollowUp(for: wait, decision: decision)
         }
+        mapEngine.recordReconnectWait(WatchReconnectWaitPolicy.funnelOutcome(for: decision))
         endWatchReconnectWait()
     }
 
