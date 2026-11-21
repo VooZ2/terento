@@ -26,6 +26,7 @@ STYLE_CREDITS: dict[str, tuple[str, str]] = {
     "osmapa-ogonki": _OSMAPA_CREDIT,
     "osmapa-light": _OSMAPA_CREDIT,
     "luckymaps": ("Lucky Maps © luckymaps.ch (CC BY-SA 4.0)", "https://luckymaps.ch/"),
+    "openfietsmap": ("Cartography © Openfietsmap.nl (CC BY-NC-SA 3.0)", "https://www.openfietsmap.nl/"),
 }
 
 
