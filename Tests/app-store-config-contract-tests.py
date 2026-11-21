@@ -365,19 +365,28 @@ class AppStoreConfigurationContract(unittest.TestCase):
             source = (SWIFT_SOURCES / path).read_text(encoding="utf-8")
             app_store, dmg = active_source(source, APP_STORE_ONLY), active_source(source, DMG_ONLY)
             # Notice numbers never overlap, so a copied DMG choice is recognisable.
-            self.assertIn("static let currentNoticeVersion = 100", app_store)
+            # 1.2.3 raised the App Store notice to 101 (AppStoreConsentNotice).
+            self.assertIn("static let currentNoticeVersion = AppStoreConsentNotice.currentVersion", app_store)
             self.assertIn(f"static let currentNoticeVersion = {dmg_version}", dmg)
             self.assertIn("return consent?.choice == .accepted && consent?.noticeVersion == currentNoticeVersion", app_store)
             self.assertIn("return consent?.choice != .declined", dmg)
             # Every opt-out test in the store and controller goes through the policy.
             self.assertNotIn("consent()?.choice != .declined", app_store)
             self.assertNotIn("guard file.consent?.choice != .declined,\n                  !file", app_store)
-            # Start-up migration: only a refusal survives; every queue is dropped.
+            # Start-up migration follows the one shared rule; a 1.2.x refusal
+            # becomes undecided and every queue without a standing opt-in goes.
             migration = app_store[app_store.index("func migrateConsentToCurrentNotice() throws {"):]
             migration = migration[:migration.index("\n    }\n")]
-            self.assertIn("consent.choice == .declined ? " + consent + "(", migration)
-            self.assertIn(") : nil", migration)
-            self.assertIn(queue + ".removeAll()", migration)
+            self.assertIn("let migration = AppStoreConsentNotice.migration(\n                noticeVersion: file.consent?.noticeVersion, declined: file.consent?.choice == .declined)", migration)
+            undecided = migration[migration.index("case .undecided:"):]
+            self.assertIn("file.consent = nil", undecided)
+            self.assertIn(queue + ".removeAll()", undecided)
+            kept = migration[migration.index("case .keepDeclined:"):migration.index("case .undecided:")]
+            self.assertIn("choice: .declined", kept)
+            self.assertIn(queue + ".removeAll()", kept)
+            accepted = migration[migration.index("case .keepAccepted:"):migration.index("case .keepDeclined:")]
+            self.assertIn("choice: .accepted", accepted)
+            self.assertNotIn(".removeAll()", accepted)
             self.assertIn("try? store.migrateConsentToCurrentNotice()", app_store)
             self.assertIn(f"{consent}.permitsSharing(", app_store)
         app = active_source((SWIFT_SOURCES / "TerentoPoCApp.swift").read_text(encoding="utf-8"), APP_STORE_ONLY)
