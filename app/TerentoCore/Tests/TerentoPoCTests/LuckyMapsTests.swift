@@ -38,8 +38,8 @@ private struct PathPrefixReader: DeviceFileReader {
     static let root = "https://luckymaps.ch/assets/maps/"
     static let fixtures = URL(fileURLWithPath: ProcessInfo.processInfo.environment["TERENTO_LUCKYMAPS_FIXTURES"]!)
 
-    static func check(_ condition: @autoclosure () -> Bool, _ label: String) {
-        guard condition() else { fatalError("FAIL: \(label)") }
+    static func check(_ condition: @autoclosure () throws -> Bool, _ label: String) rethrows {
+        guard try condition() else { fatalError("FAIL: \(label)") }
         print("PASS: \(label)")
     }
 
@@ -155,7 +155,7 @@ private struct PathPrefixReader: DeviceFileReader {
               "catalog-v6 proofs decode only as Lucky Maps proofs")
         check(compatible(andorra) && LuckyMapsProviderAdapter().expectedIMGIdentity(for: andorra) == andorra.identity,
               "a main map with its optional contour add-on is compatible")
-        check(compatible(try self.package(contour: nil)), "a map without contours is compatible")
+        try check(compatible(try self.package(contour: nil)), "a map without contours is compatible")
         check(MapCatalogLoader.defaultEndpoint?.absoluteString == "https://api.terento.app/maps/catalog-v6.json",
               "the app reads catalog-v6")
         check(MapProviderDisplay.downloadName("luckymaps") == "Lucky Maps", "the provider is named Lucky Maps")
@@ -193,7 +193,7 @@ private struct PathPrefixReader: DeviceFileReader {
             ("an OSMapaPL-shaped proof", { _, proof, _ in proof = ["payloadPath": "gmapsupp.img", "crc32": "00000000"] })
         ]
         for (label, edit) in tampering {
-            check(!compatible(try package(edit: edit)), "catalog rejects \(label)")
+            try check(!compatible(try package(edit: edit)), "catalog rejects \(label)")
         }
 
         var unavailableMap = try document(contour: nil)
@@ -206,7 +206,7 @@ private struct PathPrefixReader: DeviceFileReader {
               "an unavailable package without proof stays visible and is never installable")
         artifact["sourceProof"] = (try document()["artifacts"] as! [[String: Any]])[0]["sourceProof"]
         unavailableMap["artifacts"] = [artifact]
-        check(!compatible(try catalog([unavailableMap]).packages[0]), "an unavailable package must not carry proof")
+        try check(!compatible(try catalog([unavailableMap]).packages[0]), "an unavailable package must not carry proof")
 
         // Lithuania with Andorra's family IDs: each alone is valid, together neither is.
         let lithuania = try document { map, proof, contour in
@@ -218,7 +218,7 @@ private struct PathPrefixReader: DeviceFileReader {
             contour["sourceURL"] = root + "lithuania-ct.img"; contour["imgTitle"] = "lithuania-ct"
             contour["sourceIdentity"] = "luckymaps:lithuania-ct:contours"
         }
-        check(compatible(try catalog([lithuania]).packages[0]), "a second region alone is compatible")
+        try check(compatible(try catalog([lithuania]).packages[0]), "a second region alone is compatible")
         let duplicate = MapCatalogClientCompatibilityValidator().acceptCompatiblePackages(try catalog([try document(), lithuania]))
         check(duplicate == nil || duplicate?.catalog.packages.isEmpty == true,
               "two packages naming one Garmin family ID are both dropped")
