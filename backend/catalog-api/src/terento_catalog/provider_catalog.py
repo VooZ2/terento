@@ -157,8 +157,23 @@ OSMAPA = ProviderDefinition(
     default_status="PAUSED",
 )
 
+LUCKYMAPS = ProviderDefinition(
+    id="luckymaps", name="Lucky Maps", adapter_id="luckymaps",
+    website="https://luckymaps.ch/",
+    catalog_url="https://luckymaps.ch/assets/maps.json",
+    # Terms as published on luckymaps.ch (2026-11): the author agreed to direct
+    # downloads from his server on 2026-11-18; no separate licence was requested.
+    license=("Map data © OpenStreetMap contributors (ODbL); Lucky Maps © luckymaps.ch, Lukas M., "
+             "free for private use, CC BY-SA 4.0; based on Freizeitkarte (FZK project, CC BY 3.0); "
+             "contours © U.S. Geological Survey and viewfinderpanoramas.org."),
+    attribution="Map data © OpenStreetMap contributors; Lucky Maps © luckymaps.ch (CC BY-SA 4.0)",
+    license_url="https://luckymaps.ch/en/",
+    # Not offered until the author's final agreement and the hardware gate.
+    default_status="PAUSED",
+)
+
 KNOWN_PROVIDER_DEFINITIONS: dict[str, ProviderDefinition] = {
-    item.id: item for item in (FREIZEITKARTE, OPENTOPO_MAP, MAPRANDO, BBBIKE, OSMAPA)
+    item.id: item for item in (FREIZEITKARTE, OPENTOPO_MAP, MAPRANDO, BBBIKE, OSMAPA, LUCKYMAPS)
 }
 
 # Main package membership stays independent of optional contour availability.
