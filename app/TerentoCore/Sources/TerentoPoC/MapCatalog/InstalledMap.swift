@@ -630,7 +630,7 @@ struct GarminMapScanner: Sendable {
         // conflict and storage decision.
         let garminMaps = mapFiles.filter(isKnownGarminOwned)
             .map { GarminSystemMap(path: $0.path, filename: $0.filename, sizeBytes: $0.sizeBytes) }
-            .sorted { $0.sortKey < $1.sortKey }
+            .sorted { $0.path < $1.path }
         var inspectedFiles: [InstalledMapFile] = []
         var installedMaps: [InstalledMap] = []
         var otherMaps: [InstalledMap] = []
@@ -858,58 +858,61 @@ struct MapScanResult: Sendable, Equatable {
 /// A map or system image that Garmin installed. It is built only from the file
 /// listing (path, filename, size): its content is never read. It has no
 /// lifecycle identity, ownership or actions, so Remove, Update and storage
-/// planning cannot reach it. The name comes from the known Garmin filename;
-/// region or product names are never guessed.
+/// planning cannot reach it.
 struct GarminSystemMap: Identifiable, Equatable, Sendable {
     let path: String
     let filename: String
     let sizeBytes: UInt64
 
     var id: String { path }
+}
 
-    var title: String { Self.title(forFilename: filename) }
+/// The single read-only "Garmin maps" row in Manage. It summarises every
+/// Garmin-installed image as one line, "Preinstalled · N files · size", and
+/// takes no actions.
+struct GarminMapsSummary: Equatable, Sendable {
+    static let title = "Garmin maps"
 
-    static func title(forFilename filename: String) -> String {
-        switch filename.lowercased() {
-        case "gmapbmap.img": return "Base map"
-        case "gmapdem.img": return "Elevation data"
-        case "gmaptz.img": return "Time zones"
-        case "gmap3d.img": return "3D data"
-        default: return "Garmin map"
+    let fileCount: Int
+    let totalSizeBytes: UInt64
+
+    init?(_ maps: [GarminSystemMap]) {
+        guard !maps.isEmpty else { return nil }
+        fileCount = maps.count
+        totalSizeBytes = maps.reduce(UInt64(0)) { total, map in
+            let (sum, overflow) = total.addingReportingOverflow(map.sizeBytes)
+            return overflow ? UInt64.max : sum
         }
     }
 
+    /// Same size format as the other Manage rows (decimal, omitted at zero).
     var formattedSize: String? {
-        guard sizeBytes > 0 else { return nil }
+        guard totalSizeBytes > 0 else { return nil }
         return ByteCountFormatter.string(
-            fromByteCount: Int64(min(sizeBytes, UInt64(Int64.max))),
+            fromByteCount: Int64(min(totalSizeBytes, UInt64(Int64.max))),
             countStyle: .decimal
         )
     }
 
-    /// Named images first, then "Garmin map" rows by filename.
-    fileprivate var sortKey: String {
-        let named = title != "Garmin map"
-        return (named ? "0 " : "1 ") + title.lowercased() + " " + filename.lowercased() + " " + path.lowercased()
+    var detail: String {
+        ["Preinstalled", "\(fileCount) \(fileCount == 1 ? "file" : "files")", formattedSize]
+            .compactMap { $0 }
+            .joined(separator: " · ")
     }
 
     /// The "N maps" line above the Manage list: every visible row, lifecycle
-    /// rows and Garmin rows alike, after the same search and provider filter.
-    static func manageListCount(lifecycleItemCount: Int, visibleGarminMaps: [GarminSystemMap]) -> Int {
-        lifecycleItemCount + visibleGarminMaps.count
+    /// rows and the Garmin row alike, after the same search and provider filter.
+    static func manageListCount(lifecycleItemCount: Int, visibleGarminSummary: GarminMapsSummary?) -> Int {
+        lifecycleItemCount + (visibleGarminSummary == nil ? 0 : 1)
     }
 
-    /// Manage search. These are Garmin's own fixed filenames, so unlike
-    /// imported maps the filename is searchable. A provider filter hides them:
-    /// they belong to no community provider.
-    static func filtered(_ maps: [GarminSystemMap], query: String, providerID: String = "") -> [GarminSystemMap] {
-        guard providerID.isEmpty else { return [] }
+    /// Manage search matches the row's visible words. A provider filter hides
+    /// the row: Garmin images belong to no community provider.
+    static func visible(_ maps: [GarminSystemMap], query: String, providerID: String = "") -> GarminMapsSummary? {
+        guard providerID.isEmpty, let summary = GarminMapsSummary(maps) else { return nil }
         let terms = fold(query).split(whereSeparator: \.isWhitespace).map(String.init)
-        guard !terms.isEmpty else { return maps }
-        return maps.filter { map in
-            let text = fold([map.title, map.filename, "Garmin"].joined(separator: " "))
-            return terms.allSatisfy { text.contains($0) }
-        }
+        let text = fold(title + " Preinstalled")
+        return terms.allSatisfy { text.contains($0) } ? summary : nil
     }
 
     private static func fold(_ value: String) -> String {

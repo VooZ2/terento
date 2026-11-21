@@ -15,6 +15,23 @@ enum TerentoAppLinks {
     #endif
     static let privacy = URL(string: "https://terento.app/privacy/")!
     static let legal = URL(string: "https://terento.app/legal/")!
+    static let feedbackAddress = "hello@terento.app"
+
+    /// Help > Send Feedback…: a mail draft whose body is only the app version
+    /// and build, e.g. "Terento 1.2.3 (50)". No device data or identifiers.
+    /// The default mail app opens it, also from the sandboxed App Store build.
+    static func feedbackMail(version: String, build: String) -> URL {
+        // Only unreserved characters stay literal, so a value can never add
+        // a field ("&", "=") or end the address ("?", "#").
+        var unreserved = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+        unreserved.insert(charactersIn: "-._~")
+        func encode(_ value: String) -> String {
+            value.addingPercentEncoding(withAllowedCharacters: unreserved) ?? ""
+        }
+        let subject = encode("Terento feedback")
+        let body = encode("Terento \(version) (\(build))")
+        return URL(string: "mailto:\(feedbackAddress)?subject=\(subject)&body=\(body)")!
+    }
 
     // The public site already preserves and reports UTM campaign parameters.
     // Keep app-originated web visits distinguishable without adding analytics
@@ -54,6 +71,9 @@ enum AppStoreReviewPolicy {
     /// Asked after the first success and once more after a Not now. After
     /// that it is not asked again and nothing is sent.
     static let maximumSharingQuestions = 2
+    /// The rating request waits this long after the success page appears, so
+    /// it is never made inside the view update that shows the page.
+    static let requestDelay: Duration = .seconds(1)
 
     /// Counts one successful installation or update and returns the one
     /// thing to show after it. `sharingUndecided` is true while no sharing
