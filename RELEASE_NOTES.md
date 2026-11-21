@@ -1,14 +1,17 @@
-# Terento v1.2.3 (build 50)
-<!-- DRAFT: staged 1.2.3 build 50; not published until the signed, notarized DMG is on GitHub. -->
+# Terento v1.3.0 (build 50)
+<!-- DRAFT: staged 1.3.0 build 50 (1.2.3 was never released; its changes are here); not published until the signed, notarized DMG is on GitHub. -->
 
-Terento 1.2.3 is a fix release for Terento 1.2.2, the free, open-source app for installing community maps on map-capable Garmin smartwatches and Edge bike computers from Apple Silicon Macs running macOS 13 or later. Compatibility is still evaluated model by model.
+Terento 1.3.0 is an update to Terento 1.2.2, the free, open-source app for installing community maps on map-capable Garmin smartwatches and Edge bike computers from Apple Silicon Macs running macOS 13 or later. Compatibility is still evaluated model by model.
 
-This release keeps a large downloaded map ready when the device can't be reached, so you don't download it again, and makes reports about connection problems more useful. Installed 1.2.2 and earlier builds are offered it by the in-app update check. The Mac App Store version is updated separately.
+This release keeps a large downloaded map ready when the device can't be reached, so you don't download it again, gives the app a cleaner, more consistent look, and makes reports about connection problems more useful. Installed 1.2.2 and earlier builds are offered it by the in-app update check. The Mac App Store version is updated separately.
 
 ## WHAT'S NEW?
 
+- A cleaner look: the app now uses Terento's own fonts and one consistent text size scale, and map rows show the map name, then the provider, version and "Already installed" on one line.
+- Install maps shows more maps at once: free space and the number of selected maps sit on one line next to Continue, and "Import from Mac" is a button next to Refresh.
+- Manage maps shows the maps Garmin installed on your device as one line, "Garmin maps", with how many files there are and their size. Terento never changes them.
+- The Help menu has Send Feedback (opens an email with only the app version) and Star on GitHub.
 - Send report from the Help menu: when you choose "Connecting the device" and no failure was saved, the report also includes what Terento saw the last time it tried to connect, for example that the device was busy and Garmin Express was running. The window shows everything that will be sent.
-- Manage now also lists the maps Garmin installed on your device. Terento only shows them and never changes them.
 
 ## WHAT'S FIXED?
 
