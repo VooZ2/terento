@@ -441,6 +441,10 @@ final class MapEngine: ObservableObject {
         retainArtifactsForRetry(sets)
     }
 
+    func releaseRetainedArtifactsForTesting(notIn packageIDs: Set<String>) -> Bool {
+        releaseRetainedArtifacts(notIn: packageIDs)
+    }
+
     func takeRetainedArtifactForTesting(packageID: String, artifactID: String, version: MapVersion) -> ValidatedMapArtifact? {
         takeRetainedArtifact(packageID: packageID, artifactID: artifactID, version: version)
     }
@@ -453,6 +457,7 @@ final class MapEngine: ObservableObject {
         if presence == .absent { operationDiagnostics?.deviceDisconnected() }
         operationGate.invalidateLifecycleOperations()
         finishAcquisition(.downloadInterrupted)
+        retainDownloadsBeforeDisconnectCleanup()
         cancelActiveTaskAndCleanupWorkspaces()
         discardCustomMapImport(removeWorkspace: false)
         state = .idle
@@ -1380,11 +1385,14 @@ final class MapEngine: ObservableObject {
         .installationAuthorizationUnavailable, .transactionAlreadyRunning
     ]
 
-    /// Validated provider artifacts kept for a short time after a failure in
-    /// which nothing was written, so Try again does not download them again.
-    /// They are keyed by package and artifact, carry their SHA-256, and are
-    /// revalidated (identity, version, size, hash) before any write.
-    nonisolated static let retainedArtifactLifetime: TimeInterval = 30 * 60
+    /// Validated provider artifacts kept after a failure in which nothing was
+    /// written, or after the device disappeared before any write, so Try
+    /// again does not download them again. Large maps take one to two hours to
+    /// download, and people come back to them hours later, so they are kept
+    /// for 6 hours of this app session (quitting removes them). They are keyed
+    /// by package and artifact, carry their SHA-256, and are revalidated
+    /// (identity, version, size, hash) before any write.
+    nonisolated static let retainedArtifactLifetime: TimeInterval = 6 * 60 * 60
     private struct RetainedArtifactKey: Hashable {
         let packageID: String
         let artifactID: String
@@ -1419,6 +1427,53 @@ final class MapEngine: ObservableObject {
         }
     }
 
+    /// Downloads validated so far by the running download task, so a device
+    /// that disappears during a long multi-map download does not lose the
+    /// maps that already finished.
+    private var validatedArtifactSetsInFlight: [String: [String: ValidatedMapArtifact]] = [:]
+    /// The download task that owns `validatedArtifactSetsInFlight`; a
+    /// cancelled older task never clears a newer task's downloads.
+    private var validatedArtifactSetsInFlightOwner: UUID?
+
+    private func recordValidatedArtifactSetsInFlight(_ sets: [String: [String: ValidatedMapArtifact]], owner: UUID) {
+        guard validatedArtifactSetsInFlightOwner == owner else { return }
+        validatedArtifactSetsInFlight = sets
+    }
+
+    /// Phases before any write of the current operation: a device that
+    /// disappears now leaves the validated downloads usable for Try again.
+    nonisolated static func keepsDownloadsAfterDisconnect(during phase: InstallationProcessPhase) -> Bool {
+        switch phase {
+        case .idle, .downloading, .preparing, .awaitingConfirmation: return true
+        case .installing, .finishing, .completed, .failed: return false
+        }
+    }
+
+    /// Keeps the validated downloads before a disconnect reset removes the
+    /// operation's workspaces. A failed operation already decided on its own.
+    private func retainDownloadsBeforeDisconnectCleanup() {
+        guard Self.keepsDownloadsAfterDisconnect(during: installationPhase) else { return }
+        var sets = validatedArtifactSetsInFlight
+        for (packageID, artifacts) in validatedArtifactSets {
+            sets[packageID, default: [:]].merge(artifacts) { _, current in current }
+        }
+        guard !sets.isEmpty else { return }
+        retainArtifactsForRetry(sets)
+    }
+
+    /// Frees retained downloads that the next operation does not use, when
+    /// the Mac has too little space for it. Returns whether any were removed.
+    fileprivate func releaseRetainedArtifacts(notIn packageIDs: Set<String>) -> Bool {
+        let unused = retainedArtifacts.filter { !packageIDs.contains($0.key.packageID) }
+        guard !unused.isEmpty else { return false }
+        for key in unused.keys { retainedArtifacts[key] = nil }
+        let stillRetained = retainedWorkspaceRoots
+        for root in Set(unused.values.compactMap(\.artifact.workspaceRootURL)) where !stillRetained.contains(root) {
+            try? MapAcquisitionWorkspace.cleanup(rootURL: root)
+        }
+        return true
+    }
+
     fileprivate func hasRetainedArtifact(packageID: String, artifactID: String) -> Bool {
         retainedArtifacts[RetainedArtifactKey(packageID: packageID, artifactID: artifactID)] != nil
     }
@@ -1451,6 +1506,12 @@ final class MapEngine: ObservableObject {
         for root in Set(expired.values.compactMap(\.artifact.workspaceRootURL)) where !stillRetained.contains(root) {
             try? MapAcquisitionWorkspace.cleanup(rootURL: root)
         }
+    }
+
+    /// Reports the "Reconnect your device" wait to the funnel. Telemetry only:
+    /// it never changes the wait, the installation or the device.
+    func recordReconnectWait(_ outcome: AppFunnelReconnectWaitOutcome) {
+        funnel?.recordReconnectWait(outcome)
     }
 
     /// Removes every retained artifact, for example when the app quits.
@@ -1821,11 +1882,15 @@ final class MapEngine: ObservableObject {
         let progressRelay = MapEngineDownloadProgressRelay(engine: self)
         activeTask?.cancel()
         let diagnostics = operationDiagnostics
+        let inFlightOwner = UUID()
+        validatedArtifactSetsInFlight = [:]
+        validatedArtifactSetsInFlightOwner = inFlightOwner
         activeTask = Task { [weak self] in
             var artifactSets: [String: [String: ValidatedMapArtifact]] = [:]
             var handedOff = false
             var retainForRetry = false
             defer {
+                self?.recordValidatedArtifactSetsInFlight([:], owner: inFlightOwner)
                 if !handedOff {
                     if retainForRetry, !Task.isCancelled {
                         self?.retainArtifactsForRetry(artifactSets)
@@ -1839,10 +1904,20 @@ final class MapEngine: ObservableObject {
             }
             var activePackageIndex = 0
             do {
-                try MacStorageCheck.preflight(
-                    downloadBytes: downloadBytes,
-                    locations: Self.acquisitionStorageLocations
-                )
+                do {
+                    try MacStorageCheck.preflight(
+                        downloadBytes: downloadBytes,
+                        locations: Self.acquisitionStorageLocations
+                    )
+                } catch MapAcquisitionError.insufficientMacStorage(_)
+                    where self?.releaseRetainedArtifacts(notIn: installPackageIDs) == true {
+                    // Kept downloads of other maps make room before the
+                    // person is told to free space.
+                    try MacStorageCheck.preflight(
+                        downloadBytes: downloadBytes,
+                        locations: Self.acquisitionStorageLocations
+                    )
+                }
                 try await InstallationAuthorizationAcquisitionGate.run(
                     identity: authorizationIdentity,
                     client: authorizationClient,
@@ -1929,6 +2004,7 @@ final class MapEngine: ObservableObject {
                                 }
                             }
                             artifactSets[package.id, default: [:]][selectedArtifact.id] = artifact
+                            self?.recordValidatedArtifactSetsInFlight(artifactSets, owner: inFlightOwner)
                         }
                     }
                 }
@@ -2177,6 +2253,7 @@ final class MapEngine: ObservableObject {
                 self?.evidenceNativeFailureCode = readFailure?.native
                 self?.installationErrorMessage = (error as? MapTargetResolutionError)?.errorDescription
                     ?? Self.watchBusyMessage(readFailure)
+                    ?? Self.watchNotVisibleMessage(readFailure)
                     ?? readFailure?.failure.userLabel
                     ?? (error as? MapAcquisitionError)?.userMessage
                     ?? UserFacingErrorMessage.forInstallation(error)
@@ -2464,6 +2541,7 @@ final class MapEngine: ObservableObject {
                 retainForRetry = Self.retainsArtifactsForRetry(after: readFailure?.failure ?? known?.failure)
                 self?.installationErrorMessage = (error as? MapTargetResolutionError)?.errorDescription
                     ?? Self.watchBusyMessage(readFailure, afterEarlierWrite: componentLog.wroteAnyComponent)
+                    ?? Self.watchNotVisibleMessage(readFailure, afterEarlierWrite: componentLog.wroteAnyComponent)
                     ?? readFailure?.failure.userLabel
                     ?? (error as? MapAcquisitionError)?.userMessage
                     ?? UserFacingErrorMessage.forInstallation(error)
@@ -2585,6 +2663,19 @@ final class MapEngine: ObservableObject {
     ) -> String? {
         guard let read, read.failure == .preflightMTPReadFailed, read.context.isWatchSessionBusy else { return nil }
         return UserFacingErrorMessage.installationWatchBusy(afterEarlierWrite: afterEarlierWrite)
+    }
+
+    /// A pre-write read that found no Garmin with file transfer any more
+    /// (-2/-3), typically after a long download: plain words, not the generic
+    /// "could not finish checking".
+    nonisolated static let watchNotVisibleText = "Terento can no longer see your device. Check the cable, wake the device, plug it back in and try again."
+
+    nonisolated static func watchNotVisibleMessage(
+        _ read: (failure: InstallationFailure, native: EvidenceNativeFailureCode?, context: InstallationFailureContext)?,
+        afterEarlierWrite: Bool = false
+    ) -> String? {
+        guard let read, read.failure == .preflightMTPReadFailed, read.context.isWatchNoLongerVisible else { return nil }
+        return afterEarlierWrite ? watchNotVisibleText : watchNotVisibleText + " No map was written."
     }
 
     /// True when any recorded component reached the device: a write started
@@ -2855,6 +2946,17 @@ enum WatchReconnectWaitPolicy: Sendable {
             return deviceConnected ? timedOutAfterReconnectMessage : timedOutMessage
         case .keepWaiting, .resume:
             return wait.failureReason
+        }
+    }
+
+    /// The funnel outcome of a finished wait (`RECONNECT_WAIT`). Cancel ends
+    /// the wait with `.keepWaiting`, so it is reported as cancelled.
+    static func funnelOutcome(for decision: Decision) -> AppFunnelReconnectWaitOutcome {
+        switch decision {
+        case .resume: return .resumed
+        case .differentWatch: return .differentDevice
+        case .timedOut: return .timedOut
+        case .keepWaiting: return .cancelled
         }
     }
 

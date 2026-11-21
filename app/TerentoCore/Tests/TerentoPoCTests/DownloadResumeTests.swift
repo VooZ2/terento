@@ -361,7 +361,7 @@ struct DownloadResumeTests {
         store.keep(expired, for: key)
         clock.now = clock.now.addingTimeInterval(MapDownloadResumeStore.lifetime + 1)
         expect(store.take(key) == nil && !FileManager.default.fileExists(atPath: expired.fileURL.path),
-            "a partial file older than 30 minutes is removed, not resumed")
+            "a partial file older than its 6-hour lifetime is removed, not resumed")
         let truncated = makePartial()
         store.keep(truncated, for: key)
         try? Data(count: 4).write(to: truncated.fileURL)
@@ -372,8 +372,8 @@ struct DownloadResumeTests {
         store.purgeAll()
         expect(store.count == 0 && !FileManager.default.fileExists(atPath: kept.fileURL.path),
             "quitting removes every partial file")
-        expect(MapDownloadResumeStore.lifetime == 30 * 60,
-            "partial downloads share the 30-minute retained-artifact lifetime")
+        expect(MapDownloadResumeStore.lifetime == 6 * 60 * 60,
+            "partial downloads share the 6-hour retained-artifact lifetime")
     }
 
     static func testContentRangeParsing() {

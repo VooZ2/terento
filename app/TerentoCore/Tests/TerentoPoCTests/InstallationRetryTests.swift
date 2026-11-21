@@ -24,6 +24,7 @@ struct InstallationRetryTests {
         testWatchReconnectQualification()
         testWatchReconnectDecision()
         try await testRetainedDownloadSurvivesDisconnect()
+        try await testDisconnectBeforeWriteKeepsDownloads()
         testActivityPolicy()
         print("PASS: installation retry and keep-awake behavior")
     }
@@ -78,7 +79,8 @@ struct InstallationRetryTests {
         engine.purgeRetainedArtifacts()
         check(engine.retainedWorkspaceRoots.isEmpty && !FileManager.default.fileExists(atPath: kept.workspaceRootURL!.path),
               "quitting removes retained workspaces")
-        check(MapEngine.retainedArtifactLifetime == 30 * 60, "retained artifacts expire after 30 minutes")
+        check(MapEngine.retainedArtifactLifetime == 6 * 60 * 60,
+              "retained artifacts last 6 hours, so a person who comes back later does not download a large map again")
     }
 
     @MainActor static func testCancelBeforeWrite() async {
@@ -348,6 +350,8 @@ struct InstallationRetryTests {
             "freizeitkarte-esp": [unkept.artifactID: unkept]
         ])
         engine.setStoppedBeforeWriteForWatchReconnectForTesting(true)
+        // The stopped attempt has already failed and decided what it keeps.
+        engine.setFailedInstallationForTesting(.preflightMTPReadFailed)
         engine.resetForDisconnectedDevice(presence: .absent)
         for _ in 0..<100 where FileManager.default.fileExists(atPath: unkept.workspaceRootURL!.path) {
             try await Task.sleep(for: .milliseconds(20))
@@ -361,6 +365,42 @@ struct InstallationRetryTests {
         check(engine.takeRetainedArtifactForTesting(packageID: "freizeitkarte-fra", artifactID: artifact.artifactID,
                                                     version: artifact.version) == artifact,
               "after reconnecting, the kept download is reused instead of downloading again")
+        engine.purgeRetainedArtifacts()
+    }
+
+    /// 1.2.3: a device that disappears after a long download but before any
+    /// write (waiting for confirmation, or the pre-write check) no longer
+    /// costs the download.
+    @MainActor static func testDisconnectBeforeWriteKeepsDownloads() async throws {
+        for phase in [InstallationProcessPhase.idle, .downloading, .preparing, .awaitingConfirmation] {
+            check(MapEngine.keepsDownloadsAfterDisconnect(during: phase), "a disconnect before any write keeps downloads (\(phase))")
+        }
+        for phase in [InstallationProcessPhase.installing, .finishing, .completed, .failed] {
+            check(!MapEngine.keepsDownloadsAfterDisconnect(during: phase),
+                  "a disconnect during or after a write, or after a failure, keeps only what the operation kept (\(phase))")
+        }
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("terento-keep-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let engine = MapEngine(operationGate: MTPOperationGate(),
+            installationAuthorizationClient: InstallationAuthorizationClient(dataLoader: { _ in throw URLError(.cancelled) }))
+        let france = try makeArtifact(root: root)
+        let spain = try makeArtifact(root: root, packageID: "freizeitkarte-esp")
+        engine.setValidatedArtifactSetsForTesting([
+            "freizeitkarte-fra": [france.artifactID: france],
+            "freizeitkarte-esp": [spain.artifactID: spain]
+        ])
+        engine.resetForDisconnectedDevice(presence: .absent)
+        try await Task.sleep(for: .milliseconds(100))
+        check(engine.retainedWorkspaceRoots == [france.workspaceRootURL!, spain.workspaceRootURL!]
+              && FileManager.default.fileExists(atPath: france.localIMGURL.path)
+              && FileManager.default.fileExists(atPath: spain.localIMGURL.path),
+              "a disconnect while waiting for confirmation keeps every validated download for Try again")
+        check(!engine.releaseRetainedArtifactsForTesting(notIn: ["freizeitkarte-fra", "freizeitkarte-esp"]),
+              "downloads the next operation uses are never freed for space")
+        check(engine.releaseRetainedArtifactsForTesting(notIn: ["freizeitkarte-fra"])
+              && engine.retainedWorkspaceRoots == [france.workspaceRootURL!]
+              && !FileManager.default.fileExists(atPath: spain.workspaceRootURL!.path),
+              "when the Mac is short of space, kept downloads of other maps are freed first")
         engine.purgeRetainedArtifacts()
     }
 
