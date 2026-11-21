@@ -111,7 +111,7 @@ function testPages() {
     assert.deepEqual(page.styles.filter((style) => !style.optional).map((style) => style.id),
       ["freizeitkarte", "opentopomap", "maprando", "bbbike-ontrail", "bbbike-opentopo"], `${locale}: public styles are always listed`);
     assert.deepEqual(page.styles.filter((style) => style.optional).map((style) => style.id),
-      ["osmapa-podstawowa", "osmapa-ogonki", "osmapa-light"], `${locale}: OSMapaPL styles wait for the manifest`);
+      ["osmapa-podstawowa", "osmapa-ogonki", "osmapa-light", "openfietsmap", "luckymaps"], `${locale}: OSMapaPL, OpenFietsMap and Lucky Maps styles wait for the manifest`);
     assert.ok(page.styles.every((style) => style.name && style.summary), `${locale}: every style has a name and summary`);
     assert.ok(!("styles_of" in page.copy) && !("details" in page.copy), `${locale}: no place details copy left`);
     assert.ok(page.copy.change, `${locale}: the place card names its action`);

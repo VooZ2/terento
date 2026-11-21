@@ -19,7 +19,7 @@ async function present(payload, fail = false, cardID = 'freizeitkarte', mapType 
     document: { querySelector: () => null, querySelectorAll: selector => { assert.equal(selector, '[data-provider-card]'); return [card]; } },
     fetch: async (url, options) => {
       requests++;
-      assert.equal(url, 'https://api.terento.app/maps/catalog-v5.json');
+      assert.equal(url, 'https://api.terento.app/maps/catalog-v6.json');
       assert.equal(options.headers.Accept, 'application/json');
       if (fail) throw Error('offline');
       return { ok: true, json: async () => payload };
@@ -119,6 +119,14 @@ function checkNavigation(reducedMotion) {
   assert.equal((await present(osmapa, true, 'osmapa', '', true)).hidden, true, 'OSMapaPL stays hidden when offline');
   osmapa.providers[0].status = 'ACTIVE';
   assert.deepEqual(await present(osmapa, false, 'osmapa', '', true), {hidden: false, text: '2 packages in 1 countries'});
+  // OpenFietsMap and Lucky Maps (catalog-v6) stay hidden while their provider is paused.
+  for (const [id, mapType, codes] of [['openfietsmap', 'ofm-full', ['NL', 'BE', 'LU']], ['luckymaps', 'luckymaps', ['CH']]]) {
+    const paused = { providers: [{id, status: 'PAUSED', maps: [{availability: 'AVAILABLE', mapType, countryCodes: codes}]}] };
+    assert.equal((await present(paused, false, id, '', true)).hidden, true, `${id} stays hidden while paused`);
+    assert.equal((await present(paused, true, id, '', true)).hidden, true, `${id} stays hidden when offline`);
+    paused.providers[0].status = 'ACTIVE';
+    assert.deepEqual(await present(paused, false, id, '', true), {hidden: false, text: `1 packages in ${codes.length} countries`});
+  }
   const contours = structuredClone(valid);
   contours.providers = [{
     id: 'opentopomap',
