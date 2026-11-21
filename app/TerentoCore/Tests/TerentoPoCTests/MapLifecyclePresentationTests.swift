@@ -750,8 +750,11 @@ private func testQARowPresentation() throws {
     try require(openTopo.manageRowMetadata.hasPrefix("BBBike (OpenTopoMap) · ")
         && plain.manageRowMetadata.hasPrefix("BBBike · ")
         && !openTopo.manageRowMetadata.contains("Lithuania")
-        && lifecycleItem().manageRowMetadata == lifecycleItem().manageMetadataLabel,
-        "Manage rows name the BBBike style as Install maps does and leave other providers unchanged")
+        && lifecycleItem().manageRowMetadata == "Freizeitkarte · " + lifecycleItem().manageMetadataLabel,
+        "Manage rows start with the provider or BBBike style as Install maps names it")
+    let custom = MapLifecycleItem(id: "c", title: "My map", sourceKind: .custom, provider: nil, region: nil,
+        version: nil, rawVersion: nil, sizeBytes: 100, installedMaps: [installedMap()], classification: .externalRecognized)
+    try require(custom.manageRowMetadata == custom.manageMetadataLabel, "a custom map row names no provider")
 
     // D21: the Remove dialog names the map and gives one plain body line.
     let removeMeta = MapLifecycleConfirmationCopy.metadata(item: openTopo, provider: "BBBike")
@@ -762,7 +765,6 @@ private func testQARowPresentation() throws {
     try require(MapLifecycleConfirmationCopy.removeTitle(mapName: "Liechtenstein") == "Remove Liechtenstein?"
         && MapLifecycleConfirmationCopy.removeTitle(mapName: nil) == "Remove this map?",
         "Remove title is a question with the map name")
-    try require(MapLifecycleConfirmationCopy.removeMessage(metadata: "BBBike (Ontrail) · 2026-11-18 · 483 KB")
-        == "BBBike (Ontrail) · 2026-11-18 · 483 KB. Other maps stay. This can't be undone.",
-        "Remove body is one line")
+    try require(MapLifecycleConfirmationCopy.removeMessage == "This can't be undone.",
+        "Remove body is only that it can't be undone; the metadata is the dialog subtitle")
 }

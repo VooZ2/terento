@@ -265,8 +265,9 @@ size; SF Symbol sizes are icon metrics). A map row in Install and Manage maps
 has the title, one metadata line (provider style, release, "Already installed"),
 and, only when the map is blocked or has a warning, the message on its own line
 in the colour of the row's status icon. A BBBike style has one name everywhere:
-"BBBike (OpenTopoMap)". Install maps opens the import panel from "Import from
-Mac" next to Refresh, and Storage ("14.77 GB free · 0 maps selected", then the
+"BBBike (OpenTopoMap)", and every Manage row starts with its provider or style
+("Freizeitkarte · 2026-09 · 4 MB"). Install maps opens and closes the import
+panel with "Import map file" next to Refresh (selected look while open), and Storage ("14.77 GB free · 0 maps selected", then the
 free space after installation) shares the footer row with Continue.
 
 ## Safety and verification
@@ -434,9 +435,10 @@ with Reduce Motion), and "Reading your maps" appears only while there is no
 list yet. Whenever a rescan keeps the list on screen (after Remove, or on opening
 Manage maps), the rows keep their buttons and Refresh stays in place, all disabled
 until the new list is read. While Remove or Update runs, the other Update/Remove buttons and
-Refresh are disabled. The Remove dialog body is one line: provider (as the
-provider filter names it, e.g. "BBBike (Ontrail)"), release and size, then
-"Other maps stay. This can't be undone." VoiceOver names each row action with
+Refresh are disabled. The Remove dialog title is "Remove <map>?",
+its subtitle line is provider (as the provider filter names it, e.g. "BBBike
+(Ontrail)"), release and size in the secondary colour, and its body is only
+"This can't be undone." VoiceOver names each row action with
 the map and provider ("Remove Lithuania, MapRando"). At 93%, the UI says “Confirming the map was removed”; repeated
 inventory checks hold that value rather than increasing it for each retry. Only
 confirmed absence completes removal. The existing settle delays and retry limits

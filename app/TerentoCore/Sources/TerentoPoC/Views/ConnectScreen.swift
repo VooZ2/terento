@@ -24,7 +24,9 @@ private enum InstallationTimelineLayout {
     static let markerSize: CGFloat = 24
     static let connectorWidth: CGFloat = 2
     static let progressBarHeight: CGFloat = 6
-    static let manageProgressWidth: CGFloat = 220
+    /// Fits the longest removal step, "Checking map contents before removal"
+    /// (224 pt in Inter caption), on one line.
+    static let manageProgressWidth: CGFloat = 236
 }
 
 struct ConnectScreen: View {
@@ -648,8 +650,11 @@ struct ConnectScreen: View {
             return
         }
 
+        // Install maps shows the last read while it still describes the
+        // watch (same connection, nothing written since); Refresh reads again.
         let shouldRefreshMapInventory = section == .manageMaps
-            || (section == .installMaps && !installationFlowHasStarted)
+            || (section == .installMaps && !installationFlowHasStarted
+                && !mapEngine.hasFreshInventory(for: identity))
 
         if section == .installMaps, !installationFlowHasStarted {
             localInstallStep = .choose
@@ -1373,9 +1378,10 @@ struct ConnectScreen: View {
                     } label: {
                         Label("Refresh", systemImage: "arrow.clockwise")
                             .font(.terento(.meta))
+                            .foregroundStyle(mapManagementActionsBusy
+                                ? TerentoGeneratedTokens.Light.textDisabled : TerentoColors.secondaryText)
                     }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(TerentoColors.secondaryText)
+                    .buttonStyle(TerentoKeyIndependentButtonStyle())
                     .disabled(mapManagementActionsBusy)
                     .help("Refresh map information")
                     .accessibilityLabel("Refresh map information")
@@ -1410,8 +1416,14 @@ struct ConnectScreen: View {
                 ScrollView {
                     managedMapGroups(lifecycleInventory)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
+                        .padding(.vertical, 2)
                 }
                 .scrollIndicators(.automatic)
+                // As in Install maps: a 12 pt gap under the count line (4 + 8)
+                // outside the scroll view, and rows clipped at its edge, so
+                // they never scroll visibly under the count line.
+                .clipped()
+                .padding(.top, 8)
                 // VoiceOver hears "<Map> removed." even when focus is elsewhere.
                 .onChange(of: lifecycleViewModel.removalNotice) { notice in
                     guard let notice else { return }
@@ -1471,9 +1483,11 @@ struct ConnectScreen: View {
         .sheet(item: $lifecycleViewModel.pendingConfirmation) { confirmation in
             MapLifecycleConfirmationSheet(
                 title: mapConfirmationTitle(for: confirmation),
-                subtitle: mapConfirmationSubtitle(for: confirmation),
+                subtitle: confirmation.action == .remove
+                    ? mapConfirmationMetadata(for: confirmation)
+                    : mapConfirmationSubtitle(for: confirmation),
                 message: confirmation.action == .remove
-                    ? MapLifecycleConfirmationCopy.removeMessage(metadata: mapConfirmationMetadata(for: confirmation))
+                    ? MapLifecycleConfirmationCopy.removeMessage
                     : lifecycleViewModel.confirmationMessage,
                 actionTitle: confirmation.action == .remove ? "Remove map" : "Update map",
                 isDestructive: confirmation.action == .remove,
@@ -1982,17 +1996,18 @@ struct ConnectScreen: View {
                             } label: {
                                 Label("Refresh", systemImage: "arrow.clockwise")
                                     .font(.terento(.meta))
+                                    .foregroundStyle(TerentoColors.secondaryText)
                             }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(TerentoColors.secondaryText)
+                            .buttonStyle(TerentoKeyIndependentButtonStyle())
                             .help("Refresh map information")
                             .accessibilityLabel("Refresh map information")
 
-                            // Opens the import panel under the list; the list keeps the room.
-                            SecondaryButton(title: "Import from Mac") {
+                            // Opens the import panel under the list and closes it
+                            // again; it looks selected while the panel is open.
+                            SecondaryButton(title: "Import map file", isSelected: customMapImportExpanded) {
                                 customMapImportExpanded.toggle()
                             }
-                            .accessibilityLabel("Import from Mac")
+                            .accessibilityLabel("Import map file")
                             .accessibilityValue(customMapImportExpanded ? "Expanded" : "Collapsed")
                             .accessibilityHint("Shows or hides the local Garmin IMG import controls.")
                         }
@@ -2182,14 +2197,10 @@ struct ConnectScreen: View {
         return selectedGeography == .all ? "No maps are available." : "No maps match these filters."
     }
 
-    /// Shown under the list while "Import from Mac" in the header is on.
+    /// Shown under the list while "Import map file" in the header is on. The
+    /// drop zone says what to do, so the panel has no extra first line.
     private var customMapImportPanel: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Install a third-party map (.img) from this Mac.")
-                .font(.terento(.meta))
-                .foregroundStyle(TerentoColors.secondaryText)
-                .fixedSize(horizontal: false, vertical: true)
-
             if let candidate = mapEngine.customMapImportCandidate {
                 HStack(alignment: .top, spacing: 10) {
                     Image(systemName: "checkmark.circle.fill")
@@ -2870,8 +2881,8 @@ struct ConnectScreen: View {
         switch progress {
         case ..<0.25:
             if let readBack = mapEngine.finishingTransferProgress, readBack.totalBytes > 0 {
-                let completed = ByteCountFormatter.string(fromByteCount: Int64(readBack.bytesTransferred), countStyle: .binary)
-                let total = ByteCountFormatter.string(fromByteCount: Int64(readBack.totalBytes), countStyle: .binary)
+                let completed = ByteCountFormatter.string(fromByteCount: Int64(readBack.bytesTransferred), countStyle: .decimal)
+                let total = ByteCountFormatter.string(fromByteCount: Int64(readBack.totalBytes), countStyle: .decimal)
                 return "Checking your map · \(completed) of \(total) checked"
             }
             return "Waiting for your Garmin to finish saving the map, then checking it"
@@ -3468,11 +3479,13 @@ private struct MapLifecycleConfirmationSheet: View {
 
     var body: some View {
         if isDestructive {
-            // Destructive: one body line, no Return shortcut on Remove.
+            // Destructive: the map's provider, release and size as the
+            // subtitle, one body line, no Return shortcut on Remove.
             TerentoConfirmationDialog(
                 icon: "trash",
                 role: .error,
                 title: title,
+                subtitle: subtitle,
                 message: message,
                 primaryLabel: actionTitle,
                 isDestructive: true,
@@ -4760,9 +4773,17 @@ private struct ManageMapRow: View {
             if let operation, operationIsActive {
                 VStack(alignment: .leading, spacing: 4) {
                     ManageOperationProgress(operation: operation)
+                    // The time line keeps its height while empty, so the row
+                    // does not grow when "Less than a minute left" appears.
                     HStack(spacing: 10) {
-                        if let timeRemaining {
-                            TimeRemainingLabel(estimate: timeRemaining)
+                        ZStack(alignment: .leading) {
+                            Label("Less than a minute left", systemImage: "clock")
+                                .labelStyle(.titleAndIcon)
+                                .font(.terento(.caption))
+                                .hidden()
+                            if let timeRemaining {
+                                TimeRemainingLabel(estimate: timeRemaining)
+                            }
                         }
                         Spacer(minLength: 0)
                     }
@@ -4863,6 +4884,19 @@ private struct ManageActionGroup: View {
     }
 }
 
+/// Draws the label exactly as the view colours it. The system plain and
+/// borderless styles fade their content when the window is not key, and
+/// Remove and Refresh then nearly disappeared (QA 1.3.0-local); text here
+/// keeps its token colour, and with it AA contrast, in an inactive window.
+/// Disabled colours are set by the label itself.
+private struct TerentoKeyIndependentButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.78 : 1)
+            .contentShape(Rectangle())
+    }
+}
+
 private struct ManageActionButton: View {
     let action: MapLifecycleAction
     let mapTitle: String
@@ -4907,7 +4941,7 @@ private struct ManageActionButton: View {
                         .stroke(focusColor, lineWidth: isFocused ? 2 : 1)
                 }
         }
-        .buttonStyle(.borderless)
+        .buttonStyle(TerentoKeyIndependentButtonStyle())
         .controlSize(.small)
         .focused($isFocused)
         .disabled(!isEnabled)
@@ -5253,7 +5287,7 @@ struct StorageCard: View {
                 .font(.terento(.rowTitle))
                 .foregroundStyle(TerentoColors.graphite)
 
-            Text("\(available) available of \(total)")
+            Text("\(available) free of \(total)")
                 .font(.terento(.meta))
                 .foregroundStyle(TerentoColors.graphite)
 
@@ -5261,7 +5295,7 @@ struct StorageCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Storage: \(available) available of \(total)")
+        .accessibilityLabel("Storage: \(available) free of \(total)")
         .accessibilityValue("\(Int(normalizedFillRatio * 100)) percent used")
     }
 
@@ -6074,7 +6108,7 @@ struct MapSelectionStorageSummary: View {
 
                 Spacer(minLength: 12)
 
-                Text("\(formatBytes(plan.storagePlan.currentFreeSpace)) available of \(formatBytes(totalCapacity))")
+                Text("\(formatBytes(plan.storagePlan.currentFreeSpace)) free of \(formatBytes(totalCapacity))")
                     .font(.terento(.meta))
                     .foregroundStyle(TerentoColors.graphite)
                     .multilineTextAlignment(.trailing)
@@ -6145,7 +6179,7 @@ struct MapSelectionStorageSummary: View {
     }
 
     fileprivate var storageAccessibilityValue: String {
-        "\(formatBytes(plan.storagePlan.currentFreeSpace)) available of \(formatBytes(totalCapacity)), \(selectedMapSummary), \(afterInstallationSummary), \(Int(projectedUsedFraction * 100)) percent used"
+        "\(formatBytes(plan.storagePlan.currentFreeSpace)) free of \(formatBytes(totalCapacity)), \(selectedMapSummary), \(afterInstallationSummary), \(Int(projectedUsedFraction * 100)) percent used"
             + (statusText.isEmpty ? "" : ". \(statusText)")
     }
 
@@ -6317,30 +6351,48 @@ private extension View {
 
 private struct SecondaryButton: View {
     let title: String
+    /// Non-nil makes it an on/off button (Import map file). Off, its border is
+    /// Text Muted, 3.45:1 against the page (WCAG 1.4.11 needs 3:1). On, it
+    /// looks like the other selected controls: selected tint, Interactive
+    /// border (4.07:1 on the tint) and Interactive Hover text (4.63:1).
+    var isSelected: Bool? = nil
     let action: () -> Void
     @Environment(\.isEnabled) private var isEnabled
+
+    private var selected: Bool { isEnabled && isSelected == true }
+
+    private var textColor: Color {
+        guard isEnabled else { return TerentoColors.secondaryText }
+        return selected ? TerentoColors.interactiveHover : TerentoColors.graphite
+    }
+
+    private var fillColor: Color {
+        guard isEnabled else { return TerentoColors.border.opacity(0.55) }
+        return selected ? TerentoColors.selectedBackground : TerentoColors.canvas
+    }
+
+    private var borderColor: Color {
+        guard isEnabled else { return TerentoColors.inactiveBorder }
+        if selected { return TerentoColors.interactive }
+        return isSelected == nil ? TerentoColors.border : TerentoGeneratedTokens.Light.textMuted
+    }
 
     var body: some View {
         Button(action: action) {
             Text(title)
                 .font(.terento(.meta, weight: .semibold))
-                .foregroundStyle(isEnabled ? TerentoColors.graphite : TerentoColors.secondaryText)
+                .foregroundStyle(textColor)
                 .padding(.horizontal, 16)
                 .frame(height: 44)
-                .background(
-                    isEnabled ? TerentoColors.canvas : TerentoColors.border.opacity(0.55),
-                    in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control)
-                )
+                .background(fillColor, in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control))
                 .overlay {
                     RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control)
-                        .strokeBorder(
-                            isEnabled ? TerentoColors.border : TerentoColors.inactiveBorder,
-                            lineWidth: 1
-                        )
+                        .strokeBorder(borderColor, lineWidth: 1)
                 }
         }
         .buttonStyle(.plain)
         .opacity(isEnabled ? 1 : 0.78)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
 

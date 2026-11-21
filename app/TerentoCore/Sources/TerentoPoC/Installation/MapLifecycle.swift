@@ -91,13 +91,23 @@ struct MapLifecycleItem: Identifiable, Equatable, Sendable {
         return "Installed"
     }
 
-    /// The Manage row's second line. A BBBike row starts with its map style
-    /// named as Install maps names it ("BBBike (OpenTopoMap) · 2026-11 ·
-    /// 120 MB"), so the same style has one name in every place.
+    /// The Manage row's second line. Every provider row starts with its
+    /// provider or map style named as Install maps names it ("BBBike
+    /// (OpenTopoMap) · 2026-11 · 120 MB", "Freizeitkarte · 2026-09 · 4 MB"),
+    /// so the same map has one name in every place. Custom maps have none.
     var manageRowMetadata: String {
-        guard MapIdentity.normalizeProvider(provider ?? "") == "bbbike",
-              let type = BBBikeMapType(regionToken: region ?? "") else { return manageMetadataLabel }
-        return [type.title, manageMetadataLabel].filter { !$0.isEmpty }.joined(separator: " · ")
+        guard isInstalled, let title = manageProviderTitle else { return manageMetadataLabel }
+        return [title, manageMetadataLabel].filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+
+    private var manageProviderTitle: String? {
+        guard sourceKind == .provider,
+              let provider = provider?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !provider.isEmpty else { return nil }
+        let id = MapIdentity.normalizeProvider(provider)
+        let known = MapProviderDisplay.downloadName(id)
+        return MapProviderDisplay.title(providerID: id, regionID: region,
+                                        fallback: known == MapProviderDisplay.downloadName("") ? provider : known)
     }
 
     /// Compact metadata for the consumer-facing Manage Maps row. Provider and

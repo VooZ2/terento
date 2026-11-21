@@ -409,8 +409,10 @@ final class MapLifecycleViewModel: ObservableObject {
         case .recoverOwnership:
             requestRecoverOwnership(itemID: confirmation.itemID)
         case .remove:
+            mapEngine.noteDeviceMapsMayChange()
             remove(itemID: confirmation.itemID)
         case .update:
+            mapEngine.noteDeviceMapsMayChange()
             update(itemID: confirmation.itemID)
         }
     }

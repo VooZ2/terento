@@ -37,7 +37,6 @@ if ! grep -Fq 'appendSelectedProvider' "$connect_screen" \
 fi
 
 for expected in \
-    'Install a third-party map (.img) from this Mac.' \
     'Drop a third-party map (.img) here' \
     'Button("Choose File…")' \
     'Processed locally on your Mac. Not sent to Terento servers.'; do
@@ -49,7 +48,9 @@ done
 
 if grep -Fq 'Drop a .img file here' "$connect_screen" \
     || grep -Fq 'Button("Browse")' "$connect_screen" \
-    || grep -Fq 'Processed locally. The file is not uploaded.' "$connect_screen"; then
+    || grep -Fq 'Processed locally. The file is not uploaded.' "$connect_screen" \
+    || grep -Fq 'Install a third-party map (.img) from this Mac.' "$connect_screen" \
+    || grep -Fq 'Import from Mac' "$connect_screen"; then
     print -u2 "FAIL: legacy Import from Mac copy remains"
     exit 1
 fi
@@ -63,5 +64,5 @@ fi
 print "PASS: disclosure and provider filter presentation"
 print "PASS: provider-neutral row metadata and release fallback"
 print "PASS: quiet cross-provider disabled state and native checkbox tint"
-print "PASS: selected summary and Import from Mac copy/style contract"
+print "PASS: selected summary and Import map file copy/style contract"
 print "PASS: Install maps UI polish contract"

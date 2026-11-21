@@ -26,14 +26,14 @@ catalog_region="$(awk '
     capture { print }
 ' "$connect_screen")"
 
-# "Import from Mac" is a header button next to Refresh; the panel appears
+# "Import map file" is a header button next to Refresh; the panel appears
 # under the list only while it is on, so a collapsed list keeps its room.
-if [[ "$maps_header" != *'SecondaryButton(title: "Import from Mac")'* \
+if [[ "$maps_header" != *'SecondaryButton(title: "Import map file", isSelected: customMapImportExpanded)'* \
     || "$maps_header" != *'customMapImportExpanded.toggle()'* \
     || "$maps_header" != *'Label("Refresh", systemImage: "arrow.clockwise")'* \
     || "$catalog_region" != *'if !customMapImportExpanded {'* \
     || "$panel_content" == *'Text("Import a map from Mac")'* \
-    || "$panel_content" != *'Install a third-party map (.img) from this Mac.'* \
+    || "$panel_content" == *'Install a third-party map (.img) from this Mac.'* \
     || "$panel_content" != *'customMapDropZone'* \
     || "$panel_content" != *'isShowingCustomMapImporter = true'* \
     || "$panel_content" != *'Processed locally on your Mac. Not sent to Terento servers.'* ]]; then

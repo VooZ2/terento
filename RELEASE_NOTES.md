@@ -8,7 +8,7 @@ This release keeps a large downloaded map ready when the device can't be reached
 ## WHAT'S NEW?
 
 - A cleaner look: the app now uses Terento's own fonts and one consistent text size scale, and map rows show the map name, then the provider, version and "Already installed" on one line.
-- Install maps shows more maps at once: free space and the number of selected maps sit on one line next to Continue, and "Import from Mac" is a button next to Refresh.
+- Install maps shows more maps at once: free space and the number of selected maps sit on one line next to Continue, and "Import map file" is a button next to Refresh that opens and closes the import panel.
 - Manage maps shows the maps Garmin installed on your device as one line, "Garmin maps", with how many files there are and their size. Terento never changes them.
 - The Help menu has Send Feedback (opens an email with only the app version) and Star on GitHub.
 - Send report from the Help menu: when you choose "Connecting the device" and no failure was saved, the report also includes what Terento saw the last time it tried to connect, for example that the device was busy and Garmin Express was running. The window shows everything that will be sent.
@@ -20,6 +20,9 @@ This release keeps a large downloaded map ready when the device can't be reached
 - If your Mac doesn't have enough space for a new download, Terento first removes kept downloads of other maps.
 - When the device can no longer be seen before anything is written, the message says "Terento can no longer see your device" and tells you what to check.
 - Reports about stopped installations say more precisely which check stopped them.
+- Cancel while a map downloads now takes you back to Install maps with your selection kept, instead of showing "Installation stopped".
+- Freizeitkarte maps show the same version in Install maps, Manage maps and the Remove dialog. Install maps showed the provider's release number (for example "3/2026") as a month.
+- Sizes while a map is checked on your device use the same units as the rest of the app.
 
 # Terento v1.2.2 (build 49)
 

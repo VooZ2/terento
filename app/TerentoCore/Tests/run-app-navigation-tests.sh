@@ -93,7 +93,7 @@ if ! grep -Fq 'ManageActionButton' "$connect_screen" \
     || grep -Fq 'ManageAdvancedActionTrigger' "$connect_screen" \
     || grep -Fq 'Image(systemName: "ellipsis")' "$connect_screen" \
     || ! grep -Fq 'ManageActionGroup' "$connect_screen" \
-    || ! grep -Fq '.buttonStyle(.borderless)' "$connect_screen" \
+    || ! grep -Fq '.buttonStyle(TerentoKeyIndependentButtonStyle())' "$connect_screen" \
     || ! grep -Fq '@FocusState' "$connect_screen" \
     || ! grep -Fq '.onHover' "$connect_screen" \
     || ! grep -Fq 'action == .update ? 72 : 68' "$connect_screen" \
@@ -103,6 +103,24 @@ if ! grep -Fq 'ManageActionButton' "$connect_screen" \
     print -u2 "FAIL: Manage map actions or real-progress presentation is incomplete"
     exit 1
 fi
+
+# QA 1.3.0-local: Remove and Refresh keep AA contrast in an inactive window.
+python3 - "$connect_screen" <<'PYKEY'
+import re, sys
+text = open(sys.argv[1], encoding="utf-8").read()
+style = text[text.index("private struct TerentoKeyIndependentButtonStyle: ButtonStyle"):]
+style = style[:style.index("\n}\n")]
+assert "configuration.label" in style and ".opacity(configuration.isPressed" in style, "key-independent style draws the label as coloured"
+action = text[text.index("private struct ManageActionButton: View"):]
+action = action[:action.index("\n}\n")]
+assert ".buttonStyle(TerentoKeyIndependentButtonStyle())" in action, "Remove/Update use the key-independent style"
+refreshes = [m.start() for m in re.finditer(r'Label\("Refresh", systemImage: "arrow.clockwise"\)', text)]
+assert len(refreshes) == 2, "two Refresh buttons"
+for start in refreshes:
+    block = text[start:start + 500]
+    assert ".buttonStyle(TerentoKeyIndependentButtonStyle())" in block and ".buttonStyle(.plain)" not in block, "Refresh keeps its colour when the window is not key"
+print("PASS: Remove and Refresh are drawn without inactive-window fading")
+PYKEY
 
 if ! grep -Fq 'TerentoPageShell' "$connect_screen" \
     || ! grep -Fq 'TerentoPageFooter' "$connect_screen" \

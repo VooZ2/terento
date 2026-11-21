@@ -431,8 +431,7 @@ enum MapLifecycleConfirmationCopy {
             .filter { !$0.isEmpty }.joined(separator: " · ")
     }
 
-    static func removeMessage(metadata: String) -> String {
-        let action = "Other maps stay. This can't be undone."
-        return metadata.isEmpty ? action : "\(metadata). \(action)"
-    }
+    /// The Remove dialog names the map in its title, shows `metadata` as its
+    /// subtitle line, and says only this.
+    static let removeMessage = "This can't be undone."
 }

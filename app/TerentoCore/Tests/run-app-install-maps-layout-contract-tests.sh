@@ -28,7 +28,7 @@ reject_in_file() {
 
 require_in_file 'static let sectionHeaderChevronHeight: CGFloat = sectionHeaderMinHeight' "$window_presentation" 'shared disclosure geometry is not vertically aligned'
 require_in_file 'TerentoDisclosureIndicator(isExpanded:' "$connect_screen" 'shared disclosure indicator is missing'
-require_in_file 'Install a third-party map (.img) from this Mac.' "$connect_screen" 'approved Import subtitle is missing'
+reject_in_file 'Install a third-party map (.img) from this Mac.' "$connect_screen" 'Import panel still repeats the drop zone in a first line'
 reject_in_file 'Install a third-party map (.img) file from this Mac.' "$connect_screen" 'old mechanical Import subtitle remains'
 require_in_file 'Using local catalog — may be out of date' "$catalog_loader" 'neutral local-catalog fallback label is missing'
 reject_in_file 'Offline catalog — may be out of date' "$catalog_loader" 'misleading offline fallback label remains'
@@ -87,15 +87,23 @@ assert 'if rowStatus != nil {\n            return "exclamationmark.triangle"' in
 manage = block('private struct ManageMapRow: View {', 'private struct ManageActionGroup')
 assert 'detail: item.manageRowMetadata' in manage and 'status: manageStatus' in manage, 'Manage rows do not split metadata and status'
 assert 'title: item.title,' in manage and 'manageTitle' not in source, 'Manage rows still append the style to the title'
-assert 'type.title, manageMetadataLabel' in lifecycle, 'Manage metadata does not start with the "Provider (Style)" name'
+assert '[title, manageMetadataLabel]' in lifecycle and 'MapProviderDisplay.title(providerID: id' in lifecycle, 'Manage metadata does not start with the provider or "Provider (Style)" name'
 
 maps = block('private var mapsContent: some View {', 'private var selectedMapProviderLabel')
-assert maps.index('Label("Refresh", systemImage: "arrow.clockwise")') < maps.index('SecondaryButton(title: "Import from Mac")') < maps.index('} mapRegion: {'), 'Import from Mac is not next to Refresh in the header'
+assert maps.index('Label("Refresh", systemImage: "arrow.clockwise")') < maps.index('SecondaryButton(title: "Import map file", isSelected: customMapImportExpanded)') < maps.index('} mapRegion: {'), 'Import map file is not next to Refresh in the header'
+button = block('private struct SecondaryButton: View {', 'private struct ResourceImage')
+assert 'selected ? TerentoColors.interactive' in button and 'TerentoGeneratedTokens.Light.textMuted' in button and 'TerentoColors.interactiveHover' in button and '.isSelected' in button, 'Import map file has no selected look or 3:1 border'
 footer = maps.split('} footer: {', 1)[1]
 assert footer.index('MapSelectionStorageLine(') < footer.index('PrimaryButton(title: "Continue")'), 'Storage is not on the Continue row'
 line = block('struct MapSelectionStorageLine: View {', '/// One look for the Install and Manage search field')
 assert ') free"' in line and 'summary.selectedMapSummary' in line and 'summary.afterInstallationSummary' in line, 'Storage line copy changed'
 device = block('struct DeviceCard: View {', 'extension DeviceAuthorizationPresentation.Tone')
 assert 'if let authorization, authorization.tone != .success {' in device, '"Ready for maps" badge is shown in the ready state'
+assert 'static let manageProgressWidth: CGFloat = 236' in source, 'Manage progress is too narrow for "Checking map contents before removal"'
+manage_row = block('private struct ManageMapRow: View {', 'private struct ManageActionGroup')
+assert '.hidden()' in manage_row and 'TimeRemainingLabel(estimate: timeRemaining)' in manage_row, 'the time line does not keep its height while empty'
+assert 'countStyle: .binary' not in source, 'a size uses binary units; the app shows decimal sizes everywhere'
+manage_page = block('private var managedMapsContent: some View {', 'private func managedMapGroups')
+assert 'managedMapGroups(lifecycleInventory)' in manage_page and '.clipped()\n                .padding(.top, 8)' in manage_page, 'Manage rows can scroll visibly under the count line'
 print('PASS: map row status line, one style name, Import in the header, Storage beside Continue, no ready badge')
 PYTEST

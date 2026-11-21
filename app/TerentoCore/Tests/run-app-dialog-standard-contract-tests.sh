@@ -66,7 +66,13 @@ for needle in ['case .error: return TerentoColors.error', 'case .warning: return
     assert needle in role, f'dialog role colour missing: {needle}'
 
 screen = sources['ConnectScreen.swift']
-assert 'MapLifecycleConfirmationCopy.removeTitle(' in screen and 'MapLifecycleConfirmationCopy.removeMessage(' in screen
+assert 'MapLifecycleConfirmationCopy.removeTitle(' in screen and 'MapLifecycleConfirmationCopy.removeMessage\n' in screen
+remove_call = screen[screen.index('MapLifecycleConfirmationSheet('):]
+remove_call = remove_call[:remove_call.index('onConfirm:')]
+assert '? mapConfirmationMetadata(for: confirmation)' in remove_call, 'Remove shows its metadata as the subtitle'
+remove_sheet = screen[screen.index('private struct MapLifecycleConfirmationSheet'):]
+remove_sheet = remove_sheet[:remove_sheet.index('} else {')]
+assert 'subtitle: subtitle,' in remove_sheet, 'the destructive Remove dialog shows the subtitle line'
 
 def check(ok, message):
     if not ok:
