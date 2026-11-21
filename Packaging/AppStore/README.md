@@ -38,6 +38,9 @@ installation failure dialog offers `Send report to Terento` while results
 are not shared (declined or not chosen yet): it sends only that failure's
 report after the person reviews it and presses Send, and changes no sharing
 choice. Diagnostics and the Help menu still offer only the GitHub report.
+Help also has `Send Feedback…` (a mail draft with only the app version and
+build) and `Rate Terento on the App Store…`, which opens the existing review
+link.
 
 ### Opt-in diagnostics (stage 3)
 

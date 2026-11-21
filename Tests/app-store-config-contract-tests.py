@@ -414,6 +414,35 @@ class AppStoreConfigurationContract(unittest.TestCase):
         self.assertIn("} else if Self.allowsOfficialProductMedia,", registry)
         self.assertIn("|| match.asset.source?.sourceType != .officialProductMedia else {", registry)
 
+    def test_help_menu_order_per_build(self) -> None:
+        source = (SWIFT_SOURCES / "TerentoPoCApp.swift").read_text(encoding="utf-8")
+
+        def help_items(defined: set[str]) -> list[str]:
+            active = active_source(source, defined)
+            block = active[active.index("CommandGroup(replacing: .help) {"):]
+            block = block[:block.index("\n            }\n")]
+            items = re.findall(r'Button\("([^"]+)"\)|(Divider\(\))', block)
+            return [label or divider for label, divider in items]
+
+        common_head = ["Terento Website", "Troubleshooting", "Documentation", "Divider()", "Send Feedback…"]
+        self.assertEqual(help_items(APP_STORE_ONLY), common_head + [
+            "Rate Terento on the App Store…", "Divider()", "Report an Issue", "GitHub Repository"])
+        self.assertEqual(help_items(DMG_ONLY), common_head + [
+            "Divider()", "Report an Issue", "Send Report to Terento…", "GitHub Repository"])
+        app_store = active_source(source, APP_STORE_ONLY)
+        self.assertIn("openExternalURL(TerentoAppLinks.appStoreReview)", app_store)
+        self.assertEqual(source.count("TerentoAppLinks.feedbackMail("), 1)
+        links = (SWIFT_SOURCES / "Views" / "AppLinks.swift").read_text(encoding="utf-8")
+        self.assertIn('static let feedbackAddress = "hello@terento.app"', links)
+        # The mail draft carries only the version and build.
+        mail = links[links.index("static func feedbackMail("):]
+        mail = mail[:mail.index("\n    }\n")]
+        self.assertIn('encode("Terento \\(version) (\\(build))")', mail)
+        for forbidden in ("serial", "Unit", "model", "device", "identity"):
+            self.assertNotIn(forbidden, mail)
+        # A mailto link opened with NSWorkspace needs no sandbox entitlement.
+        self.assertEqual(load_plist(ROOT / "app/Terento/Terento-AppStore.entitlements"), APP_ENTITLEMENTS)
+
     def test_sharing_prompt_and_review_request_are_app_store_only(self) -> None:
         source = (SWIFT_SOURCES / "Views" / "ConnectScreen.swift").read_text(encoding="utf-8")
         app_store, dmg = active_source(source, APP_STORE_ONLY), active_source(source, DMG_ONLY)

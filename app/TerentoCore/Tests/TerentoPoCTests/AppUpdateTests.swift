@@ -56,6 +56,7 @@ struct AppUpdateTests {
         try await testDeferredUpdateCanOfferNewerBuild()
         try await testPromptWaitsForSafeIdle()
         try testTrustedURLsAreRestricted()
+        testFeedbackMailCarriesOnlyVersionAndBuild()
         testDonationLineFromThirdInstallOncePerVersion()
         testDonationLineCountsUpdatesWithoutShowingAfterThem()
         testAppStoreFirstSuccessAsksAboutSharing()
@@ -67,7 +68,7 @@ struct AppUpdateTests {
         testAppStoreCountCarriesOverFromInstallCount()
         testAppStoreOldRefusalAsksAgainNewRefusalIsFinal()
         testAppStoreConsentMigrationKeepsOptInAndDirectDownloadRefusal()
-        print("PASS: 31 app update tests")
+        print("PASS: 32 app update tests")
     }
 
     private static func testSameVersionIsUpToDate() throws {
@@ -698,6 +699,22 @@ struct AppUpdateTests {
         print("PASS: App Store consent migration keeps opt-ins and copied refusals")
     }
 
+    private static func testFeedbackMailCarriesOnlyVersionAndBuild() {
+        let url = TerentoAppLinks.feedbackMail(version: "1.2.3", build: "50")
+        expect(url.absoluteString == "mailto:hello@terento.app?subject=Terento%20feedback&body=Terento%201.2.3%20%2850%29",
+               "Send Feedback opens a mail draft to hello@terento.app with only the version and build")
+        let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        expect(components?.scheme == "mailto" && components?.path == "hello@terento.app"
+                && components?.queryItems == [URLQueryItem(name: "subject", value: "Terento feedback"),
+                                              URLQueryItem(name: "body", value: "Terento 1.2.3 (50)")],
+               "the feedback draft has exactly a subject and a version body")
+        let odd = TerentoAppLinks.feedbackMail(version: "1.2.3 beta&x=1", build: "50#local")
+        let oddItems = URLComponents(url: odd, resolvingAgainstBaseURL: false)?.queryItems
+        expect(oddItems?.count == 2 && oddItems?.last?.value == "Terento 1.2.3 beta&x=1 (50#local)",
+               "the version is encoded and cannot add fields to the draft")
+        print("PASS: feedback mail draft carries only the version and build")
+    }
+
     private static func expect(_ condition: Bool, _ message: String) {
         guard condition else { fail(message) }
     }
@@ -707,3 +724,4 @@ struct AppUpdateTests {
         exit(1)
     }
 }
+

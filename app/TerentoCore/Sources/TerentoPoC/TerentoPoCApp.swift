@@ -106,6 +106,18 @@ struct TerentoPoCApp: App {
                 Button("Documentation") {
                     openExternalURL(TerentoAppLinks.documentation)
                 }
+                Divider()
+                Button("Send Feedback…") {
+                    openExternalURL(TerentoAppLinks.feedbackMail(
+                        version: TerentoTelemetryMetadata.version,
+                        build: TerentoTelemetryMetadata.build))
+                }
+                #if TERENTO_APP_STORE
+                Button("Rate Terento on the App Store…") {
+                    openExternalURL(TerentoAppLinks.appStoreReview)
+                }
+                #endif
+                Divider()
                 Button("Report an Issue") {
                     openExternalURL(TerentoAppLinks.issues)
                 }
