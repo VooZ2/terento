@@ -14,6 +14,9 @@ for text in \
     'title: "Send compatibility diagnostics"' \
     'title: "Send map usage diagnostics"' \
     'Text("Both are on by default. Turning one off also deletes what is waiting to be sent.")' \
+    'Text(compatibilitySharingBinding.wrappedValue || mapStatisticsSharingBinding.wrappedValue' \
+    '? "Turning one off also deletes what is waiting to be sent."' \
+    ': "Both are off until you turn them on. Turning one off also deletes what is waiting to be sent.")' \
     'DisclosureGroup("What is sent")' \
     'diagnosticsSection(title: "Problem with a map?")' \
     'Text("If an install, update or removal failed, send us the saved report.")' \

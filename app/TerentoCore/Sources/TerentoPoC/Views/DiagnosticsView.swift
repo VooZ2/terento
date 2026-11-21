@@ -104,8 +104,11 @@ struct DiagnosticsView: View {
                         )
 
                         #if TERENTO_APP_STORE
-                        // App Store builds share only after an opt-in.
-                        Text("Both are off until you turn them on. Turning one off also deletes what is waiting to be sent.")
+                        // App Store builds share only after an opt-in. "Both
+                        // are off" is true only while both are off.
+                        Text(compatibilitySharingBinding.wrappedValue || mapStatisticsSharingBinding.wrappedValue
+                             ? "Turning one off also deletes what is waiting to be sent."
+                             : "Both are off until you turn them on. Turning one off also deletes what is waiting to be sent.")
                             .font(.terento(.caption, weight: .regular))
                             .foregroundStyle(TerentoColors.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
