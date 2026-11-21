@@ -1,3 +1,22 @@
+# Terento v1.2.3 (build 50)
+<!-- DRAFT: staged 1.2.3 build 50; not published until the signed, notarized DMG is on GitHub. -->
+
+Terento 1.2.3 is a fix release for Terento 1.2.2, the free, open-source app for installing community maps on map-capable Garmin smartwatches and Edge bike computers from Apple Silicon Macs running macOS 13 or later. Compatibility is still evaluated model by model.
+
+This release keeps a large downloaded map ready when the device can't be reached, so you don't download it again, and makes reports about connection problems more useful. Installed 1.2.2 and earlier builds are offered it by the in-app update check. The Mac App Store version is updated separately.
+
+## WHAT'S NEW?
+
+- Send report from the Help menu: when you choose "Connecting the device" and no failure was saved, the report also includes what Terento saw the last time it tried to connect, for example that the device was busy and Garmin Express was running. The window shows everything that will be sent.
+
+## WHAT'S FIXED?
+
+- A downloaded map is kept for Try again for 6 hours instead of 30 minutes, so a large map that took an hour or more to download is not downloaded again. Quitting Terento still removes it.
+- If the device is unplugged or disappears after the download but before anything is written, the downloaded maps are kept for Try again.
+- If your Mac doesn't have enough space for a new download, Terento first removes kept downloads of other maps.
+- When the device can no longer be seen before anything is written, the message says "Terento can no longer see your device" and tells you what to check.
+- Reports about stopped installations say more precisely which check stopped them.
+
 # Terento v1.2.2 (build 49)
 
 Terento 1.2.2 is an update to Terento 1.2.1, the free, open-source app for installing community maps on map-capable Garmin smartwatches and Edge bike computers from Apple Silicon Macs running macOS 13 or later. Compatibility is still evaluated model by model.
