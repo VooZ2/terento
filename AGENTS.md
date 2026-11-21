@@ -149,9 +149,29 @@ one CI run at the end.
 - Open the PR `release-<version>` → `main` only when QA is clean (CI runs on
   draft PRs to `main` too): one full CI run, then merge.
 - Exception: a critical bug (crash, maps fail to install, data loss) gets its
-  own PR to `main` right away.
+  own PR to `main` right away, from a `hotfix-<version>-<topic>` branch.
 - Keep `release-<version>` up to date with `main` (merge `main` into it, never
   force-push), so the final PR has no surprises.
+
+## Branch names
+
+Owner rule 2026-11-22. Every new branch is named by the area it changes:
+
+- `release-<version>`: the Mac app and what ships inside it, one branch per app
+  version (see above). Example: `release-1.3.0`.
+- `hotfix-<version>-<topic>`: a critical Mac app bug that goes to `main` right
+  away (crash, maps fail to install, data loss). Example:
+  `hotfix-1.3.1-install-crash`.
+- `api/<topic>`: backend, catalog API and Admin. Example:
+  `api/luckymaps-catalog-v6`.
+- `web/<topic>`: website and web installer. Example: `web/provider-cards`.
+- `docs/<topic>`: repository documentation only (AGENTS.md, READMEs, guides).
+- `<topic>` is short, lowercase, words joined by hyphens, and says what
+  changes. No random suffixes and no `claude/` or `project-thread` prefixes.
+- A change that touches more than one area is split by area, one branch per
+  area, as the release rule already says.
+- An environment that starts on an automatic `claude/...` branch creates the
+  named branch from it, pushes there and opens the PR from the named branch.
 
 ## Git and workspace hygiene
 
