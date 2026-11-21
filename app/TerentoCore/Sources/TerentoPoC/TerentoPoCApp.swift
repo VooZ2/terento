@@ -6,6 +6,8 @@ import SwiftUI
 struct TerentoEntryPoint {
     static func main() {
         if MTPFinishingWorker.runIfRequested() { return }
+        // Inter and Instrument Sans ship in the app; register them before any view.
+        TerentoBundledFonts.register()
         LocalTerentoFailedInstallRecoveryStore.onSetAside = { url in
             Task { @MainActor in TerentoDiagnosticLog.recordRecoveryQuarantine(url) }
         }

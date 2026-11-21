@@ -8,7 +8,7 @@ import SwiftUI
 struct TerentoHelpLink: View {
     let topic: TroubleshootingTopic
     var title = "Help"
-    var size: CGFloat = 13
+    var role: TerentoTypography.Role = .meta
     /// Aligns the icon to a list's icon column (fixed width, 10 pt spacing),
     /// as in the Connect help box; `nil` keeps the compact label.
     var iconColumnWidth: CGFloat? = nil
@@ -19,7 +19,7 @@ struct TerentoHelpLink: View {
                 .labelStyle(HelpLinkLabelStyle(iconColumnWidth: iconColumnWidth))
         }
         .buttonStyle(.plain)
-        .font(.terentoUI(size: size, weight: .semibold))
+        .font(.terento(role, weight: .semibold))
         .foregroundStyle(TerentoColors.interactive)
         .help("Open the Terento troubleshooting guide")
         .accessibilityLabel(title)

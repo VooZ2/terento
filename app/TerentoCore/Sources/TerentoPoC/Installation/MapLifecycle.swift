@@ -91,12 +91,13 @@ struct MapLifecycleItem: Identifiable, Equatable, Sendable {
         return "Installed"
     }
 
-    /// Row title with the BBBike map style, as the Install list shows it
-    /// ("Lithuania · OpenTopoMap"); the plain BBBike style needs no suffix.
-    var manageTitle: String {
+    /// The Manage row's second line. A BBBike row starts with its map style
+    /// named as Install maps names it ("BBBike (OpenTopoMap) · 2026-11 ·
+    /// 120 MB"), so the same style has one name in every place.
+    var manageRowMetadata: String {
         guard MapIdentity.normalizeProvider(provider ?? "") == "bbbike",
-              let style = BBBikeMapType(regionToken: region ?? "")?.styleName else { return title }
-        return "\(title) · \(style)"
+              let type = BBBikeMapType(regionToken: region ?? "") else { return manageMetadataLabel }
+        return [type.title, manageMetadataLabel].filter { !$0.isEmpty }.joined(separator: " · ")
     }
 
     /// Compact metadata for the consumer-facing Manage Maps row. Provider and

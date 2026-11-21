@@ -64,3 +64,38 @@ assert outer_modifiers.index('.padding(.top, 12)') < outer_modifiers.index('.cli
 assert 'customMapImportPanel\n                        .fixedSize(horizontal: false, vertical: true)\n                        .padding(.top, 12)' in region, 'custom import gap differs from toolbar gap'
 print('PASS: fixed catalogue boundaries preserve matching 12 pt gaps')
 PYTEST
+
+# Owner design pass 2026-11-22: row status on its own line, one style name,
+# Import in the header, Storage beside Continue, no "Ready for maps" badge.
+python3 - "$connect_screen" "$project_root/Sources/TerentoPoC/Installation/MapLifecycle.swift" <<'PYTEST'
+from pathlib import Path
+import sys
+source = Path(sys.argv[1]).read_text()
+lifecycle = Path(sys.argv[2]).read_text()
+
+def block(start, end):
+    return source.split(start, 1)[1].split(end, 1)[0]
+
+row = block('private struct TerentoMapRow<', 'struct TerentoProgressBar')
+assert row.index('Text(detail)') < row.index('Text(status.text)') < row.index('Text(note)'), 'row status is not the third line'
+assert '.font(.terento(.meta, weight: .semibold))' in row and '.foregroundStyle(status.color)' in row, 'row status is not meta semibold in its status colour'
+selection = block('struct MapSelectionRow: View {', 'private struct MapRowSurface')
+detail = selection.split('private var detail: String {', 1)[1].split('private var rowStatus: String? {', 1)[0]
+assert 'preflightReason' not in detail and 'shortStatus' not in detail.replace('shortStatus == nil', ''), 'a blocked message is appended to the metadata line'
+assert 'status: rowStatus.map { TerentoMapRowStatus(text: $0) }' in selection, 'Install rows do not pass their status line'
+assert 'if rowStatus != nil {\n            return "exclamationmark.triangle"' in selection, 'blocked rows do not show the warning icon that matches the status colour'
+manage = block('private struct ManageMapRow: View {', 'private struct ManageActionGroup')
+assert 'detail: item.manageRowMetadata' in manage and 'status: manageStatus' in manage, 'Manage rows do not split metadata and status'
+assert 'title: item.title,' in manage and 'manageTitle' not in source, 'Manage rows still append the style to the title'
+assert 'type.title, manageMetadataLabel' in lifecycle, 'Manage metadata does not start with the "Provider (Style)" name'
+
+maps = block('private var mapsContent: some View {', 'private var selectedMapProviderLabel')
+assert maps.index('Label("Refresh", systemImage: "arrow.clockwise")') < maps.index('SecondaryButton(title: "Import from Mac")') < maps.index('} mapRegion: {'), 'Import from Mac is not next to Refresh in the header'
+footer = maps.split('} footer: {', 1)[1]
+assert footer.index('MapSelectionStorageLine(') < footer.index('PrimaryButton(title: "Continue")'), 'Storage is not on the Continue row'
+line = block('struct MapSelectionStorageLine: View {', '/// One look for the Install and Manage search field')
+assert ') free"' in line and 'summary.selectedMapSummary' in line and 'summary.afterInstallationSummary' in line, 'Storage line copy changed'
+device = block('struct DeviceCard: View {', 'extension DeviceAuthorizationPresentation.Tone')
+assert 'if let authorization, authorization.tone != .success {' in device, '"Ready for maps" badge is shown in the ready state'
+print('PASS: map row status line, one style name, Import in the header, Storage beside Continue, no ready badge')
+PYTEST

@@ -5,14 +5,14 @@ import SwiftUI
 /// for a phase without measured progress.
 struct TimeRemainingLabel: View {
     let estimate: RemainingTimeEstimate
-    var size: CGFloat = 11
+    var role: TerentoTypography.Role = .caption
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             if let text = estimate.text(at: context.date) {
                 Label(text, systemImage: "clock")
                     .labelStyle(.titleAndIcon)
-                    .font(.terentoUI(size: size, weight: .medium))
+                    .font(.terento(role))
                     .foregroundStyle(TerentoColors.secondaryText)
             }
         }

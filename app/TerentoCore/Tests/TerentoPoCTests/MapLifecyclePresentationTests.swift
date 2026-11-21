@@ -747,9 +747,11 @@ private func testQARowPresentation() throws {
     let plain = MapLifecycleItem(id: "lt2", title: "Lithuania", sourceKind: .provider, provider: "BBBike",
         region: "EUROPE-LITHUANIA-BBBIKE-LATIN1", version: installedVersion, rawVersion: nil, sizeBytes: 100,
         installedMaps: [installedMap()], classification: .terentoManaged)
-    try require(openTopo.manageTitle == "Lithuania · OpenTopoMap" && plain.manageTitle == "Lithuania"
-        && lifecycleItem().manageTitle == "Freizeitkarte Germany",
-        "Manage rows name the BBBike style and leave other providers unchanged")
+    try require(openTopo.manageRowMetadata.hasPrefix("BBBike (OpenTopoMap) · ")
+        && plain.manageRowMetadata.hasPrefix("BBBike · ")
+        && !openTopo.manageRowMetadata.contains("Lithuania")
+        && lifecycleItem().manageRowMetadata == lifecycleItem().manageMetadataLabel,
+        "Manage rows name the BBBike style as Install maps does and leave other providers unchanged")
 
     // D21: the Remove dialog names the map and gives one plain body line.
     let removeMeta = MapLifecycleConfirmationCopy.metadata(item: openTopo, provider: "BBBike")

@@ -24,7 +24,7 @@ struct SupportReportSheet: View {
             // The wide variant of the shared dialog standard.
             TerentoDialogHeader(icon: "paperplane", role: .info, title: "Send report to Terento")
             Text("No GitHub account needed. Terento receives exactly what is shown below, only when you press Send.")
-                .font(.terentoUI(size: TerentoDialogMetrics.bodySize, weight: .regular))
+                .font(.terento(TerentoDialogMetrics.bodyRole, weight: .regular))
                 .foregroundStyle(TerentoColors.graphite)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 12)
@@ -35,18 +35,18 @@ struct SupportReportSheet: View {
                     Text("Something else").tag(SupportReportCategory.other)
                 }
                 .pickerStyle(.menu)
-                .font(.terentoUI(size: 13, weight: .medium))
+                .font(.terento(.meta))
                 .frame(maxWidth: 320)
                 .padding(.top, 16)
                 .disabled(!controller.canSend)
             }
 
             Text("Description (optional)")
-                .font(.terentoUI(size: 13, weight: .semibold))
+                .font(.terento(.meta, weight: .semibold))
                 .foregroundStyle(TerentoColors.graphite)
                 .padding(.top, 16)
             TextEditor(text: $controller.userMessage)
-                .font(.terentoUI(size: 13, weight: .regular))
+                .font(.terento(.meta, weight: .regular))
                 .frame(height: 70)
                 .overlay { RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control).stroke(TerentoColors.border, lineWidth: 1) }
                 .disabled(!controller.canSend)
@@ -60,17 +60,17 @@ struct SupportReportSheet: View {
                     .monospacedDigit()
             }
             // Help-text level shared with About and Diagnostics: 12, secondary.
-            .font(.terentoUI(size: 12, weight: .regular))
+            .font(.terento(.caption, weight: .regular))
             .foregroundStyle(TerentoColors.secondaryText)
             .padding(.top, 4)
 
             Text("What will be sent")
-                .font(.terentoUI(size: 13, weight: .semibold))
+                .font(.terento(.meta, weight: .semibold))
                 .foregroundStyle(TerentoColors.graphite)
                 .padding(.top, 14)
             if let summary {
                 Text(summary)
-                    .font(.terentoUI(size: 13, weight: .regular))
+                    .font(.terento(.meta, weight: .regular))
                     .foregroundStyle(TerentoColors.graphite)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 6)
@@ -126,16 +126,16 @@ struct SupportReportSheet: View {
                 ProgressView().controlSize(.small)
                 Text("Sending…")
             }
-            .font(.terentoUI(size: 13, weight: .medium))
+            .font(.terento(.meta))
             .foregroundStyle(TerentoColors.secondaryText)
         case .sent(let reference):
             Label("Report \(reference) sent", systemImage: "checkmark.circle.fill")
-                .font(.terentoUI(size: 13, weight: .semibold))
+                .font(.terento(.meta, weight: .semibold))
                 .foregroundStyle(TerentoColors.lichenDark)
                 .textSelection(.enabled)
         case .failed(let message):
             Label(message, systemImage: "exclamationmark.triangle.fill")
-                .font(.terentoUI(size: 13, weight: .semibold))
+                .font(.terento(.meta, weight: .semibold))
                 .foregroundStyle(TerentoColors.error)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -144,9 +144,10 @@ struct SupportReportSheet: View {
     /// JetBrains Mono for the technical preview, as the brand reserves it for
     /// diagnostics; the system monospaced face when it is not installed.
     private static var diagnosticFont: Font {
-        NSFont(name: TerentoGeneratedTokens.Typography.monoFontName, size: 11) == nil
-            ? .system(size: 11, design: .monospaced)
-            : .custom(TerentoGeneratedTokens.Typography.monoFontName, size: 11)
+        let size = TerentoTypography.Role.caption.size
+        return NSFont(name: TerentoGeneratedTokens.Typography.monoFontName, size: size) == nil
+            ? .system(size: size, design: .monospaced)
+            : .custom(TerentoGeneratedTokens.Typography.monoFontName, size: size)
     }
 
 }
@@ -208,9 +209,9 @@ enum TerentoDialogMetrics {
     static let iconCircle: CGFloat = 36
     static let iconTintOpacity: Double = 0.12
     static let iconTitleGap: CGFloat = 12
-    static let titleSize: CGFloat = 20
-    static let bodySize: CGFloat = 14
-    static let supportingSize: CGFloat = 13
+    static let titleRole: TerentoTypography.Role = .lede
+    static let bodyRole: TerentoTypography.Role = .meta
+    static let supportingRole: TerentoTypography.Role = .meta
     static let padding: CGFloat = 24
     static let width: CGFloat = 440
     static let wideWidth: CGFloat = 560
@@ -253,13 +254,13 @@ struct TerentoDialogHeader: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
-                    .font(.terentoHeading(size: TerentoDialogMetrics.titleSize, weight: .semibold))
+                    .font(.terento(TerentoDialogMetrics.titleRole, weight: .semibold))
                     .foregroundStyle(TerentoColors.graphite)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityAddTraits(.isHeader)
                 if !subtitle.isEmpty {
                     Text(subtitle)
-                        .font(.terentoUI(size: TerentoDialogMetrics.supportingSize, weight: .semibold))
+                        .font(.terento(TerentoDialogMetrics.supportingRole, weight: .semibold))
                         .foregroundStyle(TerentoColors.secondaryText)
                         .lineLimit(2)
                         .truncationMode(.middle)
@@ -312,7 +313,7 @@ struct TerentoDialogButton: View {
                         .accessibilityHidden(true)
                 }
                 Text(label)
-                    .font(.terentoUI(size: TerentoDialogMetrics.bodySize, weight: .semibold))
+                    .font(.terento(TerentoDialogMetrics.bodyRole, weight: .semibold))
             }
             .foregroundStyle(kind == .secondary ? TerentoColors.graphite : .white)
             .padding(.horizontal, 16)
