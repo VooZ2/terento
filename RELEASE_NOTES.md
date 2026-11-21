@@ -8,6 +8,7 @@ This release keeps a large downloaded map ready when the device can't be reached
 ## WHAT'S NEW?
 
 - Send report from the Help menu: when you choose "Connecting the device" and no failure was saved, the report also includes what Terento saw the last time it tried to connect, for example that the device was busy and Garmin Express was running. The window shows everything that will be sent.
+- Manage now also lists the maps Garmin installed on your device. Terento only shows them and never changes them.
 
 ## WHAT'S FIXED?
 
