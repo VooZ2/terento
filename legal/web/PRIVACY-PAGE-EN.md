@@ -15,7 +15,7 @@ In the app downloaded from terento.app, two diagnostic streams are enabled by de
 
 Reports exclude Garmin Unit IDs, serial-number values, account details, local paths, map files and raw logs. Individual reports are private; only reviewed aggregate compatibility results are published. The basis is legitimate interests in improving reliability and device coverage, under GDPR Article 6(1)(f).
 
-**Mac App Store version.** Both streams are off until you choose to share. After your first successful map installation, Terento asks once whether to share install results with Terento; the box is not ticked. If you tick it, both streams are turned on and that installation is shared too. You can change this at any time in **Terento → Diagnostics**. For this version the basis is your consent, under GDPR Article 6(1)(a); withdrawing it stops future sharing and does not affect what was already sent. Its reports carry an App Store label in the app version.
+**Mac App Store version.** Both streams are off until you choose to share. After a successful map installation or update, Terento asks whether to share install results with Terento; nothing is pre-selected. **Share** turns both streams on and shares that installation or update too; **Don't share** leaves both off. After **Not now** nothing is shared, and Terento asks once more after the next successful installation or update, then no more. Versions up to and including 1.2.2 ask only after an installation, offer only **Share** and **Not now**, and record **Not now** as not sharing. You can change this at any time in **Terento → Diagnostics**. For this version the basis is your consent, under GDPR Article 6(1)(a); withdrawing it stops future sharing and does not affect what was already sent. Its reports carry an App Store label in the app version.
 
 ## Web installer
 
@@ -51,7 +51,7 @@ A GitHub issue is separate from automatic diagnostics: you review and submit it,
 
 ## Support reports
 
-Where the app offers to send a support report to Terento, a report is sent only when you choose to send it, after you have seen its content. It contains the sanitised issue details also used for GitHub reports: app and macOS versions, watch model and variant, the failed step, error category and message, map provider and region, and timings, plus any description you add. It excludes serial numbers, Unit IDs, account details, local paths, raw logs and map files, and no GitHub account is needed. Do not include personal information in the description.
+Where the app offers to send a support report to Terento, a report is sent only when you choose to send it, after you have seen its content. It contains the sanitised issue details also used for GitHub reports: app and macOS versions, watch model and variant, the failed step, error category and message, map provider and region, and timings, plus any description you add. It excludes serial numbers, Unit IDs, account details, local paths, raw logs and map files, and no GitHub account is needed. Do not include personal information in the description. From version 1.2.3, the Mac App Store version offers it after a failed installation while you are not sharing install results.
 
 Support reports are used only to diagnose the reported problem, are not used for statistics and are kept for 12 months. Access is restricted to project administration, which sees a report together with the diagnostics of the same installation or update to investigate the problem. Your IP address is used in server memory to limit repeated sending; it is not saved with the report or in the database and is cleared periodically and when the server restarts. The basis is legitimate interests in answering your request and maintaining the app, under GDPR Article 6(1)(f).
 
@@ -79,4 +79,4 @@ Compatibility reports may also include a sanitized MTP model label, USB VID/PID,
 
 Reports may additionally include the original XML model description (up to 160 characters) and model product code (up to 64 ASCII letters, digits or hyphens). These identify a product model, not an individual watch. Whole XML documents, Unit IDs and serial numbers are excluded. Model-code mappings and any administrator corrections are kept separately from the original report.
 
-Updated: 18 November 2026.
+Updated: 21 November 2026.

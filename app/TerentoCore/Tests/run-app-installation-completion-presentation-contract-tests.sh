@@ -51,7 +51,7 @@ require_callout '"Not in the list? Restart the device."' 'restart step is missin
 require_callout 'Radius.card' 'result callout does not use the card radius'
 reject_source 'Image(systemName: "switch.2")' 'Done still uses a settings toggle icon for a next step'
 reject_source 'InstallSharingDialog' 'the sharing question is still a dialog'
-require_finish 'InstallSharingCallout(onDecide: decideInstallSharing)' 'the sharing question is not on the Done page'
+require_finish 'InstallSharingCallout(onDecide: decideSharing)' 'the sharing question is not on the Done page'
 donate="$(sed -n '/if showsDonationLine, !hasPartialInstallation {/,/#endif/p' "$screen")"
 grep -Fq 'Link("Donate ↗", destination: TerentoAppLinks.donate)' <<< "$donate" || { print -u2 'FAIL: Donate line is missing'; exit 1; }
 if grep -Fq 'size: 13' <<< "$donate" || [[ "$(grep -c 'size: 15' <<< "$donate")" != 2 ]]; then
