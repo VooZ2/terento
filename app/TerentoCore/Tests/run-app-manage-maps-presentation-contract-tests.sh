@@ -78,6 +78,7 @@ require_text 'Text("Installed by Garmin. Terento does not change these.")' "$con
 require_text 'isExpanded: $garminMapsExpanded' "$connect_screen" "Garmin maps section does not collapse like the others"
 require_text 'if lifecycleInventory.allItems.isEmpty && filteredGarminMaps.isEmpty {' "$connect_screen" "empty state shows next to Garmin rows"
 require_text 'filteredGarminMaps = GarminSystemMap.filtered(managedGarminMaps,' "$connect_screen" "Manage search does not reach Garmin rows"
+require_text 'visibleGarminMaps: filteredGarminMaps' "$connect_screen" "the Manage map count leaves out Garmin rows"
 
 print "PASS: Manage maps simplified action contract"
 

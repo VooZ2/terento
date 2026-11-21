@@ -1313,7 +1313,10 @@ struct ConnectScreen: View {
                 .accessibilityLabel("Installed map provider")
             }
             HStack {
-                let count = filteredManagedInventory?.allItems.count ?? 0
+                let count = GarminSystemMap.manageListCount(
+                    lifecycleItemCount: filteredManagedInventory?.allItems.count ?? 0,
+                    visibleGarminMaps: filteredGarminMaps
+                )
                 Text("\(count) \(count == 1 ? "map" : "maps")")
                     .foregroundStyle(TerentoColors.secondaryText)
                 Spacer()

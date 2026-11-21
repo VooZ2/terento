@@ -25,7 +25,8 @@ struct Stage3GenericLifecycleTests {
         testVersionlessContourLifecycleMatch()
         testGarminImagesAreListedReadOnlyAndNeverRead()
         testGarminMapSearchAndNames()
-        print("PASS: 17 Stage 3 generic lifecycle tests")
+        testManageListCountIncludesGarminRows()
+        print("PASS: 18 Stage 3 generic lifecycle tests")
     }
 
     /// Garmin images come from the file listing only: no prefix read, kept in
@@ -97,6 +98,19 @@ struct Stage3GenericLifecycleTests {
                "Manage search finds Garmin rows by name and filename")
         expect(GarminSystemMap.filtered(maps, query: "", providerID: "openTopoMap").isEmpty,
                "a provider filter hides Garmin rows")
+    }
+
+    private static func testManageListCountIncludesGarminRows() {
+        let maps = ["gmapbmap.img", "gmapdem.img", "D1234567A.img"].map {
+            GarminSystemMap(path: "/GARMIN/" + $0, filename: $0, sizeBytes: 1)
+        }
+        func count(_ lifecycleRows: Int, _ query: String, _ provider: String = "") -> Int {
+            GarminSystemMap.manageListCount(lifecycleItemCount: lifecycleRows,
+                visibleGarminMaps: GarminSystemMap.filtered(maps, query: query, providerID: provider))
+        }
+        expect(count(2, "") == 5 && count(0, "base map") == 1 && count(0, "lithuania") == 0
+                && count(2, "", "openTopoMap") == 2,
+               "the Manage map count includes the Garmin rows that search and filters leave visible")
     }
 
     private static func testVersionlessContourLifecycleMatch() {

@@ -893,6 +893,12 @@ struct GarminSystemMap: Identifiable, Equatable, Sendable {
         return (named ? "0 " : "1 ") + title.lowercased() + " " + filename.lowercased() + " " + path.lowercased()
     }
 
+    /// The "N maps" line above the Manage list: every visible row, lifecycle
+    /// rows and Garmin rows alike, after the same search and provider filter.
+    static func manageListCount(lifecycleItemCount: Int, visibleGarminMaps: [GarminSystemMap]) -> Int {
+        lifecycleItemCount + visibleGarminMaps.count
+    }
+
     /// Manage search. These are Garmin's own fixed filenames, so unlike
     /// imported maps the filename is searchable. A provider filter hides them:
     /// they belong to no community provider.
