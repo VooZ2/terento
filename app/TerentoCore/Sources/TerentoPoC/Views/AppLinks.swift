@@ -26,44 +26,77 @@ enum TerentoAppLinks {
     static let legalFromApp = URL(string: "https://terento.app/legal/?\(appReferralQuery)")!
 }
 
-/// When an App Store build may ask macOS to show the system rating prompt
-/// (guideline 5.6.1). macOS still decides whether it appears and limits it
-/// to three times a year.
+/// What an App Store build shows after one successful map operation: an
+/// installation or an update that finished completely. Failed and partial
+/// operations are not counted and show neither.
+enum AppStoreSuccessPrompt: Equatable, Sendable {
+    /// The sharing question (Share / Not now / Don't share).
+    case sharingQuestion
+    /// Ask macOS for the system rating prompt.
+    case review
+    case none
+}
+
+/// When an App Store build asks about sharing and when it may ask macOS to
+/// show the system rating prompt (guideline 5.6.1). macOS still decides
+/// whether the rating prompt appears and limits it to three times a year.
+/// At most one of the two follows one operation, and the sharing question
+/// comes first.
 enum AppStoreReviewPolicy {
+    /// Kept from 1.2.x, when only installations were counted, so the count
+    /// already made carries over.
     static let successfulInstallCountKey = "AppStoreSuccessfulInstallCount"
     static let reviewRequestedVersionKey = "AppStoreReviewRequestedVersion"
-    static let firstRequestAfterInstalls = 3
+    /// How many times the sharing question was shown without an answer
+    /// (Not now, or leaving the page). Local only; never a sharing choice.
+    static let sharingQuestionShownCountKey = "AppStoreSharingQuestionShownCount"
+    static let firstRequestAfterInstalls = 2
+    /// Asked after the first success and once more after a Not now. After
+    /// that it is not asked again and nothing is sent.
+    static let maximumSharingQuestions = 2
 
-    /// Counts one successful installation. Returns true from the third one,
-    /// at most once per app version, and never while another prompt shows.
-    @discardableResult
-    static func recordSuccessfulInstallation(version: String, mayRequest: Bool = true,
-                                             defaults: UserDefaults = .standard) -> Bool {
+    /// Counts one successful installation or update and returns the one
+    /// thing to show after it. `sharingUndecided` is true while no sharing
+    /// choice is recorded. The rating prompt is requested from the second
+    /// success, at most once per app version, and never together with the
+    /// sharing question: when the question shows, the request waits for the
+    /// next success.
+    static func recordSuccessfulOperation(version: String, sharingUndecided: Bool,
+                                          defaults: UserDefaults = .standard) -> AppStoreSuccessPrompt {
         let count = defaults.integer(forKey: successfulInstallCountKey) + 1
         defaults.set(count, forKey: successfulInstallCountKey)
-        guard mayRequest, count >= firstRequestAfterInstalls,
-              defaults.string(forKey: reviewRequestedVersionKey) != version else { return false }
+        let shownQuestions = defaults.integer(forKey: sharingQuestionShownCountKey)
+        if sharingUndecided, shownQuestions < maximumSharingQuestions {
+            defaults.set(shownQuestions + 1, forKey: sharingQuestionShownCountKey)
+            return .sharingQuestion
+        }
+        guard count >= firstRequestAfterInstalls,
+              defaults.string(forKey: reviewRequestedVersionKey) != version else { return .none }
         defaults.set(version, forKey: reviewRequestedVersionKey)
-        return true
+        return .review
     }
 }
 
 #if !TERENTO_APP_STORE
 /// When the GitHub build shows the Donate line on Maps installed: from the
-/// third successful installation, once per app version. Counted locally only;
-/// nothing is sent and the donation unlocks nothing.
+/// third successful map operation (installation or update), once per app
+/// version. Counted locally only; nothing is sent and the donation unlocks
+/// nothing.
 enum DonationPromptPolicy {
     static let successfulInstallCountKey = "DonationSuccessfulInstallCount"
     static let shownVersionKey = "DonationPromptShownVersion"
     static let firstShowAfterInstalls = 3
 
-    /// Counts one complete installation. Returns true from the third one,
-    /// at most once per app version.
+    /// Counts one complete installation or update. Returns true from the
+    /// third one, at most once per app version. An update has no Done page,
+    /// so it passes `mayShow: false`: it only counts, and the line waits for
+    /// the next complete installation.
     @discardableResult
-    static func recordSuccessfulInstallation(version: String, defaults: UserDefaults = .standard) -> Bool {
+    static func recordSuccessfulOperation(version: String, mayShow: Bool = true,
+                                          defaults: UserDefaults = .standard) -> Bool {
         let count = defaults.integer(forKey: successfulInstallCountKey) + 1
         defaults.set(count, forKey: successfulInstallCountKey)
-        guard count >= firstShowAfterInstalls,
+        guard mayShow, count >= firstShowAfterInstalls,
               defaults.string(forKey: shownVersionKey) != version else { return false }
         defaults.set(version, forKey: shownVersionKey)
         return true

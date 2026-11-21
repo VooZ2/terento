@@ -104,7 +104,7 @@ struct SupportReportPayload: Codable, Equatable, Identifiable, Sendable {
     let report: SupportReportBody
 
     init(id: UUID = UUID(), createdAt: Date = Date(), appBuild: String = TerentoTelemetryMetadata.eventBuild,
-         releaseLabel: String = TerentoTelemetryMetadata.releaseLabel, category: SupportReportCategory,
+         releaseLabel: String = TerentoTelemetryMetadata.eventReleaseLabel, category: SupportReportCategory,
          operationID: UUID?, userMessage: String?, report: SupportReportBody) {
         schemaVersion = Self.schemaVersion
         self.id = id.uuidString.lowercased()

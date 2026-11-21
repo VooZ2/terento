@@ -3,9 +3,9 @@
 #   - the app and the embedded finishing helper carry exactly the reviewed
 #     entitlements (no get-task-allow, nothing Xcode added);
 #   - every nested code item is signed and the bundle verifies strictly;
-#   - no update-check, donation or support-report upload string is in any
-#     executable of the bundle (other diagnostics are sent only after an
-#     opt-in, see README.md).
+#   - no update-check or donation string is in any executable of the bundle
+#     (diagnostics are sent only after an opt-in, and a support report only
+#     when the person sends one after a failure, see README.md).
 # Optional second argument: a DMG-configuration Terento.app built from the
 # same source. Its executable must still contain every forbidden string, so a
 # passing check cannot come from strings that never existed.
@@ -82,7 +82,6 @@ forbidden_strings="$work/forbidden-strings.txt"
 cat >"$forbidden_strings" <<'STRINGS'
 updates/macos-arm64.json
 buymeacoffee
-api.terento.app/support/reports
 STRINGS
 
 if [ -n "$control_app" ]; then
@@ -105,4 +104,4 @@ while IFS= read -r executable; do
     done <"$forbidden_strings"
 done <"$work/bundle-code.txt"
 
-echo "PASS: AppStore configuration builds, signs nested code, has exact entitlements and no update, donation or support-report strings"
+echo "PASS: AppStore configuration builds, signs nested code, has exact entitlements and no update or donation strings"

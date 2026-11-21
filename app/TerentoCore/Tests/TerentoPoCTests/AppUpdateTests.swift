@@ -57,7 +57,15 @@ struct AppUpdateTests {
         try await testPromptWaitsForSafeIdle()
         try testTrustedURLsAreRestricted()
         testDonationLineFromThirdInstallOncePerVersion()
-        print("PASS: 21 app update tests")
+        testDonationLineCountsUpdatesWithoutShowingAfterThem()
+        testAppStoreFirstSuccessAsksAboutSharing()
+        testAppStoreSecondSuccessAfterNotNowAsksAgainNotReview()
+        testAppStoreSecondSuccessAfterShareRequestsReview()
+        testAppStoreSecondNotNowStopsAsking()
+        testAppStoreNeverAsksAndRequestsReviewTogether()
+        testAppStoreReviewAtMostOncePerVersion()
+        testAppStoreCountCarriesOverFromInstallCount()
+        print("PASS: 29 app update tests")
     }
 
     private static func testSameVersionIsUpToDate() throws {
@@ -522,18 +530,129 @@ struct AppUpdateTests {
         return manifest.version == version
     }
 
-    private static func testDonationLineFromThirdInstallOncePerVersion() {
-        let suite = "terento-donation-\(UUID().uuidString)"
+    private static func testDefaults(_ name: String) -> (UserDefaults, String) {
+        let suite = "terento-\(name)-\(UUID().uuidString)"
         guard let defaults = UserDefaults(suiteName: suite) else { fail("test defaults unavailable") }
+        return (defaults, suite)
+    }
+
+    private static func testDonationLineFromThirdInstallOncePerVersion() {
+        let (defaults, suite) = testDefaults("donation")
         defer { defaults.removePersistentDomain(forName: suite) }
         let shown = (1...5).map { _ in
-            DonationPromptPolicy.recordSuccessfulInstallation(version: "1.2.0", defaults: defaults)
+            DonationPromptPolicy.recordSuccessfulOperation(version: "1.2.0", defaults: defaults)
         }
         expect(shown == [false, false, true, false, false],
                "the Donate line shows from the third installation, once per version")
-        expect(DonationPromptPolicy.recordSuccessfulInstallation(version: "1.2.1", defaults: defaults),
+        expect(DonationPromptPolicy.recordSuccessfulOperation(version: "1.2.1", defaults: defaults),
                "a new app version may show the Donate line once more")
         print("PASS: Donate line from the third installation, once per version")
+    }
+
+    private static func testDonationLineCountsUpdatesWithoutShowingAfterThem() {
+        let (defaults, suite) = testDefaults("donation-update")
+        defer { defaults.removePersistentDomain(forName: suite) }
+        // Two updates, then an installation: the installation is the third
+        // successful operation and shows the line.
+        expect(!DonationPromptPolicy.recordSuccessfulOperation(version: "1.2.3", mayShow: false, defaults: defaults)
+            && !DonationPromptPolicy.recordSuccessfulOperation(version: "1.2.3", mayShow: false, defaults: defaults)
+            && !DonationPromptPolicy.recordSuccessfulOperation(version: "1.2.3", mayShow: false, defaults: defaults),
+               "an update never shows the Donate line")
+        expect(defaults.integer(forKey: DonationPromptPolicy.successfulInstallCountKey) == 3,
+               "updates count as successful operations")
+        expect(DonationPromptPolicy.recordSuccessfulOperation(version: "1.2.3", defaults: defaults),
+               "the next installation after counted updates shows the line")
+        print("PASS: Donate line counts updates and shows only after an installation")
+    }
+
+    /// One success under the App Store policy. `undecided` mirrors
+    /// `needsSharingDecision`: true while no sharing choice is recorded.
+    private static func appStoreSuccess(_ defaults: UserDefaults, undecided: Bool,
+                                        version: String = "1.2.3") -> AppStoreSuccessPrompt {
+        AppStoreReviewPolicy.recordSuccessfulOperation(version: version, sharingUndecided: undecided,
+                                                       defaults: defaults)
+    }
+
+    private static func testAppStoreFirstSuccessAsksAboutSharing() {
+        let (defaults, suite) = testDefaults("appstore-first")
+        defer { defaults.removePersistentDomain(forName: suite) }
+        expect(AppStoreReviewPolicy.firstRequestAfterInstalls == 2, "the rating request starts at the second success")
+        expect(appStoreSuccess(defaults, undecided: true) == .sharingQuestion,
+               "the first success asks about sharing")
+        print("PASS: App Store first success asks about sharing")
+    }
+
+    private static func testAppStoreSecondSuccessAfterNotNowAsksAgainNotReview() {
+        let (defaults, suite) = testDefaults("appstore-notnow")
+        defer { defaults.removePersistentDomain(forName: suite) }
+        _ = appStoreSuccess(defaults, undecided: true)
+        // Not now records no choice, so the second success is still undecided.
+        expect(appStoreSuccess(defaults, undecided: true) == .sharingQuestion,
+               "after Not now the second success asks once more, not for a rating")
+        print("PASS: App Store second success after Not now asks again")
+    }
+
+    private static func testAppStoreSecondSuccessAfterShareRequestsReview() {
+        for choiceRecorded in ["Share", "Don't share"] {
+            let (defaults, suite) = testDefaults("appstore-share")
+            defer { defaults.removePersistentDomain(forName: suite) }
+            _ = appStoreSuccess(defaults, undecided: true)
+            expect(appStoreSuccess(defaults, undecided: false) == .review,
+                   "after \(choiceRecorded) the second success requests a rating")
+        }
+        print("PASS: App Store second success after a choice requests a rating")
+    }
+
+    private static func testAppStoreSecondNotNowStopsAsking() {
+        let (defaults, suite) = testDefaults("appstore-second-notnow")
+        defer { defaults.removePersistentDomain(forName: suite) }
+        _ = appStoreSuccess(defaults, undecided: true)
+        _ = appStoreSuccess(defaults, undecided: true)
+        let later = (1...4).map { _ in appStoreSuccess(defaults, undecided: true) }
+        expect(!later.contains(.sharingQuestion), "after a second Not now the question never comes back")
+        expect(later == [.review, .none, .none, .none],
+               "after a second Not now only the rating request remains, once per version")
+        expect(appStoreSuccess(defaults, undecided: true, version: "1.2.4") == .review,
+               "a new version may request a rating, still without asking about sharing")
+        print("PASS: App Store second Not now stops asking")
+    }
+
+    private static func testAppStoreNeverAsksAndRequestsReviewTogether() {
+        let (defaults, suite) = testDefaults("appstore-one")
+        defer { defaults.removePersistentDomain(forName: suite) }
+        // An earlier install count (from 1.2.x) already passes the rating
+        // threshold; the question still wins and the request waits.
+        defaults.set(5, forKey: AppStoreReviewPolicy.successfulInstallCountKey)
+        expect(appStoreSuccess(defaults, undecided: true) == .sharingQuestion,
+               "the sharing question comes before the rating request")
+        expect(defaults.string(forKey: AppStoreReviewPolicy.reviewRequestedVersionKey) == nil,
+               "the rating request is not used up by a success that asked about sharing")
+        expect(appStoreSuccess(defaults, undecided: false) == .review,
+               "the rating request moves to the next success")
+        print("PASS: App Store shows one question per success")
+    }
+
+    private static func testAppStoreReviewAtMostOncePerVersion() {
+        let (defaults, suite) = testDefaults("appstore-version")
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let results = (1...5).map { _ in appStoreSuccess(defaults, undecided: false) }
+        expect(results == [.none, .review, .none, .none, .none],
+               "a rating is requested from the second success, once per version")
+        expect(appStoreSuccess(defaults, undecided: false, version: "1.2.4") == .review,
+               "a new version may request a rating once more")
+        print("PASS: App Store rating request at most once per version")
+    }
+
+    private static func testAppStoreCountCarriesOverFromInstallCount() {
+        let (defaults, suite) = testDefaults("appstore-carry")
+        defer { defaults.removePersistentDomain(forName: suite) }
+        expect(AppStoreReviewPolicy.successfulInstallCountKey == "AppStoreSuccessfulInstallCount",
+               "the count keeps the 1.2.x key")
+        defaults.set(1, forKey: "AppStoreSuccessfulInstallCount")
+        expect(appStoreSuccess(defaults, undecided: false) == .review,
+               "one install counted by 1.2.x plus one success requests a rating")
+        expect(defaults.integer(forKey: "AppStoreSuccessfulInstallCount") == 2, "the count continues")
+        print("PASS: App Store count carries over from 1.2.x")
     }
 
     private static func expect(_ condition: Bool, _ message: String) {

@@ -31,21 +31,30 @@ These code paths are removed at compile time, not hidden:
 - the update check: no `updates/macos-arm64.json` request, no `Check for Updates…`
   menu item, no About `Update` button or status, no update prompt
   (guideline 2.4.5(vii));
-- the `Donate` links in About and on Maps installed (guideline 3.1.1);
-- support reports sent to Terento: the failure dialog and Diagnostics offer
-  only the GitHub failure report.
+- the `Donate` links in About and on Maps installed (guideline 3.1.1).
+
+Support reports to Terento are not compiled out (from 1.2.3). The
+installation failure dialog offers `Send report to Terento` while results
+are not shared (declined or not chosen yet): it sends only that failure's
+report after the person reviews it and presses Send, and changes no sharing
+choice. Diagnostics and the Help menu still offer only the GitHub report.
 
 ### Opt-in diagnostics (stage 3)
 
 Compatibility and update diagnostics, map usage events and first-run funnel
 events are sent only after the person opts in (guideline 5.1.1, GDPR):
 
-- After a successful installation, while no choice is recorded, the
-  `Map installed` page shows a `Share install results with Terento` callout
-  with two equal buttons and nothing pre-selected; `Share` or `Not now`
+- A successful operation is a completed installation (not a partial one) or
+  a verified map update. After one, while no choice is recorded, the app
+  shows a `Share install results with Terento` callout: on `Map installed`
+  after an installation, above the list in Manage maps after an update. It
+  has three equal buttons and nothing pre-selected. `Share` or `Don't share`
   records `accepted` or `declined` for both streams, and `accepted` also
-  queues that installation's compatibility results. Leaving the page without
-  choosing records nothing.
+  queues that operation's compatibility results. `Not now`, or leaving the
+  page without choosing, records no choice; the callout comes back once,
+  after the next successful operation, and after that it is not shown again
+  and nothing is sent (`AppStoreReviewPolicy`, local
+  `AppStoreSharingQuestionShownCount`).
   Diagnostics keeps both checkboxes to change it later.
 - The App Store notice version is 100 (`VersionedEvidenceConsent`,
   `VersionedMapStatisticsConsent`); only `accepted` under that version
@@ -55,9 +64,13 @@ events are sent only after the person opts in (guideline 5.1.1, GDPR):
 - Events carry `releaseLabel` with `+appstore` SemVer build metadata (for
   example `1.1.0+appstore`), so Admin tells App Store results apart without
   an API change.
-- From the third successful installation, at most once per app version, the
+- From the second successful operation, at most once per app version, the
   app asks macOS for the system rating prompt (`requestReview`, guideline
-  5.6.1). About links to the App Store review page instead of `Donate`.
+  5.6.1); macOS shows it at most three times a year. One operation is followed
+  by at most one of the two: while the sharing callout shows, the request
+  waits for the next successful operation. The count keeps the 1.2.x key
+  `AppStoreSuccessfulInstallCount`. About links to the App Store review page
+  instead of `Donate`.
 
 Catalog, device catalog, installation policy and public compatibility
 requests, map downloads and device images keep working. The catalog without a
@@ -244,12 +257,11 @@ data into the container (see Container migration), so the script prints a
 
 - `Tests/run-app-store-config-contract-tests.sh` (app suite, runs anywhere):
   exact entitlements, `AppStore` settings against `Release`, both migration
-  manifests, that the update, donation and support-report strings are compiled
-  out of `AppStore` but still present in the DMG configuration, and the
-  opt-in rules above.
+  manifests, that the update and donation strings are compiled out of
+  `AppStore` but still present in the DMG configuration, and the opt-in rules
+  above.
 - The macOS app job runs `verify-app-store-build.sh`: it builds `AppStore`
   ad-hoc signed, verifies every nested signature, compares the app and helper
   entitlements with the files above, and checks that no executable in the
-  bundle contains `updates/macos-arm64.json`, `buymeacoffee` or the support
-  report endpoint. The Debug app built in the same job is the control that
+  bundle contains `updates/macos-arm64.json` or `buymeacoffee`. The Debug app built in the same job is the control that
   must still contain them.

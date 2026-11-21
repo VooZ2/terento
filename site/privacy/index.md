@@ -20,7 +20,7 @@ In the app downloaded from terento.app, two diagnostic streams are enabled by de
 
 Reports exclude Garmin Unit IDs, serial-number values, account details, local paths, map files and raw logs. Individual reports are private; only reviewed aggregate compatibility results are published. The basis is legitimate interests in improving reliability and device coverage, under GDPR Article 6(1)(f).
 
-**Mac App Store version.** Both streams are off until you choose to share. After your first successful map installation, Terento asks once whether to share install results with Terento; the box is not ticked. If you tick it, both streams are turned on and that installation is shared too. You can change this at any time in **Terento → Diagnostics**. For this version the basis is your consent, under GDPR Article 6(1)(a); withdrawing it stops future sharing and does not affect what was already sent. Its reports carry an App Store label in the app version.
+**Mac App Store version.** Both streams are off until you choose to share. After a successful map installation or update, Terento asks whether to share install results with Terento; nothing is pre-selected. **Share** turns both streams on and shares that installation or update too; **Don't share** leaves both off. After **Not now** nothing is shared, and Terento asks once more after the next successful installation or update, then no more. Versions up to and including 1.2.2 ask only after an installation, offer only **Share** and **Not now**, and record **Not now** as not sharing. You can change this at any time in **Terento → Diagnostics**. For this version the basis is your consent, under GDPR Article 6(1)(a); withdrawing it stops future sharing and does not affect what was already sent. Its reports carry an App Store label in the app version.
 
 ## Web installer
 
@@ -56,7 +56,7 @@ A GitHub issue is separate from automatic diagnostics: you review and submit it,
 
 ## Support reports
 
-Where the app offers to send a support report to Terento, a report is sent only when you choose to send it, after you have seen its content. It contains the sanitised issue details also used for GitHub reports: app and macOS versions, watch model and variant, the failed step, error category and message, map provider and region, and timings, plus any description you add. It excludes serial numbers, Unit IDs, account details, local paths, raw logs and map files, and no GitHub account is needed. Do not include personal information in the description.
+Where the app offers to send a support report to Terento, a report is sent only when you choose to send it, after you have seen its content. It contains the sanitised issue details also used for GitHub reports: app and macOS versions, watch model and variant, the failed step, error category and message, map provider and region, and timings, plus any description you add. It excludes serial numbers, Unit IDs, account details, local paths, raw logs and map files, and no GitHub account is needed. Do not include personal information in the description. From version 1.2.3, the Mac App Store version offers it after a failed installation while you are not sharing install results.
 
 Support reports are used only to diagnose the reported problem, are not used for statistics and are kept for 12 months. Access is restricted to project administration, which sees a report together with the diagnostics of the same installation or update to investigate the problem. Your IP address is used in server memory to limit repeated sending; it is not saved with the report or in the database and is cleared periodically and when the server restarts. The basis is legitimate interests in answering your request and maintaining the app, under GDPR Article 6(1)(f).
 
@@ -84,7 +84,7 @@ Compatibility reports may also include a sanitized MTP model label, USB VID/PID,
 
 Reports may additionally include the original XML model description (up to 160 characters) and model product code (up to 64 ASCII letters, digits or hyphens). These identify a product model, not an individual watch. Whole XML documents, Unit IDs and serial numbers are excluded. Model-code mappings and any administrator corrections are kept separately from the original report.
 
-Updated: 18 November 2026.
+Updated: 21 November 2026.
 
 # Datenschutz
 
@@ -103,7 +103,7 @@ In der App von terento.app sind zwei Diagnoseströme standardmäßig aktiviert, 
 
 Berichte enthalten keine Garmin Unit IDs, Seriennummernwerte, Kontodaten, lokalen Pfade, Kartendateien oder Rohprotokolle. Einzelberichte sind privat; nur geprüfte zusammengefasste Kompatibilitätsergebnisse werden veröffentlicht. Grundlage sind berechtigte Interessen an Zuverlässigkeit und Geräteabdeckung nach Art. 6 Abs. 1 lit. f DSGVO.
 
-**Mac App Store-Version.** Beide Ströme sind aus, bis du dich für das Teilen entscheidest. Nach deiner ersten erfolgreichen Karteninstallation fragt Terento einmal, ob du Installationsergebnisse mit Terento teilen möchtest; das Kästchen ist nicht angekreuzt. Kreuzt du es an, werden beide Ströme eingeschaltet und auch diese Installation wird geteilt. Du kannst das jederzeit unter **Terento → Diagnostics** ändern. Grundlage ist bei dieser Version deine Einwilligung nach Art. 6 Abs. 1 lit. a DSGVO; ein Widerruf beendet künftige Übermittlungen und berührt bereits Gesendetes nicht. Ihre Berichte tragen in der App-Version eine App-Store-Kennzeichnung.
+**Mac App Store-Version.** Beide Ströme sind aus, bis du dich für das Teilen entscheidest. Nach einer erfolgreichen Karteninstallation oder -aktualisierung fragt Terento, ob du Installationsergebnisse mit Terento teilen möchtest; nichts ist vorausgewählt. **Share** schaltet beide Ströme ein und teilt auch diese Installation oder Aktualisierung; **Don't share** lässt beide aus. Nach **Not now** wird nichts geteilt, und Terento fragt nach der nächsten erfolgreichen Installation oder Aktualisierung noch einmal, danach nicht mehr. Versionen bis einschließlich 1.2.2 fragen nur nach einer Installation, bieten nur **Share** und **Not now** an und werten **Not now** als Nicht-Teilen. Du kannst das jederzeit unter **Terento → Diagnostics** ändern. Grundlage ist bei dieser Version deine Einwilligung nach Art. 6 Abs. 1 lit. a DSGVO; ein Widerruf beendet künftige Übermittlungen und berührt bereits Gesendetes nicht. Ihre Berichte tragen in der App-Version eine App-Store-Kennzeichnung.
 
 ## Web-Installer
 
@@ -139,7 +139,7 @@ Ein GitHub-Issue ist von automatischer Diagnose getrennt: Du prüfst und sendest
 
 ## Supportberichte
 
-Wenn die App anbietet, einen Supportbericht an Terento zu senden, wird er nur gesendet, wenn du dich dafür entscheidest, nachdem du seinen Inhalt gesehen hast. Er enthält die bereinigten Fehlerangaben, die auch für GitHub-Berichte verwendet werden: App- und macOS-Version, Uhrenmodell und -variante, den fehlgeschlagenen Schritt, Fehlerkategorie und -meldung, Kartenanbieter und Region sowie Zeitangaben, dazu eine optionale Beschreibung. Seriennummern, Unit IDs, Kontodaten, lokale Pfade, Rohprotokolle und Kartendateien sind ausgeschlossen; ein GitHub-Konto ist nicht nötig. Gib in der Beschreibung keine personenbezogenen Daten an.
+Wenn die App anbietet, einen Supportbericht an Terento zu senden, wird er nur gesendet, wenn du dich dafür entscheidest, nachdem du seinen Inhalt gesehen hast. Er enthält die bereinigten Fehlerangaben, die auch für GitHub-Berichte verwendet werden: App- und macOS-Version, Uhrenmodell und -variante, den fehlgeschlagenen Schritt, Fehlerkategorie und -meldung, Kartenanbieter und Region sowie Zeitangaben, dazu eine optionale Beschreibung. Seriennummern, Unit IDs, Kontodaten, lokale Pfade, Rohprotokolle und Kartendateien sind ausgeschlossen; ein GitHub-Konto ist nicht nötig. Gib in der Beschreibung keine personenbezogenen Daten an. Ab Version 1.2.3 bietet die Mac App Store-Version das nach einer fehlgeschlagenen Installation an, solange du keine Installationsergebnisse teilst.
 
 Supportberichte dienen nur der Diagnose des gemeldeten Problems, fließen nicht in Statistiken ein und werden 12 Monate aufbewahrt. Zugriff hat nur die Projektverwaltung; sie sieht einen Bericht zusammen mit den Diagnosen derselben Installation oder Aktualisierung, um das Problem zu untersuchen. Deine IP-Adresse wird im Arbeitsspeicher des Servers verwendet, um wiederholtes Senden zu begrenzen; sie wird weder mit dem Bericht noch in der Datenbank gespeichert und regelmäßig sowie beim Neustart des Servers gelöscht. Grundlage sind berechtigte Interessen an der Beantwortung deiner Anfrage und der Wartung der App nach Art. 6 Abs. 1 lit. f DSGVO.
 
@@ -167,7 +167,7 @@ Kompatibilitätsberichte können außerdem eine bereinigte MTP-Modellbezeichnung
 
 Berichte können zusätzlich die ursprüngliche XML-Modellbeschreibung (bis zu 160 Zeichen) und den Modellproduktcode (bis zu 64 ASCII-Buchstaben, Ziffern oder Bindestrichen) enthalten. Diese beschreiben ein Produktmodell, keine einzelne Uhr. Vollständige XML-Dokumente, Unit IDs und Seriennummern sind ausgeschlossen. Modellcode-Zuordnungen und administrative Korrekturen werden getrennt vom ursprünglichen Bericht gespeichert.
 
-Aktualisiert: 18. November 2026.
+Aktualisiert: 21. November 2026.
 
 # Confidentialité
 
@@ -186,7 +186,7 @@ Dans l’application téléchargée depuis terento.app, deux flux sont activés 
 
 Les rapports excluent les Garmin Unit IDs, valeurs de numéros de série, comptes, chemins locaux, cartes et journaux bruts. Les rapports individuels sont privés ; seuls des résultats agrégés de compatibilité vérifiés sont publiés. Le fondement est l’intérêt légitime à améliorer la fiabilité et la couverture des appareils, selon l’article 6(1)(f) du RGPD.
 
-**Version Mac App Store.** Les deux flux sont désactivés tant que vous n’avez pas choisi de partager. Après votre première installation de carte réussie, Terento demande une seule fois si vous souhaitez partager les résultats d’installation avec Terento ; la case n’est pas cochée. Si vous la cochez, les deux flux sont activés et cette installation est également partagée. Vous pouvez modifier ce choix à tout moment dans **Terento → Diagnostics**. Pour cette version, le fondement est votre consentement, selon l’article 6(1)(a) du RGPD ; le retirer arrête les envois futurs sans affecter ceux déjà effectués. Ses rapports portent une mention App Store dans la version de l’application.
+**Version Mac App Store.** Les deux flux sont désactivés tant que vous n’avez pas choisi de partager. Après une installation ou une mise à jour de carte réussie, Terento demande si vous souhaitez partager les résultats d’installation avec Terento ; rien n’est présélectionné. **Share** active les deux flux et partage aussi cette installation ou mise à jour ; **Don't share** les laisse désactivés. Après **Not now**, rien n’est partagé et Terento repose la question une seule fois après la prochaine installation ou mise à jour réussie, puis plus jamais. Les versions jusqu’à 1.2.2 incluse ne posent la question qu’après une installation, proposent seulement **Share** et **Not now**, et enregistrent **Not now** comme un refus de partager. Vous pouvez modifier ce choix à tout moment dans **Terento → Diagnostics**. Pour cette version, le fondement est votre consentement, selon l’article 6(1)(a) du RGPD ; le retirer arrête les envois futurs sans affecter ceux déjà effectués. Ses rapports portent une mention App Store dans la version de l’application.
 
 ## Installateur web
 
@@ -222,7 +222,7 @@ Un ticket GitHub est distinct des diagnostics automatiques : vous le vérifiez e
 
 ## Rapports d’assistance
 
-Lorsque l’application propose d’envoyer un rapport d’assistance à Terento, le rapport n’est envoyé que si vous choisissez de l’envoyer, après en avoir vu le contenu. Il contient les détails nettoyés également utilisés pour les rapports GitHub : versions de l’application et de macOS, modèle et variante de la montre, étape en échec, catégorie et message d’erreur, fournisseur et région de la carte, durées, ainsi que la description que vous ajoutez. Il exclut les numéros de série, Unit IDs, comptes, chemins locaux, journaux bruts et cartes ; aucun compte GitHub n’est nécessaire. N’indiquez pas de données personnelles dans la description.
+Lorsque l’application propose d’envoyer un rapport d’assistance à Terento, le rapport n’est envoyé que si vous choisissez de l’envoyer, après en avoir vu le contenu. Il contient les détails nettoyés également utilisés pour les rapports GitHub : versions de l’application et de macOS, modèle et variante de la montre, étape en échec, catégorie et message d’erreur, fournisseur et région de la carte, durées, ainsi que la description que vous ajoutez. Il exclut les numéros de série, Unit IDs, comptes, chemins locaux, journaux bruts et cartes ; aucun compte GitHub n’est nécessaire. N’indiquez pas de données personnelles dans la description. À partir de la version 1.2.3, la version Mac App Store le propose après une installation échouée, tant que vous ne partagez pas les résultats d’installation.
 
 Les rapports d’assistance servent uniquement à diagnostiquer le problème signalé, ne sont pas utilisés pour les statistiques et sont conservés 12 mois. L’accès est réservé à l’administration du projet, qui voit un rapport avec les diagnostics de la même installation ou mise à jour pour étudier le problème. Votre adresse IP est utilisée dans la mémoire du serveur pour limiter les envois répétés ; elle n’est enregistrée ni avec le rapport ni dans la base de données, et est effacée régulièrement ainsi qu’au redémarrage du serveur. Le fondement est l’intérêt légitime à répondre à votre demande et maintenir l’application, selon l’article 6(1)(f) du RGPD.
 
@@ -250,7 +250,7 @@ La compatibilité peut aussi inclure un libellé MTP nettoyé, USB VID/PID, tran
 
 Les rapports peuvent aussi contenir la description originale du modèle XML (160 caractères maximum) et son code produit (64 lettres ASCII, chiffres ou traits d’union maximum). Ces données désignent un modèle, pas une montre individuelle. Les documents XML complets, Unit IDs et numéros de série sont exclus. Les correspondances des codes et les corrections administratives sont conservées séparément du rapport original.
 
-Mise à jour : 18 novembre 2026.
+Mise à jour : 21 novembre 2026.
 
 # Prywatność
 
@@ -269,7 +269,7 @@ W aplikacji pobranej z terento.app dwa strumienie są domyślnie włączone, aby
 
 Raporty nie zawierają Garmin Unit IDs, wartości numerów seryjnych, kont, lokalnych ścieżek, map ani surowych logów. Raporty indywidualne są prywatne; publikowane są tylko sprawdzone zbiorcze wyniki zgodności. Podstawą jest uzasadniony interes w poprawie niezawodności i obsługi urządzeń, zgodnie z art. 6 ust. 1 lit. f RODO.
 
-**Wersja z Mac App Store.** Oba strumienie są wyłączone, dopóki nie zdecydujesz się udostępniać danych. Po pierwszej udanej instalacji mapy Terento pyta jeden raz, czy udostępniać wyniki instalacji Terento; pole nie jest zaznaczone. Po jego zaznaczeniu oba strumienie zostają włączone i udostępniana jest także ta instalacja. Wybór można zmienić w dowolnym momencie w **Terento → Diagnostics**. W tej wersji podstawą jest zgoda, zgodnie z art. 6 ust. 1 lit. a RODO; jej wycofanie zatrzymuje przyszłe wysyłanie i nie wpływa na dane już wysłane. Raporty z tej wersji mają w wersji aplikacji oznaczenie App Store.
+**Wersja z Mac App Store.** Oba strumienie są wyłączone, dopóki nie zdecydujesz się udostępniać danych. Po udanej instalacji lub aktualizacji mapy Terento pyta, czy udostępniać wyniki instalacji Terento; nic nie jest wybrane z góry. **Share** włącza oba strumienie i udostępnia także tę instalację lub aktualizację; **Don't share** pozostawia oba wyłączone. Po **Not now** nic nie jest udostępniane, a Terento zapyta jeszcze raz po następnej udanej instalacji lub aktualizacji, potem już nie. Wersje do 1.2.2 włącznie pytają tylko po instalacji, oferują tylko **Share** i **Not now** i zapisują **Not now** jako brak zgody na udostępnianie. Wybór można zmienić w dowolnym momencie w **Terento → Diagnostics**. W tej wersji podstawą jest zgoda, zgodnie z art. 6 ust. 1 lit. a RODO; jej wycofanie zatrzymuje przyszłe wysyłanie i nie wpływa na dane już wysłane. Raporty z tej wersji mają w wersji aplikacji oznaczenie App Store.
 
 ## Instalator webowy
 
@@ -305,7 +305,7 @@ Zgłoszenie GitHub jest oddzielne od automatycznej diagnostyki: sprawdzasz i wys
 
 ## Raporty pomocy
 
-Gdy aplikacja oferuje wysłanie raportu pomocy do Terento, raport jest wysyłany tylko wtedy, gdy zdecydujesz się go wysłać po zapoznaniu się z jego treścią. Zawiera oczyszczone informacje o problemie używane także w raportach GitHub: wersje aplikacji i macOS, model i wariant zegarka, etap, który się nie powiódł, kategorię i komunikat błędu, dostawcę i region mapy oraz czasy, a także opcjonalny opis. Nie zawiera numerów seryjnych, Unit IDs, danych kont, lokalnych ścieżek, surowych logów ani map; konto GitHub nie jest potrzebne. Nie podawaj w opisie danych osobowych.
+Gdy aplikacja oferuje wysłanie raportu pomocy do Terento, raport jest wysyłany tylko wtedy, gdy zdecydujesz się go wysłać po zapoznaniu się z jego treścią. Zawiera oczyszczone informacje o problemie używane także w raportach GitHub: wersje aplikacji i macOS, model i wariant zegarka, etap, który się nie powiódł, kategorię i komunikat błędu, dostawcę i region mapy oraz czasy, a także opcjonalny opis. Nie zawiera numerów seryjnych, Unit IDs, danych kont, lokalnych ścieżek, surowych logów ani map; konto GitHub nie jest potrzebne. Nie podawaj w opisie danych osobowych. Od wersji 1.2.3 wersja z Mac App Store proponuje to po nieudanej instalacji, dopóki nie udostępniasz wyników instalacji.
 
 Raporty pomocy służą wyłącznie do diagnozy zgłoszonego problemu, nie są używane w statystykach i są przechowywane przez 12 miesięcy. Dostęp ma administracja projektu, która widzi raport razem z diagnostyką tej samej instalacji lub aktualizacji, aby zbadać problem. Adres IP jest używany w pamięci serwera, aby ograniczyć ponowne wysyłanie; nie jest zapisywany z raportem ani w bazie danych i jest okresowo usuwany, także przy ponownym uruchomieniu serwera. Podstawą jest uzasadniony interes w odpowiedzi na zgłoszenie i utrzymaniu aplikacji, zgodnie z art. 6 ust. 1 lit. f RODO.
 
@@ -333,7 +333,7 @@ Zgodność może obejmować oczyszczoną nazwę modelu MTP, USB VID/PID, transpo
 
 Raporty mogą dodatkowo zawierać oryginalny opis modelu z XML (do 160 znaków) i kod produktu modelu (do 64 liter ASCII, cyfr lub łączników). Dane te określają model produktu, a nie pojedynczy zegarek. Pełne dokumenty XML, Unit ID i numery seryjne są wykluczone. Powiązania kodów modeli i poprawki administratora są przechowywane oddzielnie od oryginalnego raportu.
 
-Aktualizacja: 18 listopada 2026 r.
+Aktualizacja: 21 listopada 2026 r.
 
 # Soukromí
 
@@ -352,7 +352,7 @@ V aplikaci stažené z terento.app jsou dva proudy standardně zapnuté pro zlep
 
 Zprávy neobsahují Garmin Unit IDs, hodnoty sériových čísel, účty, místní cesty, mapy ani surové protokoly. Jednotlivé zprávy jsou soukromé; zveřejňují se jen ověřené souhrnné výsledky kompatibility. Základem jsou oprávněné zájmy na spolehlivosti a pokrytí zařízení podle čl. 6 odst. 1 písm. f GDPR.
 
-**Verze z Mac App Store.** Oba proudy jsou vypnuté, dokud se nerozhodnete sdílet. Po první úspěšné instalaci mapy se Terento jednou zeptá, zda chcete sdílet výsledky instalace s Terento; políčko není zaškrtnuté. Když ho zaškrtnete, zapnou se oba proudy a sdílí se i tato instalace. Volbu můžete kdykoli změnit v **Terento → Diagnostics**. U této verze je základem váš souhlas podle čl. 6 odst. 1 písm. a GDPR; jeho odvolání zastaví další sdílení a neovlivní to, co již bylo odesláno. Zprávy z této verze mají ve verzi aplikace označení App Store.
+**Verze z Mac App Store.** Oba proudy jsou vypnuté, dokud se nerozhodnete sdílet. Po úspěšné instalaci nebo aktualizaci mapy se Terento zeptá, zda chcete sdílet výsledky instalace s Terento; nic není předvybráno. **Share** zapne oba proudy a sdílí i tuto instalaci nebo aktualizaci; **Don't share** ponechá oba vypnuté. Po **Not now** se nic nesdílí a Terento se zeptá ještě jednou po další úspěšné instalaci nebo aktualizaci, pak už ne. Verze do 1.2.2 včetně se ptají jen po instalaci, nabízejí jen **Share** a **Not now** a **Not now** zaznamenají jako nesdílení. Volbu můžete kdykoli změnit v **Terento → Diagnostics**. U této verze je základem váš souhlas podle čl. 6 odst. 1 písm. a GDPR; jeho odvolání zastaví další sdílení a neovlivní to, co již bylo odesláno. Zprávy z této verze mají ve verzi aplikace označení App Store.
 
 ## Webový instalátor
 
@@ -388,7 +388,7 @@ GitHub issue je oddělené od automatické diagnostiky: sami jej zkontrolujete a
 
 ## Zprávy podpoře
 
-Pokud aplikace nabízí odeslání zprávy podpoře Terento, zpráva se odešle jen tehdy, když se tak rozhodnete po zobrazení jejího obsahu. Obsahuje očištěné údaje o problému, které se používají i pro hlášení na GitHubu: verze aplikace a macOS, model a variantu hodinek, neúspěšný krok, kategorii a zprávu chyby, poskytovatele a oblast mapy a časové údaje, spolu s volitelným popisem. Neobsahuje sériová čísla, Unit IDs, účty, místní cesty, surové protokoly ani mapy; účet na GitHubu není potřeba. Do popisu neuvádějte osobní údaje.
+Pokud aplikace nabízí odeslání zprávy podpoře Terento, zpráva se odešle jen tehdy, když se tak rozhodnete po zobrazení jejího obsahu. Obsahuje očištěné údaje o problému, které se používají i pro hlášení na GitHubu: verze aplikace a macOS, model a variantu hodinek, neúspěšný krok, kategorii a zprávu chyby, poskytovatele a oblast mapy a časové údaje, spolu s volitelným popisem. Neobsahuje sériová čísla, Unit IDs, účty, místní cesty, surové protokoly ani mapy; účet na GitHubu není potřeba. Do popisu neuvádějte osobní údaje. Od verze 1.2.3 to verze z Mac App Store nabízí po neúspěšné instalaci, dokud nesdílíte výsledky instalace.
 
 Zprávy podpoře slouží jen k diagnostice nahlášeného problému, nepoužívají se pro statistiky a uchovávají se 12 měsíců. Přístup má správa projektu, která vidí zprávu spolu s diagnostikou téže instalace nebo aktualizace, aby problém prošetřila. Vaše IP adresa se používá v paměti serveru k omezení opakovaného odesílání; neukládá se se zprávou ani do databáze a průběžně se maže, také při restartu serveru. Základem jsou oprávněné zájmy na vyřízení vašeho požadavku a údržbě aplikace podle čl. 6 odst. 1 písm. f GDPR.
 
@@ -416,7 +416,7 @@ Kompatibilita může zahrnovat očištěný název modelu MTP, USB VID/PID, tran
 
 Zprávy mohou navíc obsahovat původní popis modelu z XML (nejvýše 160 znaků) a produktový kód modelu (nejvýše 64 písmen ASCII, číslic nebo spojovníků). Tyto údaje označují model výrobku, nikoli jednotlivé hodinky. Celé dokumenty XML, Unit ID a sériová čísla jsou vyloučeny. Přiřazení kódů modelů a opravy správce se ukládají odděleně od původní zprávy.
 
-Aktualizováno: 18. listopadu 2026.
+Aktualizováno: 21. listopadu 2026.
 
 # Privacy
 
@@ -435,7 +435,7 @@ Nell’app scaricata da terento.app due flussi sono attivi per impostazione pred
 
 I rapporti escludono Garmin Unit IDs, valori dei numeri di serie, account, percorsi locali, mappe e log grezzi. I rapporti individuali sono privati; vengono pubblicati solo risultati aggregati di compatibilità verificati. La base è il legittimo interesse a migliorare affidabilità e copertura dei dispositivi, ai sensi dell’art. 6(1)(f) GDPR.
 
-**Versione Mac App Store.** Entrambi i flussi sono disattivati finché non scegli di condividere. Dopo la prima installazione di una mappa riuscita, Terento chiede una sola volta se condividere i risultati dell’installazione con Terento; la casella non è selezionata. Se la selezioni, entrambi i flussi vengono attivati e viene condivisa anche quell’installazione. Puoi cambiare la scelta in qualsiasi momento in **Terento → Diagnostics**. Per questa versione la base è il tuo consenso, ai sensi dell’art. 6(1)(a) GDPR; revocarlo interrompe gli invii futuri e non incide su quanto già inviato. I suoi rapporti riportano un’indicazione App Store nella versione dell’app.
+**Versione Mac App Store.** Entrambi i flussi sono disattivati finché non scegli di condividere. Dopo un’installazione o un aggiornamento di mappa riuscito, Terento chiede se condividere i risultati dell’installazione con Terento; nulla è preselezionato. **Share** attiva entrambi i flussi e condivide anche quell’installazione o quell’aggiornamento; **Don't share** li lascia disattivati. Dopo **Not now** non viene condiviso nulla e Terento lo chiede ancora una volta dopo la successiva installazione o aggiornamento riuscito, poi non più. Le versioni fino alla 1.2.2 inclusa lo chiedono solo dopo un’installazione, offrono solo **Share** e **Not now** e registrano **Not now** come rifiuto di condividere. Puoi cambiare la scelta in qualsiasi momento in **Terento → Diagnostics**. Per questa versione la base è il tuo consenso, ai sensi dell’art. 6(1)(a) GDPR; revocarlo interrompe gli invii futuri e non incide su quanto già inviato. I suoi rapporti riportano un’indicazione App Store nella versione dell’app.
 
 ## Installer web
 
@@ -471,7 +471,7 @@ Una issue GitHub è distinta dalla diagnostica automatica: la controlli e invii 
 
 ## Rapporti di assistenza
 
-Quando l’app offre di inviare un rapporto di assistenza a Terento, il rapporto viene inviato solo se scegli di inviarlo, dopo averne visto il contenuto. Contiene i dettagli ripuliti usati anche per le segnalazioni GitHub: versioni dell’app e di macOS, modello e variante dell’orologio, passaggio non riuscito, categoria e messaggio di errore, provider e regione della mappa e tempi, oltre all’eventuale descrizione che aggiungi. Esclude numeri di serie, Unit IDs, account, percorsi locali, log grezzi e mappe; non serve un account GitHub. Non inserire dati personali nella descrizione.
+Quando l’app offre di inviare un rapporto di assistenza a Terento, il rapporto viene inviato solo se scegli di inviarlo, dopo averne visto il contenuto. Contiene i dettagli ripuliti usati anche per le segnalazioni GitHub: versioni dell’app e di macOS, modello e variante dell’orologio, passaggio non riuscito, categoria e messaggio di errore, provider e regione della mappa e tempi, oltre all’eventuale descrizione che aggiungi. Esclude numeri di serie, Unit IDs, account, percorsi locali, log grezzi e mappe; non serve un account GitHub. Non inserire dati personali nella descrizione. Dalla versione 1.2.3 la versione Mac App Store lo propone dopo un’installazione non riuscita, finché non condividi i risultati dell’installazione.
 
 I rapporti di assistenza servono solo a diagnosticare il problema segnalato, non sono usati per statistiche e sono conservati per 12 mesi. L’accesso è riservato all’amministrazione del progetto, che vede un rapporto insieme alla diagnostica della stessa installazione o aggiornamento per indagare il problema. Il tuo indirizzo IP è usato nella memoria del server per limitare invii ripetuti; non viene salvato con il rapporto né nel database e viene cancellato periodicamente e al riavvio del server. La base è il legittimo interesse a rispondere alla tua richiesta e mantenere l’app, ai sensi dell’art. 6(1)(f) GDPR.
 
@@ -499,4 +499,4 @@ La compatibilità può includere un nome modello MTP ripulito, USB VID/PID, tras
 
 I rapporti possono includere anche la descrizione originale del modello XML (fino a 160 caratteri) e il codice prodotto del modello (fino a 64 lettere ASCII, cifre o trattini). Questi dati identificano un modello, non un singolo orologio. Sono esclusi documenti XML completi, Unit ID e numeri di serie. Le associazioni dei codici e le correzioni amministrative sono conservate separatamente dal rapporto originale.
 
-Aggiornamento: 18 novembre 2026.
+Aggiornamento: 21 novembre 2026.

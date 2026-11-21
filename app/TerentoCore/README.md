@@ -193,9 +193,10 @@ Remove reads the watch's file list before deleting in the bounded worker with
 the bound of the last map read (60 s plus 30 ms per object), so a watch that
 stopped answering ends Remove with the reconnect message instead of a silent
 wait; the read and the deletion safety checks are unchanged. After a complete
-installation, from the third one and once per app version (counted locally,
-`DonationPromptPolicy`), the GitHub (DMG) build shows one line on Maps
-installed: "Terento is free and open source. If it saved you time, you can
+installation, from the third successful map operation (a complete
+installation or a verified update; an update only counts) and once per app
+version (counted locally, `DonationPromptPolicy`), the GitHub (DMG) build shows
+one line on Maps installed: "Terento is free and open source. If it saved you time, you can
 support it. Donate ↗", the same link as About; nothing is sent, the donation
 unlocks nothing and App Store builds compile it out. A declined
 cleanup is not a cleanup failure: the result, the installation report and the
@@ -755,10 +756,15 @@ badge. The tier stays in the Compatibility API, Admin and diagnostics logs.
 The Done page has no subtitle after a complete installation (the title says it)
 and gives the next step from the install guides: eject it here, then unplug it,
 turn the new map on in the device's map settings, restart the device if it is
-not listed. In App Store builds the first successful installation also shows a
-"Share install results with Terento" callout under those steps with two equal
-buttons, Share and Not now; nothing is pre-selected and leaving the page
-without choosing records nothing, so it asks again after the next installation.
+not listed. In App Store builds a successful installation or verified update
+also shows a "Share install results with Terento" callout while no choice is
+recorded (under those steps, or above the Manage maps list after an update),
+with three equal buttons, Share, Not now and Don't share; nothing is
+pre-selected. Not now, or leaving the page, records no choice and the callout
+comes back once after the next successful operation, then never again. From the
+second successful operation, once per version and never after the same
+operation as the callout, the app asks macOS for the rating prompt
+(`AppStoreReviewPolicy`, Packaging/AppStore/README.md).
 A map from an unrecognized provider is named by its whole IMG header
 description (20 bytes at 0x49 joined with the 31-byte continuation at 0x65,
 decoded as UTF-8). Recognized providers keep their own parsing. For an

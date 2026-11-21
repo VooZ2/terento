@@ -4,10 +4,10 @@
 The macOS CI job builds the configuration and inspects the signed bundle
 (Packaging/AppStore/verify-app-store-build.sh). This test runs anywhere and
 checks the sources that decide that bundle: entitlements, Xcode settings,
-container migration manifests, that update, donation and support-report code
-is compiled out of the AppStore configuration but still present in the DMG
-configuration, and that the AppStore configuration sends other diagnostics only
-after an explicit opt-in.
+container migration manifests, that update and donation code is compiled out
+of the AppStore configuration but still present in the DMG configuration, and
+that the AppStore configuration sends diagnostics only after an explicit
+opt-in and a support report only when the person sends it after a failure.
 """
 
 from __future__ import annotations
@@ -53,10 +53,11 @@ NOT_MIGRATED = [
     "DeviceAssets",
     "support-report-unsent.json",
 ]
+# The App Store build sends a support report only when the person sends the
+# one shown after a failed installation, so the endpoint is not listed here.
 FORBIDDEN_IN_APP_STORE = [
     "updates/macos-arm64.json",
     "buymeacoffee",
-    "api.terento.app/support/reports",
 ]
 DMG_ONLY = {"RELEASE", "TERENTO_BUNDLED_MTP"}
 APP_STORE_ONLY = DMG_ONLY | {"TERENTO_APP_STORE"}
@@ -407,9 +408,10 @@ class AppStoreConfigurationContract(unittest.TestCase):
     def test_sharing_prompt_and_review_request_are_app_store_only(self) -> None:
         source = (SWIFT_SOURCES / "Views" / "ConnectScreen.swift").read_text(encoding="utf-8")
         app_store, dmg = active_source(source, APP_STORE_ONLY), active_source(source, DMG_ONLY)
-        for needle in ("InstallSharingCallout(onDecide: decideInstallSharing)", "requestReview()",
-                       '"Share install results with Terento"', 'SecondaryButton(title: "Share") { onDecide(true) }',
-                       'SecondaryButton(title: "Not now") { onDecide(false) }'):
+        for needle in ("InstallSharingCallout(onDecide: decideSharing)", "requestReview()",
+                       '"Share install results with Terento"', 'SecondaryButton(title: "Share") { onDecide(.share) }',
+                       'SecondaryButton(title: "Not now") { onDecide(.notNow) }',
+                       'SecondaryButton(title: "Don\'t share") { onDecide(.dontShare) }'):
             self.assertIn(needle, app_store)
             self.assertNotIn(needle, dmg)
         # A question on the Done page, not a dialog; nothing is pre-selected:
@@ -420,10 +422,40 @@ class AppStoreConfigurationContract(unittest.TestCase):
         callout = callout[:callout.index("private struct TerentoConfirmationDialog")]
         for forbidden in ("Toggle(", ".defaultAction", "PrimaryButton", "@State"):
             self.assertNotIn(forbidden, callout)
-        self.assertIn("evidenceController.decideConsent(share ? .accepted : .declined)", app_store)
-        self.assertIn("if mapStatisticsController.store.consent() == nil {\n            mapStatisticsController.decideConsent(share ? .accepted : .declined)", app_store)
-        self.assertIn("if share { evidenceController.shareOperation(evidenceOperationID) }", app_store)
-        self.assertIn("mayRequest: !asksAboutSharing", app_store)
+        # Not now records no sharing choice; Share and Don't share do, for both
+        # streams, and Share also queues the operation the question followed.
+        decide = app_store[app_store.index("private func decideSharing("):]
+        decide = decide[:decide.index("private var mainContent")]
+        self.assertLess(decide.index("guard decision != .notNow else { return }"),
+                        decide.index("evidenceController.decideConsent("))
+        self.assertIn("evidenceController.decideConsent(share ? .accepted : .declined)", decide)
+        self.assertIn("if mapStatisticsController.store.consent() == nil {\n            mapStatisticsController.decideConsent(share ? .accepted : .declined)", decide)
+        self.assertIn("if share { evidenceController.shareOperation(question.operationID) }", decide)
+        # One success, one prompt: the policy returns either the question or
+        # the rating request, and a completed installation and a verified
+        # update both go through it. A partial installation does not.
+        self.assertIn("case .sharingQuestion:\n            sharingQuestion = SharingQuestion(operationID: operationID, isUpdate: isUpdate)", app_store)
+        self.assertIn("case .review:\n            sharingQuestion = nil\n            requestReview()", app_store)
+        self.assertEqual(app_store.count("requestReview()"), 1)
+        self.assertIn("if hasPartialInstallation {\n                    sharingQuestion = nil\n                } else {\n                    handleSuccessfulOperation(operationID: evidenceOperationID, isUpdate: false)", app_store)
+        self.assertIn(".onChange(of: lifecycleViewModel.lastSuccessfulUpdate) { update in\n            #if TERENTO_APP_STORE\n            if let update { handleSuccessfulOperation(operationID: update.operationID, isUpdate: true) }", source)
+        # The definition and its two callers: installation and update.
+        self.assertEqual(app_store.count("handleSuccessfulOperation(operationID:"), 3)
+        # Only a verified update is published; a failed one never counts.
+        lifecycle = (SWIFT_SOURCES / "Installation" / "MapLifecycleViewModel.swift").read_text(encoding="utf-8")
+        self.assertEqual(lifecycle.count("lastSuccessfulUpdate = "), 1)
+        success = lifecycle[:lifecycle.index("lastSuccessfulUpdate = SuccessfulMapUpdate(operationID: mapStatisticsOperationID)")]
+        success = success[success.rindex("            if result.isSuccess {"):]
+        self.assertIn("action: .update,\n                    phase: .completed,", success)
+        self.assertIn('message: "The map was updated and verified."', success)
+        self.assertNotIn("} else {", success)
+        # After a failure the dialog offers this one report while results are
+        # not shared; sending it changes no sharing choice.
+        self.assertIn("return !evidenceController.compatibilitySharingEnabled", app_store)
+        self.assertIn("onSendSupportReport: offersInstallationSupportReport", source)
+        send = source[source.index("private func sendInstallationSupportReport("):]
+        send = send[:send.index("\n    }\n")]
+        self.assertNotIn("decideConsent", send)
         # An undecided App Store build shows both Diagnostics boxes unticked;
         # a same-value set from SwiftUI must not turn that into "declined".
         diagnostics = (SWIFT_SOURCES / "Views" / "DiagnosticsView.swift").read_text(encoding="utf-8")

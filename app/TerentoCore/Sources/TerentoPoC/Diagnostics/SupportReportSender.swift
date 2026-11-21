@@ -17,12 +17,6 @@ protocol SupportReportUploading: Sendable {
 }
 
 struct HTTPSupportReportUploader: SupportReportUploading {
-    #if TERENTO_APP_STORE
-    // App Store builds compile out diagnostics delivery (Packaging/AppStore/README.md).
-    func upload(_ payload: SupportReportPayload) async -> SupportReportUploadResult {
-        return .rejected(status: 0)
-    }
-    #else
     let endpoint: URL
     let session: URLSession
 
@@ -58,7 +52,6 @@ struct HTTPSupportReportUploader: SupportReportUploading {
         default: return .rejected(status: statusCode)
         }
     }
-    #endif
 }
 
 /// Unsent reports stay on this Mac (one file, private, writable while the
