@@ -21,6 +21,7 @@ APP_TOKENS_PATH = (
 CONNECT_SCREEN_PATH = ROOT / "app" / "TerentoCore" / "Sources" / "TerentoPoC" / "Views" / "ConnectScreen.swift"
 SITE_CSS_PATH = ROOT / "site" / "styles.css"
 ADMIN_SOURCE_PATH = ROOT / "backend" / "catalog-api" / "src" / "terento_catalog" / "admin.py"
+ADMIN_STYLESHEET_PATH = ROOT / "backend" / "catalog-api" / "src" / "terento_catalog" / "static" / "admin" / "admin.css"
 ADMIN_MODULE_PATH = ROOT / "backend" / "catalog-api" / "src" / "terento_catalog" / "admin_brand_tokens_generated.py"
 LOGO_PATH = ROOT / "brand" / "logo" / "logo.svg"
 HEX_RE = re.compile(r"#[0-9A-Fa-f]{3,8}\b")
@@ -127,11 +128,15 @@ def main() -> int:
             assert f"/site-shell.js?v={SHELL_VERSION}" in html, f"{html_path}: stale language-action shell version"
         assert not re.search(rf"/styles\.css\?v=(?!{re.escape(STYLE_VERSION)})[^\"\s]+", html), f"{html_path}: inconsistent stylesheet cache version"
 
-    admin_source = ADMIN_SOURCE_PATH.read_text(encoding="utf-8")
+    admin_python = ADMIN_SOURCE_PATH.read_text(encoding="utf-8")
+    admin_stylesheet = ADMIN_STYLESHEET_PATH.read_text(encoding="utf-8")
     admin_generated = load_generated_admin_css()
-    assert "from .admin_brand_tokens_generated import ADMIN_BRAND_TOKENS_CSS" in admin_source
-    assert 'ADMIN_STYLES = ADMIN_BRAND_TOKENS_CSS + """' in admin_source
-    assert not HEX_RE.search(admin_source), "admin.py contains a raw color literal"
+    assert "from .admin_brand_tokens_generated import ADMIN_BRAND_TOKENS_CSS" in admin_python
+    # The generated tokens come first, then the stylesheet file.
+    assert "ADMIN_STYLES = ADMIN_BRAND_TOKENS_CSS + " in admin_python and '"admin.css"' in admin_python
+    assert not HEX_RE.search(admin_python), "admin.py contains a raw color literal"
+    assert not HEX_RE.search(admin_stylesheet), "admin.css contains a raw color literal"
+    admin_source = admin_python + admin_stylesheet
     for variable in (
         "--status-neutral-surface", "--status-tested-surface", "--status-supported-surface",
         "--status-success-surface", "--status-error-surface", "--error-surface",
