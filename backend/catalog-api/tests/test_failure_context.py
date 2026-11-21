@@ -7,7 +7,7 @@ import unittest
 
 from jsonschema import Draft202012Validator
 from terento_catalog.compatibility_evidence import validate_event, EvidenceValidationError
-from terento_catalog.failure_context import CONTEXT_ENUMS, PROTECTION_ENUMS, COUNT_FIELDS, TARGET_FIELDS, BOUNDARIES, BOUNDARY_STAGES, AFFECTED_FOLDERS, DELTA_REASONS
+from terento_catalog.failure_context import CONTEXT_ENUMS, PROTECTION_ENUMS, COUNT_FIELDS, TARGET_FIELDS, BOUNDARIES, BOUNDARY_STAGES, AFFECTED_FOLDERS, DELTA_REASONS, INVENTORY_RULES, INVENTORY_SIDES
 from terento_catalog.admin import _github_issue_report, _diagnostic_technical_details
 from test_operation_diagnostic_delivery import IntakeDatabase
 from test_compatibility_evidence import event as legacy_event
@@ -378,6 +378,85 @@ class FailureContextTests(unittest.TestCase):
         _, report = _github_issue_report('Test watch', [row])
         self.assertIn('Failure affectedfolder: Metrics', report)
         self.assertIn('affectedFolder', _diagnostic_technical_details(row, 1))
+
+    def test_inventory_rule_names_the_broken_rule_and_side(self):
+        schema = self.schema.schema['$defs']['failureContext']['properties']['protection']['properties']
+        self.assertEqual(schema['inventoryRule']['enum'], list(INVENTORY_RULES))
+        self.assertEqual(schema['inventorySide']['enum'], list(INVENTORY_SIDES))
+        support = json.loads((ROOT / 'contracts/support-report.schema.json').read_text())
+        support_lists = []
+
+        def collect(node):
+            if isinstance(node, dict):
+                if 'affectedFolder' in node.get('properties', {}):
+                    support_lists.append((node['properties']['inventoryRule']['enum'],
+                                          node['properties']['inventorySide']['enum']))
+                for value in node.values():
+                    collect(value)
+            elif isinstance(node, list):
+                for value in node:
+                    collect(value)
+        collect(support)
+        self.assertEqual(support_lists, [(list(INVENTORY_RULES), list(INVENTORY_SIDES))])
+
+        def prewrite(**protection):
+            candidate = fixture()
+            candidate['failureStage'] = 'preflight'
+            candidate['failureContext'] = {
+                'boundary': 'prewrite_protection', 'classificationSource': 'derived', 'devicePresence': 'unknown',
+                'operation': 'protection_check', 'resultKind': 'protection_failed',
+                'protection': {'protectionBoundary': 'pre-write', 'protectionReason': 'inventory-ambiguous',
+                               'beforeObjectCount': 546, 'afterObjectCount': 546, 'targetPresent': False,
+                               'targetUnique': False, **protection},
+            }
+            return candidate
+
+        for rule in INVENTORY_RULES:
+            for side in INVENTORY_SIDES:
+                with self.subTest(rule=rule, side=side):
+                    if rule == 'unresolved-difference':
+                        self.check(prewrite(inventoryRule=rule))
+                        self.check(prewrite(inventoryRule=rule, inventorySide=side), False)
+                    else:
+                        self.check(prewrite(inventoryRule=rule, inventorySide=side))
+                        self.check(prewrite(inventoryRule=rule), False)
+        # A released client without the fields stays accepted.
+        self.check(prewrite())
+        for hostile in ('/GARMIN/Map/x.img', 'malformedLocation', '', None, 1, ['missing-ancestor']):
+            with self.subTest(hostile=hostile):
+                self.check(prewrite(inventoryRule=hostile, inventorySide='live'), False)
+                self.check(prewrite(inventoryRule='missing-ancestor', inventorySide=hostile), False)
+        self.check(prewrite(inventorySide='live'), False)
+        for reason in PROTECTION_ENUMS['protectionReason']:
+            if reason == 'inventory-ambiguous':
+                continue
+            with self.subTest(reason=reason):
+                candidate = prewrite(inventoryRule='missing-ancestor', inventorySide='baseline')
+                candidate['failureContext']['protection']['protectionReason'] = reason
+                for key in ('targetPresent', 'targetUnique'):
+                    candidate['failureContext']['protection'].pop(key)
+                self.check(candidate, False)
+        # Post-write inventories use the same names.
+        postwrite = fixture('cleanup')
+        postwrite['originalFailureContext']['protection'] = {
+            'protectionBoundary': 'post-write', 'protectionReason': 'inventory-ambiguous',
+            'inventoryRule': 'ambiguous-location', 'inventorySide': 'live'}
+        postwrite['originalFailureContext']['boundary'] = 'postwrite_protection'
+        self.check(postwrite)
+        # The app's closed enums send exactly these values, in this order.
+        swift = (ROOT / 'app/TerentoCore/Sources/TerentoPoC/Installation/InstallationTransportProtocols.swift').read_text()
+        rules = swift.split('enum InventoryRule', 1)[1].split('\n    }\n', 1)[0]
+        sides = swift.split('enum InventorySide', 1)[1].split('\n    }\n', 1)[0]
+        self.assertEqual(re.findall(r'= "([^"]+)"', rules), list(INVENTORY_RULES))
+        self.assertEqual(re.findall(r'= "([^"]+)"', sides), list(INVENTORY_SIDES))
+        candidate = prewrite(inventoryRule='missing-ancestor', inventorySide='baseline')
+        row = {'map_result_index': 0, 'failure_context': candidate['failureContext']}
+        _, report = _github_issue_report('Test watch', [row])
+        self.assertIn('Failure inventoryrule: missing-ancestor', report)
+        self.assertIn('Failure inventoryside: baseline', report)
+        details = _diagnostic_technical_details(row, 1)
+        self.assertIn('inventoryRule', details)
+        self.assertIn('missing-ancestor', details)
 
     def test_map_verify_native_code(self):
         # Next client: the native sampled read-back result after a complete

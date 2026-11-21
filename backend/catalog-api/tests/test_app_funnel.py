@@ -154,6 +154,22 @@ class FunnelStorageTests(PGliteTestCase):
             {"baseModel": "Venu X1", "outcome": "UNKNOWN_MODEL", "sessionCount": 1},
         ])
 
+    def test_reconnect_wait_outcomes_are_stored_and_counted(self):
+        session = str(uuid4())
+        for outcome in ("SHOWN", "TIMED_OUT", "SHOWN"):
+            self.store(sessionId=session, stage="RECONNECT_WAIT", outcome=outcome)
+        self.store(sessionId=str(uuid4()), stage="RECONNECT_WAIT", outcome="RESUMED")
+        counts = {(row["stage"], row["outcome"]): row["sessionCount"]
+                  for row in self.db.app_funnel_summary(None)["stages"]}
+        self.assertEqual(counts[("RECONNECT_WAIT", "SHOWN")], 1)
+        self.assertEqual(counts[("RECONNECT_WAIT", "TIMED_OUT")], 1)
+        self.assertEqual(counts[("RECONNECT_WAIT", "RESUMED")], 1)
+        # The database repeats the stage/outcome and placement rules.
+        with self.assertRaises(Exception):
+            self.sql("INSERT INTO app_funnel_event (event_id, session_id, occurred_at, app_build, release_label,"
+                     " stage, outcome) VALUES (%s, %s, now(), '50', '1.2.3', 'RECONNECT_WAIT', 'CONNECTED')",
+                     (str(uuid4()), str(uuid4())))
+
     def test_period_and_retention(self):
         now = self.sql("SELECT now() AS now")[0]["now"]
         old = (now - timedelta(days=10)).isoformat().replace("+00:00", "Z")

@@ -82,6 +82,7 @@ outcomes = {
     "CATALOG": {"REMOTE", "REMOTE_PARTIAL", "BUNDLED_FALLBACK", "UPDATE_REQUIRED"},
     "INSTALL_BLOCKED": {"AUTHORIZATION", "DEVICE_STORAGE", "MAC_STORAGE", "CATALOG_UNVERIFIED",
                         "LOCAL_CAPABILITY", "OTHER"},
+    "RECONNECT_WAIT": {"SHOWN", "RESUMED", "CANCELLED", "TIMED_OUT", "DIFFERENT_DEVICE"},
 }
 allowed = {"schemaVersion", "id", "sessionId", "occurredAt", "appBuild", "releaseLabel", "stage", "outcome",
            "baseModel", "droppedPackageCount"}

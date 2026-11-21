@@ -108,8 +108,16 @@ and workspace cleanup, and nothing has been written to the watch. Once the
 install step owns the device it is not cancellable: while it still prepares,
 Cancel stays visible but disabled with "Can’t cancel while the map is being
 prepared." After a failure in which
-nothing was written, validated provider artifacts are kept for 30 minutes,
-keyed by package and artifact with their SHA-256; Try again (offered for
+nothing was written, validated provider artifacts are kept for 6 hours of the
+app session (quitting removes them), keyed by package and artifact with their
+SHA-256. A device that disappears before any write (while the download runs,
+while Install waits for confirmation, or during the pre-write check) keeps the
+downloads validated so far the same way; a disconnect during or after a write
+keeps only what that operation kept. When the Mac lacks space for a new
+download, kept downloads of other maps are freed first. A pre-write read that
+finds no Garmin with file transfer any more (snapshot -2/-3, typically after a
+long download) says "Terento can no longer see your device." and offers the
+reconnect wait; Try again (offered for
 download, connection, pre-write check, write-start and authorization-check
 failures) keeps the selection, rereads the watch and reuses them instead of
 downloading again. Availability is rechecked and the coordinator revalidates
@@ -150,8 +158,10 @@ dialog then keeps the captured failure instead of the generic "Installation
 could not be completed safely.", and Report issue keeps its details. Try again
 and Manage maps still depend on the live state, so they are not offered after
 the disconnect. The
-wait never touches the watch, adds no telemetry, and the first stop stays
-reported as before. A disconnect keeps the downloads kept for Try again. Custom
+wait never touches the watch and the first stop stays reported as before;
+apps newer than 1.2.2 report the wait to the first-run funnel
+(`RECONNECT_WAIT`: `SHOWN` when it appears, then `RESUMED`, `CANCELLED`,
+`TIMED_OUT` or `DIFFERENT_DEVICE`), which changes nothing in the wait. A disconnect keeps the downloads kept for Try again. Custom
 imports are not kept across a disconnect and stop as before. Quitting removes retained
 artifacts. While maps are downloaded, prepared, written or verified, and during
 Update and Remove, the app holds a user-initiated activity that prevents idle
@@ -574,7 +584,11 @@ a download start without a received outcome is not proof of a failed download.
   again with the same id. Saved failures keep their structured fields in
   `failure-report.json` beside `failure-report.md`, so the Diagnostics and Help
   menu entry points send the full report; without one only `macOSVersion` and a
-  chosen category are sent. A failed read of the watch's maps ("Couldn't read your maps") saves
+  chosen category are sent, except "Connecting the device", which also sends
+  what this launch knows about the latest connection attempt
+  (`SupportConnectionFacts`, filled by `DeviceEngine`: `CONNECT_<funnel outcome>`,
+  native code, detection class, the watch as read, Garmin on USB, fixed names of
+  apps that can hold the device; apps newer than 1.2.2, existing fields only). A failed read of the watch's maps ("Couldn't read your maps") saves
   a `CONNECTION` report with the watch, `MAP_SCAN_FAILED`, the native code and
   the detection class; a map catalog that could not load saves none, and a
   refresh after an operation keeps that operation's report. `-local` builds are marked by `releaseLabel`. The
@@ -612,7 +626,7 @@ a download start without a received outcome is not proof of a failed download.
   "Bavaria") and multi-country maps ("Alps") are never recommended. It uses
   only the locale region; no location access, and nothing is sent.
 - **Resumed downloads.** A provider download that fails or is cancelled after at
-  least 1 MiB is kept for 30 minutes when the server advertised byte ranges with
+  least 1 MiB is kept for 6 hours (the retained-artifact lifetime) when the server advertised byte ranges with
   a strong validator (non-weak ETag or Last-Modified), sent no content encoding
   and did not redirect to another host. Try again sends `Range` and `If-Range`;
   a 200, changed validator, size or host, 416 or malformed range restarts from

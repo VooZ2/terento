@@ -40,7 +40,8 @@ require() {
     fi
 }
 require "$acquisition" 'let key = sourceProof == nil ? resumeKey : nil' 'BBBike source-proof downloads must not be resumed'
-require "$map_engine" 'nonisolated static let retainedArtifactLifetime: TimeInterval = 30 * 60' 'retained-artifact lifetime changed without the partial-download lifetime'
+require "$map_engine" 'nonisolated static let retainedArtifactLifetime: TimeInterval = 6 * 60 * 60' 'retained-artifact lifetime changed without the partial-download lifetime'
+require "$acquisition" 'static let lifetime: TimeInterval = 6 * 60 * 60' 'partial-download lifetime changed without the retained-artifact lifetime'
 require "$map_engine" 'MapDownloadResumeStore.shared.purgeAll()' 'quitting does not remove partial downloads'
 # Final validation stays on the completed file: the acquirer path is unchanged.
 require "$acquisition" 'validatedSource = try MapSourceValidator().validate(' 'final source validation is missing'

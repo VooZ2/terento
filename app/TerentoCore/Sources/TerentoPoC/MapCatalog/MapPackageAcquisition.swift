@@ -856,12 +856,12 @@ struct MapPartialDownload: Equatable, Sendable {
 }
 
 /// Partial downloads kept in memory for this app session, with the same
-/// 30-minute lifetime as retained validated artifacts. Files stay in the
+/// 6-hour lifetime as retained validated artifacts. Files stay in the
 /// temporary directory with the scavenged download prefix, so a crash leaves
 /// nothing behind after the next launch; quitting removes them.
 final class MapDownloadResumeStore: @unchecked Sendable {
     static let shared = MapDownloadResumeStore()
-    static let lifetime: TimeInterval = 30 * 60
+    static let lifetime: TimeInterval = 6 * 60 * 60
     /// Shorter downloads are cheaper to restart than to resume.
     static let minimumResumableBytes: UInt64 = 1024 * 1024
 

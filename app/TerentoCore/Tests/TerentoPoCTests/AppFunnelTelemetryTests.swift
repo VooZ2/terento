@@ -84,6 +84,9 @@ struct AppFunnelTelemetryTests {
         for reason in AppFunnelInstallBlockedReason.allCases {
             events.append(.installBlocked(reason, context: ctx))
         }
+        for outcome in AppFunnelReconnectWaitOutcome.allCases {
+            events.append(.reconnectWait(outcome, context: ctx))
+        }
         let encoder = AppFunnelEventEncoding.encoder()
         for event in events {
             let json = try JSONSerialization.jsonObject(with: encoder.encode(event)) as! [String: Any]

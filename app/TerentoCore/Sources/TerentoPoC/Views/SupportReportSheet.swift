@@ -155,22 +155,29 @@ struct SupportReportSheet: View {
 /// saved failure with its structured fields, or a minimal report the user
 /// describes.
 enum SupportReportSource {
+    /// `connectionReport` is what "Connecting the device" sends when no
+    /// failure was saved: the facts this launch already knows about the
+    /// latest connection attempt (`nil` when there are none).
     @MainActor
-    static func latest(outbox: SupportReportOutbox = SupportReportOutbox())
-        -> (payload: SupportReportPayload, allowsCategoryChoice: Bool, summary: String?) {
+    static func latest(outbox: SupportReportOutbox = SupportReportOutbox(),
+                       connectionFacts: SupportConnectionFacts? = nil)
+        -> (payload: SupportReportPayload, allowsCategoryChoice: Bool, summary: String?,
+            connectionReport: SupportReportBody?) {
         let saved = TerentoDiagnosticLog.latestSavedSupportReport()
+        let facts = connectionFacts ?? SupportConnectionFactsStore.latest
         // An unsent report is offered again first; its id is unchanged, so a
         // report that did arrive is not stored twice.
         if let unsent = outbox.load() {
             let matches = unsent.report == saved?.report && unsent.category == saved?.category
-            return (unsent, false, matches ? saved?.summaryLine : nil)
+            return (unsent, false, matches ? saved?.summaryLine : nil, nil)
         }
         if let saved {
             return (SupportReportPayload(category: saved.category, operationID: saved.operationID,
-                                         userMessage: nil, report: saved.report), false, saved.summaryLine)
+                                         userMessage: nil, report: saved.report), false, saved.summaryLine, nil)
         }
         return (SupportReportPayload(category: .other, operationID: nil, userMessage: nil,
-                                     report: .minimal()), true, SavedSupportReport.noSavedReportLine)
+                                     report: .minimal()), true, SavedSupportReport.noSavedReportLine,
+                facts.isEmpty ? nil : facts.reportBody())
     }
 }
 
@@ -182,7 +189,8 @@ struct SupportReportWindow: View {
     var body: some View {
         let source = SupportReportSource.latest()
         SupportReportSheet(controller: SupportReportController(payload: source.payload,
-                                                               allowsCategoryChoice: source.allowsCategoryChoice),
+                                                               allowsCategoryChoice: source.allowsCategoryChoice,
+                                                               connectionReport: source.connectionReport),
                            summary: source.summary,
                            padding: 28,
                            onClose: { dismiss() })

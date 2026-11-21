@@ -610,7 +610,11 @@ struct MapStatisticsEventTests {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
         let store = LocalMapStatisticsEventStore(rootURL: root)
-        let uploader = MapStatisticsUploadRecorder()
+        // The first upload is held until the queue has been checked: a
+        // main-actor hop during the detached recording may start sending, and
+        // a finished upload would remove events before the check (the timing
+        // flake of 1.2.2).
+        let uploader = GatedMapStatisticsUploader()
         let controller = MapStatisticsEventController(store: store, uploader: uploader, retryDelays: [0])
         let start = MapStatisticsEvent(operationId: UUID(), package: package,
             eventType: .downloadStarted, outcome: .unknown,
@@ -621,10 +625,14 @@ struct MapStatisticsEventTests {
         }.value
         expect(store.pendingEvents().map(\.id) == phases.map(\.id),
             "observer phases are durable and ordered before any main-actor hop")
-        for _ in 0..<100 where (await uploader.uploadedEvents()).count < 3 {
+        await waitForFirstResponse(uploader)
+        await uploader.releaseFirstResponse()
+        for _ in 0..<400 {
+            let attempted = await uploader.attemptedEvents()
+            if attempted.count >= 3 && store.pendingEvents().isEmpty { break }
             try? await Task.sleep(nanoseconds: 5_000_000)
         }
-        let uploaded = await uploader.uploadedEvents()
+        let uploaded = await uploader.attemptedEvents()
         expect(uploaded.map(\.id) == phases.map(\.id), "fast terminal is never dropped behind its start")
     }
 

@@ -1773,6 +1773,22 @@
                 "outside-garmin"
               ]
             },
+            "inventoryRule": {
+              "enum": [
+                "malformed-location",
+                "ambiguous-handle",
+                "ambiguous-location",
+                "missing-ancestor",
+                "ancestor-not-directory",
+                "unresolved-difference"
+              ]
+            },
+            "inventorySide": {
+              "enum": [
+                "baseline",
+                "live"
+              ]
+            },
             "targetPresent": {
               "type": [
                 "boolean",
@@ -1933,6 +1949,63 @@
                       "preexisting-object-changed"
                     ]
                   }
+                }
+              }
+            },
+            {
+              "if": {
+                "required": [
+                  "inventoryRule"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "protectionReason": {
+                    "const": "inventory-ambiguous"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "required": [
+                  "inventorySide"
+                ]
+              },
+              "then": {
+                "required": [
+                  "inventoryRule"
+                ]
+              }
+            },
+            {
+              "if": {
+                "required": [
+                  "inventoryRule"
+                ],
+                "properties": {
+                  "inventoryRule": {
+                    "const": "unresolved-difference"
+                  }
+                }
+              },
+              "then": {
+                "not": {
+                  "required": [
+                    "inventorySide"
+                  ]
+                }
+              },
+              "else": {
+                "if": {
+                  "required": [
+                    "inventoryRule"
+                  ]
+                },
+                "then": {
+                  "required": [
+                    "inventorySide"
+                  ]
                 }
               }
             }

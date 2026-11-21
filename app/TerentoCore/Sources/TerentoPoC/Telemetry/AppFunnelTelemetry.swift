@@ -12,6 +12,7 @@ enum AppFunnelStage: String, Codable, CaseIterable, Sendable {
     case authorization = "AUTHORIZATION"
     case catalog = "CATALOG"
     case installBlocked = "INSTALL_BLOCKED"
+    case reconnectWait = "RECONNECT_WAIT"
 }
 
 /// Case names match `DeviceConnectOutcome` of the connect classifier so the
@@ -32,6 +33,16 @@ enum AppFunnelDeviceConnectOutcome: String, CaseIterable, Sendable {
         guard let match = Self.allCases.first(where: { "\($0)" == name }) else { return nil }
         self = match
     }
+}
+
+/// The "Reconnect your device" wait after a stop before any write: shown,
+/// then how it ended (`WatchReconnectWaitPolicy`). Apps newer than 1.2.2.
+enum AppFunnelReconnectWaitOutcome: String, CaseIterable, Sendable {
+    case shown = "SHOWN"
+    case resumed = "RESUMED"
+    case cancelled = "CANCELLED"
+    case timedOut = "TIMED_OUT"
+    case differentDevice = "DIFFERENT_DEVICE"
 }
 
 enum AppFunnelAuthorizationOutcome: String, CaseIterable, Sendable {
@@ -197,6 +208,12 @@ struct AppFunnelEvent: Codable, Equatable, Identifiable, Sendable {
     static func installBlocked(_ reason: AppFunnelInstallBlockedReason,
                                context: AppFunnelEventContext) -> Self {
         Self(stage: .installBlocked, outcome: reason.rawValue, baseModel: nil,
+             droppedPackageCount: nil, context: context)
+    }
+
+    static func reconnectWait(_ outcome: AppFunnelReconnectWaitOutcome,
+                              context: AppFunnelEventContext) -> Self {
+        Self(stage: .reconnectWait, outcome: outcome.rawValue, baseModel: nil,
              droppedPackageCount: nil, context: context)
     }
 
@@ -469,6 +486,10 @@ final class AppFunnelTelemetryController {
 
     func recordInstallBlocked(_ reason: AppFunnelInstallBlockedReason) {
         record(.installBlocked(reason, context: context))
+    }
+
+    func recordReconnectWait(_ outcome: AppFunnelReconnectWaitOutcome) {
+        record(.reconnectWait(outcome, context: context))
     }
 
     /// Called when device-compatibility reporting is turned off.

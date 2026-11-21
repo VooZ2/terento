@@ -1,5 +1,27 @@
 # App–API compatibility and release contract
 
+## 1.2.3 server-first acceptance
+
+Not deployed yet. Deploy and verify this API before any client that sends it
+is published; the 1.2.3 app is the first client that does. It adds:
+
+- the optional protection fields `inventoryRule` and `inventorySide`, only
+  with `inventory-ambiguous` ([shared contract](README.md#structured-installation-failure-context)):
+  which inventory coherence rule rejected the comparison and on which side.
+  Released clients through 1.2.2 never send them, so an `inventory-ambiguous`
+  stop with unavailable counts cannot say which rule broke;
+- the app funnel stage `RECONNECT_WAIT` (`SHOWN`, `RESUMED`, `CANCELLED`,
+  `TIMED_OUT`, `DIFFERENT_DEVICE`; [funnel contract](APP_FUNNEL_CONTRACT.md)),
+  stored after migration 096, which only widens the stage and outcome checks.
+  Released clients through 1.2.2 report nothing about the reconnect wait.
+
+The 1.2.2 API rejects both with `400`. A rejected installation report or
+funnel event is parked on the Mac and offered again only within the limits of
+"Rejected telemetry parking" (three times per build, ten times overall), so it
+can be lost if this API is not deployed first. The 1.2.3 connection facts in a
+Help-menu `CONNECTION` support report use only existing report fields, so they
+need no API change. No route or other payload changes.
+
 ## Stable release 1.2.2 build 49 — published
 
 Published on 2026-11-20 from GitHub-verified source

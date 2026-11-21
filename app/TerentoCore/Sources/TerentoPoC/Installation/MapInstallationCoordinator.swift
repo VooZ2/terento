@@ -1208,6 +1208,18 @@ struct MapInstallationCoordinator: Sendable {
         )
     }
 
+    /// The diagnostic name of a broken inventory coherence rule; never a path.
+    private static func inventoryRule(of error: Error) -> InstallationProtectionContext.InventoryRule? {
+        switch error as? ProtectedMapInventory.Invalid {
+        case .malformedLocation?: return .malformedLocation
+        case .ambiguousLocation?: return .ambiguousLocation
+        case .ambiguousHandle?: return .ambiguousHandle
+        case .missingAncestor?: return .missingAncestor
+        case .ancestorIsNotDirectory?: return .ancestorIsNotDirectory
+        case nil: return nil
+        }
+    }
+
     /// Observations of an already rejected inventory. This helper never authorizes
     /// a write, changes comparison results, or supplies a cleanup identity.
     private static func protectionContext(
@@ -1218,8 +1230,21 @@ struct MapInstallationCoordinator: Sendable {
         func bounded(_ count: Int) -> Int? { (0...16384).contains(count) ? count : nil }
         let candidates = after.filter { $0.path == targetPath }
         let target = candidates.count == 1 ? candidates.first : nil
-        let baseline = try? ProtectedMapInventory(files: before)
-        let current = baseline.flatMap { try? ProtectedMapInventory(files: after, forcedLocations: $0.protectedLocations) }
+        // Which coherence rule broke, and on which side, is recorded only as
+        // a closed rule name (`InventoryRule`), never as a path.
+        var brokenRule: (rule: InstallationProtectionContext.InventoryRule, side: InstallationProtectionContext.InventorySide)?
+        let baseline: ProtectedMapInventory?
+        do { baseline = try ProtectedMapInventory(files: before) } catch {
+            baseline = nil
+            brokenRule = Self.inventoryRule(of: error).map { ($0, .baseline) }
+        }
+        var current: ProtectedMapInventory?
+        if let baseline {
+            do { current = try ProtectedMapInventory(files: after, forcedLocations: baseline.protectedLocations) } catch {
+                current = nil
+                brokenRule = Self.inventoryRule(of: error).map { ($0, .live) }
+            }
+        }
         let beforeLocations = baseline?.protectedLocations ?? []
         let afterLocations = current?.protectedLocations ?? []
         let protectedBefore = before.filter { beforeLocations.contains(.init(storageID: $0.storageID, path: $0.path)) }
@@ -1266,6 +1291,9 @@ struct MapInstallationCoordinator: Sendable {
         let affectedFolder = deciding
             .flatMap(InstallationProtectionContext.AffectedFolder.decidingObject(in:))
             .map(InstallationProtectionContext.AffectedFolder.init(file:))
+        let inventoryRule: InstallationProtectionContext.InventoryRule? = reason == .inventoryAmbiguous
+            ? (brokenRule?.rule ?? .unresolvedDifference) : nil
+        let inventorySide = reason == .inventoryAmbiguous ? brokenRule?.side : nil
         return InstallationFailureContext(
             boundary: prewrite ? .prewriteProtection : (targetValidation ? .targetValidation : .postwriteProtection),
             classificationSource: .derived, devicePresence: .unknown,
@@ -1277,6 +1305,7 @@ struct MapInstallationCoordinator: Sendable {
                 addedObjectCount: added.flatMap(bounded), removedObjectCount: removed.flatMap(bounded),
                 changedObjectCount: changed.flatMap(bounded),
                 affectedFolder: affectedFolder,
+                inventoryRule: inventoryRule, inventorySide: inventorySide,
                 targetPresent: !candidates.isEmpty, targetUnique: candidates.count == 1,
                 targetKindMatches: target.map { !$0.isFolder },
                 targetFilenameMatches: target.map { $0.filename == targetFilename },
