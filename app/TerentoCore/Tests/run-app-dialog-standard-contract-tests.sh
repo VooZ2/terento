@@ -51,7 +51,8 @@ assert '.keyboardShortcut' not in destructive, 'a destructive dialog binds Retur
 metrics = everything[everything.index('enum TerentoDialogMetrics'):]
 metrics = metrics[:metrics.index('\n}\n')]
 for needle in ['iconSize: CGFloat = 20', 'iconCircle: CGFloat = 36', 'iconTintOpacity: Double = 0.12',
-               'titleSize: CGFloat = 20', 'bodySize: CGFloat = 14', 'supportingSize: CGFloat = 13',
+               'titleRole: TerentoTypography.Role = .lede', 'bodyRole: TerentoTypography.Role = .meta',
+               'supportingRole: TerentoTypography.Role = .meta',
                'padding: CGFloat = 24', 'width: CGFloat = 440', 'wideWidth: CGFloat = 560',
                'buttonHeight: CGFloat = 40', 'buttonGap: CGFloat = 8',
                'sheetRadius: CGFloat = TerentoGeneratedTokens.Radius.large',

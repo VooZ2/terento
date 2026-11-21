@@ -29,7 +29,7 @@ architecture, safety, documentation, and delivery.
 The current native macOS experience is intentionally calm and outcome-first.
 Preserve the existing SwiftUI structure and workflow:
 
-- sidebar navigation: `Device`, `Install maps`, `Manage maps`;
+- sidebar navigation: `Your Garmin`, `Install maps`, `Manage maps`;
 - one complete About window via `Terento → About Terento`;
 - the current connect, install, manage, update, troubleshooting, and About
   journeys;
@@ -80,9 +80,21 @@ any change to their boundaries requires its own UI/UX and safety decision.
 - Keep the locked brand palette: Sky `#7898A8`, Lichen `#9AA58B`, Warm Stone
   `#B39A78`, Off-White `#F7F3EC`, and Graphite `#222A2B`. Warm Stone is not a
   primary CTA color; surfaces should remain neutral.
-- Keep the current Instrument Sans / Inter / JetBrains Mono roles. Changing
-  app font loading or replacing the established font system needs a separate
-  reviewed task.
+- Keep the current Instrument Sans / Inter / JetBrains Mono roles. Inter and
+  Instrument Sans ship in the app (`Resources/Fonts`, OFL licence files beside
+  them) and `TerentoBundledFonts.register()` registers them at launch.
+  Replacing the font system needs a separate reviewed task.
+- Text uses only the `TerentoTypography` roles (owner decision 2026-11-22):
+  `pageTitle` 42 heading semibold, `deviceName` 28 heading semibold, `lede` 19
+  body medium, `rowTitle` 16 UI semibold, `meta` 14 UI medium (all secondary
+  text and buttons), `caption` 12 UI medium (smallest notes and badges). A role
+  may change weight for emphasis, never size. The sidebar wordmark is part of
+  the logo lockup. `run-app-typography-tests.sh` fails on any other text size;
+  SF Symbol sizes are icon metrics and stay as they are. This native scale is
+  narrower than the website scale in `brand/DESIGN_TOKENS.json` on purpose.
+- Map rows: line 1 title, line 2 metadata, line 3 only for a blocked or
+  warning message (meta semibold, the row status colour). Never append a status
+  to the metadata line.
 - Preserve `.preferredColorScheme(.light)`. Do not add partial dark-mode
   support, isolated system-appearance overrides, or appearance-dependent
   styling.

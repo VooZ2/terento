@@ -150,9 +150,9 @@ fi
 
 if ! grep -Fq 'TerentoInstallMapsVerticalLayout' "$connect_screen" \
     || ! grep -Fq 'mapRegion:' "$connect_screen" \
-    || ! grep -Fq 'storageRegion:' "$connect_screen" \
+    || grep -Fq 'storageRegion:' "$connect_screen" \
     || ! grep -Fq 'TerentoBoundedMapSelectionRegion' "$connect_screen" \
-    || ! grep -Fq 'storageFooterSpacing' "$connect_screen" \
+    || ! grep -Fq 'MapSelectionStorageLine(' "$connect_screen" \
     || ! grep -Fq 'height: listHeight' "$connect_screen" \
     || grep -Fq 'TerentoFlexibleScrollRegion' "$connect_screen" \
     || grep -Fq 'No supported maps installed' "$connect_screen" \
@@ -160,7 +160,7 @@ if ! grep -Fq 'TerentoInstallMapsVerticalLayout' "$connect_screen" \
     || ! grep -Fq 'Available maps list' "$connect_screen" \
     || ! grep -Fq '0 maps selected' "$connect_screen" \
     || ! grep -Fq 'maxHeight: .infinity, alignment: .topLeading' "$connect_screen"; then
-    print -u2 "FAIL: Choose screen is not using the bounded three-region map layout"
+    print -u2 "FAIL: Choose screen is not using the bounded map layout with Storage on the footer row"
     exit 1
 fi
 

@@ -7,7 +7,7 @@ struct Stage7NavigationTests {
         let destinations = TerentoSection.allCases.map(\.rawValue)
 
         expect(
-            destinations == ["Device", "Install maps", "Manage maps"],
+            destinations == ["Your Garmin", "Install maps", "Manage maps"],
             "sidebar exposes only the three direct product destinations; About belongs to the app menu"
         )
         expect(

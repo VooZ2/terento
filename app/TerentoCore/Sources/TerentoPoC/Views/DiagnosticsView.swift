@@ -37,11 +37,11 @@ struct DiagnosticsView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Diagnostics")
-                            .font(.terentoHeading(size: 30, weight: .semibold))
+                            .font(.terento(.deviceName))
                             .foregroundStyle(TerentoColors.graphite)
 
                         Text("Privacy-minimized diagnostics help improve the Terento app and its services.")
-                            .font(.terentoBody(size: 13, weight: .regular))
+                            .font(.terento(.meta, weight: .regular))
                             .foregroundStyle(TerentoColors.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -55,16 +55,16 @@ struct DiagnosticsView: View {
                                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                                     Text([compatibility.displayName, identity.screenTechnology]
                                         .compactMap { $0 }.joined(separator: ", "))
-                                        .font(.terentoUI(size: 13, weight: .semibold))
+                                        .font(.terento(.meta, weight: .semibold))
                                         .foregroundStyle(TerentoColors.graphite)
                                     Label("Connected", systemImage: "checkmark.circle.fill")
-                                        .font(.terentoUI(size: 13, weight: .medium))
+                                        .font(.terento(.meta))
                                         .foregroundStyle(TerentoColors.lichenDark)
                                 }
                                 DisclosureGroup("Technical details") {
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text("Connected device identity")
-                                            .font(.terentoUI(size: 13, weight: .semibold))
+                                            .font(.terento(.meta, weight: .semibold))
                                         Text("MTP model: \(identity.model)")
                                         Text("XML model: \(identity.garminModelDescription ?? "Unavailable")")
                                         Text("XML part number: \(identity.garminModelPartNumber ?? "Unavailable")")
@@ -80,12 +80,12 @@ struct DiagnosticsView: View {
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .padding(.top, 6)
                                 }
-                                .font(.terentoUI(size: 13, weight: .regular))
+                                .font(.terento(.meta, weight: .regular))
                                 .foregroundStyle(TerentoColors.graphite)
                                 .textSelection(.enabled)
                             } else {
                                 Text("Connect your device to view its model information.")
-                                    .font(.terentoUI(size: 13, weight: .regular))
+                                    .font(.terento(.meta, weight: .regular))
                             }
                         }
                     }
@@ -106,12 +106,12 @@ struct DiagnosticsView: View {
                         #if TERENTO_APP_STORE
                         // App Store builds share only after an opt-in.
                         Text("Both are off until you turn them on. Turning one off also deletes what is waiting to be sent.")
-                            .font(.terentoUI(size: 12, weight: .regular))
+                            .font(.terento(.caption, weight: .regular))
                             .foregroundStyle(TerentoColors.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
                         #else
                         Text("Both are on by default. Turning one off also deletes what is waiting to be sent.")
-                            .font(.terentoUI(size: 12, weight: .regular))
+                            .font(.terento(.caption, weight: .regular))
                             .foregroundStyle(TerentoColors.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
                         #endif
@@ -122,19 +122,19 @@ struct DiagnosticsView: View {
                                 Text("Map usage diagnostics: provider, map, region, event type, outcome, operation ID, timestamp, and app build. These events never include device identity or local file information.")
                                 Text("Custom IMG installations are sent only as compatibility diagnostics, never as map usage diagnostics.")
                             }
-                            .font(.terentoUI(size: 12, weight: .regular))
+                            .font(.terento(.caption, weight: .regular))
                             .foregroundStyle(TerentoColors.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.top, 6)
                         }
-                        .font(.terentoUI(size: 13, weight: .semibold))
+                        .font(.terento(.meta, weight: .semibold))
                         .foregroundStyle(TerentoColors.graphite)
                     }
 
                     diagnosticsSection(title: "Problem with a map?") {
                         Text("If an install, update or removal failed, send us the saved report.")
-                            .font(.terentoUI(size: 13, weight: .regular))
+                            .font(.terento(.meta, weight: .regular))
                             .foregroundStyle(TerentoColors.graphite)
                             .fixedSize(horizontal: false, vertical: true)
 
@@ -142,7 +142,7 @@ struct DiagnosticsView: View {
                         // App Store builds compile out sending reports to Terento.
                         DiagnosticsActionButton(title: "Report on GitHub (public)", action: reportOnGitHub)
                         Text(Self.gitHubTip)
-                            .font(.terentoUI(size: 12, weight: .regular))
+                            .font(.terento(.caption, weight: .regular))
                             .foregroundStyle(TerentoColors.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
                         #else
@@ -154,10 +154,10 @@ struct DiagnosticsView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Button("Report on GitHub (public)", action: reportOnGitHub)
                                     .buttonStyle(.plain)
-                                    .font(.terentoUI(size: 13, weight: .semibold))
+                                    .font(.terento(.meta, weight: .semibold))
                                     .foregroundStyle(TerentoColors.interactive)
                                 Text(Self.gitHubTip)
-                                    .font(.terentoUI(size: 12, weight: .regular))
+                                    .font(.terento(.caption, weight: .regular))
                                     .foregroundStyle(TerentoColors.secondaryText)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
@@ -167,7 +167,7 @@ struct DiagnosticsView: View {
 
                         if let failureReportMessage {
                             Text(failureReportMessage)
-                                .font(.terentoUI(size: 13, weight: .regular))
+                                .font(.terento(.meta, weight: .regular))
                                 .foregroundStyle(TerentoColors.secondaryText)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
@@ -179,12 +179,12 @@ struct DiagnosticsView: View {
                             if pendingCount > 0 {
                                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                                     Text(pendingSummary)
-                                        .font(.terentoUI(size: 13, weight: .medium))
+                                        .font(.terento(.meta))
                                         .foregroundStyle(TerentoColors.graphite)
                                     Text("·").foregroundStyle(TerentoColors.secondaryText)
                                     Button(isSending ? "Sending…" : "Send now", action: sendDiagnostics)
                                         .buttonStyle(.plain)
-                                        .font(.terentoUI(size: 13, weight: .semibold))
+                                        .font(.terento(.meta, weight: .semibold))
                                         .foregroundStyle(TerentoColors.interactive)
                                         .disabled(pendingCount == 0 || isSending)
                                 }
@@ -192,7 +192,7 @@ struct DiagnosticsView: View {
 
                             if let actionMessage {
                                 Text(actionMessage)
-                                    .font(.terentoUI(size: 13, weight: .regular))
+                                    .font(.terento(.meta, weight: .regular))
                                     .foregroundStyle(TerentoColors.secondaryText)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
@@ -228,9 +228,9 @@ struct DiagnosticsView: View {
         Toggle(isOn: isOn) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.terentoUI(size: 13, weight: .semibold))
+                    .font(.terento(.meta, weight: .semibold))
                 Text(detail)
-                    .font(.terentoUI(size: 12, weight: .regular))
+                    .font(.terento(.caption, weight: .regular))
                     .foregroundStyle(TerentoColors.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -285,7 +285,7 @@ struct DiagnosticsView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
-                .font(.terentoUI(size: 18, weight: .semibold))
+                .font(.terento(.rowTitle))
                 .foregroundStyle(TerentoColors.graphite)
             content()
         }
@@ -302,7 +302,7 @@ private struct DiagnosticsActionButton: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.terentoUI(size: 15, weight: .semibold))
+                .font(.terento(.meta, weight: .semibold))
                 .foregroundStyle(isEnabled ? .white : TerentoColors.secondaryText)
                 .padding(.horizontal, 16)
                 .frame(height: 44)

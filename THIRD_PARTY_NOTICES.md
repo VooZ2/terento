@@ -1,6 +1,6 @@
 # Third-party notices
 
-Terento currently bundles the following web fonts for the public landing page. They remain under their upstream licenses; the Terento source code is licensed under GPL-3.0-or-later.
+Terento currently bundles the following fonts for the public website and the macOS app. They remain under their upstream licenses; the Terento source code is licensed under GPL-3.0-or-later.
 
 ## Instrument Sans
 
@@ -11,6 +11,11 @@ Terento currently bundles the following web fonts for the public landing page. T
 - License: SIL Open Font License 1.1
 - License notice: `site/assets/fonts/Instrument-Sans-OFL.txt`
 - Use: Terento brand and marketing headings
+- macOS app files: `app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/InstrumentSans-Regular.ttf`
+  and `InstrumentSans-SemiBold.ttf`, static instances (width 100, weight 400
+  and 600) made with fontTools from the same `instrument-sans.woff2`; no glyph
+  changes. No Reserved Font Name is declared.
+- macOS app license file: `app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Instrument-Sans-OFL.txt`
 
 ## Inter
 
@@ -22,6 +27,11 @@ Terento currently bundles the following web fonts for the public landing page. T
 - License notice: the upstream SIL Open Font License 1.1 applies; no separate
   copied license file is present in `site/assets/fonts/`
 - Use: body copy and UI text
+- macOS app files: `app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Inter-Regular.ttf`,
+  `Inter-Medium.ttf` and `Inter-SemiBold.ttf`, unmodified from `extras/ttf/`
+  in the upstream release archive `Inter-4.1.zip`
+- macOS app license file: `app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Inter-OFL.txt`
+  (upstream `LICENSE.txt`)
 
 ## Umami analytics
 

@@ -15,9 +15,25 @@ if ! grep -Fq '@State private var customMapImportExpanded = false' "$connect_scr
     exit 1
 fi
 
-if [[ "$panel_content" != *'Text("Import a map from Mac")'* \
+maps_header="$(awk '
+    /private var mapsContent/ { capture = 1 }
+    /} mapRegion: \{/ { capture = 0 }
+    capture { print }
+' "$connect_screen")"
+catalog_region="$(awk '
+    /private var catalogMapRegion/ { capture = 1 }
+    /private var availableCatalogList/ { capture = 0 }
+    capture { print }
+' "$connect_screen")"
+
+# "Import from Mac" is a header button next to Refresh; the panel appears
+# under the list only while it is on, so a collapsed list keeps its room.
+if [[ "$maps_header" != *'SecondaryButton(title: "Import from Mac")'* \
+    || "$maps_header" != *'customMapImportExpanded.toggle()'* \
+    || "$maps_header" != *'Label("Refresh", systemImage: "arrow.clockwise")'* \
+    || "$catalog_region" != *'if !customMapImportExpanded {'* \
+    || "$panel_content" == *'Text("Import a map from Mac")'* \
     || "$panel_content" != *'Install a third-party map (.img) from this Mac.'* \
-    || "$panel_content" != *'customMapImportExpanded.toggle()'* \
     || "$panel_content" != *'customMapDropZone'* \
     || "$panel_content" != *'isShowingCustomMapImporter = true'* \
     || "$panel_content" != *'Processed locally on your Mac. Not sent to Terento servers.'* ]]; then
@@ -61,7 +77,7 @@ if grep -Fq 'Review custom map risk' "$connect_screen" \
     exit 1
 fi
 
-print "PASS: custom map import UX is collapsed by default with compact local controls"
+print "PASS: custom map import opens from the Install maps header and is collapsed by default"
 print "PASS: custom map import keeps Browse, drag-and-drop, and .img picker boundaries"
 print "PASS: imported-map confirmation keeps local warning, safe basename, and action wiring"
 print "PASS: Stage 2C custom map import UX contract"

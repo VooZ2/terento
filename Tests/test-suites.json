@@ -48,6 +48,7 @@
     "app/TerentoCore/Tests/run-app-first-map-guidance-tests.sh",
     "app/TerentoCore/Tests/run-app-support-report-tests.sh",
     "Tests/run-app-store-config-contract-tests.sh",
+    "app/TerentoCore/Tests/run-app-typography-tests.sh",
     "app/TerentoCore/Tests/run-app-dialog-standard-contract-tests.sh"
   ],
   "native": [

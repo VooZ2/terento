@@ -609,7 +609,7 @@ struct ConnectScreen: View {
         TerentoInstallationProgressPageShell {
             VStack(alignment: .leading, spacing: 0) {
                 Text("Installing maps")
-                    .font(.terentoHeading(size: 42, weight: .semibold))
+                    .font(.terento(.pageTitle))
                     .foregroundStyle(TerentoColors.graphite)
 
                 WatchReconnectWaitPanel(
@@ -995,14 +995,14 @@ struct ConnectScreen: View {
             }
 
             Text(connectionStatusTitle)
-                .font(.terentoHeading(size: 42, weight: .semibold))
+                .font(.terento(.pageTitle))
                 .foregroundStyle(TerentoColors.graphite)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .center)
 
             Text(connectionStatusDescription)
-                .font(.terentoBody(size: 19, weight: .medium))
+                .font(.terento(.lede))
                 .foregroundStyle(TerentoColors.secondaryText)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
@@ -1122,7 +1122,7 @@ struct ConnectScreen: View {
         VStack(alignment: .leading, spacing: 7) {
             VStack(alignment: .leading, spacing: 7) {
                 Text(heading)
-                    .font(.terentoUI(size: 13, weight: .semibold))
+                    .font(.terento(.meta, weight: .semibold))
                     .foregroundStyle(TerentoColors.graphite)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.bottom, 2)
@@ -1138,7 +1138,7 @@ struct ConnectScreen: View {
             }
 
             Text(note)
-                .font(.terentoUI(size: 12, weight: .medium))
+                .font(.terento(.caption))
                 .foregroundStyle(TerentoColors.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 2)
@@ -1227,7 +1227,7 @@ struct ConnectScreen: View {
                 .accessibilityHidden(true)
 
             Text(text)
-                .font(.terentoUI(size: 13, weight: .medium))
+                .font(.terento(.meta))
                 .foregroundStyle(TerentoColors.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -1348,7 +1348,7 @@ struct ConnectScreen: View {
                     .foregroundStyle(TerentoColors.interactive)
                 }
             }
-            .font(.terentoUI(size: 12, weight: .medium))
+            .font(.terento(.caption))
         }
         .padding(.bottom, 4)
         .accessibilityElement(children: .contain)
@@ -1372,7 +1372,7 @@ struct ConnectScreen: View {
                         refreshMapInventory()
                     } label: {
                         Label("Refresh", systemImage: "arrow.clockwise")
-                            .font(.terentoUI(size: 13, weight: .medium))
+                            .font(.terento(.meta))
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(TerentoColors.secondaryText)
@@ -1390,7 +1390,7 @@ struct ConnectScreen: View {
                 if let notice = lifecycleViewModel.removalNotice {
                     Label {
                         Text(notice)
-                            .font(.terentoUI(size: 13, weight: .medium))
+                            .font(.terento(.meta))
                             .foregroundStyle(TerentoColors.secondaryText)
                     } icon: {
                         Image(systemName: "checkmark.circle.fill")
@@ -1632,11 +1632,11 @@ struct ConnectScreen: View {
             HStack(alignment: .top, spacing: 24) {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Your Garmin")
-                        .font(.terentoHeading(size: 42, weight: .semibold))
+                        .font(.terento(.pageTitle))
                         .foregroundStyle(TerentoColors.graphite)
 
                     Text("Connected and ready.")
-                        .font(.terentoBody(size: 19, weight: .medium))
+                        .font(.terento(.lede))
                         .foregroundStyle(TerentoColors.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -1683,7 +1683,7 @@ struct ConnectScreen: View {
                             .controlSize(.small)
                             .accessibilityHidden(true)
                         Text("Reading your maps…")
-                            .font(.terentoUI(size: 13, weight: .medium))
+                            .font(.terento(.meta))
                             .foregroundStyle(TerentoColors.secondaryText)
                             .lineLimit(1)
                     }
@@ -1785,7 +1785,7 @@ struct ConnectScreen: View {
                         .foregroundStyle(TerentoColors.interactive)
                 }
             }
-            .font(.terentoUI(size: 12, weight: .medium))
+            .font(.terento(.caption))
         }
         .accessibilityElement(children: .contain)
     }
@@ -1864,7 +1864,7 @@ struct ConnectScreen: View {
                     .foregroundStyle(TerentoColors.interactive)
                 }
             }
-            .font(.terentoUI(size: 12, weight: .medium))
+            .font(.terento(.caption))
             .foregroundStyle(TerentoColors.secondaryText)
             .fixedSize(horizontal: false, vertical: true)
         }
@@ -1872,7 +1872,9 @@ struct ConnectScreen: View {
 
     private var catalogMapRegion: some View {
         GeometryReader { geometry in
-            if customMapImportExpanded && geometry.size.height < 300 {
+            if !customMapImportExpanded {
+                availableCatalogList
+            } else if geometry.size.height < 300 {
                 // At the minimum window size, scroll the import content rather
                 // than clipping its file controls or pushing Storage offscreen.
                 ScrollView {
@@ -1900,7 +1902,7 @@ struct ConnectScreen: View {
     private var availableCatalogList: some View {
         if providerMapSelectionItems.isEmpty || filteredAvailableSelectionItems.isEmpty {
             Text(availableMapsEmptyMessage)
-                .font(.terentoUI(size: 13, weight: .medium))
+                .font(.terento(.meta))
                 .foregroundStyle(TerentoColors.secondaryText)
             .frame(maxWidth: .infinity, alignment: .topLeading)
             .padding(.top, 10)
@@ -1979,18 +1981,26 @@ struct ConnectScreen: View {
                                 refreshMapInventory()
                             } label: {
                                 Label("Refresh", systemImage: "arrow.clockwise")
-                                    .font(.terentoUI(size: 13, weight: .medium))
+                                    .font(.terento(.meta))
                             }
                             .buttonStyle(.plain)
                             .foregroundStyle(TerentoColors.secondaryText)
                             .help("Refresh map information")
                             .accessibilityLabel("Refresh map information")
+
+                            // Opens the import panel under the list; the list keeps the room.
+                            SecondaryButton(title: "Import from Mac") {
+                                customMapImportExpanded.toggle()
+                            }
+                            .accessibilityLabel("Import from Mac")
+                            .accessibilityValue(customMapImportExpanded ? "Expanded" : "Collapsed")
+                            .accessibilityHint("Shows or hides the local Garmin IMG import controls.")
                         }
                     }
 
                     if let notice = authorizationPresentation.browsingNotice {
                         Label(notice, systemImage: authorizationPresentation.systemImage)
-                            .font(.terentoUI(size: 12, weight: .medium))
+                            .font(.terento(.caption))
                             .foregroundStyle(authorizationPresentation.tone.color)
                             .fixedSize(horizontal: false, vertical: true)
                             .padding(.top, 10)
@@ -2001,7 +2011,7 @@ struct ConnectScreen: View {
                             MapCatalogSource.bundledFallback.userLabel,
                             systemImage: "wifi.slash"
                         )
-                        .font(.terentoUI(size: 12, weight: .medium))
+                        .font(.terento(.caption))
                         .foregroundStyle(TerentoColors.secondaryText)
                         .padding(.top, 10)
                         .accessibilityHint("Terento is using its bundled local map list. It may be out of date.")
@@ -2010,7 +2020,7 @@ struct ConnectScreen: View {
                             MapCatalogSource.appUpdateRequired.userLabel,
                             systemImage: "arrow.down.circle"
                         )
-                        .font(.terentoUI(size: 12, weight: .medium))
+                        .font(.terento(.caption))
                         .foregroundStyle(TerentoColors.secondaryText)
                         .padding(.top, 10)
                         .accessibilityHint("This Terento version can't use the current map catalog. Maps can be browsed; installing needs a Terento update.")
@@ -2056,26 +2066,18 @@ struct ConnectScreen: View {
                     Color.clear
                         .accessibilityHidden(true)
                 }
-            } storageRegion: {
-                if let plan = displayedInstallationPlan {
-                    VStack(alignment: .leading, spacing: 6) {
-                        MapSelectionStorageSummary(
-                            plan: plan,
-                            totalCapacity: snapshot?.totalCapacity ?? 0,
-                            formatBytes: formatBytes
-                        )
-                        .fixedSize(horizontal: false, vertical: true)
-                    }
-                } else {
-                    Color.clear
-                        .frame(height: 0)
-                        .accessibilityHidden(true)
-                }
             }
         } footer: {
             TerentoPageFooter {
-                // First Install step: the sidebar already navigates back.
-                EmptyView()
+                // First Install step: the sidebar already navigates back, so
+                // the leading slot holds Storage on the same row as Continue.
+                if let plan = displayedInstallationPlan {
+                    MapSelectionStorageLine(
+                        plan: plan,
+                        totalCapacity: snapshot?.totalCapacity ?? 0,
+                        formatBytes: formatBytes
+                    )
+                }
             } trailing: {
                 PrimaryButton(title: "Continue") {
                     guard let plan = currentInstallationPlan, plan.canContinue else {
@@ -2180,95 +2182,66 @@ struct ConnectScreen: View {
         return selectedGeography == .all ? "No maps are available." : "No maps match these filters."
     }
 
+    /// Shown under the list while "Import from Mac" in the header is on.
     private var customMapImportPanel: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Button {
-                customMapImportExpanded.toggle()
-            } label: {
-                HStack(alignment: .center, spacing: 10) {
-                    TerentoDisclosureIndicator(isExpanded: customMapImportExpanded)
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Install a third-party map (.img) from this Mac.")
+                .font(.terento(.meta))
+                .foregroundStyle(TerentoColors.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
 
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Import a map from Mac")
-                            .font(.terentoUI(size: 15, weight: .semibold))
+            if let candidate = mapEngine.customMapImportCandidate {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(TerentoColors.lichenDark)
+                        .accessibilityHidden(true)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Custom map")
+                            .font(.terento(.meta, weight: .semibold))
                             .foregroundStyle(TerentoColors.graphite)
-
-                        if customMapImportExpanded {
-                            Text("Install a third-party map (.img) from this Mac.")
-                                .font(.terentoUI(size: 12, weight: .medium))
-                                .foregroundStyle(TerentoColors.secondaryText)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
+                        Text("\(candidate.originalFilename) · \(formatBytes(candidate.sizeBytes))")
+                            .font(.terento(.caption))
+                            .foregroundStyle(TerentoColors.secondaryText)
+                        Text("Map structure checked · source is not verified.")
+                            .font(.terento(.caption))
+                            .foregroundStyle(TerentoColors.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
 
                     Spacer(minLength: 8)
+
+                    Button("Remove") {
+                        mapEngine.clearCustomMapImport()
+                    }
+                    .buttonStyle(.borderless)
+                    .font(.terento(.meta, weight: .semibold))
+                    .foregroundStyle(TerentoColors.interactive)
+                    .disabled(mapEngine.isBusy)
+                    .accessibilityLabel("Remove staged custom map")
+                    .accessibilityHint("Removes the local staged file. It does not change the Garmin device.")
                 }
-                .frame(maxWidth: .infinity, minHeight: customMapImportExpanded ? 52 : 40, alignment: .leading)
-                .contentShape(Rectangle())
+                .padding(10)
+                .background(TerentoColors.canvas, in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control))
+            } else {
+                customMapDropZone
             }
-            .buttonStyle(.plain)
-            .padding(.horizontal, 12)
-            .accessibilityLabel("Import a map from Mac")
-            .accessibilityValue(customMapImportExpanded ? "Expanded" : "Collapsed")
-            .accessibilityHint("Shows or hides the local Garmin IMG import controls.")
 
-            if customMapImportExpanded {
-                VStack(alignment: .leading, spacing: 10) {
-                    if let candidate = mapEngine.customMapImportCandidate {
-                        HStack(alignment: .top, spacing: 10) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(TerentoColors.lichenDark)
-                                .accessibilityHidden(true)
+            Text("Processed locally on your Mac. Not sent to Terento servers.")
+                .font(.terento(.caption))
+                .foregroundStyle(TerentoColors.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
 
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Custom map")
-                                    .font(.terentoUI(size: 14, weight: .semibold))
-                                    .foregroundStyle(TerentoColors.graphite)
-                                Text("\(candidate.originalFilename) · \(formatBytes(candidate.sizeBytes))")
-                                    .font(.terentoUI(size: 12, weight: .medium))
-                                    .foregroundStyle(TerentoColors.secondaryText)
-                                Text("Map structure checked · source is not verified.")
-                                    .font(.terentoUI(size: 12, weight: .medium))
-                                    .foregroundStyle(TerentoColors.secondaryText)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-
-                            Spacer(minLength: 8)
-
-                            Button("Remove") {
-                                mapEngine.clearCustomMapImport()
-                            }
-                            .buttonStyle(.borderless)
-                            .font(.terentoUI(size: 13, weight: .semibold))
-                            .foregroundStyle(TerentoColors.interactive)
-                            .disabled(mapEngine.isBusy)
-                            .accessibilityLabel("Remove staged custom map")
-                            .accessibilityHint("Removes the local staged file. It does not change the Garmin device.")
-                        }
-                        .padding(10)
-                        .background(TerentoColors.canvas, in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.control))
-                    } else {
-                        customMapDropZone
-                    }
-
-                    Text("Processed locally on your Mac. Not sent to Terento servers.")
-                        .font(.terentoUI(size: 11, weight: .medium))
-                        .foregroundStyle(TerentoColors.secondaryText)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    if let errorMessage = mapEngine.customMapImportErrorMessage,
-                       mapEngine.customMapImportCandidate == nil {
-                        Text(errorMessage)
-                            .font(.terentoUI(size: 12, weight: .medium))
-                            .foregroundStyle(TerentoColors.error)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.bottom, 12)
+            if let errorMessage = mapEngine.customMapImportErrorMessage,
+               mapEngine.customMapImportCandidate == nil {
+                Text(errorMessage)
+                    .font(.terento(.caption))
+                    .foregroundStyle(TerentoColors.error)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
+        .padding(12)
         .background(TerentoColors.surface.opacity(0.62), in: RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.card))
         .overlay {
             RoundedRectangle(cornerRadius: TerentoGeneratedTokens.Radius.card)
@@ -2286,12 +2259,12 @@ struct ConnectScreen: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(customMapImportIsBusy ? "Checking map file…" : "Drop a third-party map (.img) here")
-                    .font(.terentoUI(size: 13, weight: .semibold))
+                    .font(.terento(.meta, weight: .semibold))
                     .foregroundStyle(TerentoColors.graphite)
 
                 if customMapImportIsBusy {
                     Text("Checking it before installation")
-                        .font(.terentoUI(size: 11, weight: .medium))
+                        .font(.terento(.caption))
                         .foregroundStyle(TerentoColors.secondaryText)
                 }
             }
@@ -2385,11 +2358,11 @@ struct ConnectScreen: View {
         return TerentoInstallFooterPageShell {
             VStack(alignment: .leading, spacing: 0) {
                 Text("Installing maps")
-                    .font(.terentoHeading(size: 42, weight: .semibold))
+                    .font(.terento(.pageTitle))
                     .foregroundStyle(TerentoColors.graphite)
 
                 Text("Keep your Garmin connected until installation is complete.")
-                    .font(.terentoBody(size: 19, weight: .medium))
+                    .font(.terento(.lede))
                     .foregroundStyle(TerentoColors.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 8)
@@ -2417,11 +2390,11 @@ struct ConnectScreen: View {
         return TerentoInstallFooterPageShell(bodyScrolls: true) {
             VStack(alignment: .leading, spacing: 0) {
                 Text("Ready to install")
-                    .font(.terentoHeading(size: 42, weight: .semibold))
+                    .font(.terento(.pageTitle))
                     .foregroundStyle(TerentoColors.graphite)
 
                 Text("Review your selection before installing.")
-                    .font(.terentoBody(size: 19, weight: .medium))
+                    .font(.terento(.lede))
                     .foregroundStyle(TerentoColors.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 8)
@@ -2441,7 +2414,7 @@ struct ConnectScreen: View {
                         Label(reason, systemImage: authorizationBlocks
                             ? authorization.systemImage
                             : "exclamationmark.circle.fill")
-                            .font(.terentoUI(size: 15, weight: .semibold))
+                            .font(.terento(.meta, weight: .semibold))
                             .foregroundStyle(authorizationBlocks
                                 ? authorization.tone.color
                                 : TerentoColors.warning)
@@ -2505,11 +2478,11 @@ struct ConnectScreen: View {
         return TerentoInstallationProgressPageShell {
             VStack(alignment: .leading, spacing: 0) {
                 Text("Installing maps")
-                    .font(.terentoHeading(size: 42, weight: .semibold))
+                    .font(.terento(.pageTitle))
                     .foregroundStyle(TerentoColors.graphite)
 
                 Text("Keep your Garmin connected until installation is complete.")
-                    .font(.terentoBody(size: 19, weight: .medium))
+                    .font(.terento(.lede))
                     .foregroundStyle(TerentoColors.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 8)
@@ -2531,7 +2504,7 @@ struct ConnectScreen: View {
                         .accessibilityHint("Stops downloading and preparing. Nothing has been written to your device.")
 
                         Text("Nothing has been written to your device yet.")
-                            .font(.terentoUI(size: 12, weight: .medium))
+                            .font(.terento(.caption))
                             .foregroundStyle(TerentoColors.secondaryText)
                     }
                     .padding(.top, 14)
@@ -2543,7 +2516,7 @@ struct ConnectScreen: View {
                             .disabled(true)
 
                         Text("Can’t cancel while the map is being prepared.")
-                            .font(.terentoUI(size: 12, weight: .medium))
+                            .font(.terento(.caption))
                             .foregroundStyle(TerentoColors.secondaryText)
                     }
                     .padding(.top, 14)
@@ -2555,7 +2528,7 @@ struct ConnectScreen: View {
     private var installationJourneyView: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("Installation progress")
-                .font(.terentoUI(size: 16, weight: .semibold))
+                .font(.terento(.rowTitle))
                 .foregroundStyle(TerentoColors.graphite)
                 .padding(.bottom, 10)
 
@@ -2649,7 +2622,7 @@ struct ConnectScreen: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(title)
-                        .font(.terentoUI(size: 15, weight: .semibold))
+                        .font(.terento(.meta, weight: .semibold))
                         .foregroundStyle(
                             state == .pending
                                 ? TerentoColors.secondaryText
@@ -2661,13 +2634,13 @@ struct ConnectScreen: View {
                     if state == .active,
                        let measured = TerentoProgressBar.measured(progress) {
                         Text("\(Int(measured * 100))%")
-                            .font(.terentoUI(size: 13, weight: .semibold))
+                            .font(.terento(.meta, weight: .semibold))
                             .foregroundStyle(TerentoColors.graphite)
                     }
                 }
 
                 Text(state == .failed ? (mapEngine.installationErrorMessage ?? detail) : detail)
-                    .font(.terentoUI(size: 13, weight: .medium))
+                    .font(.terento(.meta))
                     .foregroundStyle(
                         state == .failed
                             ? TerentoColors.error
@@ -2680,7 +2653,7 @@ struct ConnectScreen: View {
 
                     if title == "Finishing" {
                         Text(finishingProgressDetail)
-                            .font(.terentoUI(size: 11, weight: .medium))
+                            .font(.terento(.caption))
                             .foregroundStyle(TerentoColors.secondaryText.opacity(0.82))
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -2696,7 +2669,7 @@ struct ConnectScreen: View {
                             Text("\(formatBytesPerSecond(bytes.speed))/s")
                         }
                     }
-                    .font(.terentoUI(size: 11, weight: .medium))
+                    .font(.terento(.caption))
                     .foregroundStyle(TerentoColors.secondaryText)
                 }
 
@@ -3202,11 +3175,11 @@ struct ConnectScreen: View {
                     if showsDonationLine, !hasPartialInstallation {
                         HStack(alignment: .firstTextBaseline, spacing: 6) {
                             Text("Terento is free and open source. If it saved you time, you can support it.")
-                                .font(.terentoUI(size: 15, weight: .medium))
+                                .font(.terento(.meta))
                                 .foregroundStyle(TerentoColors.secondaryText)
                                 .fixedSize(horizontal: false, vertical: true)
                             Link("Donate ↗", destination: TerentoAppLinks.donate)
-                                .font(.terentoUI(size: 15, weight: .medium))
+                                .font(.terento(.meta))
                                 .foregroundStyle(TerentoColors.interactive)
                         }
                         .padding(.top, TerentoPageLayout.sectionSpacing)
@@ -3392,7 +3365,7 @@ private struct TerentoBrandLockup: View {
                 // The website lockup uses the canonical logo symbol with the
                 // Instrument Sans brand face; this uses the same native font
                 // token rather than a default SwiftUI wordmark.
-                .font(.terentoHeading(size: 22, weight: .semibold))
+                .font(.terentoWordmark)
                 .tracking(-0.66)
                 .foregroundStyle(TerentoColors.graphite)
         }
@@ -3421,11 +3394,11 @@ private struct AppUpdateBanner: View {
                 .foregroundStyle(TerentoColors.interactive)
                 .accessibilityHidden(true)
             Text("Terento \(update.releaseLabel) is available")
-                .font(.terentoUI(size: 14, weight: .semibold))
+                .font(.terento(.meta, weight: .semibold))
                 .foregroundStyle(TerentoColors.graphite)
                 .layoutPriority(1)
             Text(summary)
-                .font(.terentoUI(size: 13, weight: .medium))
+                .font(.terento(.meta))
                 .foregroundStyle(TerentoColors.secondaryText)
                 .lineLimit(1)
                 .truncationMode(.tail)
@@ -3434,16 +3407,16 @@ private struct AppUpdateBanner: View {
             if update.releaseNotesURL != nil {
                 Button("What’s new ↗", action: onReleaseNotes)
                     .buttonStyle(.plain)
-                    .font(.terentoUI(size: 13, weight: .semibold))
+                    .font(.terento(.meta, weight: .semibold))
                     .foregroundStyle(TerentoColors.interactive)
             }
             Button("Later", action: onLater)
                 .buttonStyle(.plain)
-                .font(.terentoUI(size: 13, weight: .semibold))
+                .font(.terento(.meta, weight: .semibold))
                 .foregroundStyle(TerentoColors.secondaryText)
             Button("Download", action: onDownload)
                 .buttonStyle(.plain)
-                .font(.terentoUI(size: 13, weight: .semibold))
+                .font(.terento(.meta, weight: .semibold))
                 .foregroundStyle(TerentoColors.interactive)
         }
         .padding(.horizontal, 14)
@@ -3601,14 +3574,14 @@ private struct WatchReconnectWaitPanel: View {
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
-                        .font(.terentoUI(size: 15, weight: .semibold))
+                        .font(.terento(.meta, weight: .semibold))
                         .foregroundStyle(TerentoColors.graphite)
                     Text(message)
-                        .font(.terentoUI(size: 14, weight: .regular))
+                        .font(.terento(.meta, weight: .regular))
                         .foregroundStyle(TerentoColors.graphite)
                         .fixedSize(horizontal: false, vertical: true)
                     Text("Nothing was written to your device. Terento waits up to 5 minutes.")
-                        .font(.terentoUI(size: 12, weight: .medium))
+                        .font(.terento(.caption))
                         .foregroundStyle(TerentoColors.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.top, 4)
@@ -3722,7 +3695,7 @@ private struct InstallSharingCallout: View {
         var link = AttributedString("Privacy Policy ↗")
         link.link = TerentoAppLinks.privacyFromApp
         link.foregroundColor = TerentoColors.interactive
-        link.font = Font.terentoUI(size: 12, weight: .semibold)
+        link.font = Font.terento(.caption, weight: .semibold)
         return AttributedString("Share whether installs work on your watch, so we can fix problems faster. No serial numbers or files. ") + link
     }
 
@@ -3730,11 +3703,11 @@ private struct InstallSharingCallout: View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Help improve Terento")
-                    .font(.terentoUI(size: 15, weight: .semibold))
+                    .font(.terento(.meta, weight: .semibold))
                     .foregroundStyle(TerentoColors.graphite)
                     .accessibilityAddTraits(.isHeader)
                 Text(shareDetails)
-                    .font(.terentoUI(size: 12, weight: .medium))
+                    .font(.terento(.caption))
                     .foregroundStyle(TerentoColors.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -3834,13 +3807,13 @@ private struct TerentoConfirmationDialog: View {
             // Body text lines up with the title, not with the icon.
             VStack(alignment: .leading, spacing: 0) {
                 Text(message)
-                    .font(.terentoUI(size: TerentoDialogMetrics.bodySize, weight: .regular))
+                    .font(.terento(TerentoDialogMetrics.bodyRole, weight: .regular))
                     .foregroundStyle(TerentoColors.graphite)
                     .fixedSize(horizontal: false, vertical: true)
 
                 if let detailMessage, !detailMessage.isEmpty {
                     Text(detailMessage)
-                        .font(.terentoUI(size: TerentoDialogMetrics.bodySize, weight: .semibold))
+                        .font(.terento(TerentoDialogMetrics.bodyRole, weight: .semibold))
                         .foregroundStyle(TerentoColors.error)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.top, 10)
@@ -3848,7 +3821,7 @@ private struct TerentoConfirmationDialog: View {
 
                 if let supportingMessage, !supportingMessage.isEmpty {
                     Text(supportingMessage)
-                        .font(.terentoUI(size: TerentoDialogMetrics.supportingSize, weight: .regular))
+                        .font(.terento(TerentoDialogMetrics.supportingRole, weight: .regular))
                         .foregroundStyle(TerentoColors.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.top, 10)
@@ -3865,7 +3838,7 @@ private struct TerentoConfirmationDialog: View {
                                 Label("Send report to Terento", systemImage: "paperplane")
                             }
                             .buttonStyle(.plain)
-                            .font(.terentoUI(size: 13, weight: .semibold))
+                            .font(.terento(.meta, weight: .semibold))
                             .foregroundStyle(TerentoColors.interactive)
                             .accessibilityHint("Shows exactly what will be sent before anything is sent.")
                         }
@@ -3956,7 +3929,7 @@ private struct SidebarConnectionStatus: View {
                     .accessibilityHidden(true)
 
                 Text(label)
-                    .font(.terentoUI(size: 13, weight: .medium))
+                    .font(.terento(.meta))
                     .foregroundStyle(TerentoColors.secondaryText)
             }
             .accessibilityElement(children: .combine)
@@ -4082,7 +4055,7 @@ private struct SidebarSectionRow: View {
                 .accessibilityHidden(true)
 
             Text(title)
-                .font(.terentoUI(size: 15, weight: isSelected ? .medium : .regular))
+                .font(.terento(.meta, weight: isSelected ? .medium : .regular))
                 // Interactive Hover: 4.6:1 on the selected tint (Interactive Primary is 4.1:1, below AA for text).
                 .foregroundStyle(isSelected ? TerentoColors.interactiveHover : TerentoColors.secondaryText)
                 .lineLimit(1)
@@ -4156,38 +4129,32 @@ private struct TerentoPageFooter<Leading: View, Trailing: View>: View {
     }
 }
 
-/// The Install Maps body has three explicit vertical regions:
-/// header/content, the bounded map-selection viewport, and Storage. The
-/// shared footer is outside this layout and therefore cannot be consumed by
-/// the map list.
-private struct TerentoInstallMapsVerticalLayout<Header: View, MapRegion: View, StorageRegion: View>: View {
+/// The Install Maps body has two explicit vertical regions: header/content
+/// and the bounded map-selection viewport. Storage shares the footer row with
+/// Continue, so the list keeps all remaining height and cannot consume the
+/// footer.
+private struct TerentoInstallMapsVerticalLayout<Header: View, MapRegion: View>: View {
     private let header: () -> Header
     private let mapRegion: () -> MapRegion
-    private let storageRegion: () -> StorageRegion
 
     init(
         @ViewBuilder header: @escaping () -> Header,
-        @ViewBuilder mapRegion: @escaping () -> MapRegion,
-        @ViewBuilder storageRegion: @escaping () -> StorageRegion
+        @ViewBuilder mapRegion: @escaping () -> MapRegion
     ) {
         self.header = header
         self.mapRegion = mapRegion
-        self.storageRegion = storageRegion
     }
 
     var body: some View {
         TerentoInstallMapsVerticalRegionLayout {
             header()
             mapRegion()
-            storageRegion()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
 
 private struct TerentoInstallMapsVerticalRegionLayout: Layout {
-    private static let listStorageSpacing = TerentoPageLayout.sectionSpacing
-    private static let storageFooterSpacing = TerentoPageLayout.sectionSpacing
     private static let minimumListHeight: CGFloat = 90
 
     func sizeThatFits(
@@ -4195,7 +4162,7 @@ private struct TerentoInstallMapsVerticalRegionLayout: Layout {
         subviews: Subviews,
         cache: inout ()
     ) -> CGSize {
-        guard subviews.count == 3 else {
+        guard subviews.count == 2 else {
             return CGSize(
                 width: proposal.width ?? 0,
                 height: proposal.height ?? 0
@@ -4206,14 +4173,7 @@ private struct TerentoInstallMapsVerticalRegionLayout: Layout {
         let headerHeight = subviews[0]
             .sizeThatFits(ProposedViewSize(width: width, height: nil))
             .height
-        let storageHeight = subviews[2]
-            .sizeThatFits(ProposedViewSize(width: width, height: nil))
-            .height
-        let minimumHeight = headerHeight
-            + Self.listStorageSpacing
-            + Self.minimumListHeight
-            + Self.storageFooterSpacing
-            + storageHeight
+        let minimumHeight = headerHeight + Self.minimumListHeight
 
         let height: CGFloat
         if let proposedHeight = proposal.height, proposedHeight.isFinite {
@@ -4231,22 +4191,12 @@ private struct TerentoInstallMapsVerticalRegionLayout: Layout {
         subviews: Subviews,
         cache: inout ()
     ) {
-        guard subviews.count == 3 else { return }
+        guard subviews.count == 2 else { return }
 
         let headerHeight = subviews[0]
             .sizeThatFits(ProposedViewSize(width: bounds.width, height: nil))
             .height
-        let storageHeight = subviews[2]
-            .sizeThatFits(ProposedViewSize(width: bounds.width, height: nil))
-            .height
-        let listHeight = max(
-            0,
-            bounds.height
-                - headerHeight
-                - Self.listStorageSpacing
-                - Self.storageFooterSpacing
-                - storageHeight
-        )
+        let listHeight = max(0, bounds.height - headerHeight)
 
         subviews[0].place(
             at: CGPoint(x: bounds.minX, y: bounds.minY),
@@ -4258,14 +4208,6 @@ private struct TerentoInstallMapsVerticalRegionLayout: Layout {
             anchor: .topLeading,
             proposal: ProposedViewSize(width: bounds.width, height: listHeight)
         )
-        subviews[2].place(
-            at: CGPoint(
-                x: bounds.minX,
-                y: bounds.maxY - Self.storageFooterSpacing - storageHeight
-            ),
-            anchor: .topLeading,
-            proposal: ProposedViewSize(width: bounds.width, height: storageHeight)
-        )
     }
 
     private func intrinsicWidth(for subviews: Subviews) -> CGFloat {
@@ -4276,7 +4218,7 @@ private struct TerentoInstallMapsVerticalRegionLayout: Layout {
 }
 
 /// A scroll view whose height is supplied by TerentoInstallMapsVerticalLayout.
-/// It owns only the map rows; Storage and the shared footer are siblings.
+/// It owns only the map rows; the footer with Storage is a sibling.
 private struct TerentoBoundedMapSelectionRegion<Content: View>: View {
     private let content: () -> Content
 
@@ -4444,12 +4386,12 @@ private struct TerentoPageHeader: View {
     var body: some View {
         VStack(alignment: .leading, spacing: TerentoPageLayout.titleSubtitleSpacing) {
             Text(title)
-                .font(.terentoHeading(size: 42, weight: .semibold))
+                .font(.terento(.pageTitle))
                 .foregroundStyle(TerentoColors.graphite)
 
             if !subtitle.isEmpty {
                 Text(subtitle)
-                    .font(.terentoBody(size: 19, weight: .medium))
+                    .font(.terento(.lede))
                     .foregroundStyle(TerentoColors.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -4538,7 +4480,7 @@ struct PrimaryButton: View {
 
                 Text(title)
             }
-            .font(.terentoUI(size: 15, weight: .semibold))
+            .font(.terento(.meta, weight: .semibold))
             .foregroundStyle(isEnabled ? .white : TerentoColors.secondaryText)
             .padding(.horizontal, 16)
             .frame(width: width, height: height)
@@ -4557,8 +4499,9 @@ struct DeviceCard: View {
     let presentation: DevicePresentation
     let canEject: Bool
     let onEject: () -> Void
-    /// Server-owned install verdict; the local capability line is only shown
-    /// as information while the verdict is not "Ready for maps".
+    /// Server-owned install verdict. Shown only while it is not "Ready for
+    /// maps": the page subtitle and the sidebar already say connected and
+    /// ready. The local capability line is information in the same states.
     var authorization: DeviceAuthorizationPresentation? = nil
     var onRetryAuthorization: (() -> Void)? = nil
 
@@ -4570,15 +4513,15 @@ struct DeviceCard: View {
 
             VStack(alignment: .leading, spacing: 0) {
                 Text(presentation.deviceName)
-                    .font(.terentoHeading(size: 28, weight: .semibold))
+                    .font(.terento(.deviceName))
                     .foregroundStyle(TerentoColors.graphite)
 
                 Text(presentation.variant)
-                    .font(.terentoUI(size: 16, weight: .medium))
+                    .font(.terento(.rowTitle, weight: .medium))
                     .foregroundStyle(TerentoColors.secondaryText)
                     .padding(.top, 6)
 
-                if let authorization {
+                if let authorization, authorization.tone != .success {
                     DeviceAuthorizationStatusView(
                         presentation: authorization,
                         onRetry: onRetryAuthorization
@@ -4593,7 +4536,7 @@ struct DeviceCard: View {
 
                 Button(action: onEject) {
                     Label("Eject device", systemImage: "eject")
-                        .font(.terentoUI(size: 13, weight: .medium))
+                        .font(.terento(.meta))
                         .foregroundStyle(canEject ? TerentoColors.interactive : TerentoColors.secondaryText)
                         .padding(.horizontal, 10)
                         .frame(minHeight: 44) // page action: 44 like Install/Manage maps; 40 is for dialogs
@@ -4655,11 +4598,11 @@ private struct DeviceAuthorizationStatusView: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(presentation.title)
-                        .font(.terentoUI(size: 13, weight: .medium))
+                        .font(.terento(.meta))
 
                     if let detail = presentation.detail {
                         Text(detail)
-                            .font(.terentoUI(size: 12, weight: .regular))
+                            .font(.terento(.caption, weight: .regular))
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -4671,7 +4614,7 @@ private struct DeviceAuthorizationStatusView: View {
             if presentation.canRetry, let onRetry {
                 Button("Try again", action: onRetry)
                     .buttonStyle(.plain)
-                    .font(.terentoUI(size: 12, weight: .semibold))
+                    .font(.terento(.caption, weight: .semibold))
                     .foregroundStyle(TerentoColors.interactive)
                     .padding(.leading, 18)
                     .accessibilityHint("Checks again whether this device can install maps.")
@@ -4691,11 +4634,11 @@ private struct MapSupportView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(status.userLabel)
-                    .font(.terentoUI(size: 13, weight: .medium))
+                    .font(.terento(.meta))
 
                 if !status.canUseTerentoMaps {
                     Text(status.userMessage)
-                        .font(.terentoUI(size: 12, weight: .regular))
+                        .font(.terento(.caption, weight: .regular))
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -4802,8 +4745,9 @@ private struct ManageMapRow: View {
 
     var body: some View {
         TerentoMapRow(
-            title: item.manageTitle,
-            detail: manageDetail,
+            title: item.title,
+            detail: item.manageRowMetadata,
+            status: manageStatus,
             note: operation == nil && !availability.updateBlocked ? availability.updateNotice : nil,
             contentSpacing: 9,
             rowVerticalPadding: 10
@@ -4818,7 +4762,7 @@ private struct ManageMapRow: View {
                     ManageOperationProgress(operation: operation)
                     HStack(spacing: 10) {
                         if let timeRemaining {
-                            TimeRemainingLabel(estimate: timeRemaining, size: 10)
+                            TimeRemainingLabel(estimate: timeRemaining)
                         }
                         Spacer(minLength: 0)
                     }
@@ -4836,19 +4780,13 @@ private struct ManageMapRow: View {
         }
     }
 
-    private var manageDetail: String {
-        if let operation {
-            switch operation.phase {
-            case .failed:
-                return operation.message
-            case .idle, .awaitingConfirmation, .removing, .updating, .verifying,
-                 .downloading, .preparing, .checking, .installing, .removingOld, .finishing,
-                 .completed:
-                break
-            }
+    /// Line 3: a failed operation (error) or why Update is blocked (warning).
+    private var manageStatus: TerentoMapRowStatus? {
+        if let operation, case .failed = operation.phase {
+            return TerentoMapRowStatus(text: operation.message, color: TerentoColors.error)
         }
-
-        return availability.updateBlocked ? (availability.reason ?? item.manageMetadataLabel) : item.manageMetadataLabel
+        guard availability.updateBlocked, let reason = availability.reason, !reason.isEmpty else { return nil }
+        return TerentoMapRowStatus(text: reason)
     }
 
     private func perform(_ action: MapLifecycleAction) {
@@ -4955,7 +4893,7 @@ private struct ManageActionButton: View {
             onAction(action)
         } label: {
             Text(title)
-                .font(.terentoUI(size: 12, weight: .semibold))
+                .font(.terento(.caption, weight: .semibold))
                 .foregroundStyle(foregroundColor)
                 .lineLimit(1)
                 .padding(.horizontal, 8)
@@ -5054,7 +4992,7 @@ private struct ManageOperationProgress: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline) {
                 Text(operation.phase.userLabel)
-                    .font(.terentoUI(size: 15, weight: .semibold))
+                    .font(.terento(.meta, weight: .semibold))
                     .foregroundStyle(TerentoColors.graphite)
 
                 Spacer()
@@ -5062,7 +5000,7 @@ private struct ManageOperationProgress: View {
                 // Same rule as the install steps: % only for a measured value.
                 if let measuredFraction {
                     Text("\(Int(measuredFraction * 100))%")
-                        .font(.terentoUI(size: 13, weight: .semibold))
+                        .font(.terento(.meta, weight: .semibold))
                         .foregroundStyle(TerentoColors.graphite)
                 }
             }
@@ -5072,12 +5010,12 @@ private struct ManageOperationProgress: View {
 
                 if isRemoval {
                     Text(progress.detail ?? "Verifying map removal")
-                        .font(.terentoUI(size: 10, weight: .medium))
+                        .font(.terento(.caption))
                         .foregroundStyle(TerentoColors.secondaryText)
                         .lineLimit(1)
                 } else if progress.phaseFraction != nil {
                     Text(progress.detail ?? operation.message)
-                        .font(.terentoUI(size: 10, weight: .medium))
+                        .font(.terento(.caption))
                         .foregroundStyle(TerentoColors.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
                 } else {
@@ -5087,20 +5025,20 @@ private struct ManageOperationProgress: View {
                             Text("\(formatBytesPerSecond(progress.bytesPerSecond))/s")
                         }
                     }
-                    .font(.terentoUI(size: 10, weight: .medium))
+                    .font(.terento(.caption))
                     .foregroundStyle(TerentoColors.secondaryText)
                 }
             } else if isRemoval {
                 TerentoProgressBar(value: 0, label: operation.phase.userLabel)
 
                 Text("Verifying map removal")
-                    .font(.terentoUI(size: 10, weight: .medium))
+                    .font(.terento(.caption))
                     .foregroundStyle(TerentoColors.secondaryText)
                     .lineLimit(1)
             } else {
                 TerentoProgressBar(value: 0, label: operation.phase.userLabel)
                 Text(operation.message)
-                    .font(.terentoUI(size: 10, weight: .medium))
+                    .font(.terento(.caption))
                     .foregroundStyle(TerentoColors.secondaryText)
             }
         }
@@ -5140,9 +5078,17 @@ private struct ManageOperationProgress: View {
     }
 }
 
+/// The third line of a map row: a blocked or warning message, never part of
+/// the metadata line. Its colour matches the row's status icon.
+struct TerentoMapRowStatus: Equatable {
+    let text: String
+    var color: Color = TerentoColors.warning
+}
+
 private struct TerentoMapRow<LeadingContent: View, TrailingContent: View>: View {
     let title: String
     let detail: String?
+    let status: TerentoMapRowStatus?
     let note: String?
     let contentSpacing: CGFloat
     let rowVerticalPadding: CGFloat
@@ -5155,6 +5101,7 @@ private struct TerentoMapRow<LeadingContent: View, TrailingContent: View>: View 
     init(
         title: String,
         detail: String?,
+        status: TerentoMapRowStatus? = nil,
         note: String? = nil,
         contentSpacing: CGFloat = 14,
         rowVerticalPadding: CGFloat = 13,
@@ -5166,6 +5113,7 @@ private struct TerentoMapRow<LeadingContent: View, TrailingContent: View>: View 
         self.badge = badge
         self.title = title
         self.detail = detail
+        self.status = status
         self.note = note
         self.contentSpacing = contentSpacing
         self.rowVerticalPadding = rowVerticalPadding
@@ -5178,16 +5126,16 @@ private struct TerentoMapRow<LeadingContent: View, TrailingContent: View>: View 
         HStack(alignment: .top, spacing: contentSpacing) {
             leadingContent
 
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(title)
-                        .font(.terentoUI(size: 16, weight: .semibold))
+                        .font(.terento(.rowTitle))
                         .foregroundStyle(TerentoColors.graphite)
 
                     if let badge {
                         Label(badge.text, systemImage: badge.systemImage)
                             .labelStyle(.titleAndIcon)
-                            .font(.terentoUI(size: 11, weight: .semibold))
+                            .font(.terento(.caption, weight: .semibold))
                             .foregroundStyle(TerentoColors.interactive)
                             .padding(.horizontal, 7)
                             .padding(.vertical, 2)
@@ -5197,13 +5145,20 @@ private struct TerentoMapRow<LeadingContent: View, TrailingContent: View>: View 
 
                 if let detail, !detail.isEmpty {
                     Text(detail)
-                        .font(.terentoUI(size: 14, weight: .medium))
+                        .font(.terento(.meta))
                         .foregroundStyle(TerentoColors.secondaryText)
+                }
+
+                if let status, !status.text.isEmpty {
+                    Text(status.text)
+                        .font(.terento(.meta, weight: .semibold))
+                        .foregroundStyle(status.color)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 if let note, !note.isEmpty {
                     Text(note)
-                        .font(.terentoUI(size: 13, weight: .medium))
+                        .font(.terento(.meta))
                         .foregroundStyle(TerentoColors.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.top, 2)
@@ -5295,11 +5250,11 @@ struct StorageCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Storage")
-                .font(.terentoUI(size: 16, weight: .semibold))
+                .font(.terento(.rowTitle))
                 .foregroundStyle(TerentoColors.graphite)
 
             Text("\(available) available of \(total)")
-                .font(.terentoUI(size: 15, weight: .medium))
+                .font(.terento(.meta))
                 .foregroundStyle(TerentoColors.graphite)
 
             TerentoProgressBar(value: normalizedFillRatio, fill: TerentoColors.lichen, label: "Storage")
@@ -5337,18 +5292,18 @@ struct MapStatusRow: View {
 
                 VStack(alignment: .leading, spacing: 5) {
                     Text(title)
-                        .font(.terentoUI(size: 16, weight: .semibold))
+                        .font(.terento(.rowTitle))
                         .foregroundStyle(TerentoColors.graphite)
 
                     Text(detail)
-                        .font(.terentoUI(size: 14, weight: .medium))
+                        .font(.terento(.meta))
                         .foregroundStyle(TerentoColors.secondaryText)
                 }
 
                 Spacer(minLength: 8)
 
                 Text(status)
-                    .font(.terentoUI(size: 12, weight: .semibold))
+                    .font(.terento(.caption, weight: .semibold))
                     .foregroundStyle(accent)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
@@ -5357,7 +5312,7 @@ struct MapStatusRow: View {
 
             if let note, !note.isEmpty {
                 Text(note)
-                    .font(.terentoUI(size: 13, weight: .medium))
+                    .font(.terento(.meta))
                     .foregroundStyle(TerentoColors.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -5387,11 +5342,11 @@ private struct ReadyToInstallSelectedMapsHeader: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: TerentoPageLayout.sectionHeaderItemSpacing) {
             Text("Selected maps")
-                .font(.terentoUI(size: 16, weight: .semibold))
+                .font(.terento(.rowTitle))
                 .foregroundStyle(TerentoColors.graphite)
 
             Text(countLabel)
-                .font(.terentoUI(size: 12, weight: .semibold))
+                .font(.terento(.caption, weight: .semibold))
                 .foregroundStyle(TerentoColors.secondaryText)
         }
         .accessibilityElement(children: .ignore)
@@ -5409,11 +5364,11 @@ private struct InstallationMapsSectionHeader: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: TerentoPageLayout.sectionHeaderItemSpacing) {
             Text("Selected maps")
-                .font(.terentoUI(size: 16, weight: .semibold))
+                .font(.terento(.rowTitle))
                 .foregroundStyle(TerentoColors.graphite)
 
             Text(countLabel)
-                .font(.terentoUI(size: 12, weight: .semibold))
+                .font(.terento(.caption, weight: .semibold))
                 .foregroundStyle(TerentoColors.secondaryText)
         }
         .accessibilityElement(children: .ignore)
@@ -5452,11 +5407,11 @@ private struct InstallationResultCallout: View {
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(resultTitle)
-                        .font(.terentoUI(size: 15, weight: .semibold))
+                        .font(.terento(.meta, weight: .semibold))
                         .foregroundStyle(TerentoColors.graphite)
                     if isPartial {
                         Text("The optional contours were not completed.")
-                            .font(.terentoUI(size: 14, weight: .regular))
+                            .font(.terento(.meta, weight: .regular))
                             .foregroundStyle(TerentoColors.graphite)
                     }
                 }
@@ -5465,7 +5420,7 @@ private struct InstallationResultCallout: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("On your Garmin")
-                    .font(.terentoUI(size: 14, weight: .semibold))
+                    .font(.terento(.meta, weight: .semibold))
                     .foregroundStyle(TerentoColors.graphite)
                     .accessibilityAddTraits(.isHeader)
                 ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
@@ -5475,7 +5430,7 @@ private struct InstallationResultCallout: View {
                         Text(step)
                             .fixedSize(horizontal: false, vertical: true)
                     }
-                    .font(.terentoUI(size: 14, weight: .regular))
+                    .font(.terento(.meta, weight: .regular))
                     .foregroundStyle(TerentoColors.graphite)
                     .accessibilityElement(children: .combine)
                 }
@@ -5503,12 +5458,12 @@ private struct InstalledMapsSectionHeader: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: TerentoPageLayout.sectionHeaderItemSpacing) {
             Text(count == 1 ? "Installed map" : "Installed maps")
-                .font(.terentoUI(size: 16, weight: .semibold))
+                .font(.terento(.rowTitle))
                 .foregroundStyle(TerentoColors.graphite)
 
             if count > 1 {
                 Text(countLabel)
-                    .font(.terentoUI(size: 12, weight: .semibold))
+                    .font(.terento(.caption, weight: .semibold))
                     .foregroundStyle(TerentoColors.secondaryText)
             }
         }
@@ -5663,18 +5618,18 @@ private struct SelectedMapArtifactSummaryRow: View {
 
             VStack(alignment: .leading, spacing: 5) {
                 Text(artifactTitle)
-                    .font(.terentoUI(size: 16, weight: .semibold))
+                    .font(.terento(.rowTitle))
                     .foregroundStyle(TerentoColors.graphite)
 
                 Text(providerVersionLabel ?? "Optional map component")
-                    .font(.terentoUI(size: 14, weight: .medium))
+                    .font(.terento(.meta))
                     .foregroundStyle(TerentoColors.secondaryText)
             }
 
             Spacer(minLength: 12)
 
             Text(artifact.sizeBytes.map(formatBytes) ?? "Size calculated before installation")
-                .font(.terentoUI(size: 13, weight: .medium))
+                .font(.terento(.meta))
                 .foregroundStyle(TerentoColors.secondaryText)
                 .multilineTextAlignment(.trailing)
                 .frame(maxWidth: 190, alignment: .trailing)
@@ -5755,9 +5710,10 @@ struct MapSelectionRow: View {
             TerentoMapRow(
                 title: item.title,
                 detail: detail,
+                status: rowStatus.map { TerentoMapRowStatus(text: $0) },
                 note: item.acquisitionAvailability.detailedExplanation,
                 contentSpacing: 9,
-                rowVerticalPadding: 8,
+                rowVerticalPadding: 6,
                 showsDivider: !showsOptionalControl,
                 badge: showsRecommendation
                     ? (FirstMapGuidance.recommendedLabel, "star.fill") : nil
@@ -5802,12 +5758,12 @@ struct MapSelectionRow: View {
                 if showsSize && item.acquisitionAvailability == .available {
                     VStack(alignment: .trailing, spacing: 3) {
                         Text(item.installSizeBytes.map(formatBytes) ?? "Size calculated before installation")
-                            .font(.terentoUI(size: 13, weight: .medium))
+                            .font(.terento(.meta))
                             .foregroundStyle(TerentoColors.secondaryText)
                             .multilineTextAlignment(.trailing)
                         if let downloadEstimate {
                             Text(downloadEstimate)
-                                .font(.terentoUI(size: 11, weight: .medium))
+                                .font(.terento(.caption))
                                 .foregroundStyle(TerentoColors.secondaryText)
                                 .multilineTextAlignment(.trailing)
                         }
@@ -5815,7 +5771,7 @@ struct MapSelectionRow: View {
                     .frame(maxWidth: 190, alignment: .trailing)
                 } else if item.acquisitionAvailability != .available {
                     Text("Unavailable")
-                        .font(.terentoUI(size: 13, weight: .medium))
+                        .font(.terento(.meta))
                         .foregroundStyle(TerentoColors.secondaryText)
                 }
             }
@@ -5831,7 +5787,7 @@ struct MapSelectionRow: View {
             .accessibilityLabel(accessibilityLabel)
             .accessibilityValue(isAvailable && item.isSelectable && selectionEnabled && showsSelectionControl
                 ? (isSelected ? "Selected" : "Not selected")
-                : detail)
+                : [detail, rowStatus].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", "))
             .accessibilityHint(
                 crossProviderSelectionDisabled
                     ? "Unavailable for this installation because maps from another provider are already selected."
@@ -5860,12 +5816,12 @@ struct MapSelectionRow: View {
                     )
                     .toggleStyle(.checkbox)
                     .tint(TerentoColors.interactive)
-                    .font(.terentoUI(size: 13, weight: .semibold))
+                    .font(.terento(.meta, weight: .semibold))
                     .accessibilityLabel("Add contour lines for \(item.title)")
                     .accessibilityHint("Adds elevation lines for understanding terrain and steepness.")
 
                     Text("Shows elevation and terrain steepness. Useful for hiking and mountain biking.")
-                        .font(.terentoUI(size: 12, weight: .regular))
+                        .font(.terento(.caption, weight: .regular))
                         .foregroundStyle(TerentoColors.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.leading, 24)
@@ -5884,44 +5840,23 @@ struct MapSelectionRow: View {
         }
     }
 
+    /// Line 2: provider and release, plus "Already installed" or the size
+    /// note where it applies. Blocked and warning messages are `rowStatus`.
     private var detail: String {
         let baseDetail: String
 
-        if let status = item.acquisitionAvailability.shortStatus {
-            baseDetail = status
-        } else if item.package.sourceKind == .custom {
+        if item.package.sourceKind == .custom, item.acquisitionAvailability.shortStatus == nil {
             return "From this Mac"
+        } else if rowStatus != nil {
+            baseDetail = ""
         } else if isAlreadyInstalledSearchResult {
             baseDetail = item.alreadyInstalledDetail(updateOffered: updateOfferedInManage)
         } else {
             switch item.comparison.status {
             case .notInstalled:
-                if let preflightStatus = item.preflightStatus {
-                    switch preflightStatus {
-                    case .blockedUnsupportedDevice:
-                        baseDetail = "This device has no validated Terento install profile yet"
-                    case .blockedUnknownTarget:
-                        baseDetail = "Install target is not validated for this device"
-                    case .blockedAmbiguousMapIdentity:
-                        baseDetail = "Map identity needs to be checked before installation"
-                    case .blockedMapTypeConflict:
-                        baseDetail = item.preflightReason ?? BBBikeProviderAdapter.unverifiedTypeConflictMessage(for: item.package)
-                    case .blockedInsufficientSpace:
-                        baseDetail = "Not enough space for a safe installation"
-                    case .blockedUnknownInstallSize:
-                        baseDetail = "Size calculated before installation"
-                    case .error:
-                        baseDetail = "Could not prepare this map for installation"
-                    case .readyNewInstall, .readyWithExistingMapConflict:
-                        baseDetail = item.installSizeBytes == nil
-                            ? "Size calculated before installation"
-                            : ""
-                    }
-                } else {
-                    baseDetail = item.installSizeBytes == nil
-                        ? "Size calculated before installation"
-                        : ""
-                }
+                baseDetail = item.installSizeBytes == nil || item.preflightStatus == .blockedUnknownInstallSize
+                    ? "Size calculated before installation"
+                    : ""
             case .updateAvailable:
                 baseDetail = "Installed · Update available"
             case .upToDate:
@@ -5943,8 +5878,35 @@ struct MapSelectionRow: View {
         return values.joined(separator: " · ")
     }
 
+    /// Line 3: why this map can't be installed now, on its own line.
+    private var rowStatus: String? {
+        if let status = item.acquisitionAvailability.shortStatus {
+            return status
+        }
+        guard item.package.sourceKind != .custom,
+              !isAlreadyInstalledSearchResult,
+              item.comparison.status == .notInstalled,
+              let preflightStatus = item.preflightStatus else { return nil }
+        switch preflightStatus {
+        case .blockedUnsupportedDevice:
+            return "This device has no validated Terento install profile yet"
+        case .blockedUnknownTarget:
+            return "Install target is not validated for this device"
+        case .blockedAmbiguousMapIdentity:
+            return "Map identity needs to be checked before installation"
+        case .blockedMapTypeConflict:
+            return item.preflightReason ?? BBBikeProviderAdapter.unverifiedTypeConflictMessage(for: item.package)
+        case .blockedInsufficientSpace:
+            return "Not enough space for a safe installation"
+        case .error:
+            return "Could not prepare this map for installation"
+        case .blockedUnknownInstallSize, .readyNewInstall, .readyWithExistingMapConflict:
+            return nil
+        }
+    }
+
     private var statusIcon: String {
-        if item.preflightStatus == .blockedMapTypeConflict {
+        if rowStatus != nil {
             return "exclamationmark.triangle"
         }
         switch item.comparison.status {
@@ -5958,7 +5920,7 @@ struct MapSelectionRow: View {
     }
 
     private var statusColor: Color {
-        if item.preflightStatus == .blockedMapTypeConflict {
+        if rowStatus != nil {
             return TerentoColors.warning
         }
         switch item.comparison.status {
@@ -5987,7 +5949,7 @@ struct MapSelectionRow: View {
                 "\(item.title), \(item.comparison.providerName), \(formatBytes($0))"
             } ?? "\(item.title), \(item.comparison.providerName), size calculated before installation") + guidance
         }
-        return "\(item.title), \(detail)"
+        return [item.title, detail, rowStatus].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", ")
     }
 
     private var isAlreadyInstalledSearchResult: Bool {
@@ -6081,11 +6043,11 @@ private struct TerentoMapSectionHeader: View {
                 TerentoDisclosureIndicator(isExpanded: isExpanded)
 
                 Text(title)
-                    .font(.terentoUI(size: 17, weight: .semibold))
+                    .font(.terento(.rowTitle))
                     .foregroundStyle(TerentoColors.graphite)
 
                 Text(countLabel)
-                    .font(.terentoUI(size: 12, weight: .semibold))
+                    .font(.terento(.caption, weight: .semibold))
                     .foregroundStyle(TerentoColors.secondaryText)
             }
             .frame(minHeight: TerentoPageLayout.sectionHeaderMinHeight, alignment: .leading)
@@ -6107,13 +6069,13 @@ struct MapSelectionStorageSummary: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
                 Text("Storage")
-                    .font(.terentoUI(size: 16, weight: .semibold))
+                    .font(.terento(.rowTitle))
                     .foregroundStyle(TerentoColors.graphite)
 
                 Spacer(minLength: 12)
 
                 Text("\(formatBytes(plan.storagePlan.currentFreeSpace)) available of \(formatBytes(totalCapacity))")
-                    .font(.terentoUI(size: 14, weight: .medium))
+                    .font(.terento(.meta))
                     .foregroundStyle(TerentoColors.graphite)
                     .multilineTextAlignment(.trailing)
             }
@@ -6132,20 +6094,20 @@ struct MapSelectionStorageSummary: View {
 
             HStack(alignment: .firstTextBaseline, spacing: 12) {
                 Text(selectedMapSummary)
-                    .font(.terentoUI(size: 13, weight: .medium))
+                    .font(.terento(.meta))
                     .foregroundStyle(TerentoColors.secondaryText)
 
                 Spacer(minLength: 12)
 
                 Text(afterInstallationSummary)
-                    .font(.terentoUI(size: 13, weight: .medium))
+                    .font(.terento(.meta))
                     .foregroundStyle(TerentoColors.secondaryText)
                     .multilineTextAlignment(.trailing)
             }
 
             if !statusText.isEmpty {
                 Text(statusText)
-                    .font(.terentoUI(size: 13, weight: .semibold))
+                    .font(.terento(.meta, weight: .semibold))
                     .foregroundStyle(statusColor)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -6156,7 +6118,7 @@ struct MapSelectionStorageSummary: View {
         .accessibilityValue(storageAccessibilityValue)
     }
 
-    private var statusText: String {
+    fileprivate var statusText: String {
         if plan.selectedItems.isEmpty {
             return ""
         }
@@ -6172,7 +6134,7 @@ struct MapSelectionStorageSummary: View {
         return plan.storagePlan.insufficientSpaceMessage(formatBytes: formatBytes)
     }
 
-    private var statusColor: Color {
+    fileprivate var statusColor: Color {
         if plan.selectedItems.count > InstallationPlan.maximumMapsPerOperation {
             return TerentoColors.error
         }
@@ -6182,12 +6144,12 @@ struct MapSelectionStorageSummary: View {
         return plan.storagePlan.isAllowed ? TerentoColors.lichenDark : TerentoColors.error
     }
 
-    private var storageAccessibilityValue: String {
+    fileprivate var storageAccessibilityValue: String {
         "\(formatBytes(plan.storagePlan.currentFreeSpace)) available of \(formatBytes(totalCapacity)), \(selectedMapSummary), \(afterInstallationSummary), \(Int(projectedUsedFraction * 100)) percent used"
             + (statusText.isEmpty ? "" : ". \(statusText)")
     }
 
-    private var selectedMapSummary: String {
+    fileprivate var selectedMapSummary: String {
         let count = plan.selectedItems.count
         let countLabel = "\(count) \(count == 1 ? "map" : "maps")"
         guard count > 0 else {
@@ -6210,7 +6172,9 @@ struct MapSelectionStorageSummary: View {
                 let name = item.comparison.providerName.trimmingCharacters(
                     in: .whitespacesAndNewlines
                 )
-                return name.isEmpty ? nil : name
+                // The same "Provider (Style)" name as the row's second line.
+                return name.isEmpty ? nil : MapProviderDisplay.title(providerID: item.package.providerId,
+                    regionID: item.package.canonicalRegionId, fallback: name)
             }
         )
         guard providerNames.count == 1, let providerName = providerNames.first else {
@@ -6219,7 +6183,7 @@ struct MapSelectionStorageSummary: View {
         return "\(summary) · \(providerName)"
     }
 
-    private var afterInstallationSummary: String {
+    fileprivate var afterInstallationSummary: String {
         if plan.storagePlan.hasUnresolvedInstallSize {
             return "Available after size check"
         }
@@ -6236,6 +6200,63 @@ struct MapSelectionStorageSummary: View {
     }
 }
 
+/// Install maps Storage on the footer row, left of Continue: the bar, then
+/// "14.77 GB free · 0 maps selected" and, with a selection, the free space
+/// after installation. A blocking note goes on its own line below.
+struct MapSelectionStorageLine: View {
+    let plan: InstallationPlan
+    let totalCapacity: UInt64
+    let formatBytes: (UInt64) -> String
+
+    private var summary: MapSelectionStorageSummary {
+        MapSelectionStorageSummary(plan: plan, totalCapacity: totalCapacity, formatBytes: formatBytes)
+    }
+
+    private var lineText: String {
+        var parts = ["\(formatBytes(plan.storagePlan.currentFreeSpace)) free", summary.selectedMapSummary]
+        if !plan.selectedItems.isEmpty {
+            parts.append(summary.afterInstallationSummary)
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    var body: some View {
+        let summary = summary
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .center, spacing: 12) {
+                let projection = StorageBarProjection(
+                    plan: plan.storagePlan,
+                    totalCapacity: totalCapacity
+                )
+                TerentoProgressBar(
+                    value: projection.fraction(for: projection.existingUsedBytes),
+                    selectedValue: projection.fraction(for: projection.selectedMapBytes),
+                    fill: TerentoColors.lichen,
+                    label: "Storage"
+                )
+                .frame(width: 160)
+                .accessibilityHidden(true)
+
+                Text(lineText)
+                    .font(.terento(.meta))
+                    .foregroundStyle(TerentoColors.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if !summary.statusText.isEmpty {
+                Text(summary.statusText)
+                    .font(.terento(.meta, weight: .semibold))
+                    .foregroundStyle(summary.statusColor)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Storage")
+        .accessibilityValue(summary.storageAccessibilityValue)
+    }
+}
+
 /// One look for the Install and Manage search field and filter pop-ups:
 /// 38 pt tall, control radius, surface fill, and a focus border.
 private struct ToolbarControlChrome: ViewModifier {
@@ -6243,7 +6264,7 @@ private struct ToolbarControlChrome: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .font(.terentoUI(size: 13, weight: .regular))
+            .font(.terento(.meta, weight: .regular))
             .padding(.horizontal, 10)
             .frame(height: 38)
             .background(
@@ -6302,7 +6323,7 @@ private struct SecondaryButton: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.terentoUI(size: 15, weight: .semibold))
+                .font(.terento(.meta, weight: .semibold))
                 .foregroundStyle(isEnabled ? TerentoColors.graphite : TerentoColors.secondaryText)
                 .padding(.horizontal, 16)
                 .frame(height: 44)

@@ -99,10 +99,10 @@ require "$diagnostics" 'Button("Report on GitHub (public)", action: reportOnGitH
 require "$diagnostics" 'TerentoDiagnosticLog.reportLatestFailure()' 'the GitHub option no longer copies the saved report'
 require "$app_source" 'Button("Send Report to Terento…")' 'Help menu has no Send report to Terento'
 require "$app_source" 'Window("Send Report to Terento", id: "support-report")' 'support report window is missing'
-# QA round 3: type levels shared with About and Diagnostics (help 12 secondary, body 13).
-require "$sheet" '.font(.terentoUI(size: 12, weight: .regular))' 'Send report counter is not help text (12)'
-if grep -Eq 'terentoUI\(size: (11|14),' "$sheet"; then
-    print -u2 "FAIL: Send report uses an 11 or 14 pt UI size outside the shared levels"
+# Type levels shared with About and Diagnostics: help is caption (12), body meta (14).
+require "$sheet" '.font(.terento(.caption, weight: .regular))' 'Send report counter is not help text (caption)'
+if grep -Eq 'size: [0-9]+, weight' "$sheet"; then
+    print -u2 "FAIL: Send report uses a literal text size outside the app type scale"
     exit 1
 fi
 require "$app_source" 'Button("Report an Issue")' 'Help menu lost the GitHub option'

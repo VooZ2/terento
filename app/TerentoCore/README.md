@@ -245,9 +245,22 @@ owned-map lifecycle actions and exact valid external-map removal with
 separate confirmation. About is opened through `Terento → About Terento`;
 it offers a secondary "Check for updates" and a primary "Update" only once an
 update is found;
-Diagnostics contains sharing settings. The sidebar remains Device, Install
-maps, Manage maps. UI layout and exact copy are reviewed visually; tests should
+Diagnostics contains sharing settings. The sidebar remains Your Garmin
+(the page title of the connected watch), Install maps, Manage maps. UI layout and exact copy are reviewed visually; tests should
 protect actions, state transitions, accessibility and data contracts.
+
+Type and layout (2026-11-22): Terento.app bundles Inter and Instrument Sans
+(`Resources/Fonts`, SIL OFL 1.1 with their licence files) and registers them at
+launch, so the app shows the same faces as the website. Text uses only the six
+`TerentoTypography` roles: page title 42, device name 28, lede 19, row title 16,
+meta 14 and caption 12 (`run-app-typography-tests.sh` fails on any other text
+size; SF Symbol sizes are icon metrics). A map row in Install and Manage maps
+has the title, one metadata line (provider style, release, "Already installed"),
+and, only when the map is blocked or has a warning, the message on its own line
+in the colour of the row's status icon. A BBBike style has one name everywhere:
+"BBBike (OpenTopoMap)". Install maps opens the import panel from "Import from
+Mac" next to Refresh, and Storage ("14.77 GB free · 0 maps selected", then the
+free space after installation) shares the footer row with Continue.
 
 ## Safety and verification
 
@@ -743,7 +756,7 @@ installation authorization. The Map Manager registry includes the officially
 documented fēnix 9 family; exact-model public evidence remains independent.
 That local registry is presentation evidence, not a native write allowlist; it
 never disables a server-approved Install action and is hidden on the Device
-page once the watch is "Ready for maps".
+page once the watch is ready for maps.
 The install/update path requires fresh API catalog authorization before
 acquisition and again before writing. It matches a normalized base model and
 filters candidates only with reliable variant facts. Conflicting variant
@@ -754,11 +767,13 @@ remain pending/fail closed. See the [tracked authorization contract](../../contr
 While the map read that follows every connection is running, Install maps and
 Manage maps are disabled and a small spinner with "Reading your maps…" beside
 them says why.
-After connect the Device page shows the verdict with text and an icon: "Checking…"
-while the policy is resolving (never a connection error), "Ready for maps",
-"Not yet enabled for this model" for PENDING/unknown/ambiguous models (browsing
+After connect the Device page shows the verdict with text and an icon only
+while the watch is not ready: "Checking…" while the policy is resolving (never
+a connection error), "Not yet enabled for this model" for PENDING/unknown/ambiguous models (browsing
 stays available and Install maps is labelled), "Not available for this model",
-or "Couldn't check" with Try again when the policy could not be fetched. The
+or "Couldn't check" with Try again when the policy could not be fetched. An
+approved watch ("Ready for maps") shows no badge: the "Connected and ready."
+subtitle and the sidebar status already say so. The
 five-minute catalog timer re-resolves an unavailable policy. A decision fetched
 at download time is applied to `DeviceEngine`, so a rejection is shown on the
 review page instead of silently returning to it. These are presentation and
