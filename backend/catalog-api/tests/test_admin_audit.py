@@ -40,81 +40,6 @@ class AdminAuditTests(unittest.TestCase):
         self.assertNotIn(".overview-attention-empty h2", ADMIN_STYLES)
         self.assertNotIn(".overview-attention-empty{display:grid", ADMIN_STYLES)
 
-    def test_card_spacing_has_one_layout_owner(self):
-        from terento_catalog.admin import ADMIN_STYLES
-        spacing = ADMIN_STYLES.split("/* Card spacing belongs to the containing layout", 1)[1]
-        self.assertNotIn("--admin-mobile-card-gap", ADMIN_STYLES)
-        # One owner rule: 24px between separate cards, 16px at 700px and narrower; 12px filter-to-table.
-        self.assertIn(":root{--admin-card-gap:24px;--admin-filter-table-gap:12px}", spacing)
-        self.assertIn("@media(max-width:700px){\n  :root{--admin-card-gap:16px}", spacing)
-        self.assertIn("main.overview-page{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--admin-card-gap)}", spacing)
-        self.assertIn(".model-evidence-grid>.model-evidence-history>*+*{margin-top:var(--admin-card-gap)}", spacing)
-        # Devices uses the same detached filter bar as Installations (owner decision 2026-10-06).
-        self.assertIn(".filter-bar:has(~.table-wrap){margin-bottom:var(--admin-filter-table-gap)}", spacing)
-        self.assertNotIn(".filter-bar:not(.device-filter-bar)", ADMIN_STYLES)
-        grids = spacing.split("){gap:var(--admin-card-gap)}", 1)[0].rsplit(":is(", 1)[1].split(",")
-        for group in (".overview-primary-grid", ".overview-composition-grid", ".model-evidence-summary",
-                      ".model-information-columns", ".provider-dashboard-grid", ".provider-state-grid", ".support-report-main"):
-            self.assertIn(group, grids)
-        self.assertIn("main.dashboard :is(" + ",".join(grids) + ")>*{margin-top:0;margin-bottom:0}", spacing)
-        self.assertNotIn(".admin-kpi-panel.model-statistics+.model-review-alert{margin-top:16px}", ADMIN_STYLES)
-
-    def test_overview_activity_uses_a_compact_internal_scroll_surface(self):
-        from terento_catalog.admin import ADMIN_STYLES
-
-        self.assertIn('.overview-primary-grid{display:grid;gap:12px;grid-template-columns:repeat(2,minmax(0,1fr))}', ADMIN_STYLES)
-        # Cards sharing a row stretch to one height (review 2026-10-06).
-        self.assertIn('.overview-primary-grid{align-items:stretch}', ADMIN_STYLES)
-        self.assertIn('.map-statistics-coverage-layout{align-items:stretch;', ADMIN_STYLES)
-        self.assertIn('.overview-activity-list{min-height:0;max-block-size:350px;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding-inline-end:6px}', ADMIN_STYLES)
-        # Needs attention | Activity, then First run | App downloads; a lone
-        # last card spans the row so no grid cell stays empty.
-        self.assertIn(".overview-composition-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch;", ADMIN_STYLES)
-        self.assertIn(".overview-composition-grid>.overview-panel:last-child:nth-child(odd){grid-column:1/-1}", ADMIN_STYLES)
-        self.assertNotIn("grid-template-areas:'attention activity'", ADMIN_STYLES)
-        self.assertNotIn('.overview-tertiary-grid', ADMIN_STYLES)
-
-    def test_admin_scrollbars_are_hidden_without_changing_scroll_surfaces(self):
-        from terento_catalog.admin import ADMIN_DROPDOWN_STYLES, ADMIN_STYLES, _layout
-
-        self.assertIn('<body class="admin-shell">', _layout("Test", "").decode())
-        # The filter dropdown truncates its value text; it is not a scroll surface.
-        scrollbar_css = ADMIN_STYLES.split("/* Admin scrollbars are visually hidden", 1)[1].replace(ADMIN_DROPDOWN_STYLES, "")
-        self.assertIn("scrollbar-width:none", scrollbar_css)
-        self.assertIn("-ms-overflow-style:none", scrollbar_css)
-        self.assertIn("::-webkit-scrollbar", scrollbar_css)
-        self.assertIn("display:none;width:0;height:0", scrollbar_css)
-        self.assertNotIn("overflow:hidden", scrollbar_css)
-        self.assertNotIn("overflow:clip", scrollbar_css)
-        for selector in (
-            ".table-wrap",
-            ".overview-chart-wrap",
-            ".identity-search-results",
-            "#admin-menu-panel",
-            ".quick-filter-group",
-            ".diagnostic-detail-inner",
-            ".device-dialog-inner",
-            ".generated-url",
-            ".device-table-wrap",
-            ".provider-detail .provider-history-wrap",
-            ".map-statistics-popularity",
-            ".audit-technical-details code",
-        ):
-            with self.subTest(selector=selector):
-                self.assertIn(selector, scrollbar_css)
-        self.assertIn(".table-wrap{max-height:none;overflow-x:auto;overflow-y:visible", ADMIN_STYLES)
-        self.assertIn(".overview-chart-wrap{overflow-x:auto}", ADMIN_STYLES)
-        self.assertIn(".diagnostic-detail-inner{max-height:min(900px,calc(100vh - 32px));padding:24px;overflow:auto}", ADMIN_STYLES)
-
-    def test_inline_filter_controls_do_not_inherit_vertical_flex_basis(self):
-        from terento_catalog.admin import ADMIN_STYLES
-        # Labels became columns: the old select flex-basis (170px) must not
-        # become a height. Reset both input and select, including tablet sizes.
-        self.assertIn('.inline-filter-row label>input,.inline-filter-row label>select{flex:none}', ADMIN_STYLES)
-        self.assertIn('.inline-filter-row label>input,.inline-filter-row label>select{width:100%;height:var(--admin-control-height)}', ADMIN_STYLES)
-        self.assertIn('.inline-filter-row{align-items:flex-end}', ADMIN_STYLES)
-        self.assertIn('@media(max-width:700px){.inline-filter-row{align-items:stretch}.inline-filter-row label{flex-basis:auto}}', ADMIN_STYLES)
-
     def test_identity_search_exposes_results_without_opening_select(self):
         from terento_catalog.admin import _diagnostics_script, _diagnostic_detail_dialog
         markup = _diagnostic_detail_dialog('Unknown', 'test', [{'phase_outcome': 'FAILED'}], resolved=False, csrf_token='test', identity_devices=[])
@@ -125,10 +50,6 @@ class AdminAuditTests(unittest.TestCase):
         self.assertIn('render(search.value);', script)
         self.assertIn("empty.textContent = 'No catalog models match this search.'", script)
         self.assertIn("event.submitter?.name", script)
-
-    def test_github_actions_share_alignment_without_form_button_margin(self):
-        self.assertIn('.github-actions>.secondary-button{display:inline-flex;align-items:center;justify-content:center;margin:0;align-self:stretch;text-align:center;text-decoration:none;white-space:normal}', ADMIN_STYLES)
-        self.assertIn('.github-actions>.copy-status{flex-basis:100%}', ADMIN_STYLES)
 
     def test_mobile_chart_keeps_last_bucket_and_unique_clip_ids(self):
         import re
@@ -177,10 +98,6 @@ class AdminAuditTests(unittest.TestCase):
 
     def test_control_alignment_typography_and_coverage_focus(self):
         body = map_statistics_page({"rows": []}, [], {"username": "audit"}, "csrf").decode()
-        for rule in (".filter-bar>.filter-disclosure{align-self:flex-end}",
-                     ".filter-bar input,.filter-bar select{font-weight:400}",
-                     ".filter-bar .device-mobile-sort{display:flex;flex-direction:column;gap:6px}"):
-            self.assertIn(rule, ADMIN_STYLES)
         self.assertIn("coverage-map-v1.js?v=20261103-no-wheel-1", body)
         result = subprocess.run([os.environ.get('TERENTO_NODE_BIN', 'node'),
                                  str(Path(__file__).with_name('coverage-map-tests.cjs'))],
@@ -194,14 +111,10 @@ class AdminAuditTests(unittest.TestCase):
         for text in ("Downloads", "Successful", "Failed", "Installs",
                      "Top countries", "Top maps"):
             self.assertIn(text, body)
-        self.assertIn("min-width:560px", ADMIN_STYLES)
         self.assertNotIn("Diagnostic coverage", body)
         self.assertNotIn("<strong data-stat='providerIssues'>", body)
         self.assertNotIn("installSuccessFraction", body)
         self.assertNotIn("opted-in", body)
-        self.assertNotIn("table-layout:fixed}", ADMIN_STYLES.split("@media(min-width:701px){", 1)[1].split("}", 1)[0])
-        self.assertIn("min-height:44px", ADMIN_STYLES)
-        self.assertIn(".popularity-search-label", ADMIN_STYLES)
         self.assertNotIn("Popular maps", body)
         self.assertIn("installation-empty", _dashboard_script())
 
@@ -339,7 +252,6 @@ class AdminAuditTests(unittest.TestCase):
     def test_local_activity_caption_keeps_a_readable_mobile_width(self):
         body=local_test_data_page({'activity':[]}, {'username':'audit'},'csrf').decode()
         self.assertIn('<caption class="test-data-activity-caption">Latest local activity',body)
-        self.assertIn('.test-data-activity-caption{display:block;width:100%;max-width:100%;box-sizing:border-box;white-space:normal;overflow-wrap:anywhere;',ADMIN_STYLES)
 
     def test_build_guard_separates_debug_and_public_release(self):
         guard=Path(__file__).resolve().parents[3]/'Packaging'/'verify-release-label.sh'

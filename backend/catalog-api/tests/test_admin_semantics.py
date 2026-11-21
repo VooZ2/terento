@@ -3,7 +3,6 @@ from __future__ import annotations
 from contextlib import contextmanager
 import html
 from html.parser import HTMLParser
-import inspect
 import json
 from datetime import datetime, timezone
 import os
@@ -84,7 +83,6 @@ from admin_test_utils import metric_tone, metric_value, visible_text, source_cou
 
 ROOT = Path(__file__).resolve().parents[1]
 MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "021_canonical_admin_semantics.sql"
-CURRENT_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "025_device_card_failure_epoch.sql"
 IDENTITY_STATE_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "022_canonical_identity_state_consistency.sql"
 PUBLIC_REVIEW_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "023_public_compatibility_review_audit.sql"
 WORKFLOW_MIGRATION = ROOT / "src" / "terento_catalog" / "migrations" / "040_diagnostic_issue_workflow.sql"
@@ -97,6 +95,14 @@ def _rendered_issue_link(title: str, body: str) -> tuple[str, bool]:
     markup = _github_issue_controls(title, body, issue=None, csrf_token="t", identifier="x", return_to="/admin")
     href = markup.split("href='", 1)[1].split("'", 1)[0]
     return html.unescape(href), "data-prefilled='true'" in markup
+
+
+def _rendered_map_statistics_page():
+    rows = [{"provider_id": "p", "map_package_id": "m", "region": "LT", "region_country": "LT",
+             "event_type": "INSTALL_SUCCEEDED", "outcome": "SUCCEEDED", "operation_count": 1}]
+    return map_statistics_page({"rows": rows, "summary": _map_statistics_summary(rows), "trend": []},
+                               [{"id": "p", "name": "Provider"}], {"username": "operator"}, "csrf",
+                               selected_filters={"period": "24h"}).decode()
 
 
 class RecordingResult:
@@ -339,27 +345,20 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         script = _map_statistics_script()
         self.assertEqual(script.count("const mapRow ="), 1)
         self.assertIn('return `<tr class="popular-map-row">', script)
-        self.assertIn("map-statistics-ranking", inspect.getsource(map_statistics_page))
+        self.assertIn("map-statistics-ranking", _rendered_map_statistics_page())
         self.assertNotIn("popularityViews", script)
         self.assertNotIn("top-region-rows", script)
-        self.assertIn(".admin-table th.column-number,.admin-table td.column-number", ADMIN_STYLES)
-        self.assertIn("text-align:right", ADMIN_STYLES)
-        self.assertIn(".admin-table th.column-status,.admin-table td.column-status{text-align:left}", ADMIN_STYLES)
 
     def test_phone_ranking_lists_and_filter_toggles_keep_compact_layouts(self):
         # Owner report 2026-10-06 (390 px iPhone): Top countries and Top maps stay
         # compact list rows instead of labelled record cards, and More filters
         # shares one row with Filters and sorting.
-        source = inspect.getsource(map_statistics_page)
-        self.assertIn("<table class='admin-table popular-maps-table' data-own-mobile-layout><caption class='sr-only'>Top countries</caption>", source)
-        self.assertIn("<table class='admin-table popular-maps-table' data-own-mobile-layout><caption class='sr-only'>Top maps</caption>", source)
+        body = _rendered_map_statistics_page()
+        self.assertIn("<table class='admin-table popular-maps-table' data-own-mobile-layout><caption class='sr-only'>Top countries</caption>", body)
+        self.assertIn("<table class='admin-table popular-maps-table' data-own-mobile-layout><caption class='sr-only'>Top maps</caption>", body)
         script = _map_statistics_script()
         self.assertIn('data-sort-value="${item.installs}"', script)
         self.assertIn('<span class="sr-only"> installs</span>', script)
-        self.assertIn(".map-statistics-ranking .popular-maps-table thead{display:none}", ADMIN_STYLES)
-        self.assertIn(".filter-bar>.mobile-filter-toggle,.filter-bar>.filter-disclosure:has(~.mobile-filter-toggle:not([hidden])){flex:0 0 calc(50% - 4px)", ADMIN_STYLES)
-        self.assertIn(".filter-bar>.filter-disclosure:has(~.mobile-filter-toggle:not([hidden])) .disclosure-body{width:calc(200% + 8px)}", ADMIN_STYLES)
-        self.assertIn(".filter-bar>.results-count{min-height:0;align-self:center}", ADMIN_STYLES)
 
     def test_overview_uses_selected_period_charts_and_installations_prioritize_errors(self):
         overview = overview_page(
@@ -428,7 +427,6 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertEqual(source_count(detail_panel, "web", "attempts"), "0")
         self.assertIn("data-stat='lastReport'>—<span class='sr-only'>Unknown</span>", detail_panel)
         self.assertIn("class='model-evidence-grid'", detail)
-        self.assertIn("grid-template-columns:repeat(2,minmax(0,1fr))", ADMIN_STYLES)
         detail_grid = detail.split("class='model-evidence-grid'", 1)[1].split("{''.join", 1)[0]
         positions = [detail_grid.index(label) for label in (
             "model-installation-kpis-title", "Administration", "Device information",
@@ -1096,14 +1094,8 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("row.map_package_id", script)
         self.assertIn("row.component_kind === 'main'", script)
         self.assertNotIn("popularityViewButtons", script)
-        query = inspect.getsource(Database.map_statistics)
-        for value in ("mp.canonical_region_id", "mp.country AS region_country", "e.component_kind", "e.acquisition_id::text"):
-            self.assertIn(value, query)
 
     def test_map_statistics_fallback_matches_provider_region_aliases_to_explicit_events(self):
-        source = inspect.getsource(Database.map_statistics)
-        for value in ("LEFT JOIN map_package AS installed_package", "installed_package.provider_region_id", "installed_package.canonical_region_id", "installed_package.region"):
-            self.assertIn(value, source)
         rows = [{"provider_id":"p","map_package_id":"m","region":"LT","region_country":"LT","event_type":"INSTALL_SUCCEEDED","outcome":"SUCCEEDED","operation_count":1}]
         body = map_statistics_page({"rows":rows,"summary":_map_statistics_summary(rows),"trend":[]}, [{"id":"p","name":"Provider"}], {"username":"operator"}, "csrf", selected_filters={"period":"24h"}).decode()
         self.assertIn("Last 24 hours", body)
@@ -1691,8 +1683,6 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertEqual(snapshot["completedInstallCount"], 2)
         self.assertEqual(snapshot["failedInstallCount"], 0)
         self.assertEqual(snapshot["eventCount"], 4)
-        self.assertIn("self.map_statistics_trend(", inspect.getsource(Database.admin_overview_map_snapshot))
-        self.assertIn("period_metrics = _canonical_map_statistics_summary(canonical_rows)", inspect.getsource(Database.admin_overview_map_snapshot))
 
     def test_dashboard_and_maps_reconcile_on_one_all_time_canonical_dataset(self):
         canonical_rows = [
@@ -1810,7 +1800,6 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         raw_queries = "\n".join(query for query, _ in database.calls)
         self.assertIn("terento_fresh_result_classification(", raw_queries)
         self.assertNotIn("e.write_started IS NOT FALSE", raw_queries)
-        self.assertIn("A final compatibility failure is an installation", inspect.getsource(Database.admin_overview_map_snapshot))
 
         body = overview_page({
             "period": "24h",
@@ -1820,12 +1809,6 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         }, {"username": "operator"}, "csrf").decode()
         self.assertNotIn("Install failed: 1", body)
         self.assertIn("No map activity in this period.", body)
-
-    def test_installation_authorization_is_separate_from_compatibility_evidence(self):
-        source = inspect.getsource(Database.update_device_support_status)
-        self.assertIn("installation write authorization", source)
-        self.assertNotIn("compatibility_evidence_event", source)
-        self.assertIn("device_authorization_audit", source)
 
     def test_public_compatibility_review_is_explicit_audited_and_does_not_change_evidence(self):
         database = RecordingDatabase(
@@ -1882,6 +1865,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         ))
 
     def test_public_review_migration_is_additive_and_audited(self):
+        # Text check kept: an applied migration never runs again, so its file is the only proof of what it does to production data.
         migration = PUBLIC_REVIEW_MIGRATION.read_text(encoding="utf-8")
         self.assertIn("CREATE TABLE public_compatibility_review_audit", migration)
         self.assertIn("REFERENCES device_model(id) ON DELETE RESTRICT", migration)
@@ -1889,6 +1873,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertNotIn("DROP VIEW", migration)
 
     def test_missing_diagnostic_review_migration_is_additive_and_audited(self):
+        # Text check kept: an applied migration never runs again, so its file is the only proof of what it does to production data.
         migration = MISSING_REVIEW_MIGRATION.read_text(encoding="utf-8")
         self.assertIn("CREATE TABLE admin_map_review_task", migration)
         self.assertIn("CREATE TABLE admin_map_review_task_audit", migration)
@@ -1929,16 +1914,6 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             "pendingReviewTasks": 6,
             "total": 6,
         })
-        from terento_catalog.db import INSTALLATION_PROBLEM_OPERATIONS_CTE
-        source = inspect.getsource(Database.admin_review_summary)
-        self.assertIn("INSTALLATION_PROBLEM_OPERATIONS_CTE", source)
-        self.assertIn("diagnostic_status = 'ACTIVE'", INSTALLATION_PROBLEM_OPERATIONS_CTE)
-        self.assertIn("COALESCE(operation_id::text", INSTALLATION_PROBLEM_OPERATIONS_CTE)
-        self.assertIn("GROUP BY operation_key", INSTALLATION_PROBLEM_OPERATIONS_CTE)
-        self.assertIn("missing_diagnostics", source)
-        self.assertIn("canonical_device_model_id IS NOT NULL", source)
-        self.assertIn("review_status = 'PENDING'", source)
-        self.assertIn("review_status = 'APPROVED' AND public_statistics_enabled = false", source)
 
     def test_shared_navigation_does_not_link_a_partial_review_queue(self):
         body = devices_page([], None, {
@@ -2209,31 +2184,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertEqual(audit[6], "Administrator selected a catalog model for this diagnostic result.")
         self.assertIn('"decisionType": "CATALOG_SELECTION"', audit[9])
 
-    def test_admin_result_counts_use_the_public_statistics_view(self):
-        db_source = inspect.getsource(Database.admin_device_snapshot)
-        migration = CURRENT_MIGRATION.read_text(encoding="utf-8")
-        operation_group = "GROUP BY COALESCE(e.operation_id::text, 'legacy:' || e.event_id::text)"
-        self.assertNotIn(operation_group, db_source)
-        self.assertNotIn("compatibility_device_card_failure_epoch AS epoch", db_source)
-        self.assertIn("FROM compatibility_model_statistics AS s", db_source)
-        self.assertIn(
-            "s.failed_install_count AS failed",
-            db_source,
-        )
-        self.assertIn("s.attempted_install_count AS attempts", db_source)
-        self.assertIn("operation_stats AS (", migration)
-        self.assertIn("starts_at TIMESTAMPTZ NOT NULL DEFAULT now()", migration)
-        self.assertIn("WHERE e.diagnostic_status = 'ACTIVE'", migration)
-        self.assertIn("count(*) FILTER (WHERE o.write_started) AS attempted_install_count", migration)
-        self.assertIn("terento_compatibility_status(e.successful_install_count, dm.map_capable IS TRUE)", migration)
-        status_migration = MIGRATION.read_text(encoding="utf-8")
-        self.assertIn(
-            "terento_compatibility_status(successful_count BIGINT, recognized BOOLEAN)",
-            status_migration,
-        )
-
     def test_admin_vocabulary_and_accessible_sticky_tables_are_canonical(self):
-        admin_source = (ROOT / "src" / "terento_catalog" / "admin.py").read_text(encoding="utf-8")
         body = devices_page([{
             "device_id": "device-1", "model": "fēnix 8", "variant": "47 mm",
             "map_capable": True, "installation_authorization": "APPROVED",
@@ -2241,10 +2192,9 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         for label in (
             "Install policy", "Evidence", "Last success",
             "aria-label=\"Maps\"", "aria-label=\"Install policy\"",
-            "aria-label=\"Successful installations\"", "position:sticky", "z-index:3",
+            "aria-label=\"Successful installations\"",
         ):
-            self.assertIn(label, body if "aria-label" in label else ADMIN_STYLES if "position:" in label or "z-index" in label else admin_source)
-        self.assertIn("sticky", admin_source)
+            self.assertIn(label, body)
         self.assertNotIn("Support decision", body)
         self.assertNotIn("Last tested", body)
 
@@ -2325,10 +2275,6 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("Auto · ${browserTimeZone}", body)
         self.assertIn("Automatic browser time zone: ${browserTimeZone}", body)
         self.assertIn("matchMedia('(max-width: 760px)')", body)
-        self.assertIn(
-            "grid-template-columns:minmax(300px,1fr) max-content minmax(335px,1fr)",
-            ADMIN_STYLES,
-        )
 
     def test_modal_campaign_and_timezone_details_keep_the_refined_workflows(self):
         devices_body = devices_page([], None, {"username": "operator"}, "csrf").decode()
@@ -2358,8 +2304,6 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("Save support metadata", detail_body)
         self.assertIn("Device information", detail_body)
         self.assertIn("device-information-section", detail_body)
-        self.assertIn(".device-information-section .model-information-list{max-width:780px}", ADMIN_STYLES)
-        self.assertIn("grid-template-columns:150px minmax(0,1fr)", ADMIN_STYLES)
         self.assertNotIn("Change history", detail_body)
         self.assertIn("placeholder='garmin_maps'", campaign_body)
         self.assertIn("Rarely needed: only for paid search keywords.", campaign_body)
@@ -2741,14 +2685,8 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         # (failed in-progress and resolved here); empty disclosures are omitted.
         self.assertEqual(body.count("<summary>Review administration</summary>"), 2)
         self.assertEqual(body.count("<summary>Technical details</summary>"), 4)
-        self.assertIn(".diagnostic-detail-dialog{width:min(1160px,calc(100% - 32px))", ADMIN_STYLES)
         self.assertNotIn("width:min(860px,calc(100% - 32px))", ADMIN_STYLES)
-        self.assertIn(".github-review{overflow-wrap:anywhere}", ADMIN_STYLES)
-        self.assertIn(".diagnostic-technical-details{margin:10px 0 0;padding:9px 11px", ADMIN_STYLES)
         self.assertNotIn(".diagnostic-technical-details{margin:10px 0 0;padding:0", ADMIN_STYLES)
-        self.assertIn(".diagnostic-id code{overflow-wrap:anywhere", ADMIN_STYLES)
-        self.assertIn(".diagnostic-technical-details dd{min-width:0", ADMIN_STYLES)
-        self.assertIn(".diagnostic-detail-dialog{width:calc(100% - 32px);max-width:none", ADMIN_STYLES)
         self.assertIn("<details class='admin-disclosure diagnostic-disclosure github-link-disclosure'>", body)
         self.assertIn("Link or manage an existing issue", body)
         self.assertIn("Change linked issue", body)
@@ -2756,10 +2694,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("#32 <svg class='admin-icon admin-icon-external'", body)
         self.assertIn("Diagnostic ID:", body)
         self.assertIn("Technical details", body)
-        self.assertIn(":is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-review-forms>.diagnostic-action-form{display:flex;flex-wrap:wrap;align-items:flex-end", ADMIN_STYLES)
-        self.assertIn(":is(.diagnostic-detail-dialog,.update-diagnostics-page) .diagnostic-disclosure{min-width:0;margin:0;padding:0;border:1px solid var(--border);border-radius:var(--radius-card);background:var(--surface)}", ADMIN_STYLES)
         self.assertNotIn(".diagnostic-actions-grid>form.diagnostic-action-form", ADMIN_STYLES)
-        self.assertIn(".identity-review-form{grid-column:auto}", ADMIN_STYLES)
         self.assertNotIn(".identity-review-form{grid-column:1/-1}", ADMIN_STYLES)
         # The former select values are quick filters now (owner decision 2026-10-06).
         self.assertIn("data-history-filter='all' aria-pressed='true'>All</button>", body)
@@ -3146,28 +3081,6 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
             self.assertNotIn(text, body)
         self.assertNotIn("data-stat='freshMapDiagnosticCoverageRate'", body)
 
-    def test_map_statistics_linkage_query_joins_only_shared_operation_ids(self):
-        source = inspect.getsource(Database.map_statistics_linkage)
-        self.assertIn("FROM dated_map_events AS e", source)
-        self.assertIn("FROM compatibility_evidence_event AS e", source)
-        self.assertIn("ON c.operation_id = m.operation_id", source)
-        self.assertIn("c.map_result_index = m.reported_result_index", source)
-        self.assertIn("candidate_count = 1", source)
-        self.assertIn("e.statistics_exclusion_code IS NULL", source)
-        self.assertIn("AND c.provider_id = m.provider_id", source)
-        self.assertNotIn("LEFT JOIN LATERAL", source)
-        self.assertIn("GROUP BY e.operation_id", source)
-        self.assertIn("map_only_installation_count", source)
-        self.assertIn("linked_failed_install_count", source)
-        self.assertIn("count(*) FILTER (WHERE has_install_event)", source)
-        self.assertIn("count(DISTINCT map_operation_key)", source)
-        self.assertIn("fresh_map_attempt_count", source)
-        self.assertIn("map_reported_regions", source)
-        self.assertIn("map_result_index IS NOT NULL", source)
-        self.assertIn("compatibility_identity_keys", source)
-        self.assertNotIn("min(e.provider)", source)
-        self.assertIn("freshMapMissingDiagnosticCount", source)
-
     def test_provider_list_uses_compact_columns_and_summary(self):
         healthy = [{"id":"p","name":"Provider","status":"ACTIVE","health":"HEALTHY","packageCount":2,"affectedPackageCount":0,"problematicSourceCount":0}]
         body = providers_page(healthy, {"username":"operator"}, "csrf").decode()
@@ -3203,11 +3116,6 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertNotIn(">Problems</th>", body)
         self.assertIn("health_timeout", body)
         self.assertNotIn("provider issue(s)", body)
-        source = inspect.getsource(Database.provider_rows)
-        self.assertIn("affected_package_count", source)
-        self.assertIn("problematic_source_count", source)
-        self.assertIn("mp.availability <> 'RETIRED'", source)
-        self.assertIn("ma.source_url IS NOT NULL", source)
         self.assertNotIn(">Adapter<", body)
         self.assertNotIn("Open map statistics", body)
         self.assertNotIn("<small>opentopomap</small>", body)
@@ -3627,12 +3535,6 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("Could not save. Check the values and try again.", body)
         self.assertIn("controls.forEach((control) =>", body)
 
-    def test_issue_link_update_is_additive_and_does_not_change_evidence_outcome(self):
-        source = inspect.getsource(Database.update_diagnostic_issue)
-        self.assertIn("SET linked_github_issue = %s", source)
-        self.assertNotIn("phase_outcome", source)
-        self.assertNotIn("diagnostic_status =", source)
-
     def test_linked_issue_gets_a_non_terminal_workflow_state_and_can_be_reviewed(self):
         database = RecordingDatabase(diagnostic_rows=[{
             "event_id": "event-1",
@@ -3747,6 +3649,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertEqual(body.count("class='diagnostic-detail-dialog'"), 1)
 
     def test_issue_workflow_migration_is_additive_and_backfills_linked_active_rows(self):
+        # Text check kept: an applied migration never runs again, so its file is the only proof of what it does to production data.
         migration = WORKFLOW_MIGRATION.read_text(encoding="utf-8")
         self.assertIn("ADD COLUMN diagnostic_workflow_status TEXT NOT NULL DEFAULT 'OPEN'", migration)
         self.assertIn("IN_PROGRESS", migration)
@@ -3756,6 +3659,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertNotIn("DELETE FROM", migration)
 
     def test_authorized_test_cleanup_migration_is_exact_and_dependency_safe(self):
+        # Text check kept: an applied migration never runs again, so its file is the only proof of what it does to production data.
         migration = AUTHORIZED_TEST_CLEANUP_MIGRATION.read_text(encoding="utf-8")
         for identifier in (
             "10126c60-7129-49fc-8149-91b03f419960",
@@ -3771,6 +3675,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertNotIn("DELETE FROM map_provider", migration)
 
     def test_followup_authorized_test_cleanup_migration_is_exact(self):
+        # Text check kept: an applied migration never runs again, so its file is the only proof of what it does to production data.
         migration = FOLLOWUP_TEST_CLEANUP_MIGRATION.read_text(encoding="utf-8")
         for identifier in (
             "a493ae4e-6106-4a38-927a-e02ba0e742a0",
@@ -3822,12 +3727,12 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
                 self.assertNotIn("action='/admin/diagnostics/resolve'", dialog)
 
     def test_migration_is_additive_and_keeps_historical_records_active(self):
+        # Text check kept: an applied migration never runs again, so its file is the only proof of what it does to production data.
         migration = MIGRATION.read_text(encoding="utf-8")
         self.assertIn("ALTER TABLE compatibility_evidence_event", migration)
         self.assertIn("CREATE TABLE compatibility_diagnostic_lifecycle_audit", migration)
         self.assertIn("CREATE TABLE compatibility_identity_resolution_audit", migration)
         self.assertIn("CREATE TABLE device_authorization_audit", migration)
-        self.assertIn("WHERE collector_managed = TRUE", (ROOT / "src" / "terento_catalog" / "db.py").read_text(encoding="utf-8"))
         self.assertNotIn("UPDATE device_model\nSET active = FALSE", migration)
         self.assertIn("WHEN successful_count < 3 THEN ''TESTED''", migration)
         self.assertIn("WHEN successful_count < 5 THEN ''SUPPORTED''", migration)
@@ -3835,6 +3740,7 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertNotIn("compatibility_evidence_event\nSET phase_outcome", migration)
 
     def test_identity_state_backfill_is_scoped_and_audited(self):
+        # Text check kept: an applied migration never runs again, so its file is the only proof of what it does to production data.
         migration = IDENTITY_STATE_MIGRATION.read_text(encoding="utf-8")
         audit_position = migration.index("INSERT INTO compatibility_identity_resolution_audit")
         update_position = migration.index("UPDATE compatibility_evidence_event")

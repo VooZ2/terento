@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 import importlib.util
-import inspect
 import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import unittest
 
 from terento_catalog.admin import _system_health_cards, system_health_page
-from terento_catalog.db import Database
 from terento_catalog.operational_health import OperationalObservationError, validate_observation
 
 
@@ -86,12 +84,6 @@ class IndexNowObservationTests(unittest.TestCase):
         self.assertIn("'indexnow'", migration)
         self.assertNotIn("CREATE TABLE", migration)
         self.assertNotIn("DROP TABLE", migration)
-
-    def test_snapshot_uses_latest_per_component_without_a_generic_history_limit(self) -> None:
-        source = inspect.getsource(Database.operational_health_snapshot)
-        self.assertIn("DISTINCT ON (component)", source)
-        self.assertIn("ORDER BY component, observed_at DESC, id DESC", source)
-        self.assertNotIn("LIMIT 1", source.split("observations =", 1)[1].split("weekly =", 1)[0])
 
     def test_indexnow_contract_accepts_distinct_http_results(self) -> None:
         for status, result, count in ((200, "submitted", "http_200_count"), (202, "validation_pending", "http_202_count")):

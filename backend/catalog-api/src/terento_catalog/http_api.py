@@ -2563,9 +2563,7 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 return
             if request_path == "/admin/web-installer.csv":
                 query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
-                period = query.get("period", ["7d"])[-1]
-                if period not in ADMIN_PERIODS:
-                    period = "7d"
+                period = self._admin_period(query, "7d", shared=False)
                 time_zone = query.get("timeZone", [self._cookie_value("terento_admin_tz") or "UTC"])[-1]
                 try:
                     body, file_name = service.web_installer_export({"period": period, "timeZone": time_zone})
@@ -3467,10 +3465,15 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             morsel = cookie.get(name)
             return morsel.value if morsel else None
 
-        def _admin_period(self, query: dict[str, list[str]], default: str) -> str:
+        def _admin_period(self, query: dict[str, list[str]], default: str, *, shared: bool = True) -> str:
             """The Admin period: the link's, else the one last chosen on any
-            period page (one filter for all of Admin), else the page default."""
-            for candidate in (query.get("period", [""])[-1], self._cookie_value("terento_admin_period") or ""):
+            period page (one filter for all of Admin), else the page default.
+            ``shared=False`` ignores the remembered choice (exports use only
+            the link's period)."""
+            candidates = [query.get("period", [""])[-1]]
+            if shared:
+                candidates.append(self._cookie_value("terento_admin_period") or "")
+            for candidate in candidates:
                 if candidate in ADMIN_PERIODS:
                     return candidate
             return default
