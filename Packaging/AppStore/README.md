@@ -56,11 +56,20 @@ events are sent only after the person opts in (guideline 5.1.1, GDPR):
   and nothing is sent (`AppStoreReviewPolicy`, local
   `AppStoreSharingQuestionShownCount`).
   Diagnostics keeps both checkboxes to change it later.
-- The App Store notice version is 100 (`VersionedEvidenceConsent`,
-  `VersionedMapStatisticsConsent`); only `accepted` under that version
-  permits sharing. At start-up a choice copied from the DMG app becomes
-  `declined` if it was declined and unanswered otherwise, and every migrated
-  queue is dropped, so nothing recorded under the DMG notice is sent.
+- The App Store notice version is 101 from 1.2.3 (100 in 1.2.x;
+  `AppStoreConsentNotice`, used by `VersionedEvidenceConsent` and
+  `VersionedMapStatisticsConsent`); only `accepted` under the current version
+  permits sharing. At start-up (`AppStoreConsentNotice.migration`):
+  - a choice under notice 101 is kept as it is, so `Don't share` is final;
+  - `accepted` under 100 is kept with its queue;
+  - `declined` under 100 becomes unanswered, because the 1.2.x `Not now`
+    recorded a refusal; the person is asked again with the new callout. This
+    also applies to a 1.2.x refusal made in Diagnostics or carried over from
+    the DMG app, which 1.2.x stored under 100 too;
+  - a choice copied from the DMG app (its own notice numbers) becomes
+    `declined` if it was declined and unanswered otherwise.
+  Every queue without a standing opt-in is dropped, so nothing recorded under
+  the DMG notice or without an opt-in is sent.
 - Events carry `releaseLabel` with `+appstore` SemVer build metadata (for
   example `1.1.0+appstore`), so Admin tells App Store results apart without
   an API change.
