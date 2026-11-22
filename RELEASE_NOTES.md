@@ -3,10 +3,11 @@
 
 Terento 1.3.0 is an update to Terento 1.2.2, the free, open-source app for installing community maps on map-capable Garmin smartwatches and Edge bike computers from Apple Silicon Macs running macOS 13 or later. Compatibility is still evaluated model by model.
 
-This release keeps a large downloaded map ready when the device can't be reached, so you don't download it again, gives the app a cleaner, more consistent look, and makes reports about connection problems more useful. Installed 1.2.2 and earlier builds are offered it by the in-app update check. The Mac App Store version is updated separately.
+This release adds two map providers, Lucky Maps and OpenFietsMap, keeps a large downloaded map ready when the device can't be reached, so you don't download it again, gives the app a cleaner, more consistent look, and makes reports about connection problems more useful. Installed 1.2.2 and earlier builds are offered it by the in-app update check. The Mac App Store version is updated separately.
 
 ## WHAT'S NEW?
 
+- Two new map providers: Lucky Maps, hiking and cycling maps for regions on every continent, and OpenFietsMap, cycling maps for the Netherlands, Belgium and the rest of Europe. The app downloads them directly from each provider.
 - A cleaner look: the app now uses Terento's own fonts and one consistent text size scale, and map rows show the map name, then the provider, version and "Already installed" on one line.
 - Install maps shows more maps at once: free space and the number of selected maps sit on one line next to Continue, and "Import map file" is a button next to Refresh that opens and closes the import panel.
 - Manage maps shows the maps Garmin installed on your device as one line, "Garmin maps", with how many files there are and their size. Terento never changes them.
