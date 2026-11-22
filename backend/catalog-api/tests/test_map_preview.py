@@ -862,6 +862,21 @@ class PreviewHTTPTests(unittest.TestCase):
                 self.assertEqual(service.preview_tile_response(path.format("openfietsmap"))[0], WEBP)
                 self.assertIsNone(service.preview_tile_response(path.format("luckymaps")))
 
+            # Database down: tiles keep the last known styles, and a service
+            # that never built a manifest serves only the always-listed styles.
+            class BrokenDatabase(FakeStoreDatabase):
+                def enabled_providers(self):
+                    raise RuntimeError("database down")
+
+            with mock.patch("terento_catalog.map_preview.store.PreviewDatabase", BrokenDatabase), \
+                    self.assertLogs("terento_catalog.http_api", level="ERROR"):
+                service._preview_manifest_generation += 1
+                self.assertEqual(service.preview_tile_response(path.format("openfietsmap"))[0], WEBP)
+                fresh = CatalogService(object(), asset_storage=storage)
+                self.assertEqual(fresh.preview_tile_response(path.format("bbbike"))[0], WEBP)
+                self.assertIsNone(fresh.preview_tile_response(path.format("openfietsmap")))
+                self.assertIsNone(fresh.preview_tile_response(path.format("luckymaps")))
+
     def test_manifest_and_tile_routes(self):
         with tempfile.TemporaryDirectory() as directory:
             storage = AssetStorage(Path(directory))

@@ -183,6 +183,15 @@ RATE_LIMIT_SWEEP_INTERVAL = 1000
 CATALOG_PREVIEW_PROVIDERS = frozenset({"luckymaps", "openfietsmap"})
 
 
+def _always_listed_preview_styles() -> frozenset[str]:
+    from .map_preview.styles import STYLES
+
+    return frozenset(style.id for style in STYLES if not style.listed_when_enabled)
+
+
+_ALWAYS_LISTED_PREVIEW_STYLES = _always_listed_preview_styles()
+
+
 def _never_activated(row: dict[str, Any]) -> bool:
     """True for a registered provider that has not been ACTIVE even once."""
     if (row.get("provider_status") or "ACTIVE") == "ACTIVE":
@@ -304,6 +313,8 @@ class CatalogService:
         self.public_base_url = public_base_url
         self._preview_manifest_cache: tuple[float, bytes, int] | None = None
         self._preview_listed_styles: tuple[bytes, frozenset[str]] | None = None
+        self._preview_manifest_lock = threading.Lock()
+        self._preview_manifest_failed_at: float | None = None
         self._preview_manifest_generation = 0
         # projection -> (monotonic time the entry stays valid until, canonical rows or None after a failure).
         self._public_rows_cache: dict[str, tuple[float, list[dict[str, Any]] | None]] = {}
@@ -1220,9 +1231,23 @@ class CatalogService:
         return store.tile(request_path)
 
     def preview_listed_styles(self) -> frozenset[str]:
-        """Style ids in the current public manifest (cached with the manifest)."""
-        body = self.preview_manifest_response()
+        """Style ids in the current public manifest (cached with the manifest).
+
+        Tiles must keep working while the database is slow or down: a failed
+        manifest build keeps the last known styles (or, before any build, the
+        styles that are always listed) and is retried at most every 10 s.
+        """
         cached = self._preview_listed_styles
+        failed = self._preview_manifest_failed_at
+        if failed is not None and time.monotonic() - failed < 10:
+            return cached[1] if cached is not None else _ALWAYS_LISTED_PREVIEW_STYLES
+        try:
+            body = self.preview_manifest_response()
+        except Exception:
+            LOGGER.exception("preview manifest unavailable; tiles use the last known styles")
+            self._preview_manifest_failed_at = time.monotonic()
+            return cached[1] if cached is not None else _ALWAYS_LISTED_PREVIEW_STYLES
+        self._preview_manifest_failed_at = None
         if cached is not None and cached[0] is body:
             return cached[1]
         styles = frozenset(
@@ -1238,6 +1263,15 @@ class CatalogService:
         cached = self._preview_manifest_cache
         if cached is not None and cached[2] == generation and time.monotonic() - cached[0] < 60:
             return cached[1]
+        # One rebuild at a time: a burst of tile requests after expiry waits
+        # for it instead of each running the database queries.
+        with self._preview_manifest_lock:
+            cached = self._preview_manifest_cache
+            if cached is not None and cached[2] == generation and time.monotonic() - cached[0] < 60:
+                return cached[1]
+            return self._build_preview_manifest(generation)
+
+    def _build_preview_manifest(self, generation: int) -> bytes:
         from .map_preview.areas import load_areas
         from .map_preview.manifest import build_manifest
         from .map_preview.store import PreviewDatabase

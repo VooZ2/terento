@@ -395,7 +395,7 @@ def _payload_entry(entries, payload, total, cd_offset):
             raise ProviderCollectionError("OpenFietsMap ZIP entry is not reviewed")
         if text == payload:
             if (payload_entry or method != 8 or unix_type not in (0, 0o100000) or compressed >= total
-                    or not HEADER_BYTES <= size <= MAX_IMG_BYTES or local_offset >= cd_offset):
+                    or not HEADER_BYTES <= size < MAX_IMG_BYTES or local_offset >= cd_offset):
                 raise ProviderCollectionError("OpenFietsMap ZIP lacks one deflated gmapsupp.img")
             payload_entry = (crc, compressed, size, local_offset)
         elif folder and text == folder:
