@@ -498,11 +498,43 @@ enum MapAcquisitionAvailability: Equatable, Hashable, Sendable {
     case withheldCrimea
     case blocked(provider: String, reason: String)
 
-    /// The availability check itself failed (provider or Terento API), so
-    /// nothing is known about the map; rows show only the short status.
-    var isUnverified: Bool {
-        if case .blocked(_, let reason) = self { return reason == "STATUS_UNVERIFIED" }
-        return false
+    /// Install maps rows: a blocked map shows only its short status; the
+    /// policy explanation for withheld regions stays.
+    var installRowNote: String? {
+        if case .blocked = self { return nil }
+        return detailedExplanation
+    }
+
+    static let availabilityCheckFailedNotice = "Couldn't check for updates."
+
+    /// Manage maps: a reason that applies to the whole provider, said once
+    /// under its group header. One sentence; Refresh is the retry.
+    var manageGroupNotice: String? {
+        guard case .blocked(let provider, let reason) = self else { return nil }
+        switch reason {
+        case "PROVIDER_DOWN": return "\(provider) servers are unreachable."
+        case "PROVIDER_RATE_LIMITED": return "\(provider) is limiting downloads."
+        case "PROVIDER_PAUSED": return "\(provider) downloads are paused."
+        case "STATUS_UNVERIFIED", "STATUS_STALE": return Self.availabilityCheckFailedNotice
+        default: return nil
+        }
+    }
+
+    /// Manage maps: a reason that applies to this map only, on the row's line 3.
+    var manageRowReason: String? {
+        switch self {
+        case .available:
+            return nil
+        case .withheldRussia, .withheldCrimea:
+            return detailedExplanation
+        case .blocked(_, let reason):
+            guard manageGroupNotice == nil else { return nil }
+            switch reason {
+            case "ADMIN_DISABLED": return "Downloads for this map are turned off."
+            case "APP_UPDATE_REQUIRED": return "Update Terento to download this map."
+            default: return "This map is unavailable."
+            }
+        }
     }
 
     var shortStatus: String? {

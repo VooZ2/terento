@@ -109,30 +109,45 @@ assert "Text(" not in section, "the Garmin section must not add a caption"
 print("PASS: Garmin maps are one read-only row at the bottom, without a group header")
 PYTEST
 
-# A failed availability check: one short notice under the provider header,
-# no per-row message, and no text that blames the user's connection.
+# Unavailability reasons (owner 2026-11-22): provider-wide ones once under the
+# provider header, map-specific ones on line 3, one sentence, no retry advice.
 map_models="$project_root/Sources/TerentoPoC/MapCatalog/MapModels.swift"
 python3 - "$connect_screen" "$presentation" "$map_models" <<'PYAVAIL'
-import re, sys
+import sys
 screen, presentation, models = (open(p).read() for p in sys.argv[1:4])
-assert 'static let availabilityCheckFailedNotice = "Couldn\'t check for updates."' in presentation, \
-    "the group-level availability notice must use the owner's wording"
-assert "availabilityCheckFailed: acquisitionAvailability.isUnverified" in presentation, \
-    "only a failed availability check may use the group-level notice"
+group = models[models.index("var manageGroupNotice: String?"):models.index("var manageRowReason: String?")]
+row = models[models.index("var manageRowReason: String?"):models.index("var shortStatus: String?")]
+for text in ('"\\(provider) servers are unreachable."', '"\\(provider) is limiting downloads."',
+             '"\\(provider) downloads are paused."', 'case "STATUS_UNVERIFIED", "STATUS_STALE": return Self.availabilityCheckFailedNotice'):
+    assert text in group, f"provider-wide reason missing: {text}"
+assert 'static let availabilityCheckFailedNotice = "Couldn\'t check for updates."' in models, \
+    "the failed-check notice must use the owner's wording"
+for text in ('"Downloads for this map are turned off."', '"Update Terento to download this map."',
+             '"This map is unavailable."'):
+    assert text in row, f"map-specific reason missing: {text}"
+for banned in ("try again", "connection", "internet"):
+    assert banned not in (group + row).lower(), f"Manage reasons must not say '{banned}'"
+assert "groupNotice: acquisitionAvailability.manageGroupNotice" in presentation, "the resolver must pass the group notice"
+assert "acquisitionAvailability.manageRowReason ?? reason" in presentation, "line 3 must use the short row reason"
+assert "acquisitionAvailability.detailedExplanation" not in presentation, "Manage must not use the long explanation"
 groups = screen[screen.index("private func managedMapGroups"):screen.index('title: "Imported maps"')]
-assert groups.count("availabilityCheckFailedNotice") == 1, "the notice must appear once per provider group"
-assert groups.index("availabilityCheckFailedNotice") < groups.index("ForEach(group.items)"), \
-    "the notice must sit under the provider header, before the rows"
+assert groups.count("providerGroupNotices(group.items)") == 1, "the notices must appear once per provider group"
+assert groups.index("providerGroupNotices(group.items)") < groups.index("ForEach(group.items)"), \
+    "the notices must sit under the provider header, before the rows"
+helper = screen[screen.index("private func providerGroupNotices"):screen.index("private func managedAvailability")]
+assert "!notices.contains(notice)" in helper, "each provider-wide reason is said once"
 status = screen[screen.index("private var manageStatus: TerentoMapRowStatus?"):]
 status = status[:status.index("\n    }\n")]
-assert "!availability.availabilityCheckFailed" in status, "rows must not repeat the failed-check message"
-row = screen[screen.index("TerentoMapRow(\n                title: item.title,"):]
-row = row[:row.index("contentSpacing: 9")]
-assert "isUnverified\n                    ? nil" in row, "Install maps rows must keep only the short status when the check failed"
+assert "availability.groupNotice == nil" in status, "rows must not repeat a provider-wide reason"
+install_row = screen[screen.index("TerentoMapRow(\n                title: item.title,"):]
+install_row = install_row[:install_row.index("contentSpacing: 9")]
+assert "note: item.acquisitionAvailability.installRowNote," in install_row, \
+    "Install maps rows must keep only the short status for a blocked map"
+note = models[models.index("var installRowNote: String?"):models.index("static let availabilityCheckFailedNotice")]
+assert "if case .blocked = self { return nil }" in note, "a blocked Install maps row has no second line"
 block = models[models.index("var detailedExplanation: String?"):models.index("enum MapAcquisitionPolicyError")]
-for banned in ("connection", "internet"):
-    assert banned not in block.lower(), f"availability texts must not mention '{banned}'"
-print("PASS: failed availability check is said once per provider group and does not blame the connection")
+assert "Check your connection" not in block, "availability texts must not blame the connection"
+print("PASS: unavailability reasons: provider-wide once under the header, map-specific on line 3, one sentence")
 PYAVAIL
 
 # Update appears only when usable; Remove is Error Rust text with an Error
@@ -152,7 +167,7 @@ assert "return TerentoGeneratedTokens.Light.textDisabled" in button, "disabled R
 assert "static let sectionHeaderTitleInset: CGFloat = sectionHeaderChevronWidth + sectionHeaderItemSpacing" in layout, \
     "the header title inset must come from the header geometry"
 groups = screen[screen.index("private func managedMapGroups"):screen.index('title: "Imported maps"')]
-notice = groups[groups.index("availabilityCheckFailedNotice"):groups.index("ForEach(group.items)")]
+notice = groups[groups.index("providerGroupNotices(group.items)"):groups.index("ForEach(group.items)")]
 assert ".padding(.leading, TerentoPageLayout.sectionHeaderTitleInset)" in notice and ".padding(.horizontal" not in notice, \
     "the failed-check notice must start at the provider name, not at the chevron"
 print("PASS: usable-only Update, Error Rust Remove, notice aligned with the provider name")

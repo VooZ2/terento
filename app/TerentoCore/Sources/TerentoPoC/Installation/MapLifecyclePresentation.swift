@@ -18,12 +18,10 @@ struct MapLifecycleActionAvailability: Equatable, Sendable {
     /// Set when the catalog has a newer release but Update is not offered,
     /// so the row can say why instead of showing only Remove.
     var updateNotice: String? = nil
-    /// The provider's availability check failed. Manage maps then says so
-    /// once under the provider group header instead of on every row.
-    var availabilityCheckFailed: Bool = false
-
-    /// Shown once under a provider group whose availability check failed.
-    static let availabilityCheckFailedNotice = "Couldn't check for updates."
+    /// A provider-wide reason (provider down, paused, limiting, or the check
+    /// failed). Manage maps says it once under the provider group header
+    /// instead of on every row.
+    var groupNotice: String? = nil
 
     func allows(_ action: MapLifecycleAction) -> Bool {
         actions.contains(action)
@@ -177,7 +175,7 @@ struct MapLifecyclePresentationResolver: Sendable {
             switch comparison.status {
             case .updateAvailable where acquisitionAvailability != .available:
                 status = "Updates are not offered for this map"
-                reason = acquisitionAvailability.detailedExplanation
+                reason = acquisitionAvailability.manageRowReason
             case .updateAvailable where hasValidatedUpdateProfile:
                 actions.insert(.update)
                 status = "Update available"
@@ -198,13 +196,13 @@ struct MapLifecyclePresentationResolver: Sendable {
         return MapLifecycleActionAvailability(
             actions: actions,
             status: status,
-            reason: acquisitionAvailability.detailedExplanation ?? reason,
+            reason: acquisitionAvailability.manageRowReason ?? reason,
             updateBlocked: acquisitionAvailability != .available,
             updateNotice: comparison?.status == .updateAvailable
                 && acquisitionAvailability == .available
                 && !actions.contains(.update)
                 ? "Newer release available. \(Self.noProfileUpdateReason)" : nil,
-            availabilityCheckFailed: acquisitionAvailability.isUnverified
+            groupNotice: acquisitionAvailability.manageGroupNotice
         )
     }
 

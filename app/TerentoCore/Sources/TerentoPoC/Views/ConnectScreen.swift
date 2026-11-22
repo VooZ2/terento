@@ -1510,8 +1510,8 @@ struct ConnectScreen: View {
                         count: group.items.count,
                         isExpanded: providerGroupExpansionBinding(for: group.id)
                     ) {
-                        if group.items.contains(where: { managedAvailability(for: $0).availabilityCheckFailed }) {
-                            Text(MapLifecycleActionAvailability.availabilityCheckFailedNotice)
+                        ForEach(providerGroupNotices(group.items), id: \.self) { notice in
+                            Text(notice)
                                 .font(.terento(.meta, weight: .semibold))
                                 .foregroundStyle(TerentoColors.warning)
                                 // Starts where the provider name starts in the header.
@@ -1735,6 +1735,17 @@ struct ConnectScreen: View {
               })
         else { return false }
         return lifecycleViewModel.availability(for: lifecycleItem).allows(.update)
+    }
+
+    /// Provider-wide reasons for one group, each said once, in row order.
+    private func providerGroupNotices(_ items: [MapLifecycleItem]) -> [String] {
+        var notices: [String] = []
+        for item in items {
+            if let notice = managedAvailability(for: item).groupNotice, !notices.contains(notice) {
+                notices.append(notice)
+            }
+        }
+        return notices
     }
 
     private func managedAvailability(for item: MapLifecycleItem) -> MapLifecycleActionAvailability {
@@ -4809,8 +4820,8 @@ private struct ManageMapRow: View {
         if let operation, case .failed = operation.phase {
             return TerentoMapRowStatus(text: operation.message, color: TerentoColors.error)
         }
-        // A failed availability check is said once under the provider header.
-        guard availability.updateBlocked, !availability.availabilityCheckFailed,
+        // A provider-wide reason is said once under the provider header.
+        guard availability.updateBlocked, availability.groupNotice == nil,
               let reason = availability.reason, !reason.isEmpty else { return nil }
         return TerentoMapRowStatus(text: reason)
     }
@@ -5750,9 +5761,8 @@ struct MapSelectionRow: View {
                 title: item.title,
                 detail: detail,
                 status: rowStatus.map { TerentoMapRowStatus(text: $0) },
-                // A failed availability check keeps only the short status.
-                note: item.acquisitionAvailability.isUnverified
-                    ? nil : item.acquisitionAvailability.detailedExplanation,
+                // A blocked map keeps only the short status.
+                note: item.acquisitionAvailability.installRowNote,
                 contentSpacing: 9,
                 rowVerticalPadding: 6,
                 showsDivider: !showsOptionalControl,

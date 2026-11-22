@@ -183,8 +183,8 @@ func runMapLifecyclePresentationTests() throws {
     )
     try require(providerDown.allows(.remove) && !providerDown.allows(.update) && providerDown.updateBlocked,
         "provider outage keeps Remove and does not offer Update")
-    try require(providerDown.reason == "Freizeitkarte map servers are currently unreachable. Try again later.",
-        "provider outage names the provider and tells the user to try later")
+    try require(providerDown.groupNotice == "Freizeitkarte servers are unreachable." && providerDown.reason == nil,
+        "a provider outage is one sentence under the group header, not on the row")
     let providerDownCurrent = resolver.resolve(
         item: managed, comparison: comparison(status: .upToDate),
         hasIntegrityRecord: true, hasValidatedUpdateProfile: true,
@@ -199,18 +199,48 @@ func runMapLifecyclePresentationTests() throws {
             !ManageMapRowActionPresentation.primaryActions(for: $0).contains(.update) && $0.allows(.remove)
         },
         "Update is offered only when an update exists and downloads work")
-    try require(!providerDown.availabilityCheckFailed,
-        "a confirmed provider outage keeps its own row message")
 
     let unverified = resolver.resolve(
         item: managed, comparison: comparison(status: .upToDate),
         hasIntegrityRecord: true, hasValidatedUpdateProfile: true,
         acquisitionAvailability: .blocked(provider: "Freizeitkarte", reason: "STATUS_UNVERIFIED")
     )
-    try require(unverified.availabilityCheckFailed && unverified.updateBlocked && unverified.allows(.remove),
-        "a failed availability check is marked for the one group-level notice and keeps Remove")
-    try require(MapLifecycleActionAvailability.availabilityCheckFailedNotice == "Couldn't check for updates.",
-        "the group-level notice uses the owner's wording")
+    try require(unverified.groupNotice == "Couldn't check for updates." && unverified.updateBlocked
+            && unverified.allows(.remove),
+        "a failed availability check is one group-level notice and keeps Remove")
+
+    // Owner copy 2026-11-22: one sentence, no "Try again later."
+    let groupCopy: [(String, String)] = [
+        ("PROVIDER_DOWN", "Freizeitkarte servers are unreachable."),
+        ("PROVIDER_RATE_LIMITED", "Freizeitkarte is limiting downloads."),
+        ("PROVIDER_PAUSED", "Freizeitkarte downloads are paused."),
+        ("STATUS_UNVERIFIED", "Couldn't check for updates."),
+        ("STATUS_STALE", "Couldn't check for updates.")
+    ]
+    for (code, text) in groupCopy {
+        let availability = MapAcquisitionAvailability.blocked(provider: "Freizeitkarte", reason: code)
+        try require(availability.manageGroupNotice == text && availability.manageRowReason == nil,
+            "\(code) is said once under the provider header")
+        try require(availability.installRowNote == nil && availability.shortStatus == "Downloads temporarily unavailable",
+            "\(code) Install maps row keeps only the short status")
+    }
+    let rowCopy: [(String, String)] = [
+        ("ADMIN_DISABLED", "Downloads for this map are turned off."),
+        ("APP_UPDATE_REQUIRED", "Update Terento to download this map."),
+        ("SOMETHING_NEW", "This map is unavailable.")
+    ]
+    for (code, text) in rowCopy {
+        let availability = MapAcquisitionAvailability.blocked(provider: "Freizeitkarte", reason: code)
+        try require(availability.manageRowReason == text && availability.manageGroupNotice == nil,
+            "\(code) stays on the row's line 3")
+    }
+    for code in groupCopy.map(\.0) + rowCopy.map(\.0) {
+        let availability = MapAcquisitionAvailability.blocked(provider: "Freizeitkarte", reason: code)
+        let manageText = (availability.manageGroupNotice ?? availability.manageRowReason ?? "").lowercased()
+        try require(!manageText.contains("try again") && !manageText.contains("connection")
+                && !manageText.contains("internet"),
+            "\(code) Manage text has no retry advice and does not blame the connection")
+    }
     let unverifiedText = MapAcquisitionAvailability.blocked(provider: "Freizeitkarte", reason: "STATUS_UNVERIFIED")
         .detailedExplanation ?? ""
     try require(!unverifiedText.lowercased().contains("connection") && !unverifiedText.lowercased().contains("internet"),
