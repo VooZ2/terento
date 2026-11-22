@@ -21,6 +21,7 @@ from .provider_catalog import (
 from .maprando import MapRandoProviderAdapter
 from .bbbike import BBBikeProviderAdapter
 from .osmapa import OSMapaProviderAdapter
+from .luckymaps import LuckyMapsProviderAdapter
 
 LOGGER = logging.getLogger(__name__)
 
@@ -28,7 +29,8 @@ LOGGER = logging.getLogger(__name__)
 def official_provider_adapters() -> tuple[ProviderAdapter, ...]:
     """Return every reviewed provider that the current release supports."""
 
-    return (FreizeitkarteProviderAdapter(), OpenTopoMapProviderAdapter(), MapRandoProviderAdapter(), BBBikeProviderAdapter(), OSMapaProviderAdapter())
+    return (FreizeitkarteProviderAdapter(), OpenTopoMapProviderAdapter(), MapRandoProviderAdapter(), BBBikeProviderAdapter(), OSMapaProviderAdapter(),
+            LuckyMapsProviderAdapter())
 
 
 def snapshot_release_evidence(snapshot: ProviderSnapshot) -> tuple[str, str]:

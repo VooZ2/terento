@@ -82,6 +82,14 @@ def inspect_artifact(row):
         m = inspect_osmapa(url,*row['provider_region_id'].split('-',1))
         return dict(size_bytes=m.download_size_bytes, install_size_bytes=m.install_size_bytes,
                     install_payload_path=m.payload_path,source_proof=m.source_proof,source_updated_at=m.generated_at)
+    if provider == 'luckymaps':
+        from .luckymaps import LuckyMapsFetcher, SourceRef, inspect_luckymaps, source_url as luckymaps_source
+        _, stem = luckymaps_source(url)
+        fetcher = LuckyMapsFetcher(); fetcher.opener = opener
+        m = inspect_luckymaps(SourceRef(url, stem, None, row.get('checksum_sha256')),
+                              'contours' if row['kind'] == 'contours' else 'main', fetcher=fetcher)
+        return dict(size_bytes=m.size_bytes, install_size_bytes=m.size_bytes,
+                    source_proof=m.source_proof, source_updated_at=m.created)
     if provider == 'maprando':
         from .maprando import inspect_maprando_img
         m=inspect_maprando_img(url, fetcher=HTTPRangeFetcher(timeout_seconds=15, max_response_bytes=512, opener=opener))

@@ -1,0 +1,33 @@
+[
+ {
+  "name": "Europe",
+  "updated": "2027-01-15",
+  "children": [
+   {
+    "id": "andorra",
+    "name": "Andorra",
+    "poly": "andorra.poly",
+    "map": {
+     "url": "2027-01/andorra.img",
+     "size": 200000,
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "contour": {
+     "url": "https://luckymaps.ch/assets/maps/2024-03/andorra-ct.img",
+     "size": 950272,
+     "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+   },
+   {
+    "id": "us-west",
+    "name": "USA West",
+    "poly": "US-West.poly",
+    "map": {
+     "url": "/assets/maps/2027-01/US-West.img",
+     "size": 900000000,
+     "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    }
+   }
+  ]
+ }
+]

@@ -178,6 +178,23 @@ REQUEST_SOCKET_TIMEOUT_SECONDS = 60
 RATE_LIMIT_SWEEP_INTERVAL = 1000
 
 
+# Providers a Debug build may name in `?preview=` to see while they have never
+# been ACTIVE. Only providers of the newest projection; anything else is ignored.
+CATALOG_PREVIEW_PROVIDERS = frozenset({"luckymaps"})
+
+
+def _never_activated(row: dict[str, Any]) -> bool:
+    """True for a registered provider that has not been ACTIVE even once."""
+    if (row.get("provider_status") or "ACTIVE") == "ACTIVE":
+        return False
+    return "provider_first_activated_at" in row and row["provider_first_activated_at"] is None
+
+
+def _catalog_preview(query: str) -> frozenset[str]:
+    names = ",".join(parse_qs(query).get("preview", []))
+    return frozenset(name.strip().lower() for name in names.split(",")) & CATALOG_PREVIEW_PROVIDERS
+
+
 def _public_install_counts(row: dict[str, Any]) -> dict[str, Any]:
     """Public install counts: app and web results together, with each part
     (owner decision 2026-10-11). Evidence status and reconnect-verified
@@ -383,8 +400,9 @@ class CatalogService:
         return {"schemaVersion": 1, "providers": providers}
 
     def catalog_response(self, *, include_maprando: bool = False, include_bbbike: bool = False,
-                         include_osmapa: bool = False,
-                         include_bbbike_opentopo: bool = False) -> tuple[bytes, str, datetime]:
+                         include_osmapa: bool = False, include_luckymaps: bool = False,
+                         include_bbbike_opentopo: bool = False,
+                         preview: frozenset[str] = frozenset()) -> tuple[bytes, str, datetime]:
         rows, updated_at = self.database.catalog_snapshot()
         # Every released projection is a closed provider set. A new DB provider
         # must never leak into a client that rejects unknown identities.
@@ -395,7 +413,13 @@ class CatalogService:
             allowed.add("bbbike")
         if include_osmapa:
             allowed.add("osmapa")
+        if include_luckymaps:
+            allowed.add("luckymaps")
         rows = [row for row in rows if row["provider_id"] in allowed]
+        # A provider that has never been ACTIVE shows nothing to users: no
+        # filter entry and no unavailable rows. A Debug build asks for it by
+        # name (`?preview=`) to test it on a watch while it is still PAUSED.
+        rows = [row for row in rows if not _never_activated(row) or row["provider_id"] in preview]
         if not include_bbbike_opentopo:
             # Released v3/v4 clients know only the first two BBBike map types.
             from .bbbike import LEGACY_MAP_TYPES
@@ -428,6 +452,12 @@ class CatalogService:
     def catalog_v5_response(self) -> tuple[bytes, str, datetime]:
         return self.catalog_response(include_maprando=True, include_bbbike=True, include_osmapa=True,
                                      include_bbbike_opentopo=True)
+
+    def catalog_v6_response(self, preview: frozenset[str] = frozenset()) -> tuple[bytes, str, datetime]:
+        # v6 = v5 + Lucky Maps; released clients (v5 and older) never see it.
+        return self.catalog_response(include_maprando=True, include_bbbike=True, include_osmapa=True,
+                                     include_luckymaps=True, include_bbbike_opentopo=True,
+                                     preview=preview)
 
     def device_catalog_response(self) -> tuple[bytes, str, datetime]:
         rows, updated_at = self.database.device_catalog_snapshot()
@@ -587,6 +617,9 @@ class CatalogService:
         elif provider_id == "osmapa":
             from .osmapa import OSMapaProviderAdapter
             adapter = OSMapaProviderAdapter()
+        elif provider_id == "luckymaps":
+            from .luckymaps import LuckyMapsProviderAdapter
+            adapter = LuckyMapsProviderAdapter()
         elif provider_id == "maprando":
             from .maprando import MapRandoProviderAdapter
             adapter = MapRandoProviderAdapter()
@@ -1822,8 +1855,11 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if request_path == "/health":
                 self._handle_health(send_body=send_body)
                 return
-            if request_path in {"/maps/catalog.json", "/maps/catalog-v3.json", "/maps/catalog-v4.json", "/maps/catalog-v5.json"}:
+            if request_path in {"/maps/catalog.json", "/maps/catalog-v3.json", "/maps/catalog-v4.json",
+                                "/maps/catalog-v5.json", "/maps/catalog-v6.json"}:
+                preview = _catalog_preview(urlsplit(self.path).query) if request_path == "/maps/catalog-v6.json" else frozenset()
                 self._handle_catalog(
+                    (lambda: service.catalog_v6_response(preview)) if request_path == "/maps/catalog-v6.json" else
                     service.catalog_v5_response if request_path == "/maps/catalog-v5.json" else
                     service.catalog_v4_response if request_path == "/maps/catalog-v4.json" else
                     service.catalog_v3_response if request_path == "/maps/catalog-v3.json" else service.catalog_response,
