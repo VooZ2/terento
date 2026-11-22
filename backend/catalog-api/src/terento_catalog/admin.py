@@ -5296,7 +5296,7 @@ _EVENT_TYPE_LABELS = {
 }
 _PROVIDER_LABELS = {
     "freizeitkarte": "Freizeitkarte", "opentopomap": "OpenTopoMap", "maprando": "MapRando",
-    "bbbike": "BBBike", "osmapa": "OSMapaPL", "luckymaps": "Lucky Maps", "custom": "Custom .img",
+    "bbbike": "BBBike", "osmapa": "OSMapaPL", "luckymaps": "Lucky Maps", "openfietsmap": "OpenFietsMap", "custom": "Custom .img",
 }
 
 
@@ -6561,7 +6561,7 @@ def _operation_region_label(results: list[dict[str, Any]]) -> str:
 def _operation_map_label(results: list[dict[str, Any]]) -> str:
     """Keep each reported region paired with its actual provider in the summary."""
     providers = {'freizeitkarte': 'Freizeitkarte', 'opentopomap': 'OpenTopoMap',
-                 'maprando': 'MapRando', 'bbbike': 'BBBike', 'osmapa': 'OSMapaPL', 'luckymaps': 'Lucky Maps',
+                 'maprando': 'MapRando', 'bbbike': 'BBBike', 'osmapa': 'OSMapaPL', 'luckymaps': 'Lucky Maps', 'openfietsmap': 'OpenFietsMap',
                  'custom': 'Custom import'}
     labels = []
     for row in results:

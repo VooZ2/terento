@@ -814,6 +814,69 @@ class RendererSettingsTests(unittest.TestCase):
 
 
 class PreviewHTTPTests(unittest.TestCase):
+    def test_tiles_of_a_provider_that_is_not_listed_are_not_served(self):
+        # Tiles drawn ahead of launch for PAUSED Lucky Maps and OpenFietsMap
+        # exist on disk, but only styles in the public manifest are served.
+        with tempfile.TemporaryDirectory() as directory:
+            storage = AssetStorage(Path(directory))
+            store = PreviewStore(Path(directory))
+            staging = store.staging_dir("job")
+            staged = {}
+            for style in ("bbbike", "luckymaps", "openfietsmap"):
+                tile_dir = staging / "dolomites-tre-cime" / style / "14" / "8800"
+                tile_dir.mkdir(parents=True)
+                (tile_dir / "5800.webp").write_bytes(WEBP)
+                staged[("dolomites-tre-cime", style)] = staging / "dolomites-tre-cime" / style
+            store.publish(release="20261006T010000Z", staged=staged, keep=[])
+            active = {"bbbike"}
+
+            class FakeStoreDatabase:
+                def __init__(self, database):
+                    pass
+
+                def enabled_providers(self):
+                    return set(active)
+
+                def layers(self):
+                    return {("dolomites-tre-cime", style): {"status": "AVAILABLE", "provider_id": style,
+                                                           "release": "20261006T010000Z", "package_version": "x",
+                                                           "rendered_at": NOW}
+                            for style in ("bbbike", "luckymaps", "openfietsmap")}
+
+                def scores(self):
+                    return {}
+
+            service = CatalogService(object(), asset_storage=storage)
+            path = "/assets/previews/20261006T010000Z/dolomites-tre-cime/{}/14/8800/5800.webp"
+            with mock.patch("terento_catalog.map_preview.store.PreviewDatabase", FakeStoreDatabase):
+                manifest = json.loads(service.preview_manifest_response())
+                self.assertNotIn("luckymaps", {s["id"] for s in manifest["styles"]})
+                self.assertNotIn("openfietsmap", {s["id"] for s in manifest["styles"]})
+                self.assertEqual(service.preview_tile_response(path.format("bbbike"))[0], WEBP)
+                self.assertIsNone(service.preview_tile_response(path.format("luckymaps")))
+                self.assertIsNone(service.preview_tile_response(path.format("openfietsmap")))
+                self.assertIsNone(service.preview_tile_response("/assets/previews/x/y.webp"))
+                # Once ACTIVE (and the manifest rebuilt), the same tiles are served.
+                active.add("openfietsmap")
+                service._preview_manifest_generation += 1
+                self.assertEqual(service.preview_tile_response(path.format("openfietsmap"))[0], WEBP)
+                self.assertIsNone(service.preview_tile_response(path.format("luckymaps")))
+
+            # Database down: tiles keep the last known styles, and a service
+            # that never built a manifest serves only the always-listed styles.
+            class BrokenDatabase(FakeStoreDatabase):
+                def enabled_providers(self):
+                    raise RuntimeError("database down")
+
+            with mock.patch("terento_catalog.map_preview.store.PreviewDatabase", BrokenDatabase), \
+                    self.assertLogs("terento_catalog.http_api", level="ERROR"):
+                service._preview_manifest_generation += 1
+                self.assertEqual(service.preview_tile_response(path.format("openfietsmap"))[0], WEBP)
+                fresh = CatalogService(object(), asset_storage=storage)
+                self.assertEqual(fresh.preview_tile_response(path.format("bbbike"))[0], WEBP)
+                self.assertIsNone(fresh.preview_tile_response(path.format("openfietsmap")))
+                self.assertIsNone(fresh.preview_tile_response(path.format("luckymaps")))
+
     def test_manifest_and_tile_routes(self):
         with tempfile.TemporaryDirectory() as directory:
             storage = AssetStorage(Path(directory))

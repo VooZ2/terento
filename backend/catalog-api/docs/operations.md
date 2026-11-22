@@ -164,6 +164,11 @@ follows the tiles in the current release, so a release switched by a renderer
 stopped mid-publish stays visible, and the next renderer records that release
 and keeps every published layer.
 
+Tiles are served only for styles the public manifest lists, so tiles drawn
+for a provider that is not `ACTIVE` (or has previews off) are not reachable by
+URL. Migration `099_new_provider_previews_on.sql` switches previews on for the
+two 1.3.0 providers (OpenFietsMap, Lucky Maps), owner decision 2026-11-22.
+
 Then switch providers on one at a time under Admin › Providers › Map style
 previews and check the `map-preview-renderer` heartbeat, the provider's
 preview layer table and `/maps/previews/manifest.json`. Turning a
