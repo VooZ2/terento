@@ -14,7 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCALES = ("en", "de", "fr", "pl", "cs", "it")
-PROVIDER_SCRIPT_VERSION = "20261119-compare-card-v1"
+PROVIDER_SCRIPT_VERSION = "20261121-catalog-v6"
 FEATURE_SCRIPT_VERSION = "20261105-home-map-switch-v4"
 NUMBERS_SCRIPT_VERSION = "20261119-home-numbers-v2"
 ASSET_VERSION = "20261106-home-watch-srcset"
@@ -36,6 +36,8 @@ CARD_THUMBNAILS = {
     "bbbike-opentopo": "bbbike-opentopo",
     "bbbike-all": "bbbike-ontrail",
     "osmapa": "osmapa-podstawowa",
+    "openfietsmap": "openfietsmap",
+    "luckymaps": "luckymaps",
 }
 EDGE_IMAGE = ROOT / "site/assets/home/edge-front.webp"
 EMAIL_URL = "mailto:hello@terento.app?subject=Terento%20installation%20issue"
@@ -577,12 +579,100 @@ for _locale, (_summary, _benefits) in OSMAPA_CARD_COPY.items():
         "benefits": _benefits,
     }
 
+# OpenFietsMap and Lucky Maps ship hidden like OSMapaPL; provider-list.js shows
+# each card once catalog-v6 lists that provider as active.
+# OpenFietsMap text from the owner (2026-11-22).
+OPENFIETSMAP_CARD_COPY = {
+    "en": ("For cycling in the Netherlands, Belgium and across Europe.", [
+        "Routable for cycling, not for car navigation",
+        "Benelux in a full or light version with contour lines, plus a hiking layer",
+        "Also Germany, the Alps, Iceland and the rest of Europe",
+    ]),
+    "de": ("Zum Radfahren in den Niederlanden, in Belgien und in ganz Europa.", [
+        "Routingfähig fürs Rad, nicht für die Autonavigation",
+        "Benelux als volle oder leichte Version mit Höhenlinien, dazu eine Wanderebene",
+        "Auch Deutschland, die Alpen, Island und das übrige Europa",
+    ]),
+    "fr": ("Pour le vélo aux Pays-Bas, en Belgique et dans toute l’Europe.", [
+        "Routable pour le vélo, pas pour la navigation en voiture",
+        "Benelux en version complète ou légère avec courbes de niveau, plus une couche randonnée",
+        "Aussi l’Allemagne, les Alpes, l’Islande et le reste de l’Europe",
+    ]),
+    "pl": ("Na rower w Holandii, Belgii i w całej Europie.", [
+        "Wyznacza trasy rowerowe, nie do nawigacji samochodowej",
+        "Benelux w wersji pełnej lub lekkiej z poziomicami oraz warstwa szlaków pieszych",
+        "Także Niemcy, Alpy, Islandia i reszta Europy",
+    ]),
+    "cs": ("Na kolo v Nizozemsku, Belgii a po celé Evropě.", [
+        "Plánuje trasy pro kolo, ne pro navigaci autem",
+        "Benelux v plné nebo lehké verzi s vrstevnicemi a k tomu vrstva pěších tras",
+        "Také Německo, Alpy, Island a zbytek Evropy",
+    ]),
+    "it": ("Per andare in bici nei Paesi Bassi, in Belgio e in tutta Europa.", [
+        "Calcola percorsi in bici, non per la navigazione in auto",
+        "Benelux in versione completa o leggera con curve di livello, più un livello escursionistico",
+        "Anche Germania, Alpi, Islanda e il resto d’Europa",
+    ]),
+}
+# Lucky Maps text from the owner (2026-11-22). The card stays hidden until the
+# provider is ACTIVE; the last benefit reuses the OSMapaPL wording.
+LUCKYMAPS_CARD_COPY = {
+    "en": ("For hiking and cycling in regions around the world.", [
+        "Europe, Asia, Africa, the Americas and Oceania",
+        "One map per US state, or a whole US region",
+        OSMAPA_CARD_COPY["en"][1][2],
+    ]),
+    "de": ("Zum Wandern und Radfahren in Regionen auf der ganzen Welt.", [
+        "Europa, Asien, Afrika, Amerika und Ozeanien",
+        "Eine Karte pro US-Bundesstaat oder eine ganze US-Region",
+        OSMAPA_CARD_COPY["de"][1][2],
+    ]),
+    "fr": ("Pour la randonnée et le vélo dans des régions du monde entier.", [
+        "Europe, Asie, Afrique, Amériques et Océanie",
+        "Une carte par État américain, ou une grande région des USA",
+        OSMAPA_CARD_COPY["fr"][1][2],
+    ]),
+    "pl": ("Na piesze i rowerowe wycieczki w regionach na całym świecie.", [
+        "Europa, Azja, Afryka, obie Ameryki i Oceania",
+        "Osobna mapa dla każdego stanu USA lub całego regionu USA",
+        OSMAPA_CARD_COPY["pl"][1][2],
+    ]),
+    "cs": ("Na pěší a cyklistické výlety v regionech po celém světě.", [
+        "Evropa, Asie, Afrika, Amerika a Oceánie",
+        "Mapa pro každý stát USA nebo celý region USA",
+        OSMAPA_CARD_COPY["cs"][1][2],
+    ]),
+    "it": ("Per escursioni a piedi e in bici in regioni di tutto il mondo.", [
+        "Europa, Asia, Africa, Americhe e Oceania",
+        "Una mappa per ogni stato USA, o un’intera regione USA",
+        OSMAPA_CARD_COPY["it"][1][2],
+    ]),
+}
+for _provider_id, _name, _copy in (
+    ("openfietsmap", "OpenFietsMap", OPENFIETSMAP_CARD_COPY),
+    ("luckymaps", "Lucky Maps", LUCKYMAPS_CARD_COPY),
+):
+    for _locale, (_summary, _benefits) in _copy.items():
+        PROVIDER_CARD_COPY[_locale][_provider_id] = {
+            "name": _name,
+            "count_template": PROVIDER_CARD_COPY[_locale]["maprando"]["count_template"],
+            "summary": _summary,
+            "benefits": _benefits,
+        }
+# Cards that stay hidden in the generated page until the catalog lists their provider as active.
+HIDDEN_UNTIL_ACTIVE = {"osmapa", "openfietsmap", "luckymaps"}
+
 MAPRANDO_LANGUAGE_NOTES = {'en': 'Some map labels are in French.', 'de': 'Einige Kartenbeschriftungen sind auf Französisch.', 'fr': 'Certains libellés de la carte sont en français.', 'pl': 'Niektóre opisy na mapie są po francusku.', 'cs': 'Některé popisky mapy jsou ve francouzštině.', 'it': 'Alcune etichette della mappa sono in francese.'}
+
+# OpenFietsMap needs the 1.3.0 Mac app (catalog-v6); 1.2.x reads catalog-v5 without it.
+OPENFIETSMAP_APP_NOTES = {'en': 'In the Mac app from version 1.3.0.', 'de': 'In der Mac-App ab Version 1.3.0.', 'fr': 'Dans l’app Mac à partir de la version 1.3.0.', 'pl': 'W aplikacji na Maca od wersji 1.3.0.', 'cs': 'V aplikaci pro Mac od verze 1.3.0.', 'it': 'Nell’app per Mac dalla versione 1.3.0.'}
 
 def provider_card_addon(locale: str, provider_id: str, contour_count: bool = True) -> str:
     """The note or add-on under a provider card's benefits; the map styles page reuses it."""
     if provider_id == "maprando":
         return f'<p class="provider-language-note"><span aria-hidden="true">ⓘ</span><span>{html.escape(MAPRANDO_LANGUAGE_NOTES[locale])}</span></p>'
+    if provider_id == "openfietsmap":
+        return f'<p class="provider-language-note"><span aria-hidden="true">ⓘ</span><span>{html.escape(OPENFIETSMAP_APP_NOTES[locale])}</span></p>'
     if provider_id == "bbbike-opentopo":
         return f'<p class="provider-language-note"><span aria-hidden="true">ⓘ</span><span>{html.escape(BBBIKE_OPENTOPO_NOTES[locale])}</span></p>'
     if provider_id == "opentopomap":
@@ -598,7 +688,7 @@ def provider_card_addon(locale: str, provider_id: str, contour_count: bool = Tru
 
 def provider_cards_markup(locale: str, copy: dict[str, str]) -> str:
     cards = []
-    for provider_id in ("freizeitkarte", "opentopomap", "maprando", "bbbike-all", "osmapa"):
+    for provider_id in ("freizeitkarte", "opentopomap", "maprando", "bbbike-all", "osmapa", "openfietsmap", "luckymaps"):
         provider = PROVIDER_CARD_COPY[locale][provider_id]
         fallback_count = {"freizeitkarte": "63", "opentopomap": "177"}.get(provider_id)
         count_markup = provider["count_template"].replace("{count}", fallback_count) if fallback_count else ""
@@ -612,7 +702,7 @@ def provider_cards_markup(locale: str, copy: dict[str, str]) -> str:
         elif provider_id.startswith("bbbike"):
             map_type = {"bbbike-ontrail": "ontrail-latin1", "bbbike-opentopo": "opentopo-latin1"}.get(provider_id, "bbbike-latin1")
             type_attributes = f' data-provider-type="{map_type}" hidden'
-        if provider_id == "osmapa":
+        if provider_id in HIDDEN_UNTIL_ACTIVE:
             type_attributes = " hidden"
         thumb = CARD_THUMBNAILS.get(provider_id)
         thumb_markup = f'''<div class="card-media"><img src="/assets/home/maps-{thumb}.webp?v={ASSET_VERSION}" width="640" height="400" alt="{html.escape(copy["card_map_alt"].replace("{name}", provider["name"]))}" loading="lazy" decoding="async"></div>

@@ -5,7 +5,7 @@ canonical: https://terento.app/cs/map-styles/
 
 # Mapy zdarma pro váš Garmin
 
-OpenTopoMap, Freizeitkarte, MapRando, BBBike a OSMapaPL jsou bezplatné topografické mapy z OpenStreetMap pro hodinky Garmin a cyklopočítače Edge. Podívejte se, jak každá zobrazuje stejné místo, a nainstalujte tu, která sedí vašim výletům.
+OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL a OpenFietsMap jsou bezplatné topografické mapy z OpenStreetMap pro hodinky Garmin a cyklopočítače Edge. Podívejte se, jak každá zobrazuje stejné místo, a nainstalujte tu, která sedí vašim výletům.
 
 Styl levé mapy Styl pravé mapy
 
@@ -37,6 +37,10 @@ Náhledy jsou blízké, ale ne přesné: hodinky kreslí mapu samy, takže barvy
 | Polsko
 | Samostatný balíček
 | Pěší a cyklistické výlety po Polsku
+| [OpenFietsMap](https://terento.app/cs/map-styles/#openfietsmap)
+| Evropa
+| Obsahuje
+| Cyklistika s uzlovými sítěmi
 
 Mapa OpenTopoMap Vysokých Tater
 
@@ -129,6 +133,25 @@ Jako samostatný balíček.
 Licence
 Mapová data © přispěvatelé OpenStreetMap (ODbL). OSMapaPL od dobrovolníků OSMapa.
 
+Mapa OpenFietsMap Vysokých Tater
+
+## OpenFietsMap
+
+Na kolo v Nizozemsku, Belgii a po celé Evropě.
+
+V aplikaci pro Mac od verze 1.3.0.
+
+Cyklomapa s plánováním tras, která zvýrazňuje cyklotrasy a číslované uzlové sítě, ne pro navigaci autem. Benelux má i lehkou verzi a samostatnou vrstvu turistických tras.
+
+Pokrytí
+Nizozemsko, Belgie a Lucembursko, Německo, Alpy a zbytek Evropy v sedmi částech, k tomu Island, Baleáry a atlantské ostrovy.
+Vrstevnice
+Obsahuje.
+Aktualizace
+Benelux a Německo několikrát ročně, zbytek Evropy jednou ročně.
+Licence
+Mapová data © přispěvatelé OpenStreetMap (ODbL). Kartografie © Openfietsmap.nl (CC BY-NC-SA 3.0).
+
 ## Nainstalujte mapu
 
 Terento je zdarma. Použijte aplikaci na Macu s Apple Silicon, nebo webový instalátor v Chrome, Microsoft Edge, Opeře či Brave.
@@ -153,7 +176,7 @@ Ne. Nová mapa se přidá vedle map, které už v zařízení jsou. Původní ma
 
 Zobrazují mapy vrstevnice?
 
-Freizeitkarte je obsahuje. OpenTopoMap je nabízí jako volitelný doplněk a OSMapaPL jako samostatný balíček. Styl OpenTopoMap od BBBike je nemá.
+Freizeitkarte a OpenFietsMap je obsahují. OpenTopoMap je nabízí jako volitelný doplněk, OSMapaPL jako samostatný balíček. Styl OpenTopoMap od BBBike je nemá.
 
 Jak mapu nainstaluji?
 

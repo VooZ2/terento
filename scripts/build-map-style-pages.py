@@ -34,6 +34,7 @@ GUIDE_MAPS = (
     ("maprando", "maprando", "maprando"),
     ("bbbike", "bbbike-all", "bbbike-ontrail"),
     ("osmapa", "osmapa", "osmapa-podstawowa"),
+    ("openfietsmap", "openfietsmap", "openfietsmap"),
 )
 LEAFLET_VERSION = "1.9.4"
 SCRIPT_VERSION = "20261117-map-styles-v17"
@@ -78,6 +79,27 @@ OPTIONAL_STYLES = {
             "pl": "Lżejsza mapa, która zajmuje mniej miejsca.",
             "cs": "Lehčí mapa, která zabere méně místa.",
             "it": "Una mappa più leggera che occupa meno spazio.",
+        }),
+    },
+    # Catalog-v6 providers; each stays out of the viewer until the manifest lists its style.
+    "openfietsmap": {
+        "openfietsmap": ("OpenFietsMap", {
+            "en": "A cycling map with routes and node networks.",
+            "de": "Eine Radkarte mit Radrouten und Knotenpunktnetzen.",
+            "fr": "Une carte vélo avec itinéraires et réseaux de points-nœuds.",
+            "pl": "Mapa rowerowa z trasami i sieciami węzłów.",
+            "cs": "Cyklomapa s trasami a uzlovými sítěmi.",
+            "it": "Una mappa per la bici con percorsi e reti a nodi.",
+        }),
+    },
+    "luckymaps": {
+        "luckymaps": ("Lucky Maps", {
+            "en": "A hiking and cycling map with trails marked in red.",
+            "de": "Eine Wander- und Radkarte mit rot markierten Wegen.",
+            "fr": "Une carte de randonnée et de vélo aux sentiers marqués en rouge.",
+            "pl": "Mapa piesza i rowerowa ze szlakami zaznaczonymi na czerwono.",
+            "cs": "Turistická a cyklistická mapa s červeně vyznačenými stezkami.",
+            "it": "Una mappa per escursioni e bici con i sentieri segnati in rosso.",
         }),
     },
 }
@@ -460,7 +482,8 @@ def map_sections(locale: str) -> str:
             f'<img class="map-styles-v2-map-image" src="/assets/home/maps-{thumb}.webp?v={HOME["ASSET_VERSION"]}" width="640" height="400" alt="{esc(v2["image_alt"].replace("{name}", name))}" loading="lazy" decoding="async">'
             f'<div class="map-styles-v2-map-copy"><h2 id="{map_id}-title">{esc(name)}</h2>'
             f'<p class="map-styles-v2-map-summary">{esc(PROVIDER_COPY[locale][card]["summary"])}</p>'
-            f'<p>{esc(facts["look"])}</p>'
+            + (f'<p class="map-styles-v2-app-note">{esc(HOME["OPENFIETSMAP_APP_NOTES"][locale])}</p>' if card == "openfietsmap" else "")
+            + f'<p>{esc(facts["look"])}</p>'
             + (f'<ul class="map-styles-v2-variants">{variants}</ul>' if variants else "")
             + f'<dl class="map-styles-v2-facts">{rows}</dl></div></section>'
         )

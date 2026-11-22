@@ -225,8 +225,10 @@ for (const locale of Object.keys(locales)) {
   assert.match(html, /<a class="footer-project-link" data-project-link href="https:\/\/github\.com\/VooZ2\/terento"/, `${locale} footer links the source code`);
   assert.match(aboutMain, new RegExp(`href="/${prefix}map-styles/" data-umami-event="maps-link-click" data-umami-event-location="about-main"`), `${locale} About points to the map credits`);
   const mapStyles = read(`site/${prefix}map-styles/index.html`);
-  assert.equal((mapStyles.match(/© [^<]*OpenStreetMap[^<]* \(ODbL\)/g) || []).length, 5, `${locale} Map styles keeps the © OpenStreetMap (ODbL) credit for every map project`);
-  for (const project of ["OpenTopoMap", "Freizeitkarte", "MapRando", "BBBike", "OSMapaPL"]) assert.match(mapStyles, new RegExp(project), `${locale} Map styles credits ${project}`);
+  assert.equal((mapStyles.match(/© [^<]*OpenStreetMap[^<]* \(ODbL\)/g) || []).length, 6, `${locale} Map styles keeps the © OpenStreetMap (ODbL) credit for every map project`);
+  for (const project of ["OpenTopoMap", "Freizeitkarte", "MapRando", "BBBike", "OSMapaPL", "OpenFietsMap"]) assert.match(mapStyles, new RegExp(project), `${locale} Map styles credits ${project}`);
+  // Lucky Maps stays out of public text until its provider is ACTIVE (owner, 2026-11-22).
+  assert.doesNotMatch(mapStyles.replace(/<script[\s\S]*?<\/script>/g, ""), /Lucky Maps/, `${locale} Map styles does not name Lucky Maps outside the preview data`);
   const mentions = aboutMain.match(/<section class="block about-v2-mentions" aria-labelledby="about-mentions-title">[\s\S]*?<\/section>/)?.[0];
   assert.ok(mentions, `${locale} About lists who wrote about Terento`);
   assert.ok(aboutMain.indexOf('class="block about-main"') < aboutMain.indexOf('class="block about-v2-mentions"'), `${locale} mentions close the page`);

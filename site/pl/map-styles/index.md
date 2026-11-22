@@ -5,7 +5,7 @@ canonical: https://terento.app/pl/map-styles/
 
 # Darmowe mapy na Twojego Garmina
 
-OpenTopoMap, Freizeitkarte, MapRando, BBBike i OSMapaPL to darmowe mapy topograficzne z OpenStreetMap na zegarki Garmin i liczniki rowerowe Edge. Zobacz, jak każda przedstawia to samo miejsce, i zainstaluj tę, która pasuje do Twoich wycieczek.
+OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL i OpenFietsMap to darmowe mapy topograficzne z OpenStreetMap na zegarki Garmin i liczniki rowerowe Edge. Zobacz, jak każda przedstawia to samo miejsce, i zainstaluj tę, która pasuje do Twoich wycieczek.
 
 Styl lewej mapy Styl prawej mapy
 
@@ -37,6 +37,10 @@ Podglądy są zbliżone, ale nie dokładne: zegarek sam rysuje mapę, więc kolo
 | Polska
 | Osobny pakiet
 | Piesze i rowerowe wycieczki po Polsce
+| [OpenFietsMap](https://terento.app/pl/map-styles/#openfietsmap)
+| Europa
+| W zestawie
+| Rower i sieci węzłów
 
 Mapa OpenTopoMap Tatr Wysokich
 
@@ -129,6 +133,25 @@ Jako osobny pakiet.
 Licencja
 Dane mapy © autorzy OpenStreetMap (ODbL). OSMapaPL tworzona przez wolontariuszy OSMapa.
 
+Mapa OpenFietsMap Tatr Wysokich
+
+## OpenFietsMap
+
+Na rower w Holandii, Belgii i w całej Europie.
+
+W aplikacji na Maca od wersji 1.3.0.
+
+Mapa rowerowa z wyznaczaniem tras, która wyróżnia trasy rowerowe i numerowane sieci węzłów, nie do nawigacji samochodowej. Benelux ma też wersję lekką i osobną warstwę szlaków pieszych.
+
+Zasięg
+Holandia, Belgia i Luksemburg, Niemcy, Alpy i reszta Europy w siedmiu częściach, a także Islandia, Baleary i wyspy atlantyckie.
+Poziomice
+W zestawie.
+Aktualizacje
+Benelux i Niemcy kilka razy w roku, reszta Europy raz w roku.
+Licencja
+Dane mapy © autorzy OpenStreetMap (ODbL). Kartografia © Openfietsmap.nl (CC BY-NC-SA 3.0).
+
 ## Zainstaluj mapę
 
 Terento jest darmowe. Użyj aplikacji na Macu z Apple Silicon albo instalatora webowego w Chrome, Microsoft Edge, Operze lub Brave.
@@ -153,7 +176,7 @@ Nie. Nowa mapa zostaje dodana obok map, które już są na urządzeniu. Oryginal
 
 Czy mapy pokazują poziomice?
 
-Freizeitkarte ma je w zestawie. OpenTopoMap oferuje je jako opcjonalny dodatek, a OSMapaPL jako osobny pakiet. Styl OpenTopoMap od BBBike ich nie ma.
+Freizeitkarte i OpenFietsMap mają je w zestawie. OpenTopoMap oferuje je jako opcjonalny dodatek, a OSMapaPL jako osobny pakiet. Styl OpenTopoMap od BBBike ich nie ma.
 
 Jak zainstalować mapę?
 

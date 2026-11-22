@@ -18,7 +18,7 @@ La licenza software non concede diritti sul marchio Terento. Le versioni modific
 
 ## Licenze delle mappe
 
-Le mappe provengono da [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [Freizeitkarte](https://www.freizeitkarte-osm.de/), [OpenTopoMap](https://garmin.opentopomap.org/), [BBBike](https://garmin.bbbike.org) e [OSMapaPL](https://osmapa-garmin.las.org.pl/) e restano soggette alle licenze dei fornitori e all’[attribuzione OpenStreetMap](https://www.openstreetmap.org/copyright). Le mappe importate dall’utente mantengono le proprie condizioni.
+Le mappe provengono da [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [Freizeitkarte](https://www.freizeitkarte-osm.de/), [OpenTopoMap](https://garmin.opentopomap.org/), [BBBike](https://garmin.bbbike.org), [OSMapaPL](https://osmapa-garmin.las.org.pl/) e [OpenFietsMap](https://www.openfietsmap.nl/) e restano soggette alle licenze dei fornitori e all’[attribuzione OpenStreetMap](https://www.openstreetmap.org/copyright). Le mappe importate dall’utente mantengono le proprie condizioni.
 
 Le immagini delle mappe su questo sito, compresi gli schermi dell’orologio e dell’Edge, mostrano queste mappe. Dati cartografici © [contributori OpenStreetMap](https://www.openstreetmap.org/copyright).
 
@@ -38,4 +38,4 @@ Nessuna nota esclude o limita la responsabilità quando la legge lo vieta, anche
 
 Per il trattamento dei dati, la diagnostica e le statistiche del sito, leggi l’[informativa sulla privacy](/privacy/).
 
-Aggiornamento: 26 ottobre 2026.
+Aggiornamento: 22 novembre 2026.

@@ -5,7 +5,7 @@ canonical: https://terento.app/de/map-styles/
 
 # Kostenlose Karten für deinen Garmin
 
-OpenTopoMap, Freizeitkarte, MapRando, BBBike und OSMapaPL sind kostenlose topografische Karten aus OpenStreetMap für Garmin-Uhren und Edge-Fahrradcomputer. Sieh dir an, wie jede denselben Ort darstellt, und installiere die, die zu deinen Touren passt.
+OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL und OpenFietsMap sind kostenlose topografische Karten aus OpenStreetMap für Garmin-Uhren und Edge-Fahrradcomputer. Sieh dir an, wie jede denselben Ort darstellt, und installiere die, die zu deinen Touren passt.
 
 Kartenstil links Kartenstil rechts
 
@@ -37,6 +37,10 @@ Vorschauen sind nah dran, aber nicht exakt: Deine Uhr zeichnet die Karte selbst,
 | Polen
 | Eigenes Paket
 | Wandern und Radfahren in Polen
+| [OpenFietsMap](https://terento.app/de/map-styles/#openfietsmap)
+| Europa
+| Enthalten
+| Radfahren mit Knotenpunkten
 
 Die Karte OpenTopoMap der Hohen Tatra
 
@@ -129,6 +133,25 @@ Als eigenes Paket.
 Lizenz
 Kartendaten © OpenStreetMap-Mitwirkende (ODbL). OSMapaPL von OSMapa-Freiwilligen.
 
+Die Karte OpenFietsMap der Hohen Tatra
+
+## OpenFietsMap
+
+Zum Radfahren in den Niederlanden, in Belgien und in ganz Europa.
+
+In der Mac-App ab Version 1.3.0.
+
+Eine routingfähige Radkarte, die Radrouten und nummerierte Knotenpunktnetze hervorhebt, nicht für die Autonavigation. Für Benelux gibt es auch eine leichte Version und eine eigene Wanderebene.
+
+Gebiet
+Niederlande, Belgien und Luxemburg, Deutschland, die Alpen und das übrige Europa in sieben Teilen, dazu Island, die Balearen und die Atlantikinseln.
+Höhenlinien
+Enthalten.
+Updates
+Benelux und Deutschland mehrmals im Jahr, das übrige Europa einmal im Jahr.
+Lizenz
+Kartendaten © OpenStreetMap-Mitwirkende (ODbL). Kartografie © Openfietsmap.nl (CC BY-NC-SA 3.0).
+
 ## Eine Karte installieren
 
 Terento ist kostenlos. Nutze die Mac-App auf einem Mac mit Apple Silicon oder den Web-Installer in Chrome, Microsoft Edge, Opera oder Brave.
@@ -153,7 +176,7 @@ Nein. Die neue Karte kommt zu den Karten hinzu, die schon auf deinem Gerät sind
 
 Zeigen die Karten Höhenlinien?
 
-Freizeitkarte enthält sie. OpenTopoMap bietet sie als optionales Extra an, OSMapaPL als eigenes Paket. Der OpenTopoMap-Stil von BBBike hat keine.
+Freizeitkarte und OpenFietsMap enthalten sie. OpenTopoMap bietet sie als optionales Extra an, OSMapaPL als eigenes Paket. Der OpenTopoMap-Stil von BBBike hat keine.
 
 Wie installiere ich eine Karte?
 

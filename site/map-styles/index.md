@@ -5,7 +5,7 @@ canonical: https://terento.app/map-styles/
 
 # Free maps for your Garmin
 
-OpenTopoMap, Freizeitkarte, MapRando, BBBike and OSMapaPL are free topographic maps made from OpenStreetMap, for Garmin watches and Edge bike computers. See how each one draws the same place, then install the one that fits your trips.
+OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL and OpenFietsMap are free topographic maps made from OpenStreetMap, for Garmin watches and Edge bike computers. See how each one draws the same place, then install the one that fits your trips.
 
 Left map style Right map style
 
@@ -37,6 +37,10 @@ Previews are close, not exact: your watch draws the map itself, so colours and d
 | Poland
 | Separate package
 | Hiking and cycling in Poland
+| [OpenFietsMap](https://terento.app/map-styles/#openfietsmap)
+| Europe
+| Included
+| Cycling with node networks
 
 The OpenTopoMap map of the High Tatras
 
@@ -129,6 +133,25 @@ A separate package.
 Licence
 Map data © OpenStreetMap contributors (ODbL). OSMapaPL by OSMapa volunteers.
 
+The OpenFietsMap map of the High Tatras
+
+## OpenFietsMap
+
+For cycling in the Netherlands, Belgium and across Europe.
+
+In the Mac app from version 1.3.0.
+
+A routable cycling map that highlights cycle routes and the numbered cycle node networks, not made for car navigation. Benelux also comes as a light version and has a separate hiking layer.
+
+Covers
+The Netherlands, Belgium and Luxembourg, Germany, the Alps and the rest of Europe in seven parts, plus Iceland, the Balearic Islands and the Atlantic islands.
+Contour lines
+Included.
+Updates
+Benelux and Germany several times a year, the rest of Europe once a year.
+Licence
+Map data © OpenStreetMap contributors (ODbL). Cartography © Openfietsmap.nl (CC BY-NC-SA 3.0).
+
 ## Install a map
 
 Terento is free. Use the Mac app on a Mac with Apple Silicon, or the web installer in Chrome, Microsoft Edge, Opera or Brave.
@@ -153,7 +176,7 @@ No. The new map is added next to the maps already on your device. Your original 
 
 Do the maps show contour lines?
 
-Freizeitkarte includes them. OpenTopoMap offers them as an optional add-on, and OSMapaPL as a separate package. The BBBike OpenTopoMap look has none.
+Freizeitkarte and OpenFietsMap include them. OpenTopoMap offers them as an optional add-on, and OSMapaPL as a separate package. The BBBike OpenTopoMap look has none.
 
 How do I install one?
 
