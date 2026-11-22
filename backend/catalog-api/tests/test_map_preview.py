@@ -376,6 +376,9 @@ class FakePreviewDatabase:
     def enabled_providers(self):
         return self.enabled
 
+    def render_providers(self):
+        return self.enabled
+
     def layers(self):
         return {key: dict(value) for key, value in self.rows.items()}
 

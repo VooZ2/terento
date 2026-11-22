@@ -258,6 +258,17 @@ class AdminPostgresHardeningTests(PGliteTestCase):
         with self.assertRaisesRegex(LookupError, "provider_not_found"):
             PreviewDatabase(self.db).set_preview_enabled("missing", True, None, None)
 
+    def test_paused_provider_previews_are_drawn_but_not_listed(self):
+        self.db.ensure_provider_definition(OPENTOPO_MAP)
+        previews = PreviewDatabase(self.db)
+        previews.set_preview_enabled(OPENTOPO_MAP.id, True, None, None)
+        for status, drawn, listed in (("PAUSED", True, False), ("ACTIVE", True, True), ("RETIRED", False, False)):
+            self.sql("UPDATE map_provider SET status = %s WHERE id = %s", (status, OPENTOPO_MAP.id))
+            self.assertEqual(OPENTOPO_MAP.id in previews.render_providers(), drawn, status)
+            self.assertEqual(OPENTOPO_MAP.id in previews.enabled_providers(), listed, status)
+        self.sql("UPDATE map_provider SET status = 'PAUSED', preview_enabled = false WHERE id = %s", (OPENTOPO_MAP.id,))
+        self.assertNotIn(OPENTOPO_MAP.id, previews.render_providers())
+
     def test_manual_health_check_audit_is_written_with_its_observation(self):
         from dataclasses import replace
         from terento_catalog.provider_health import check_provider
