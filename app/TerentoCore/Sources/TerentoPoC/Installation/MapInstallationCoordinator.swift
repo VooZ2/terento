@@ -210,7 +210,7 @@ struct Stage42ArtifactValidator: MapInstallationArtifactValidator, Sendable {
             throw Stage42ArtifactValidationError.sourceSizeMismatch
         }
 
-        if packageProvider == "bbbike" || packageProvider == "osmapa" {
+        if packageProvider == "bbbike" || packageProvider == "osmapa" || packageProvider == "openfietsmap" {
             let source = try MapSourceValidator().validate(fileURL: artifact.localIMGURL, expectedPackage: package)
             guard source.sha256 == artifact.sha256 else { throw Stage42ArtifactValidationError.sourceHashMismatch }
         }

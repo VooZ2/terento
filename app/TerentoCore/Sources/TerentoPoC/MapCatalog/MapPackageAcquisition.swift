@@ -339,6 +339,8 @@ struct ReviewedProviderURLPolicy: Sendable {
 
     static let luckyMaps = ReviewedProviderURLPolicy(allowedHosts: [LuckyMapsProviderAdapter.sourceHost])
 
+    static let openFietsMap = ReviewedProviderURLPolicy(allowedHosts: [OpenFietsMapProviderAdapter.sourceHost])
+
     let allowedHosts: Set<String>
 
     init(allowedHosts: Set<String>) {
@@ -377,6 +379,9 @@ struct ReviewedProviderURLPolicy: Sendable {
         if host == LuckyMapsProviderAdapter.sourceHost, LuckyMapsProviderAdapter.reviewedSource(url) == nil {
             throw MapAcquisitionError.untrustedSourceURL(url.absoluteString)
         }
+        if host == OpenFietsMapProviderAdapter.sourceHost, OpenFietsMapProviderAdapter.reviewedSource(url) == nil {
+            throw MapAcquisitionError.untrustedSourceURL(url.absoluteString)
+        }
     }
 }
 
@@ -391,7 +396,8 @@ struct ReviewedProviderURLPolicyRegistry: Sendable {
             "maprando": .mapRando,
             "bbbike": .bbbike,
             "osmapa": .osmapa,
-            "luckymaps": .luckyMaps
+            "luckymaps": .luckyMaps,
+            "openfietsmap": .openFietsMap
         ]
     )
 
@@ -574,7 +580,8 @@ private final class ReviewedProviderRedirectDelegate: NSObject, URLSessionTaskDe
             // Proof-bound providers are measured without redirects.
             guard !policy.allowedHosts.contains("data.bbbike.org"),
                   !policy.allowedHosts.contains(OSMapaProviderAdapter.sourceHost),
-                  !policy.allowedHosts.contains(LuckyMapsProviderAdapter.sourceHost) else {
+                  !policy.allowedHosts.contains(LuckyMapsProviderAdapter.sourceHost),
+                  !policy.allowedHosts.contains(OpenFietsMapProviderAdapter.sourceHost) else {
                 throw MapAcquisitionError.untrustedSourceURL(url.absoluteString)
             }
             completionHandler(request)
@@ -1977,6 +1984,10 @@ struct MapPackageAcquirer: Sendable {
            LuckyMapsProviderAdapter().expectedIMGIdentity(for: acquisitionPackage) == nil {
             throw MapAcquisitionError.invalidPackage("The Lucky Maps source proof is incomplete. Refresh the catalog.")
         }
+        if MapIdentity.normalizeProvider(acquisitionPackage.providerId) == "openfietsmap",
+           OpenFietsMapProviderAdapter().expectedIMGIdentity(for: acquisitionPackage) == nil {
+            throw MapAcquisitionError.invalidPackage("The OpenFietsMap source proof is incomplete. Refresh the catalog.")
+        }
         let acquisitionWorkspace: MapAcquisitionWorkspace
         do {
             if let suppliedWorkspace = requestedWorkspace {
@@ -2114,6 +2125,10 @@ struct MapPackageAcquirer: Sendable {
            (format != .rawIMG || downloadSize != package.expectedDownloadSizeBytes) {
             throw MapAcquisitionError.invalidPackage("The Lucky Maps file changed. Refresh the catalog.")
         }
+        if MapIdentity.normalizeProvider(package.providerId) == "openfietsmap",
+           (format != .zip || downloadSize != package.expectedDownloadSizeBytes) {
+            throw MapAcquisitionError.invalidPackage("The OpenFietsMap package changed. Refresh the catalog.")
+        }
         let imgURL: URL
         switch format {
         case .rawIMG:
@@ -2132,6 +2147,16 @@ struct MapPackageAcquirer: Sendable {
                     try OSMapaArchiveSafety.validate(archiveURL: workspace.downloadURL, proof: proof)
                 } catch {
                     throw MapAcquisitionError.invalidPackage("The OSMapaPL package changed. Refresh the catalog.")
+                }
+            }
+            if MapIdentity.normalizeProvider(package.providerId) == "openfietsmap" {
+                guard let proof = package.mainArtifact?.openFietsMapSourceProof else {
+                    throw MapAcquisitionError.invalidPackage("The OpenFietsMap source proof is incomplete. Refresh the catalog.")
+                }
+                do {
+                    try OpenFietsMapArchiveSafety.validate(archiveURL: workspace.downloadURL, proof: proof)
+                } catch {
+                    throw MapAcquisitionError.invalidPackage("The OpenFietsMap package changed. Refresh the catalog.")
                 }
             }
             try archiveExtractor.extract(
@@ -2292,6 +2317,13 @@ struct MapPackageAcquirer: Sendable {
         if MapIdentity.normalizeProvider(expectedPackage.providerId) == "osmapa" {
             guard candidates.count == 1,
                   candidates[0].url.standardizedFileURL == extractionDirectory.appendingPathComponent("gmapsupp.img").standardizedFileURL else {
+                throw MapAcquisitionError.ambiguousIMG
+            }
+        }
+        if MapIdentity.normalizeProvider(expectedPackage.providerId) == "openfietsmap" {
+            guard candidates.count == 1, let proof = expectedPackage.mainArtifact?.openFietsMapSourceProof,
+                  candidates[0].url.standardizedFileURL.path
+                    == extractionDirectory.appendingPathComponent(proof.payloadPath).standardizedFileURL.path else {
                 throw MapAcquisitionError.ambiguousIMG
             }
         }
@@ -2523,5 +2555,118 @@ enum OSMapaArchiveSafety {
         try require(dataOffset <= centralOffset && packed <= centralOffset - dataOffset)
         let gap = centralOffset - dataOffset - packed
         try require(flags & 8 == 0 ? gap == 0 : (gap == 12 || gap == 16))
+    }
+}
+
+/// Inspects the downloaded OpenFietsMap ZIP before extraction, as the server
+/// did: the reviewed size, a classic central directory of at most eight
+/// entries, exactly one deflated IMG at the reviewed payload path whose size
+/// and CRC-32 equal the catalog proof, its empty folder entry, and only the
+/// author's readme files or Windows installer beside it. No other IMG, no
+/// encryption, ZIP64, links or unsafe paths. Nothing in the archive is executed.
+enum OpenFietsMapArchiveSafety {
+    enum Failure: Error { case invalidArchive }
+
+    static let maximumEntries = 8
+    static let maximumSideFileBytes: UInt64 = 64 * 1024 * 1024
+    static let sideFilePattern = #"^(?:(?:readme|leesmij|leesme)(?:\(gps_version\))?\.(?:html|txt)|setup\.exe)$"#
+
+    static func validate(archiveURL: URL, proof: OpenFietsMapSourceProof) throws {
+        let handle = try FileHandle(forReadingFrom: archiveURL)
+        defer { try? handle.close() }
+        let size = try handle.seekToEnd()
+        func require(_ condition: Bool) throws {
+            guard condition else { throw Failure.invalidArchive }
+        }
+        func read(_ offset: UInt64, _ count: UInt64) throws -> [UInt8] {
+            try require(count <= 65_557 && offset <= size && count <= size - offset)
+            try handle.seek(toOffset: offset)
+            let bytes = [UInt8](try handle.read(upToCount: Int(count)) ?? Data())
+            try require(UInt64(bytes.count) == count)
+            return bytes
+        }
+        func number(_ bytes: [UInt8], _ offset: Int, _ count: Int) throws -> UInt64 {
+            try require(offset >= 0 && count <= 8 && offset <= bytes.count && count <= bytes.count - offset)
+            return (0..<count).reduce(UInt64(0)) { $0 | UInt64(bytes[offset + $1]) << ($1 * 8) }
+        }
+        func requireExtraFields(_ extra: [UInt8]) throws {
+            var cursor = 0
+            while cursor < extra.count {
+                let tag = try number(extra, cursor, 2)
+                let length = Int(try number(extra, cursor + 2, 2))
+                // No ZIP64 sizes and no strong encryption header.
+                try require(tag != 0x0001 && tag != 0x9901 && cursor + 4 + length <= extra.count)
+                cursor += 4 + length
+            }
+        }
+        let payload = Array(proof.payloadPath.utf8)
+        let folder: [UInt8]? = proof.payloadPath.contains("/")
+            ? Array((proof.payloadPath.split(separator: "/").dropLast().joined(separator: "/") + "/").utf8) : nil
+        guard let crc = UInt64(proof.crc32, radix: 16), proof.crc32.count == 8 else { throw Failure.invalidArchive }
+        try require(size == proof.downloadSizeBytes && size >= 22)
+        // No archive comment, so the end record is the last 22 bytes.
+        let tail = try read(size - 22, 22)
+        let entries = try number(tail, 10, 2)
+        try require(try number(tail, 0, 4) == 0x06054b50 && number(tail, 4, 4) == 0
+            && number(tail, 8, 2) == entries && entries >= 1 && entries <= UInt64(maximumEntries)
+            && number(tail, 20, 2) == 0)
+        let centralSize = try number(tail, 12, 4)
+        let centralOffset = try number(tail, 16, 4)
+        try require(centralSize <= 65_535 && centralOffset + centralSize == size - 22)
+        let central = try read(centralOffset, centralSize)
+        var cursor = 0
+        var payloadEntry: (flags: UInt64, packed: UInt64, localOffset: UInt64)?
+        var seenNames = Set<[UInt8]>()
+        for _ in 0..<entries {
+            try require(try number(central, cursor, 4) == 0x02014b50)
+            let flags = try number(central, cursor + 8, 2)
+            let method = try number(central, cursor + 10, 2)
+            let entryCRC = try number(central, cursor + 16, 4)
+            let packed = try number(central, cursor + 20, 4)
+            let unpacked = try number(central, cursor + 24, 4)
+            let nameLength = Int(try number(central, cursor + 28, 2))
+            let extraLength = Int(try number(central, cursor + 30, 2))
+            let commentLength = Int(try number(central, cursor + 32, 2))
+            let mode = try number(central, cursor + 38, 4) >> 16
+            let localOffset = try number(central, cursor + 42, 4)
+            let end = cursor + 46 + nameLength + extraLength + commentLength
+            try require(end <= central.count && nameLength > 0 && commentLength == 0
+                && number(central, cursor + 34, 2) == 0)
+            let name = Array(central[(cursor + 46)..<(cursor + 46 + nameLength)])
+            try requireExtraFields(Array(central[(cursor + 46 + nameLength)..<(cursor + 46 + nameLength + extraLength)]))
+            guard let text = String(bytes: name, encoding: .ascii) else { throw Failure.invalidArchive }
+            try require(flags & 0x0041 == 0 && !text.hasPrefix("/") && !text.contains("\\")
+                && !text.split(separator: "/", omittingEmptySubsequences: false).contains("..")
+                && (mode & 0xf000 == 0 || mode & 0xf000 == 0x8000 || mode & 0xf000 == 0x4000)
+                && seenNames.insert(Array(text.lowercased().utf8)).inserted
+                && localOffset < centralOffset)
+            if name == payload {
+                try require(payloadEntry == nil && method == 8 && entryCRC == crc
+                    && unpacked == proof.installSizeBytes && mode & 0xf000 != 0x4000)
+                payloadEntry = (flags, packed, localOffset)
+            } else if let folder, name == folder {
+                try require(packed == 0 && unpacked == 0)
+            } else {
+                try require(!text.contains("/") && !text.lowercased().hasSuffix(".img")
+                    && text.range(of: sideFilePattern, options: [.regularExpression, .caseInsensitive]) != nil
+                    && unpacked <= maximumSideFileBytes && mode & 0xf000 != 0x4000)
+            }
+            cursor = end
+        }
+        try require(cursor == central.count)
+        guard let entry = payloadEntry else { throw Failure.invalidArchive }
+        let local = try read(entry.localOffset, 30 + UInt64(payload.count))
+        try require(try number(local, 0, 4) == 0x04034b50 && number(local, 6, 2) == entry.flags
+            && number(local, 8, 2) == 8 && number(local, 26, 2) == UInt64(payload.count)
+            && Array(local[30...]) == payload)
+        let localExtra = try number(local, 28, 2)
+        try require(localExtra <= 256)
+        try requireExtraFields(try read(entry.localOffset + 30 + UInt64(payload.count), localExtra))
+        if entry.flags & 8 == 0 {
+            try require(try number(local, 14, 4) == crc && number(local, 18, 4) == entry.packed
+                && number(local, 22, 4) == proof.installSizeBytes)
+        }
+        let dataOffset = entry.localOffset + 30 + UInt64(payload.count) + localExtra
+        try require(dataOffset <= centralOffset && entry.packed <= centralOffset - dataOffset)
     }
 }
