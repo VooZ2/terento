@@ -800,6 +800,9 @@ private func testQARowPresentation() throws {
         && InstallationFinishingStepPresentation.readBackFraction(phaseProgress: 0.6,
             checkedBytes: 100, totalBytes: 100) == nil,
         "after the read-back the unmeasured Finishing waits are indeterminate")
+    try require(abs((InstallationFinishingStepPresentation.readBackFraction(phaseProgress: 0.2,
+        checkedBytes: 10, totalBytes: 100) ?? 0) - 0.75) < 0.000_001,
+        "the Finishing bar never moves back below what the read-back already reached")
 
     // A2: a file written outside this Mac's manifest gets Remove only, with the reason in the row.
     let resolver = MapLifecyclePresentationResolver()
