@@ -66,13 +66,32 @@ for needle in ['case .error: return TerentoColors.error', 'case .warning: return
     assert needle in role, f'dialog role colour missing: {needle}'
 
 screen = sources['ConnectScreen.swift']
-assert 'MapLifecycleConfirmationCopy.removeTitle(' in screen and 'MapLifecycleConfirmationCopy.removeMessage\n' in screen
+assert 'MapLifecycleConfirmationCopy.removeTitle(' in screen and 'removeMessage' not in screen, \
+    'the Remove dialog has no "This can\'t be undone." line (a removed map can be installed again)'
+assert "This can't be undone" not in (views.parent / 'Installation' / 'MapLifecyclePresentation.swift').read_text()
 remove_call = screen[screen.index('MapLifecycleConfirmationSheet('):]
 remove_call = remove_call[:remove_call.index('onConfirm:')]
 assert '? mapConfirmationMetadata(for: confirmation)' in remove_call, 'Remove shows its metadata as the subtitle'
 remove_sheet = screen[screen.index('private struct MapLifecycleConfirmationSheet'):]
 remove_sheet = remove_sheet[:remove_sheet.index('} else {')]
-assert 'subtitle: subtitle,' in remove_sheet, 'the destructive Remove dialog shows the subtitle line'
+# Owner 2026-11-22: the title alone beside the icon (centred on it); the
+# details line under that row, aligned with the title; VoiceOver reads title
+# then details; Escape cancels, Return never removes.
+assert 'detailsLine: subtitle,' in remove_sheet and 'subtitle: subtitle,' not in remove_sheet, \
+    'the Remove details line belongs under the icon and title row, not beside the icon'
+dialog = screen[screen.index('private struct TerentoConfirmationDialog: View {'):]
+dialog = dialog[dialog.index('var body: some View {'):]
+dialog_body = dialog[:dialog.index('HStack(spacing: TerentoDialogMetrics.buttonGap)')]
+assert dialog_body.index('TerentoDialogHeader(') < dialog_body.index('if let detailsLine, !detailsLine.isEmpty {') < dialog_body.index('if !message.isEmpty {'), \
+    'details follow the title row and come before any body text'
+assert '.padding(.leading, TerentoDialogMetrics.iconCircle + TerentoDialogMetrics.iconTitleGap)' in dialog_body, \
+    'the details line is aligned with the title'
+buttons = dialog[dialog.index('HStack(spacing: TerentoDialogMetrics.buttonGap)'):]
+buttons = buttons[:buttons.index('.padding(.top, 20)')]
+assert '.keyboardShortcut(.cancelAction)' in buttons and 'kind: .destructive, action: onConfirm)\n' in buttons, \
+    'Escape cancels and Return never confirms Remove'
+assert "HStack(alignment: .center, spacing: TerentoDialogMetrics.iconTitleGap)" in sources['SupportReportSheet.swift'], \
+    'the title is centred on the icon circle'
 
 def check(ok, message):
     if not ok:

@@ -843,6 +843,4 @@ private func testQARowPresentation() throws {
     try require(MapLifecycleConfirmationCopy.removeTitle(mapName: "Liechtenstein") == "Remove Liechtenstein?"
         && MapLifecycleConfirmationCopy.removeTitle(mapName: nil) == "Remove this map?",
         "Remove title is a question with the map name")
-    try require(MapLifecycleConfirmationCopy.removeMessage == "This can't be undone.",
-        "Remove body is only that it can't be undone; the metadata is the dialog subtitle")
 }

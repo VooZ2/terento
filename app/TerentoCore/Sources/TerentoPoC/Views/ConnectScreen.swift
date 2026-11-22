@@ -1503,8 +1503,7 @@ struct ConnectScreen: View {
                     ? mapConfirmationMetadata(for: confirmation)
                     : mapConfirmationSubtitle(for: confirmation),
                 message: confirmation.action == .remove
-                    ? MapLifecycleConfirmationCopy.removeMessage
-                    : lifecycleViewModel.confirmationMessage,
+                    ? "" : lifecycleViewModel.confirmationMessage,
                 actionTitle: confirmation.action == .remove ? "Remove map" : "Update map",
                 isDestructive: confirmation.action == .remove,
                 onCancel: { lifecycleViewModel.cancelPendingAction() },
@@ -3519,13 +3518,14 @@ private struct MapLifecycleConfirmationSheet: View {
 
     var body: some View {
         if isDestructive {
-            // Destructive: the map's provider, release and size as the
-            // subtitle, one body line, no Return shortcut on Remove.
+            // Destructive: the title alone beside the icon (centred on it),
+            // then the map's provider, release and size as the one line under
+            // that row, aligned with the title. No Return shortcut on Remove.
             TerentoConfirmationDialog(
                 icon: "trash",
                 role: .error,
                 title: title,
-                subtitle: subtitle,
+                detailsLine: subtitle,
                 message: message,
                 primaryLabel: actionTitle,
                 isDestructive: true,
@@ -3788,6 +3788,9 @@ private struct TerentoConfirmationDialog: View {
     let role: TerentoDialogRole
     let title: String
     let subtitle: String
+    /// A line under the icon and title row, aligned with the title, in the
+    /// subtitle style (the Remove dialog's provider · release · size).
+    let detailsLine: String?
     let message: String
     let detailMessage: String?
     let supportingMessage: String?
@@ -3815,6 +3818,7 @@ private struct TerentoConfirmationDialog: View {
         role: TerentoDialogRole,
         title: String,
         subtitle: String = "",
+        detailsLine: String? = nil,
         message: String,
         detailMessage: String? = nil,
         supportingMessage: String? = nil,
@@ -3838,6 +3842,7 @@ private struct TerentoConfirmationDialog: View {
         self.role = role
         self.title = title
         self.subtitle = subtitle
+        self.detailsLine = detailsLine
         self.message = message
         self.detailMessage = detailMessage
         self.supportingMessage = supportingMessage
@@ -3859,10 +3864,21 @@ private struct TerentoConfirmationDialog: View {
 
             // Body text lines up with the title, not with the icon.
             VStack(alignment: .leading, spacing: 0) {
-                Text(message)
-                    .font(.terento(TerentoDialogMetrics.bodyRole, weight: .regular))
-                    .foregroundStyle(TerentoColors.graphite)
-                    .fixedSize(horizontal: false, vertical: true)
+                if let detailsLine, !detailsLine.isEmpty {
+                    Text(detailsLine)
+                        .font(.terento(TerentoDialogMetrics.supportingRole, weight: .semibold))
+                        .foregroundStyle(TerentoColors.secondaryText)
+                        .lineLimit(2)
+                        .truncationMode(.middle)
+                }
+
+                if !message.isEmpty {
+                    Text(message)
+                        .font(.terento(TerentoDialogMetrics.bodyRole, weight: .regular))
+                        .foregroundStyle(TerentoColors.graphite)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, (detailsLine ?? "").isEmpty ? 0 : 10)
+                }
 
                 if let detailMessage, !detailMessage.isEmpty {
                     Text(detailMessage)
@@ -6180,19 +6196,26 @@ private struct TerentoMapSectionHeader: View {
         Button {
             isExpanded.toggle()
         } label: {
+            // The chevron is centred on the name; name and count share the
+            // first text baseline (QA 1.3.0-local: the count sat ~1.5 pt high).
             HStack(
                 alignment: .center,
                 spacing: TerentoPageLayout.sectionHeaderItemSpacing
             ) {
                 TerentoDisclosureIndicator(isExpanded: isExpanded)
 
-                Text(title)
-                    .font(.terento(.rowTitle))
-                    .foregroundStyle(TerentoColors.graphite)
+                HStack(
+                    alignment: .firstTextBaseline,
+                    spacing: TerentoPageLayout.sectionHeaderItemSpacing
+                ) {
+                    Text(title)
+                        .font(.terento(.rowTitle))
+                        .foregroundStyle(TerentoColors.graphite)
 
-                Text(countLabel)
-                    .font(.terento(.caption, weight: .semibold))
-                    .foregroundStyle(TerentoColors.secondaryText)
+                    Text(countLabel)
+                        .font(.terento(.caption, weight: .semibold))
+                        .foregroundStyle(TerentoColors.secondaryText)
+                }
             }
             .frame(minHeight: TerentoPageLayout.sectionHeaderMinHeight, alignment: .leading)
             .contentShape(Rectangle())

@@ -449,7 +449,7 @@ enum MapLifecycleConfirmationCopy {
             .filter { !$0.isEmpty }.joined(separator: " · ")
     }
 
-    /// The Remove dialog names the map in its title, shows `metadata` as its
-    /// subtitle line, and says only this.
-    static let removeMessage = "This can't be undone."
+    // The Remove dialog names the map in its title and shows `metadata` as
+    // its only line under the title row. No "can't be undone": a removed map
+    // can be installed again (owner 2026-11-22).
 }

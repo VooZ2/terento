@@ -119,6 +119,13 @@ assert progress.count('.lineLimit(1)') >= 4, 'a progress line can wrap and grow 
 assert 'TimeRemainingLabel(estimate: timeRemaining)' in progress and 'Text(detailLine)' in progress, 'line 3 must show time left or the detail'
 assert 'countStyle: .binary' not in source, 'a size uses binary units; the app shows decimal sizes everywhere'
 manage_page = block('private var managedMapsContent: some View {', 'private func managedMapGroups')
+# Group header (owner 2026-11-22): name and count on one baseline, chevron
+# centred on the name; the count is the number of rows the group shows.
+header = block('private struct TerentoMapSectionHeader: View {', 'private struct ')
+assert header.index('alignment: .center') < header.index('TerentoDisclosureIndicator(isExpanded: isExpanded)') < header.index('alignment: .firstTextBaseline') < header.index('Text(title)') < header.index('Text(countLabel)'), 'group header name and count are not on one baseline with the chevron centred'
+groups = block('private func managedMapGroups', 'title: "Imported maps"')
+assert 'count: group.items.count,' in groups and 'ForEach(group.items) { item in' in groups, 'the group count and its rows come from different lists'
+
 assert 'managedMapGroups(lifecycleInventory)' in manage_page and '.clipped()\n                .overlay(alignment: .top) { TerentoListTopDivider() }\n                .padding(.top, 8)' in manage_page, 'Manage rows can scroll visibly under the count line'
 print('PASS: map row status line, one style name, Import in the header, Storage beside Continue, no ready badge')
 PYTEST
