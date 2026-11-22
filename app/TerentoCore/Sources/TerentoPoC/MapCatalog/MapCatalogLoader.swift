@@ -24,16 +24,19 @@ enum MapCatalogSource: String, Sendable, Equatable {
 }
 
 /// TERENTO_USE_BUNDLED_MAP_CATALOG=1 (or Info.plist TerentoUseBundledMapCatalog)
-/// starts with only the bundled catalog. Debug builds and builds whose
-/// TerentoReleaseLabel ends in "-local" honour it; App Store and TestFlight
-/// builds never contain it.
+/// starts with only the bundled catalog. Builds whose TerentoReleaseLabel ends
+/// in "-local" honour it, App Store configuration included (the owner's local
+/// test build), decided at run time from the label; DMG Debug builds honour
+/// it too. A stable App Store or TestFlight build never has a "-local" label,
+/// so it ignores the switch.
 enum MapCatalogTestSwitch {
     static let environmentKey = "TERENTO_USE_BUNDLED_MAP_CATALOG"
     static let infoKey = "TerentoUseBundledMapCatalog"
 
     static func isAllowed(isDebug: Bool, isAppStore: Bool, releaseLabel: String?) -> Bool {
-        guard !isAppStore else { return false }
-        return isDebug || (releaseLabel?.trimmingCharacters(in: .whitespacesAndNewlines).hasSuffix("-local") ?? false)
+        let isLocalTestLabel = releaseLabel?.trimmingCharacters(in: .whitespacesAndNewlines)
+            .hasSuffix("-local") ?? false
+        return isLocalTestLabel || (isDebug && !isAppStore)
     }
 
     static func isRequested(environment: [String: String], infoValue: Any?) -> Bool {
@@ -41,19 +44,20 @@ enum MapCatalogTestSwitch {
     }
 
     static var usesBundledCatalog: Bool {
-        #if TERENTO_APP_STORE
-        return false
-        #else
         #if DEBUG
         let isDebug = true
         #else
         let isDebug = false
         #endif
-        return isAllowed(isDebug: isDebug, isAppStore: false,
+        #if TERENTO_APP_STORE
+        let isAppStore = true
+        #else
+        let isAppStore = false
+        #endif
+        return isAllowed(isDebug: isDebug, isAppStore: isAppStore,
                 releaseLabel: Bundle.main.object(forInfoDictionaryKey: "TerentoReleaseLabel") as? String)
             && isRequested(environment: ProcessInfo.processInfo.environment,
                 infoValue: Bundle.main.object(forInfoDictionaryKey: infoKey))
-        #endif
     }
 }
 

@@ -210,20 +210,20 @@ print("PASS: catalog-level reason said once per page with the shared warning not
 PYCAT
 
 # The bundled-catalog switch works in Debug and "-local" builds, never in App
-# Store or TestFlight builds (compiled out there).
+# Store or TestFlight builds (run-time check of the release label).
 python3 - "$project_root/Sources/TerentoPoC/MapCatalog/MapCatalogLoader.swift" <<'PYSWITCH'
 import sys
 loader = open(sys.argv[1]).read()
 switch = loader[loader.index("enum MapCatalogTestSwitch {"):loader.index("/// When the catalog itself is the cause")]
-assert "guard !isAppStore else { return false }" in switch
-assert 'hasSuffix("-local")' in switch
+assert 'hasSuffix("-local")' in switch and "return isLocalTestLabel || (isDebug && !isAppStore)" in switch, \
+    "only a -local label (any configuration) or a DMG Debug build may use the switch"
 uses = switch[switch.index("static var usesBundledCatalog: Bool {"):]
-assert uses.index("#if TERENTO_APP_STORE\n        return false\n        #else") < uses.index("isRequested("), \
-    "App Store and TestFlight builds must not read the switch"
+assert "return false" not in uses, "the switch must be decided at run time, not compiled out of App Store -local builds"
+assert "let isAppStore = true" in uses and 'forInfoDictionaryKey: "TerentoReleaseLabel"' in uses
 endpoint = loader[loader.index("static let defaultEndpoint: URL? = {"):]
 endpoint = endpoint[:endpoint.index("}()")]
 assert "if MapCatalogTestSwitch.usesBundledCatalog {\n            return nil" in endpoint
 assert "#if DEBUG" not in endpoint, "the switch must not be Debug-only (the -local build is Release)"
-print("PASS: bundled-catalog switch only in Debug and -local builds")
+print("PASS: bundled-catalog switch only in -local and DMG Debug builds")
 PYSWITCH
 

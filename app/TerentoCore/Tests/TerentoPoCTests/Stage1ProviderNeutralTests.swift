@@ -139,9 +139,12 @@ struct Stage1ProviderNeutralTests {
             "only the reason the whole catalog shares is hidden from rows")
 
         expect(!MapCatalogTestSwitch.isAllowed(isDebug: false, isAppStore: true, releaseLabel: "1.3.0")
-                && !MapCatalogTestSwitch.isAllowed(isDebug: false, isAppStore: true, releaseLabel: "1.3.0-local")
-                && !MapCatalogTestSwitch.isAllowed(isDebug: true, isAppStore: true, releaseLabel: "1.3.0-local"),
-            "an App Store or TestFlight build ignores the bundled-catalog switch")
+                && !MapCatalogTestSwitch.isAllowed(isDebug: true, isAppStore: true, releaseLabel: "1.3.0")
+                && !MapCatalogTestSwitch.isAllowed(isDebug: false, isAppStore: true, releaseLabel: nil),
+            "a stable App Store or TestFlight build ignores the bundled-catalog switch")
+        expect(MapCatalogTestSwitch.isAllowed(isDebug: false, isAppStore: true, releaseLabel: "1.3.0-local")
+                && MapCatalogTestSwitch.isAllowed(isDebug: false, isAppStore: true, releaseLabel: " 1.3.0-local\n"),
+            "an App Store configuration -local build honours the switch")
         expect(!MapCatalogTestSwitch.isAllowed(isDebug: false, isAppStore: false, releaseLabel: "1.3.0")
                 && !MapCatalogTestSwitch.isAllowed(isDebug: false, isAppStore: false, releaseLabel: nil),
             "a stable DMG build ignores the switch")
