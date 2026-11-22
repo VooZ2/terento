@@ -137,7 +137,7 @@ Die Karte OpenFietsMap der Hohen Tatra
 
 ## OpenFietsMap
 
-Routingfähige Radkarten für Benelux und Europa, nicht für die Autonavigation.
+Zum Radfahren in den Niederlanden, in Belgien und in ganz Europa.
 
 Eine routingfähige Radkarte, die Radrouten und nummerierte Knotenpunktnetze hervorhebt, nicht für die Autonavigation. Für Benelux gibt es auch eine leichte Version und eine eigene Wanderebene.
 

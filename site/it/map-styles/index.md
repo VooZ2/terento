@@ -137,7 +137,7 @@ La mappa OpenFietsMap degli Alti Tatra
 
 ## OpenFietsMap
 
-Mappe per la bici con calcolo del percorso per Benelux ed Europa, non per la navigazione in auto.
+Per andare in bici nei Paesi Bassi, in Belgio e in tutta Europa.
 
 Una mappa per la bici con calcolo del percorso che mette in evidenza percorsi ciclabili e reti a nodi numerati, non pensata per la navigazione in auto. Per il Benelux c’è anche una versione leggera e un livello escursionistico separato.
 

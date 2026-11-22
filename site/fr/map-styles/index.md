@@ -137,7 +137,7 @@ La carte OpenFietsMap des Hautes Tatras
 
 ## OpenFietsMap
 
-Des cartes vélo routables pour le Benelux et l’Europe, pas pour la navigation en voiture.
+Pour le vélo aux Pays-Bas, en Belgique et dans toute l’Europe.
 
 Une carte vélo routable qui met en avant les itinéraires cyclables et les réseaux de points-nœuds numérotés, pas faite pour la navigation en voiture. Le Benelux existe aussi en version légère, avec une couche randonnée à part.
 

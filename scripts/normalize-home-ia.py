@@ -581,36 +581,37 @@ for _locale, (_summary, _benefits) in OSMAPA_CARD_COPY.items():
 
 # OpenFietsMap and Lucky Maps ship hidden like OSMapaPL; provider-list.js shows
 # each card once catalog-v6 lists that provider as active.
+# OpenFietsMap text from the owner (2026-11-22).
 OPENFIETSMAP_CARD_COPY = {
-    "en": ("Routable cycling maps for Benelux and Europe, not for car navigation.", [
-        "Benelux full and light, with contour lines",
-        "Hiking routes as a separate layer",
-        "For personal use (CC BY-NC-SA 3.0)",
+    "en": ("For cycling in the Netherlands, Belgium and across Europe.", [
+        "Routable for cycling, not for car navigation",
+        "Benelux in a full or light version with contour lines, plus a hiking layer",
+        "Also Germany, the Alps, Iceland and the rest of Europe",
     ]),
-    "de": ("Routingfähige Radkarten für Benelux und Europa, nicht für die Autonavigation.", [
-        "Benelux als volle und leichte Karte, mit Höhenlinien",
-        "Wanderwege als eigene Ebene",
-        "Für die private Nutzung (CC BY-NC-SA 3.0)",
+    "de": ("Zum Radfahren in den Niederlanden, in Belgien und in ganz Europa.", [
+        "Routingfähig fürs Rad, nicht für die Autonavigation",
+        "Benelux als volle oder leichte Version mit Höhenlinien, dazu eine Wanderebene",
+        "Auch Deutschland, die Alpen, Island und das übrige Europa",
     ]),
-    "fr": ("Des cartes vélo routables pour le Benelux et l’Europe, pas pour la navigation en voiture.", [
-        "Benelux en version complète et légère, avec courbes de niveau",
-        "Les sentiers de randonnée dans une couche à part",
-        "Pour un usage personnel (CC BY-NC-SA 3.0)",
+    "fr": ("Pour le vélo aux Pays-Bas, en Belgique et dans toute l’Europe.", [
+        "Routable pour le vélo, pas pour la navigation en voiture",
+        "Benelux en version complète ou légère avec courbes de niveau, plus une couche randonnée",
+        "Aussi l’Allemagne, les Alpes, l’Islande et le reste de l’Europe",
     ]),
-    "pl": ("Mapy rowerowe z wyznaczaniem tras dla Beneluksu i Europy, nie do nawigacji samochodowej.", [
-        "Benelux w wersji pełnej i lekkiej, z poziomicami",
-        "Szlaki piesze jako osobna warstwa",
-        "Do użytku osobistego (CC BY-NC-SA 3.0)",
+    "pl": ("Na rower w Holandii, Belgii i w całej Europie.", [
+        "Wyznacza trasy rowerowe, nie do nawigacji samochodowej",
+        "Benelux w wersji pełnej lub lekkiej z poziomicami oraz warstwa szlaków pieszych",
+        "Także Niemcy, Alpy, Islandia i reszta Europy",
     ]),
-    "cs": ("Cyklomapy s plánováním tras pro Benelux a Evropu, ne pro navigaci autem.", [
-        "Benelux v plné a lehké verzi, s vrstevnicemi",
-        "Turistické trasy jako samostatná vrstva",
-        "Pro osobní použití (CC BY-NC-SA 3.0)",
+    "cs": ("Na kolo v Nizozemsku, Belgii a po celé Evropě.", [
+        "Plánuje trasy pro kolo, ne pro navigaci autem",
+        "Benelux v plné nebo lehké verzi s vrstevnicemi a k tomu vrstva pěších tras",
+        "Také Německo, Alpy, Island a zbytek Evropy",
     ]),
-    "it": ("Mappe per la bici con calcolo del percorso per Benelux ed Europa, non per la navigazione in auto.", [
-        "Benelux in versione completa e leggera, con curve di livello",
-        "Sentieri escursionistici in un livello separato",
-        "Per uso personale (CC BY-NC-SA 3.0)",
+    "it": ("Per andare in bici nei Paesi Bassi, in Belgio e in tutta Europa.", [
+        "Calcola percorsi in bici, non per la navigazione in auto",
+        "Benelux in versione completa o leggera con curve di livello, più un livello escursionistico",
+        "Anche Germania, Alpi, Islanda e il resto d’Europa",
     ]),
 }
 # Lucky Maps text from the owner (2026-11-22). The card stays hidden until the

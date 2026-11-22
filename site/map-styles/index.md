@@ -137,7 +137,7 @@ The OpenFietsMap map of the High Tatras
 
 ## OpenFietsMap
 
-Routable cycling maps for Benelux and Europe, not for car navigation.
+For cycling in the Netherlands, Belgium and across Europe.
 
 A routable cycling map that highlights cycle routes and the numbered cycle node networks, not made for car navigation. Benelux also comes as a light version and has a separate hiking layer.
 
