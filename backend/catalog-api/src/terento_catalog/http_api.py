@@ -303,6 +303,7 @@ class CatalogService:
         self.asset_storage = asset_storage
         self.public_base_url = public_base_url
         self._preview_manifest_cache: tuple[float, bytes, int] | None = None
+        self._preview_listed_styles: tuple[bytes, frozenset[str]] | None = None
         self._preview_manifest_generation = 0
         # projection -> (monotonic time the entry stays valid until, canonical rows or None after a failure).
         self._public_rows_cache: dict[str, tuple[float, list[dict[str, Any]] | None]] = {}
@@ -1206,7 +1207,29 @@ class CatalogService:
 
     def preview_tile_response(self, request_path: str) -> tuple[bytes, str] | None:
         store = self.preview_store()
-        return None if store is None else store.tile(request_path)
+        if store is None:
+            return None
+        # Only styles the public manifest lists are served. A provider that is
+        # not ACTIVE (or has previews off) may have tiles on disk, drawn
+        # ahead of its launch, but they must not be reachable by URL.
+        from .map_preview.publish import TILE_PATH
+
+        match = TILE_PATH.fullmatch(request_path)
+        if match is None or match["style"] not in self.preview_listed_styles():
+            return None
+        return store.tile(request_path)
+
+    def preview_listed_styles(self) -> frozenset[str]:
+        """Style ids in the current public manifest (cached with the manifest)."""
+        body = self.preview_manifest_response()
+        cached = self._preview_listed_styles
+        if cached is not None and cached[0] is body:
+            return cached[1]
+        styles = frozenset(
+            str(style.get("id")) for style in json.loads(body).get("styles", []) if isinstance(style, dict)
+        )
+        self._preview_listed_styles = (body, styles)
+        return styles
 
     def preview_manifest_response(self) -> bytes:
         """Public preview manifest, rebuilt from the database at most once a minute."""
