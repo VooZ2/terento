@@ -1382,9 +1382,17 @@ struct ConnectScreen: View {
 
                 Spacer(minLength: 20)
 
+                // Kept list during a rescan: the Device page's reading state says
+                // why Refresh and the rows' actions are disabled (owner QA 2026-11-22).
+                if isReadingDeviceMaps && managedInventory != nil {
+                    MapReadingIndicator()
+                }
+
                 // Kept list during a rescan: Refresh stays in place, disabled.
                 if mapEngine.state == .scanned || (isReadingDeviceMaps && managedInventory != nil) {
                     Button {
+                        // A disabled look is never a working button.
+                        guard !mapManagementActionsBusy else { return }
                         refreshMapInventory()
                     } label: {
                         Label("Refresh", systemImage: "arrow.clockwise")
@@ -1713,16 +1721,7 @@ struct ConnectScreen: View {
 
                 // Says why the two buttons are disabled right after connecting.
                 if isReadingDeviceMaps {
-                    HStack(spacing: 6) {
-                        ProgressView()
-                            .controlSize(.small)
-                            .accessibilityHidden(true)
-                        Text("Reading your maps…")
-                            .font(.terento(.meta))
-                            .foregroundStyle(TerentoColors.secondaryText)
-                            .lineLimit(1)
-                    }
-                    .accessibilityElement(children: .combine)
+                    MapReadingIndicator()
                 }
 
                 Spacer()
@@ -1801,8 +1800,16 @@ struct ConnectScreen: View {
             operation: lifecycleViewModel.operation(for: item.id),
             timeRemaining: lifecycleViewModel.timeRemaining(for: item.id),
             isLifecycleBusy: mapManagementActionsBusy,
-            onRemove: { lifecycleViewModel.requestRemove(itemID: item.id) },
-            onUpdate: { lifecycleViewModel.requestUpdate(itemID: item.id) }
+            // A row drawn disabled (a read or another operation is running)
+            // never opens a dialog: the live state is checked at the click.
+            onRemove: {
+                guard !mapManagementActionsBusy else { return }
+                lifecycleViewModel.requestRemove(itemID: item.id)
+            },
+            onUpdate: {
+                guard !mapManagementActionsBusy else { return }
+                lifecycleViewModel.requestUpdate(itemID: item.id)
+            }
         )
         .transition(.opacity)
     }
@@ -2560,19 +2567,9 @@ struct ConnectScreen: View {
                             .foregroundStyle(TerentoColors.secondaryText)
                     }
                     .padding(.top, 14)
-                } else if mapEngine.installationPhase == .preparing {
-                    // The install step owns the device from here: Cancel stays
-                    // in view, disabled, and says why.
-                    HStack(spacing: 12) {
-                        SecondaryButton(title: "Cancel") {}
-                            .disabled(true)
-
-                        Text("Can’t cancel while the map is being prepared.")
-                            .font(.terento(.caption))
-                            .foregroundStyle(TerentoColors.secondaryText)
-                    }
-                    .padding(.top, 14)
                 }
+                // One rule for every step that cannot be cancelled (Preparing,
+                // Installing, Finishing): Cancel is not shown.
             }
         }
     }
@@ -2631,9 +2628,10 @@ struct ConnectScreen: View {
                 title: "Finishing",
                 detail: "Checking the transferred map and completing final checks",
                 state: installationStepState(for: .finishing),
-                // Finishing is several waits; only the read-back is measured, so one
-                // indeterminate bar for the whole step never moves backwards.
-                progress: nil,
+                // Finishing is several waits; only the read-back is measured. While
+                // the map is checked the bar follows the checked bytes, otherwise
+                // it is indeterminate.
+                progress: finishingReadBackFraction,
                 bytes: nil,
                 timeRemaining: mapEngine.finishingTimeRemaining,
                 isLast: true
@@ -2917,10 +2915,17 @@ struct ConnectScreen: View {
         )
     }
 
+    private var finishingReadBackFraction: Double? {
+        InstallationFinishingStepPresentation.readBackFraction(
+            phaseProgress: mapEngine.installationPhaseProgress,
+            checkedBytes: mapEngine.finishingTransferProgress?.bytesTransferred,
+            totalBytes: mapEngine.finishingTransferProgress?.totalBytes)
+    }
+
     private var finishingProgressDetail: String {
         let progress = mapEngine.installationPhaseProgress ?? 0
         switch progress {
-        case ..<0.25:
+        case ..<InstallationFinishingStepPresentation.readBackPhaseLimit:
             if let readBack = mapEngine.finishingTransferProgress, readBack.totalBytes > 0 {
                 let completed = ByteCountFormatter.string(fromByteCount: Int64(readBack.bytesTransferred), countStyle: .decimal)
                 let total = ByteCountFormatter.string(fromByteCount: Int64(readBack.totalBytes), countStyle: .decimal)
@@ -4928,6 +4933,24 @@ private struct ManageActionGroup: View {
     }
 }
 
+/// The map read that follows a connection, an install, Refresh or a Remove is
+/// running. Device shows it beside its disabled buttons, Manage maps beside
+/// its disabled Refresh, so a disabled action always says why.
+private struct MapReadingIndicator: View {
+    var body: some View {
+        HStack(spacing: 6) {
+            ProgressView()
+                .controlSize(.small)
+                .accessibilityHidden(true)
+            Text("Reading your maps…")
+                .font(.terento(.meta))
+                .foregroundStyle(TerentoColors.secondaryText)
+                .lineLimit(1)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
 /// Draws the label exactly as the view colours it. The system plain and
 /// borderless styles fade their content when the window is not key, and
 /// Remove and Refresh then nearly disappeared (QA 1.3.0-local); text here
@@ -4968,6 +4991,8 @@ private struct ManageActionButton: View {
 
     var body: some View {
         Button {
+            // Drawn disabled means disabled: the action never runs then.
+            guard isInteractive else { return }
             onAction(action)
         } label: {
             Text(title)
@@ -5359,7 +5384,17 @@ struct TerentoProgressBar: View {
         }
         .frame(height: InstallationTimelineLayout.progressBarHeight)
         .onAppear(perform: startSweepIfNeeded)
-        .onChange(of: value == nil) { _ in startSweepIfNeeded() }
+        // Finishing goes indeterminate -> measured (read-back) -> indeterminate:
+        // the sweep stops with a measured value so it restarts afterwards.
+        .onChange(of: value == nil) { isIndeterminate in
+            if isIndeterminate {
+                startSweepIfNeeded()
+            } else {
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) { sweeping = false }
+            }
+        }
         .accessibilityElement()
         .accessibilityLabel(label)
         .accessibilityValue(value.map { "\(Int(Self.clamped($0) * 100)) percent" } ?? "In progress")
@@ -5805,7 +5840,83 @@ private struct SelectedMapArtifactSummaryRow: View {
     }
 }
 
+/// Install maps checkbox (owner QA 2026-11-22). The native unchecked box
+/// (light grey fill, no border) was below 3:1 on the cream rows. This box has
+/// a Text Muted border, 3.25:1 or more on every row background (canvas,
+/// surface, selected tint); checked it is Interactive Primary with a white
+/// check. VoiceOver still gets a native checkbox; Space toggles it.
+struct TerentoCheckboxToggleStyle: ToggleStyle {
+    static let boxSize: CGFloat = 14
+    /// The native checkbox's frame, so labels and the map icon do not move.
+    static let frameSize: CGFloat = 18
+    static let border = TerentoGeneratedTokens.Light.textMuted
+
+    func makeBody(configuration: Configuration) -> some View {
+        TerentoCheckbox(configuration: configuration)
+    }
+}
+
+private struct TerentoCheckbox: View {
+    let configuration: ToggleStyleConfiguration
+    @Environment(\.isEnabled) private var isEnabled
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        Button {
+            configuration.isOn.toggle()
+        } label: {
+            HStack(spacing: 6) {
+                box
+                configuration.label
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(TerentoKeyIndependentButtonStyle())
+        .focused($isFocused)
+        .accessibilityRepresentation {
+            Toggle(isOn: configuration.$isOn) { configuration.label }
+                .toggleStyle(.checkbox)
+        }
+    }
+
+    private var box: some View {
+        let shape = RoundedRectangle(cornerRadius: 4, style: .continuous)
+        return shape
+            .fill(fill)
+            .overlay { shape.strokeBorder(borderColor, lineWidth: 1) }
+            .overlay {
+                if configuration.isOn {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+            }
+            .frame(width: TerentoCheckboxToggleStyle.boxSize, height: TerentoCheckboxToggleStyle.boxSize)
+            .overlay {
+                if isFocused {
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .stroke(TerentoGeneratedTokens.Light.focusRing, lineWidth: 2)
+                        .padding(-3)
+                }
+            }
+            .frame(width: TerentoCheckboxToggleStyle.frameSize, height: TerentoCheckboxToggleStyle.frameSize)
+    }
+
+    private var fill: Color {
+        guard configuration.isOn else { return TerentoGeneratedTokens.Light.surfacePrimary }
+        return isEnabled ? TerentoColors.interactive : TerentoGeneratedTokens.Light.textDisabled
+    }
+
+    private var borderColor: Color {
+        guard isEnabled else { return TerentoGeneratedTokens.Light.textDisabled }
+        return configuration.isOn ? TerentoColors.interactive : TerentoCheckboxToggleStyle.border
+    }
+}
+
 struct MapSelectionRow: View {
+    /// Room for the overlay scroller, so the size column never sits under it.
+    static let scrollerTrailingInset: CGFloat = 14
+
     let item: MapSelectionItem
     @Binding var isSelected: Bool
     @Binding var selectedOptionalArtifactIDs: Set<String>
@@ -5875,13 +5986,11 @@ struct MapSelectionRow: View {
 
                             if isAvailable && item.isSelectable && selectionEnabled {
                                 Toggle("", isOn: $isSelected)
-                                    .toggleStyle(.checkbox)
-                                    .tint(TerentoColors.interactive)
+                                    .toggleStyle(TerentoCheckboxToggleStyle())
                                     .labelsHidden()
                             } else if crossProviderSelectionDisabled {
                                 Toggle("", isOn: .constant(false))
-                                    .toggleStyle(.checkbox)
-                                    .tint(TerentoColors.interactive)
+                                    .toggleStyle(TerentoCheckboxToggleStyle())
                                     .labelsHidden()
                                     .disabled(true)
                                     .help("Choose maps from one provider at a time.")
@@ -5902,24 +6011,32 @@ struct MapSelectionRow: View {
                         .frame(width: 24)
                 }
             } trailing: {
+                // Size and estimate stay on one line each (a wrapped estimate
+                // grew the row and cut off the last one), clear of the overlay
+                // scroller at the list's trailing edge.
                 if showsSize && item.acquisitionAvailability == .available {
                     VStack(alignment: .trailing, spacing: 3) {
                         Text(item.installSizeBytes.map(formatBytes) ?? "Size calculated before installation")
                             .font(.terento(.meta))
                             .foregroundStyle(TerentoColors.secondaryText)
-                            .multilineTextAlignment(.trailing)
+                            .lineLimit(1)
+                            .fixedSize()
                         if let downloadEstimate {
                             Text(downloadEstimate)
                                 .font(.terento(.caption))
                                 .foregroundStyle(TerentoColors.secondaryText)
-                                .multilineTextAlignment(.trailing)
+                                .lineLimit(1)
+                                .fixedSize()
                         }
                     }
-                    .frame(maxWidth: 190, alignment: .trailing)
+                    .padding(.trailing, Self.scrollerTrailingInset)
                 } else if item.acquisitionAvailability != .available {
                     Text("Unavailable")
                         .font(.terento(.meta))
                         .foregroundStyle(TerentoColors.secondaryText)
+                        .lineLimit(1)
+                        .fixedSize()
+                        .padding(.trailing, Self.scrollerTrailingInset)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -5961,8 +6078,7 @@ struct MapSelectionRow: View {
                             }
                         )
                     )
-                    .toggleStyle(.checkbox)
-                    .tint(TerentoColors.interactive)
+                    .toggleStyle(TerentoCheckboxToggleStyle())
                     .font(.terento(.meta, weight: .semibold))
                     .accessibilityLabel("Add contour lines for \(item.title)")
                     .accessibilityHint("Adds elevation lines for understanding terrain and steepness.")

@@ -128,5 +128,15 @@ groups = block('private func managedMapGroups', 'title: "Imported maps"')
 assert 'count: group.items.count,' in groups and 'ForEach(group.items) { item in' in groups, 'the group count and its rows come from different lists'
 
 assert 'managedMapGroups(lifecycleInventory)' in manage_page and '.clipped()\n                .overlay(alignment: .top) { TerentoListTopDivider() }\n                .padding(.top, 8)' in manage_page, 'Manage rows can scroll visibly under the count line'
+# Owner QA 2026-11-22: "Download 467,6 MB · about 2 min" wrapped to two lines,
+# grew the row and cut off the last one at the list bottom. The size column
+# stays on one line and keeps clear of the overlay scroller.
+trailing = selection.split('} trailing: {', 1)[1].split('.frame(maxWidth: .infinity, alignment: .leading)', 1)[0]
+assert 'maxWidth: 190' not in trailing and '.multilineTextAlignment(.trailing)' not in trailing, 'the size column can still wrap'
+assert trailing.count('.lineLimit(1)\n') == 3 and trailing.count('.fixedSize()\n') == 3, 'size, estimate and Unavailable must each stay on one line'
+assert trailing.count('.padding(.trailing, Self.scrollerTrailingInset)') == 2, 'the size column can sit under the overlay scroller'
+inset = float(selection.split('static let scrollerTrailingInset: CGFloat = ', 1)[1].split('\n', 1)[0])
+assert inset >= 12, 'the scroller inset is narrower than the overlay scroller'
+print('PASS: Install maps size column on one line, clear of the overlay scroller')
 print('PASS: map row status line, one style name, Import in the header, Storage beside Continue, no ready badge')
 PYTEST

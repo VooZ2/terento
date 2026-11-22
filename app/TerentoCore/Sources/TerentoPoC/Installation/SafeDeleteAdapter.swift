@@ -472,7 +472,8 @@ struct SafeDeleteAdapter: Sendable {
 
     /// Runs the confirm step under `confirmTimeLimit`. A rescan that does not
     /// return in time is left to its own bounded read; no further attempt
-    /// starts once the limit is reached.
+    /// starts once the limit is reached. A limit that is already used up
+    /// starts no confirm thread and no rescan.
     private func boundedConfirm(
         target: SafeDeleteTarget,
         rescan: @escaping @Sendable () throws -> [InstalledMapFile],
@@ -483,6 +484,7 @@ struct SafeDeleteAdapter: Sendable {
             return confirmRemoval(target: target, rescan: rescan, isExpired: { false },
                                   onStep: onStep, reportConfirming: reportConfirming)
         }
+        guard confirmTimeLimit > 0 else { return .timedOut }
         let box = SafeDeleteConfirmBox()
         let finished = DispatchSemaphore(value: 0)
         let adapter = self
@@ -493,7 +495,7 @@ struct SafeDeleteAdapter: Sendable {
                 reportConfirming: { box.whileActive(reportConfirming) }))
             finished.signal()
         }
-        if finished.wait(timeout: .now() + max(0, confirmTimeLimit)) == .timedOut {
+        if finished.wait(timeout: .now() + confirmTimeLimit) == .timedOut {
             box.expire()
         }
         return box.outcome ?? .timedOut

@@ -662,6 +662,38 @@ private func testConfirmTimeLimitEndsHangingRescan() throws {
     try require(progress.values.count == reportsAtLimit, "a late rescan never moves the row again")
 }
 
+private func testUsedUpConfirmLimitStartsNoRescan() throws {
+    for limit in [0.0, -1.0] {
+        let prepared = validTarget()
+        let transport = FakeSafeDeleteTransport()
+        transport.currentObject = deviceObject(for: prepared.target)
+        let hanging = HangingRescan(files: [])
+        let steps = StepCollector()
+        let progress = ProgressCollector()
+        let result = SafeDeleteAdapter(confirmTimeLimit: limit, settleInterval: 0, retryInterval: 0).delete(
+            target: prepared.target, confirmed: true, deviceConnected: true,
+            rescan: { hanging.scan() }, transport: transport,
+            onProgress: { progress.append($0) }, onStep: { steps.append($0) })
+        hanging.finish()
+        Thread.sleep(forTimeInterval: 0.1)
+
+        try require(hanging.callCount == 0, "a confirm limit of \(limit) s must start no rescan")
+        try require(result.status == .failedPostVerify, "a used-up confirm limit must fail the row")
+        try require(result.message == SafeDeleteAdapter.rescanFailedMessage, "a used-up confirm limit uses the existing rescan message")
+        try require(transport.events == ["inspect", "delete"], "a used-up confirm limit never repeats the delete")
+        try require(!progress.values.contains { $0.state == .completed || $0.fractionCompleted == 1 },
+                    "a used-up confirm limit must never report completion")
+        try require(!steps.values.contains { step in
+            if case .confirmAttemptStarted = step { return true }
+            return false
+        }, "a used-up confirm limit logs no confirm attempt")
+        try require(steps.values.contains { step in
+            if case .confirmFinished(.timedOut, _) = step { return true }
+            return false
+        }, "a used-up confirm limit is logged as timed_out")
+    }
+}
+
 private func testConfirmWithinLimitLogsEachStep() throws {
     let prepared = validTarget()
     let transport = FakeSafeDeleteTransport()
@@ -852,6 +884,7 @@ struct SafeDeleteTests {
             ("post-delete rescan retries without repeating delete", testPostDeleteRescanRetriesWithoutRepeatingDelete),
             ("post-delete verification uses stable path across sessions", testPostDeleteUsesStablePathAcrossSessions),
             ("confirm time limit ends a hanging rescan", testConfirmTimeLimitEndsHangingRescan),
+            ("a used-up confirm limit starts no rescan", testUsedUpConfirmLimitStartsNoRescan),
             ("confirm within its limit logs each step", testConfirmWithinLimitLogsEachStep),
             ("confirm window counts from the first rescan", testConfirmWindowCountsFromFirstRescan),
             ("transport failure is reported", testTransportFailureIsReported),

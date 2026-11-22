@@ -785,6 +785,21 @@ private func testQARowPresentation() throws {
         && InstallationDownloadStepPresentation.displayedPhase(.failed,
             resolvingPackage: true, customOnly: false) == .failed,
         "other phases are shown as reported")
+    // Finishing: while the map is read back ("X of Y checked") the bar follows the checked bytes.
+    try require(InstallationFinishingStepPresentation.readBackFraction(phaseProgress: 0.1,
+        checkedBytes: 25, totalBytes: 100) == 0.25, "the Finishing bar follows the checked bytes")
+    try require(InstallationFinishingStepPresentation.readBackFraction(phaseProgress: 0.2,
+        checkedBytes: 120, totalBytes: 100) == 1, "the Finishing bar never passes 100 %")
+    try require(InstallationFinishingStepPresentation.readBackFraction(phaseProgress: 0,
+        checkedBytes: nil, totalBytes: nil) == nil
+        && InstallationFinishingStepPresentation.readBackFraction(phaseProgress: 0.1,
+            checkedBytes: 0, totalBytes: 0) == nil,
+        "before the read-back has a total, the Finishing bar is indeterminate")
+    try require(InstallationFinishingStepPresentation.readBackFraction(phaseProgress: 0.25,
+        checkedBytes: 100, totalBytes: 100) == nil
+        && InstallationFinishingStepPresentation.readBackFraction(phaseProgress: 0.6,
+            checkedBytes: 100, totalBytes: 100) == nil,
+        "after the read-back the unmeasured Finishing waits are indeterminate")
 
     // A2: a file written outside this Mac's manifest gets Remove only, with the reason in the row.
     let resolver = MapLifecyclePresentationResolver()

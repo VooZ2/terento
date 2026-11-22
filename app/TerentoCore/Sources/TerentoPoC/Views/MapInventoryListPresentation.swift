@@ -134,3 +134,19 @@ enum InstallationDownloadStepPresentation {
         total > 0 && current > 0
     }
 }
+
+/// The Finishing step's bar. While the transferred map is read back (the
+/// "X of Y checked" line), the bar shows the checked bytes, 0-100 %. The other
+/// Finishing waits are not measured, so the bar is indeterminate for them.
+enum InstallationFinishingStepPresentation {
+    /// The phase progress below which Finishing is still reading the map back.
+    static let readBackPhaseLimit = 0.25
+
+    static func readBackFraction(phaseProgress: Double?,
+                                 checkedBytes: UInt64?,
+                                 totalBytes: UInt64?) -> Double? {
+        guard (phaseProgress ?? 0) < readBackPhaseLimit,
+              let checkedBytes, let totalBytes, totalBytes > 0 else { return nil }
+        return min(1, Double(checkedBytes) / Double(totalBytes))
+    }
+}

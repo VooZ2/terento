@@ -105,9 +105,8 @@ status shows an icon with its text and colour, including "Needs attention".
 While maps are downloaded and checked on the Mac, or the no-write preflight
 runs, the install page offers Cancel; it uses the existing task cancellation
 and workspace cleanup, and nothing has been written to the watch. Once the
-install step owns the device it is not cancellable: while it still prepares,
-Cancel stays visible but disabled with "Can’t cancel while the map is being
-prepared." After a failure in which
+install step owns the device it is not cancellable, and every such step
+(Preparing, Installing, Finishing) follows one rule: Cancel is not shown. After a failure in which
 nothing was written, validated provider artifacts are kept for 6 hours of the
 app session (quitting removes them), keyed by package and artifact with their
 SHA-256. A device that disappears before any write (while the download runs,
@@ -434,8 +433,9 @@ percentage until a total is known; no timer fabricates progress. Install steps,
 Manage rows and the storage meters share one 6 pt capsule bar
 (`TerentoProgressBar`); a percentage appears only for a measured value above zero,
 so a step that has measured nothing yet shows the bar without "0%". The install
-Finishing step chains several waits and only one of them is measured, so it shows
-one indeterminate bar for the whole step and never moves backwards. While a
+Finishing step chains several waits and only one of them is measured: while the
+transferred map is read back ("X of Y checked") its bar follows the checked bytes
+(0-100 %); the other waits show an indeterminate bar. While a
 provider package is being resolved, before its download starts, the install step
 list shows Downloading as the current step; it is never drawn as complete and then
 current again. The engine's reported phase is unchanged. Device safety checks and mutation order are unchanged.
@@ -452,9 +452,12 @@ for 4 seconds above the list, and VoiceOver announces it. The list stays on
 screen during the rescan that follows: the removed row fades out (no animation
 with Reduce Motion), and "Reading your maps" appears only while there is no
 list yet. Whenever a rescan keeps the list on screen (after Remove, or on opening
-Manage maps), the rows keep their buttons and Refresh stays in place, all disabled
-until the new list is read. While Remove or Update runs, the other Update/Remove buttons and
-Refresh are disabled. The Remove dialog title is "Remove <map>?", centred on
+Manage maps, after an install or Refresh), the rows keep their buttons and Refresh stays
+in place, all disabled until the new list is read, and the Device page's spinner with
+"Reading your maps…" stands next to Refresh. While Remove or Update runs, the other
+Update/Remove buttons and Refresh are disabled. A button drawn disabled is disabled: the
+action itself refuses to run while a read or another operation is running, so a click
+never opens the Remove or Update dialog then. The Remove dialog title is "Remove <map>?", centred on
 the trash icon; the one line under that row, aligned with the title, is
 provider (as the provider filter names it, e.g. "BBBike (Ontrail)"), release
 and size in the secondary colour. There is no "can't be undone" line: a
@@ -704,7 +707,10 @@ a download start without a received outcome is not proof of a failed download.
 - **Install selection guidance.** Every selectable map row shows the catalog
   download size and "about N min" ("Download 412 MB · about 7 min") from the
   median of the last five measured download speeds on this Mac (30 days, local
-  only) or a conservative 1 MB/s. While no map on the watch is managed by
+  only) or a conservative 1 MB/s. The size and the estimate each stay on one
+  line and keep a 14 pt inset from the list's trailing edge, clear of the
+  overlay scroller. The row checkbox has a Text Muted border (3:1 or more on
+  every row background); VoiceOver still reads it as a checkbox. While no map on the watch is managed by
   Terento (first map selection only), the locale recommendation is also
   highlighted with "Recommended for your region" (never selected
   automatically). The keep-connected line appears only on the Installing

@@ -60,6 +60,37 @@ require_text 'managedMapRow(item, provider: group.title)' "$connect_screen" "pro
 require_text 'return TerentoGeneratedTokens.Light.textDisabled' "$connect_screen" "disabled Manage actions still look active"
 require_text '.disabled(mapManagementActionsBusy)
                     .help("Refresh map information")' "$connect_screen" "Manage Refresh is not disabled during an operation"
+# Owner QA 2026-11-22: a button drawn disabled is disabled. While the list is
+# read (opening, after an install, Refresh, after a Remove) or another
+# operation runs, Remove, Update and Refresh do nothing, and the Device page's
+# reading state stands next to Refresh.
+python3 - "$connect_screen" <<'PYREAD'
+import sys
+screen = open(sys.argv[1]).read()
+button = screen[screen.index("private struct ManageActionButton"):screen.index("private struct ManageOperationProgress")]
+action = button[button.index("Button {"):button.index("} label: {")]
+assert "guard isInteractive else { return }" in action and action.index("guard isInteractive") < action.index("onAction(action)"), \
+    "a disabled-looking Remove or Update still runs its action"
+row = screen[screen.index("private func managedMapRow("):screen.index("private func deviceVariantLine(")]
+for request in ("lifecycleViewModel.requestRemove(itemID: item.id)", "lifecycleViewModel.requestUpdate(itemID: item.id)"):
+    before = row[:row.index(request)][-120:]
+    assert "guard !mapManagementActionsBusy else { return }" in before, f"{request} is not refused while a read or operation runs"
+page = screen[screen.index("private var managedMapsContent: some View {"):screen.index("private func managedMapGroups")]
+header = page[:page.index("if let lifecycleInventory = filteredManagedInventory {")]
+assert "if isReadingDeviceMaps && managedInventory != nil {\n                    MapReadingIndicator()" in header, \
+    "Manage maps does not show the reading state while the kept list is read"
+assert header.index("MapReadingIndicator()") < header.index('Label("Refresh", systemImage: "arrow.clockwise")'), "the reading state is not next to Refresh"
+refresh = header[header.index("Button {"):header.index("} label: {")]
+assert "guard !mapManagementActionsBusy else { return }" in refresh, "a disabled-looking Refresh still reads the maps"
+indicator = screen[screen.index("private struct MapReadingIndicator: View {"):screen.index("private struct TerentoKeyIndependentButtonStyle")]
+assert 'Text("Reading your maps…")' in indicator and "ProgressView()" in indicator and ".lineLimit(1)" in indicator, \
+    "the reading state is not the Device page's existing one"
+assert screen.count('Text("Reading your maps…")') == 1, "the reading state is defined more than once"
+device = screen[screen.index('PrimaryButton(title: "Install maps") {\n                    navigate(to: .installMaps)'):]
+assert "if isReadingDeviceMaps {\n                    MapReadingIndicator()" in device[:1200], "the Device page lost its reading state"
+print("PASS: disabled Manage actions do nothing; the reading state stands next to Refresh")
+PYREAD
+
 # After Remove the list stays on screen and refreshes in place; the reading card is only for no list.
 require_text 'if inventory == nil, managedInventory != nil, isReadingDeviceMaps { return }' "$connect_screen" "rescan replaces the list with the reading card"
 # QA round 3: a rescan keeps the rows' buttons and Refresh in place, disabled, instead of drawing them late.
