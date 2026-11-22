@@ -20,4 +20,4 @@ swiftc \
     "$project_root/Tests/TerentoPoCTests/MapVersionComparisonTests.swift" \
     -o "$binary_path"
 
-"$binary_path"
+"$binary_path" "$project_root/Tests/Fixtures/Freizeitkarte"

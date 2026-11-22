@@ -351,6 +351,13 @@ struct MTPTransport: Sendable {
             }
         }
 
+        if result == Int32(TERENTO_MTP_READ_STALLED) {
+            // The one batch code shared with the single-prefix read: the
+            // watch stopped answering during the header session.
+            throw Self.nativeReadError(message: errorMessage(from: errorBuffer), result: result,
+                                       operation: .filePrefix, namespace: .terentoFilePrefix,
+                                       boundary: .initialInventory, category: 0)
+        }
         guard result == 0 else {
             // Batch-prefix codes are not the single-prefix namespace.
             throw MTPTransportError.contextual(message: errorMessage(from: errorBuffer),

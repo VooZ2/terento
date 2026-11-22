@@ -185,6 +185,8 @@ jobs:
           test -f "$app/Contents/Frameworks/libusb-1.0.0.dylib"
           test -f "$app/Contents/Frameworks/libmtp.9.dylib"
           test -f "$app/Contents/Resources/catalog.json"
+          # The bundled brand fonts register from the built app as at launch.
+          app/TerentoCore/Tests/run-app-typography-tests.sh "$app"
           /usr/bin/cmp LICENSE "$app/Contents/Resources/LICENSE"
           /usr/bin/cmp THIRD_PARTY_NOTICES.md "$app/Contents/Resources/THIRD_PARTY_NOTICES.md"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Contents/Info.plist")" = "app.terento.mac"

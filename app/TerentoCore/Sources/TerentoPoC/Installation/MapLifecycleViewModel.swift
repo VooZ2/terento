@@ -143,14 +143,13 @@ final class MapLifecycleViewModel: ObservableObject {
     /// a completed installation. Failed and interrupted updates never set it.
     @Published private(set) var lastSuccessfulUpdate: SuccessfulMapUpdate?
 
-    /// "<Map> removed." for a few seconds after a removal is confirmed; the
+    /// "<Map> · <provider or style> removed." for a few seconds after a removal is confirmed; the
     /// row itself leaves the list on the refresh.
     @Published private(set) var removalNotice: String?
     private var removalNoticeTask: Task<Void, Never>?
     static let removalNoticeSeconds: UInt64 = 4
 
-    private func showRemovalNotice(_ title: String) {
-        let notice = "\(title) removed."
+    private func showRemovalNotice(_ notice: String) {
         removalNotice = notice
         removalNoticeTask?.cancel()
         removalNoticeTask = Task { [weak self] in
@@ -409,8 +408,10 @@ final class MapLifecycleViewModel: ObservableObject {
         case .recoverOwnership:
             requestRecoverOwnership(itemID: confirmation.itemID)
         case .remove:
+            mapEngine.noteDeviceMapsMayChange()
             remove(itemID: confirmation.itemID)
         case .update:
+            mapEngine.noteDeviceMapsMayChange()
             update(itemID: confirmation.itemID)
         }
     }
@@ -682,6 +683,12 @@ final class MapLifecycleViewModel: ObservableObject {
         // the last map read, so a watch that stopped answering ends Remove
         // with a clear message instead of a silent wait.
         let expectedObjectCount = mapEngine.lastObservedInventoryCount
+        // The confirm step after the delete has the same bound as that read.
+        // When it is reached the row shows the failed state and the watch is
+        // read again; the bar never stays on "Confirming the map was removed".
+        let confirmTimeLimit = MTPFinishingWorker.removalConfirmTimeLimit(
+            expectedObjectCount: expectedObjectCount)
+        MapRemovalLog.record("step=remove_begin components=\(installedMaps.count)")
 
         let task = Task { [weak self] in
             var result: SafeDeleteResult?
@@ -716,12 +723,10 @@ final class MapLifecycleViewModel: ObservableObject {
                     let plannedComponents = installedMaps.map { map in
                         (map, MTPSafeDeleteTransport(operationProfile: operationProfile,
                             operationGate: operationGate, lifecycleLease: lease,
-                            boundedInventoryObjectCount: expectedObjectCount))
+                            boundedInventoryObjectCount: expectedObjectCount,
+                            inventoryWorker: MapRemovalLog.helper("check")))
                     }
-                    let deviceTransport = MTPTransport(
-                        operationGate: operationGate,
-                        lifecycleLease: lease
-                    )
+                    let confirmWorker = MapRemovalLog.helper("confirm")
                     var lastResult: SafeDeleteResult?
                     for (installedMap, transport) in plannedComponents {
                         guard let objectID = installedMap.sourceFile.itemID else {
@@ -748,12 +753,26 @@ final class MapLifecycleViewModel: ObservableObject {
                             removalProof: isExternalRemoval ? nil : context.removalProofByItemID[objectID]
                         )
 
-                        let componentResult = MapLifecycleManager().delete(
+                        // The confirm rescan runs in the bounded helper, like the
+                        // read before the delete, so a watch that stops answering
+                        // ends at the confirm limit instead of holding the row.
+                        let confirmWindow = SafeDeleteConfirmWindow(limit: confirmTimeLimit)
+                        let componentResult = MapLifecycleManager(
+                            safeDeleteAdapter: SafeDeleteAdapter(confirmTimeLimit: confirmTimeLimit)
+                        ).delete(
                             target: target,
                             confirmed: true,
                             deviceConnected: operationGate.isValid(lease),
                             rescan: {
-                                try deviceTransport.readFileInventory().map {
+                                let timeLimit = confirmWindow.remaining()
+                                let response = try operationGate.withOperation(kind: .inventory, lifecycleLease: lease) {
+                                    try confirmWorker(.init(operation: .inventory, profile: operationProfile,
+                                        expectedObjectCount: expectedObjectCount, timeLimit: timeLimit))
+                                }
+                                guard let files = response.files else {
+                                    throw MTPFinishingWorker.failure(for: .inventory, kind: .invalidResponse)
+                                }
+                                return files.map {
                                     InstalledMapFile(
                                         path: $0.path,
                                         filename: $0.filename,
@@ -768,7 +787,8 @@ final class MapLifecycleViewModel: ObservableObject {
                                 : (context.failedInstallRecovery == nil
                                     ? .manifest
                                     : .failedInstallRecovery),
-                            onProgress: { progress in relay.sendRemoval(progress) }
+                            onProgress: { progress in relay.sendRemoval(progress) },
+                            onStep: { step in MapRemovalLog.record(step) }
                         )
                         lastResult = componentResult
                         guard componentResult.isSuccess else { break }
@@ -787,7 +807,11 @@ final class MapLifecycleViewModel: ObservableObject {
                 )
             }
 
-            guard let result else { return }
+            guard let result else {
+                MapRemovalLog.record("step=remove_result outcome=failed")
+                return
+            }
+            MapRemovalLog.record("step=remove_result result=\(result.status.rawValue) outcome=\(result.isSuccess ? "ok" : "failed")")
             if !result.isSuccess {
                 FinishingTrace.freezeFailure()
                 TerentoDiagnosticLog.saveFailureReport(InstallationIssueReport.generate(
@@ -822,7 +846,7 @@ final class MapLifecycleViewModel: ObservableObject {
                     progress: nil,
                     message: "The map was removed and verified."
                 )
-                showRemovalNotice(context.item.title)
+                showRemovalNotice(context.item.removalNotice)
                 mapEngine.refreshCurrentDeviceMaps()
             } else {
                 setOperation(

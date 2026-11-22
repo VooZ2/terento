@@ -182,9 +182,83 @@ func runMapLifecyclePresentationTests() throws {
         acquisitionAvailability: .blocked(provider: "Freizeitkarte", reason: "PROVIDER_DOWN")
     )
     try require(providerDown.allows(.remove) && !providerDown.allows(.update) && providerDown.updateBlocked,
-        "provider outage keeps Remove and exposes a disabled Update")
-    try require(providerDown.reason == "Freizeitkarte map servers are currently unreachable. Try again later.",
-        "provider outage names the provider and tells the user to try later")
+        "provider outage keeps Remove and does not offer Update")
+    try require(providerDown.groupNotice == "Freizeitkarte servers are unreachable." && providerDown.reason == nil,
+        "a provider outage is one sentence under the group header, not on the row")
+    let providerDownCurrent = resolver.resolve(
+        item: managed, comparison: comparison(status: .upToDate),
+        hasIntegrityRecord: true, hasValidatedUpdateProfile: true,
+        acquisitionAvailability: .blocked(provider: "Freizeitkarte", reason: "PROVIDER_PAUSED")
+    )
+    let currentAvailable = resolver.resolve(
+        item: managed, comparison: comparison(status: .upToDate),
+        hasIntegrityRecord: true, hasValidatedUpdateProfile: true,
+        acquisitionAvailability: .available
+    )
+    try require([providerDown, providerDownCurrent, currentAvailable].allSatisfy {
+            !ManageMapRowActionPresentation.primaryActions(for: $0).contains(.update) && $0.allows(.remove)
+        },
+        "Update is offered only when an update exists and downloads work")
+
+    let unverified = resolver.resolve(
+        item: managed, comparison: comparison(status: .upToDate),
+        hasIntegrityRecord: true, hasValidatedUpdateProfile: true,
+        acquisitionAvailability: .blocked(provider: "Freizeitkarte", reason: "STATUS_UNVERIFIED")
+    )
+    try require(unverified.groupNotice == "Couldn't check for updates." && unverified.updateBlocked
+            && unverified.allows(.remove),
+        "a failed availability check is one group-level notice and keeps Remove")
+
+    // Owner copy 2026-11-22: one sentence, no "Try again later."
+    let groupCopy: [(String, String)] = [
+        ("PROVIDER_DOWN", "Freizeitkarte servers are unreachable."),
+        ("PROVIDER_RATE_LIMITED", "Freizeitkarte is limiting downloads."),
+        ("PROVIDER_PAUSED", "Freizeitkarte downloads are paused."),
+        ("STATUS_UNVERIFIED", "Couldn't check for updates."),
+        ("STATUS_STALE", "Couldn't check for updates.")
+    ]
+    for (code, text) in groupCopy {
+        let availability = MapAcquisitionAvailability.blocked(provider: "Freizeitkarte", reason: code)
+        try require(availability.manageGroupNotice == text && availability.manageRowReason == nil,
+            "\(code) is said once under the provider header")
+        try require(availability.installRowNote == nil && availability.shortStatus == "Downloads temporarily unavailable",
+            "\(code) Install maps row keeps only the short status")
+    }
+    let rowCopy: [(String, String)] = [
+        ("ADMIN_DISABLED", "Downloads for this map are turned off."),
+        ("APP_UPDATE_REQUIRED", "Update Terento to download this map."),
+        ("SOMETHING_NEW", "This map is unavailable.")
+    ]
+    for (code, text) in rowCopy {
+        let availability = MapAcquisitionAvailability.blocked(provider: "Freizeitkarte", reason: code)
+        try require(availability.manageRowReason == text && availability.manageGroupNotice == nil,
+            "\(code) stays on the row's line 3")
+    }
+    for code in groupCopy.map(\.0) + rowCopy.map(\.0) {
+        let availability = MapAcquisitionAvailability.blocked(provider: "Freizeitkarte", reason: code)
+        let manageText = (availability.manageGroupNotice ?? availability.manageRowReason ?? "").lowercased()
+        try require(!manageText.contains("try again") && !manageText.contains("connection")
+                && !manageText.contains("internet"),
+            "\(code) Manage text has no retry advice and does not blame the connection")
+    }
+    // Catalog-level cause (owner 2026-11-22): the code every package carries
+    // under the bundled fallback ("STATUS_UNVERIFIED") is said once by the
+    // page; a single provider's own reason stays. MapCatalogSource itself is
+    // tested with catalog loading (Stage1ProviderNeutralTests).
+    let sharedRow = unverified.removingCatalogWideReason("STATUS_UNVERIFIED")
+    try require(sharedRow.groupNotice == nil && sharedRow.reason == nil && sharedRow.updateBlocked
+            && !sharedRow.allows(.update) && sharedRow.allows(.remove),
+        "a Manage row and group say nothing about the catalog-wide reason; Update stays unavailable")
+    let ownRow = providerDown.removingCatalogWideReason("STATUS_UNVERIFIED")
+    try require(ownRow.groupNotice == "Freizeitkarte servers are unreachable.",
+        "a single provider's outage keeps its own group notice under the fallback")
+    try require(unverified.removingCatalogWideReason(nil) == unverified,
+        "a remote catalog keeps every reason")
+
+    let unverifiedText = MapAcquisitionAvailability.blocked(provider: "Freizeitkarte", reason: "STATUS_UNVERIFIED")
+        .detailedExplanation ?? ""
+    try require(!unverifiedText.lowercased().contains("connection") && !unverifiedText.lowercased().contains("internet"),
+        "a failed availability check never blames the user's connection")
 
     let withheldUpdate = resolver.resolve(
         item: managed,
@@ -711,6 +785,24 @@ private func testQARowPresentation() throws {
         && InstallationDownloadStepPresentation.displayedPhase(.failed,
             resolvingPackage: true, customOnly: false) == .failed,
         "other phases are shown as reported")
+    // Finishing: while the map is read back ("X of Y checked") the bar follows the checked bytes.
+    try require(InstallationFinishingStepPresentation.readBackFraction(phaseProgress: 0.1,
+        checkedBytes: 25, totalBytes: 100) == 0.25, "the Finishing bar follows the checked bytes")
+    try require(InstallationFinishingStepPresentation.readBackFraction(phaseProgress: 0.2,
+        checkedBytes: 120, totalBytes: 100) == 1, "the Finishing bar never passes 100 %")
+    try require(InstallationFinishingStepPresentation.readBackFraction(phaseProgress: 0,
+        checkedBytes: nil, totalBytes: nil) == nil
+        && InstallationFinishingStepPresentation.readBackFraction(phaseProgress: 0.1,
+            checkedBytes: 0, totalBytes: 0) == nil,
+        "before the read-back has a total, the Finishing bar is indeterminate")
+    try require(InstallationFinishingStepPresentation.readBackFraction(phaseProgress: 0.25,
+        checkedBytes: 100, totalBytes: 100) == nil
+        && InstallationFinishingStepPresentation.readBackFraction(phaseProgress: 0.6,
+            checkedBytes: 100, totalBytes: 100) == nil,
+        "after the read-back the unmeasured Finishing waits are indeterminate")
+    try require(abs((InstallationFinishingStepPresentation.readBackFraction(phaseProgress: 0.2,
+        checkedBytes: 10, totalBytes: 100) ?? 0) - 0.75) < 0.000_001,
+        "the Finishing bar never moves back below what the read-back already reached")
 
     // A2: a file written outside this Mac's manifest gets Remove only, with the reason in the row.
     let resolver = MapLifecyclePresentationResolver()
@@ -747,9 +839,18 @@ private func testQARowPresentation() throws {
     let plain = MapLifecycleItem(id: "lt2", title: "Lithuania", sourceKind: .provider, provider: "BBBike",
         region: "EUROPE-LITHUANIA-BBBIKE-LATIN1", version: installedVersion, rawVersion: nil, sizeBytes: 100,
         installedMaps: [installedMap()], classification: .terentoManaged)
-    try require(openTopo.manageTitle == "Lithuania · OpenTopoMap" && plain.manageTitle == "Lithuania"
-        && lifecycleItem().manageTitle == "Freizeitkarte Germany",
-        "Manage rows name the BBBike style and leave other providers unchanged")
+    try require(openTopo.manageRowMetadata.hasPrefix("BBBike (OpenTopoMap) · ")
+        && plain.manageRowMetadata.hasPrefix("BBBike · ")
+        && !openTopo.manageRowMetadata.contains("Lithuania")
+        && lifecycleItem().manageRowMetadata == "Freizeitkarte · " + lifecycleItem().manageMetadataLabel,
+        "Manage rows start with the provider or BBBike style as Install maps names it")
+    let custom = MapLifecycleItem(id: "c", title: "My map", sourceKind: .custom, provider: nil, region: nil,
+        version: nil, rawVersion: nil, sizeBytes: 100, installedMaps: [installedMap()], classification: .externalRecognized)
+    try require(custom.manageRowMetadata == custom.manageMetadataLabel, "a custom map row names no provider")
+    try require(lifecycleItem().removalNotice == "Freizeitkarte Germany · Freizeitkarte removed."
+        && openTopo.removalNotice == "Lithuania · BBBike (OpenTopoMap) removed."
+        && custom.removalNotice == "My map removed.",
+        "the removed notice names the map and its style as the row does")
 
     // D21: the Remove dialog names the map and gives one plain body line.
     let removeMeta = MapLifecycleConfirmationCopy.metadata(item: openTopo, provider: "BBBike")
@@ -760,7 +861,4 @@ private func testQARowPresentation() throws {
     try require(MapLifecycleConfirmationCopy.removeTitle(mapName: "Liechtenstein") == "Remove Liechtenstein?"
         && MapLifecycleConfirmationCopy.removeTitle(mapName: nil) == "Remove this map?",
         "Remove title is a question with the map name")
-    try require(MapLifecycleConfirmationCopy.removeMessage(metadata: "BBBike (Ontrail) · 2026-11-18 · 483 KB")
-        == "BBBike (Ontrail) · 2026-11-18 · 483 KB. Other maps stay. This can't be undone.",
-        "Remove body is one line")
 }

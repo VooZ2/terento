@@ -14,6 +14,9 @@ for text in \
     'title: "Send compatibility diagnostics"' \
     'title: "Send map usage diagnostics"' \
     'Text("Both are on by default. Turning one off also deletes what is waiting to be sent.")' \
+    'Text(compatibilitySharingBinding.wrappedValue || mapStatisticsSharingBinding.wrappedValue' \
+    '? "Turning one off also deletes what is waiting to be sent."' \
+    ': "Both are off until you turn them on. Turning one off also deletes what is waiting to be sent.")' \
     'DisclosureGroup("What is sent")' \
     'diagnosticsSection(title: "Problem with a map?")' \
     'Text("If an install, update or removal failed, send us the saved report.")' \
@@ -66,12 +69,12 @@ if [[ "$(grep -o 'privacy-minimized\|Privacy-minimized' "$diagnostics_source" | 
     exit 1
 fi
 
-# Three text levels: 18 section titles, 13 body, 12 help; 15 is only the button label.
+# Window title (deviceName), section titles (rowTitle), body and buttons
+# (meta), help (caption): the app type scale, nothing else.
 for source in "$diagnostics_source" "$about_source"; do
-    if grep -o 'terento\(UI\|Body\)(size: [0-9]*' "$source" | grep -v 'size: \(12\|13\|18\)$' \
-        | grep -qv 'size: 15$' \
-        || [[ "$(grep -c 'terentoUI(size: 15' "$source")" != "$(grep -c '\.frame(height: 44)' "$source")" ]]; then
-        print -u2 "FAIL: $source uses a text size outside 18/13/12"
+    if grep -o '\.terento(\.[a-zA-Z]*' "$source" | grep -qv '\.terento(\.\(deviceName\|rowTitle\|meta\|caption\)$' \
+        || [[ "$(grep -c '\.terento(\.deviceName' "$source")" != 1 ]]; then
+        print -u2 "FAIL: $source uses a text role outside title/section/meta/caption"
         exit 1
     fi
 done

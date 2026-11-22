@@ -404,6 +404,10 @@ assert_equal "Built app minimum macOS" "$app_minimum_os" "$RELEASE_DEPLOYMENT_TA
 
 /usr/bin/cmp "$repo_root/LICENSE" "$app/Contents/Resources/LICENSE" || die "Bundled LICENSE differs from repository LICENSE"
 /usr/bin/cmp "$repo_root/THIRD_PARTY_NOTICES.md" "$app/Contents/Resources/THIRD_PARTY_NOTICES.md" || die "Bundled THIRD_PARTY_NOTICES.md differs from repository copy"
+for font_file in Inter-Regular.ttf Inter-Medium.ttf Inter-SemiBold.ttf InstrumentSans-Regular.ttf InstrumentSans-SemiBold.ttf Inter-OFL.txt Instrument-Sans-OFL.txt; do
+    /usr/bin/cmp "$repo_root/app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/$font_file" "$app/Contents/Resources/$font_file" \
+        || die "Bundled font file $font_file differs from repository copy"
+done
 
 if find "$app" -type f \( -name '*.dSYM' -o -name '*.swiftmodule' -o -name '*.swiftdoc' -o -name '*.o' -o -name '*.log' \) -print -quit | rg -q .; then
     die "Debug/build file found inside app bundle"

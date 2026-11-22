@@ -90,6 +90,8 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
     let validationState: MapArtifactValidationState
     let sourceProof: BBBikeSourceProof?
     let osmapaSourceProof: OSMapaSourceProof?
+    let luckyMapsSourceProof: LuckyMapsSourceProof?
+    let openFietsMapSourceProof: OpenFietsMapSourceProof?
     /// The catalog sent a non-null `sourceProof`, even one neither proof type
     /// could decode. An unavailable artifact must not carry one at all.
     let carriesSourceProof: Bool
@@ -112,6 +114,8 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
         validationState: MapArtifactValidationState = .notValidated,
         sourceProof: BBBikeSourceProof? = nil,
         osmapaSourceProof: OSMapaSourceProof? = nil,
+        luckyMapsSourceProof: LuckyMapsSourceProof? = nil,
+        openFietsMapSourceProof: OpenFietsMapSourceProof? = nil,
         carriesSourceProof: Bool? = nil
     ) {
         self.id = id
@@ -131,7 +135,11 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
         self.validationState = validationState
         self.sourceProof = sourceProof
         self.osmapaSourceProof = osmapaSourceProof
-        self.carriesSourceProof = carriesSourceProof ?? (sourceProof != nil || osmapaSourceProof != nil)
+        self.luckyMapsSourceProof = luckyMapsSourceProof
+        self.openFietsMapSourceProof = openFietsMapSourceProof
+        self.carriesSourceProof = carriesSourceProof
+            ?? (sourceProof != nil || osmapaSourceProof != nil || luckyMapsSourceProof != nil
+                || openFietsMapSourceProof != nil)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -173,6 +181,8 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
             validationState: try container.decodeIfPresent(MapArtifactValidationState.self, forKey: .validationState) ?? .notValidated,
             sourceProof: try? container.decodeIfPresent(BBBikeSourceProof.self, forKey: .sourceProof),
             osmapaSourceProof: try? container.decodeIfPresent(OSMapaSourceProof.self, forKey: .sourceProof),
+            luckyMapsSourceProof: try? container.decodeIfPresent(LuckyMapsSourceProof.self, forKey: .sourceProof),
+            openFietsMapSourceProof: try? container.decodeIfPresent(OpenFietsMapSourceProof.self, forKey: .sourceProof),
             carriesSourceProof: container.contains(.sourceProof) && (try? container.decodeNil(forKey: .sourceProof)) == false
         )
     }
@@ -198,6 +208,10 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
             try container.encode(sourceProof, forKey: .sourceProof)
         } else if let osmapaSourceProof {
             try container.encode(osmapaSourceProof, forKey: .sourceProof)
+        } else if let luckyMapsSourceProof {
+            try container.encode(luckyMapsSourceProof, forKey: .sourceProof)
+        } else if let openFietsMapSourceProof {
+            try container.encode(openFietsMapSourceProof, forKey: .sourceProof)
         } else if carriesSourceProof {
             // Keep the marker: an undecodable proof re-decodes as carried.
             try container.encode([String: String](), forKey: .sourceProof)
@@ -356,7 +370,9 @@ struct MapProviderRegistry: Sendable {
         OpenTopoMapProviderAdapter(),
         MapRandoProviderAdapter(),
         BBBikeProviderAdapter(),
-        OSMapaProviderAdapter()
+        OSMapaProviderAdapter(),
+        LuckyMapsProviderAdapter(),
+        OpenFietsMapProviderAdapter()
     ])
 
     init(adapters: [any MapProviderAdapter]) {
@@ -482,6 +498,51 @@ enum MapAcquisitionAvailability: Equatable, Hashable, Sendable {
     case withheldCrimea
     case blocked(provider: String, reason: String)
 
+    /// Install maps rows: a blocked map shows only its short status; the
+    /// policy explanation for withheld regions stays.
+    var installRowNote: String? {
+        if case .blocked = self { return nil }
+        return detailedExplanation
+    }
+
+    static let availabilityCheckFailedNotice = "Couldn't check for updates."
+
+    /// The server or app block code, for a blocked map only.
+    var blockReason: String? {
+        if case .blocked(_, let reason) = self { return reason }
+        return nil
+    }
+
+    /// Manage maps: a reason that applies to the whole provider, said once
+    /// under its group header. One sentence; Refresh is the retry.
+    var manageGroupNotice: String? {
+        guard case .blocked(let provider, let reason) = self else { return nil }
+        switch reason {
+        case "PROVIDER_DOWN": return "\(provider) servers are unreachable."
+        case "PROVIDER_RATE_LIMITED": return "\(provider) is limiting downloads."
+        case "PROVIDER_PAUSED": return "\(provider) downloads are paused."
+        case "STATUS_UNVERIFIED", "STATUS_STALE": return Self.availabilityCheckFailedNotice
+        default: return nil
+        }
+    }
+
+    /// Manage maps: a reason that applies to this map only, on the row's line 3.
+    var manageRowReason: String? {
+        switch self {
+        case .available:
+            return nil
+        case .withheldRussia, .withheldCrimea:
+            return detailedExplanation
+        case .blocked(_, let reason):
+            guard manageGroupNotice == nil else { return nil }
+            switch reason {
+            case "ADMIN_DISABLED": return "Downloads for this map are turned off."
+            case "APP_UPDATE_REQUIRED": return "Update Terento to download this map."
+            default: return "This map is unavailable."
+            }
+        }
+    }
+
     var shortStatus: String? {
         switch self {
         case .available:
@@ -504,7 +565,7 @@ enum MapAcquisitionAvailability: Equatable, Hashable, Sendable {
             case "PROVIDER_DOWN": return "\(provider) map servers are currently unreachable. Try again later."
             case "PROVIDER_RATE_LIMITED": return "\(provider) is limiting downloads. Try again later."
             case "PROVIDER_PAUSED": return "\(provider) downloads are temporarily paused. Try again later."
-            case "STATUS_UNVERIFIED": return "Could not check current download availability for \(provider). Check your connection and try again."
+            case "STATUS_UNVERIFIED": return "Could not check current download availability for \(provider). Try again later."
             case "APP_UPDATE_REQUIRED": return "This Terento version can't download maps from the current catalog. Update Terento, then try again."
             case "STATUS_STALE": return "\(provider) server status needs to be checked. Try again later."
             case "ADMIN_DISABLED": return "Downloads for this \(provider) map are temporarily disabled. Try again later."
@@ -809,8 +870,8 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
     var displayVersionLabel: String? {
         if let label = releaseMetadata?.versionLabel?.trimmingCharacters(
             in: .whitespacesAndNewlines
-        ), Self.isUserFacingReleaseLabel(label) {
-            return Self.isoMonthLabel(label) ?? label
+        ), Self.isUserFacingReleaseLabel(label), !Self.isReleaseNumberOfYear(label) {
+            return label
         }
 
         // 2000-01 was the historical API serializer fallback. It is not a
@@ -821,13 +882,14 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
         return version.description
     }
 
-    /// One style for month-only releases: provider "3/2026" reads "2026-03",
-    /// like the other dates in the list. Other labels stay provider-native.
-    private static func isoMonthLabel(_ value: String) -> String? {
-        let parts = value.split(separator: "/")
-        guard parts.count == 2, let month = Int(parts[0]), (1...12).contains(month),
-              parts[0].count <= 2, parts[1].count == 4, let year = Int(parts[1]) else { return nil }
-        return String(format: "%04d-%02d", year, month)
+    /// Freizeitkarte names its releases "3/2026": the third release of 2026,
+    /// not March. Its maps say "Release 26.09" (the OpenStreetMap data month),
+    /// which is the normalized `version`, so the list shows that instead and
+    /// Install maps, Manage maps and Remove name the same release.
+    private static func isReleaseNumberOfYear(_ value: String) -> Bool {
+        let parts = value.split(separator: "/", omittingEmptySubsequences: false)
+        return parts.count == 2 && (1...2).contains(parts[0].count) && parts[1].count == 4
+            && parts.allSatisfy { $0.allSatisfy(\.isASCII) && $0.allSatisfy(\.isNumber) }
     }
 
     private static func isUserFacingReleaseLabel(_ value: String) -> Bool {
@@ -938,7 +1000,7 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
         // Existing providers retain their reviewed catalog contract, including
         // source-unavailable MapRando rows. BBBike and OSMapaPL unavailable source
         // metadata is visible but never a usable install artifact.
-        if ["bbbike", "osmapa"].contains(MapIdentity.normalizeProvider(providerId)),
+        if ["bbbike", "osmapa", "luckymaps", "openfietsmap"].contains(MapIdentity.normalizeProvider(providerId)),
            mainArtifact.validationState == .unavailable || mainArtifact.validationState == .failed { return false }
         return mainArtifact.sourceURL != nil || mainArtifact.localURL != nil
     }
@@ -1187,16 +1249,6 @@ enum BBBikeMapType: String, Codable, CaseIterable, Sendable {
         }
     }
     var filterID: String { self == .bbbike ? "bbbike" : "bbbike" + style }
-    /// Style shown next to a region name; nil for the plain BBBike style.
-    /// Plain name for conflict copy; the plain BBBike type has no style name.
-    var versionName: String { styleName ?? "standard BBBike" }
-    var styleName: String? {
-        switch self {
-        case .bbbike: return nil
-        case .ontrail: return "Ontrail"
-        case .opentopo: return "OpenTopoMap"
-        }
-    }
     /// The type named by a BBBike region token such as `EUROPE-ANDORRA-ONTRAIL-LATIN1`.
     init?(regionToken: String) {
         let region = MapIdentity.normalizeRegion(regionToken)
@@ -1251,6 +1303,8 @@ enum MapProviderDisplay {
         case "maprando": return "MapRando"
         case "bbbike": return "BBBike"
         case "osmapa": return "OSMapaPL"
+        case "luckymaps": return "Lucky Maps"
+        case "openfietsmap": return "OpenFietsMap"
         default: return "The map provider"
         }
     }
@@ -1302,15 +1356,16 @@ struct BBBikeProviderAdapter: MapProviderAdapter, Sendable {
             || (exampleRegions.contains(sourceRegion) && path == "/osm/garmin/example/" + suffix)
     }
     static let coexistenceReason = "Select only one BBBike map type for the same region. BBBike, BBBike (Ontrail) and BBBike (OpenTopoMap) cannot be installed together."
+    /// Names the installed style the way Install and Manage maps name it.
     static func installedTypeConflictMessage(for package: MapPackage, installedType: BBBikeMapType) -> String {
         guard BBBikeMapType(rawValue: package.mapType ?? "") != nil else { return coexistenceReason }
-        return "Can't install next to the \(installedType.versionName) version of this map. Remove that one in Manage maps first."
+        return "Remove \(installedType.title) in Manage maps first."
     }
     static func unverifiedTypeConflictMessage(for package: MapPackage, otherType: BBBikeMapType? = nil) -> String {
         guard BBBikeMapType(rawValue: package.mapType ?? "") != nil else { return coexistenceReason }
-        let other = otherType.map { "the \($0.versionName) version" } ?? "another version"
         // Manage offers Remove for such a file; ownership recovery has no button there.
-        return "Can't install next to \(other) of this map on your Garmin. Remove that one in Manage maps first."
+        guard let otherType else { return "Remove the other BBBike map of this region in Manage maps first." }
+        return "Remove \(otherType.title) in Manage maps first."
     }
     /// The other BBBike type of the same source region that `region` names, if any.
     static func conflictingType(_ package: MapPackage, provider: String?, region: String?) -> BBBikeMapType? {
@@ -1559,5 +1614,367 @@ struct OSMapaProviderAdapter: MapProviderAdapter, Sendable {
         }
         guard let style = styles.first(where: { style in styles.filter { $0 == style }.count > 1 }) else { return nil }
         return "Select either Poland or Poland with border areas for \(style.title). These maps cannot be installed together."
+    }
+}
+
+/// Catalog proof for one Lucky Maps IMG (main map or contour add-on). The
+/// server measured the fixed header and the MPS product file; the client
+/// binds the whole downloaded file to it again before any watch write.
+struct LuckyMapsSourceProof: Codable, Equatable, Sendable {
+    let sourceURL: URL
+    let etag: String
+    let lastModified: String
+    let downloadSizeBytes: UInt64
+    let installSizeBytes: UInt64
+    let sourceIdentity: String
+    let familyId: UInt16
+    let imgTitle: String
+    let createdAt: String
+    let publisher: String
+    /// Present only once the provider publishes checksums.
+    let sha256: String?
+    let headerIdentityValidated: Bool
+    let revision: String
+}
+
+/// Lucky Maps (luckymaps.ch) publishes raw mkgmap IMG files. The header
+/// description is only the file stem, so provider identity comes from the
+/// reviewed catalog proof during acquisition and from the exact manifest
+/// record on rescan. Contours are an optional add-on artifact `<stem>-ct.img`.
+struct LuckyMapsProviderAdapter: MapProviderAdapter, Sendable {
+    let id = "luckymaps"
+    let usesRawIMGDownload = true
+    static let sourceHost = "luckymaps.ch"
+    static let publisher = "luckymaps.ch"
+    static let maximumIMGBytes: UInt64 = 4_294_967_295
+    static let stemPattern = #"^[A-Za-z0-9][A-Za-z0-9_-]{0,95}$"#
+    static let sourcePathPattern = #"^/assets/maps/(?:[A-Za-z0-9][A-Za-z0-9._-]{0,127}/){0,3}([A-Za-z0-9][A-Za-z0-9_-]{0,95})\.img$"#
+
+    static func isStem(_ value: String) -> Bool {
+        value.range(of: stemPattern, options: .regularExpression) != nil
+    }
+
+    static func packageID(stem: String) -> String {
+        let token = stem.lowercased()
+            .replacingOccurrences(of: "[^a-z0-9]+", with: "-", options: .regularExpression)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "-"))
+        return "luckymaps-" + token
+    }
+
+    /// `SouthDE_AT_FL` → `SOUTHDE-AT-FL`, as the API publishes it.
+    static func canonicalRegion(stem: String) -> String {
+        stem.uppercased()
+            .replacingOccurrences(of: "[^A-Z0-9]+", with: "-", options: .regularExpression)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "-"))
+    }
+
+    /// The file stem of a reviewed source URL: HTTPS on luckymaps.ch, below
+    /// `/assets/maps/` in at most three folders, no query, port or escapes.
+    static func reviewedSource(_ url: URL) -> String? {
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              components.scheme == "https", components.host == sourceHost,
+              components.user == nil, components.password == nil, components.port == nil,
+              components.query == nil, components.fragment == nil,
+              !url.absoluteString.contains("%"),
+              let regex = try? NSRegularExpression(pattern: sourcePathPattern) else { return nil }
+        let path = components.path
+        guard let match = regex.firstMatch(in: path, range: NSRange(path.startIndex..., in: path)),
+              let stemRange = Range(match.range(at: 1), in: path) else { return nil }
+        return String(path[stemRange])
+    }
+
+    static func validIdentity(_ package: MapPackage) -> Bool {
+        let stem = package.providerRegionId
+        return MapIdentity.normalizeProvider(package.providerId) == "luckymaps"
+            && isStem(stem)
+            && package.id == packageID(stem: stem)
+            && package.identifier == stem
+            && package.canonicalRegionId == canonicalRegion(stem: stem)
+            && package.version.day != nil
+    }
+
+    /// One artifact's proof: the exact reviewed file, its title and MPS
+    /// identity, and sizes that match the catalog artifact.
+    static func proofIsValid(_ artifact: MapArtifact, fileStem: String, kind: MapArtifactKind,
+                             created: MapVersion?) -> Bool {
+        guard artifact.kind == kind, artifact.sourceProof == nil, artifact.osmapaSourceProof == nil,
+              artifact.validationState == .validated,
+              let proof = artifact.luckyMapsSourceProof,
+              let url = artifact.sourceURL, proof.sourceURL == url, reviewedSource(url) == fileStem,
+              proof.sourceIdentity == "luckymaps:\(fileStem):\(kind.rawValue)",
+              proof.imgTitle == fileStem, proof.publisher == publisher,
+              proof.headerIdentityValidated, proof.familyId > 0,
+              proof.downloadSizeBytes >= 0x1000, proof.downloadSizeBytes <= maximumIMGBytes,
+              proof.installSizeBytes == proof.downloadSizeBytes,
+              artifact.downloadSizeBytes == proof.downloadSizeBytes,
+              artifact.sizeBytes == proof.installSizeBytes,
+              proof.etag.hasPrefix("\""), proof.etag.hasSuffix("\""), proof.etag.count > 2,
+              !proof.lastModified.isEmpty,
+              let createdAt = MapRandoVersionParser().parseISO(proof.createdAt),
+              created == nil || createdAt == created,
+              proof.revision.range(of: #"^[a-f0-9]{64}$"#, options: .regularExpression) != nil else { return false }
+        if let sha256 = proof.sha256 {
+            return sha256.range(of: #"^[0-9a-f]{64}$"#, options: .regularExpression) != nil
+                && artifact.checksum == sha256
+        }
+        return artifact.checksum == nil
+    }
+
+    func canonicalRegionIdentity(for package: MapPackage) -> CanonicalMapRegionIdentity? {
+        let token = MapIdentity.normalizeRegion(package.providerRegionId)
+        if token.contains("CRIMEA") || token.contains("KRYM") {
+            return CanonicalMapRegionIdentity(countryCode: "UA", locality: "CRIMEA")
+        }
+        if token.contains("RUSSIA") || package.countryCodes.contains(where: { $0.uppercased() == "RU" }) {
+            return CanonicalMapRegionIdentity(countryCode: "RU")
+        }
+        return package.countryCodes.first.map { CanonicalMapRegionIdentity(countryCode: $0) }
+    }
+
+    /// Accepts a catalog package (main plus optional contours) and the
+    /// single-artifact package acquisition derives for either file.
+    func expectedIMGIdentity(for package: MapPackage) -> MapIdentity? {
+        guard Self.validIdentity(package) else { return nil }
+        let stem = package.providerRegionId
+        let mains = package.artifacts.filter { $0.kind == .main }
+        let contours = package.artifacts.filter { $0.kind == .contours }
+        guard !package.artifacts.isEmpty, mains.count <= 1, contours.count <= 1,
+              mains.count + contours.count == package.artifacts.count,
+              let primary = mains.first ?? contours.first,
+              package.downloadURL == primary.sourceURL,
+              package.expectedDownloadSizeBytes == primary.downloadSizeBytes else { return nil }
+        if let main = mains.first {
+            guard main.required,
+                  Self.proofIsValid(main, fileStem: stem, kind: .main, created: package.version) else { return nil }
+        }
+        if let contour = contours.first {
+            guard !contour.required,
+                  Self.proofIsValid(contour, fileStem: stem + "-ct", kind: .contours, created: nil),
+                  contour.luckyMapsSourceProof?.familyId != mains.first?.luckyMapsSourceProof?.familyId
+            else { return nil }
+        }
+        return package.identity
+    }
+
+    /// Two packages naming one Garmin family ID would hide each other on a
+    /// watch; neither is installable. The server already withholds them.
+    static func duplicateFamilyPackageIDs(_ packages: [MapPackage]) -> Set<String> {
+        var owners: [UInt16: [String]] = [:]
+        for package in packages where MapIdentity.normalizeProvider(package.providerId) == "luckymaps" {
+            let families = Set(package.artifacts.compactMap { $0.luckyMapsSourceProof?.familyId })
+            for family in families { owners[family, default: []].append(package.id) }
+        }
+        return Set(owners.values.filter { $0.count > 1 }.flatMap { $0 })
+    }
+}
+
+/// Catalog proof for one OpenFietsMap GPS archive. The server measured the
+/// ZIP central directory and the first 4 KiB of the IMG; the client binds the
+/// downloaded archive and the whole extracted IMG (size, CRC-32, header title,
+/// creation date and MDR family ID) to it again before any watch write.
+struct OpenFietsMapSourceProof: Codable, Equatable, Sendable {
+    let sourceURL: URL
+    let etag: String
+    let lastModified: String
+    let downloadSizeBytes: UInt64
+    let installSizeBytes: UInt64
+    let payloadPath: String
+    let crc32: String
+    let sourceIdentity: String
+    let area: String
+    let mapType: String
+    let familyId: UInt16
+    let imgTitle: String
+    let generatedAt: String
+    let headerIdentityValidated: Bool
+    let revision: String
+}
+
+/// One reviewed OpenFietsMap GPS download: its package key, the payload path
+/// inside the archive, the Garmin family ID and the IMG title rule.
+struct OpenFietsMapSource: Equatable, Sendable {
+    let key: String
+    let payloadPath: String
+    let familyID: UInt16
+    /// Full-match pattern for the IMG title; group 1 is a `dd-mm-yyyy` date when present.
+    let titlePattern: String
+    /// The date in the file name, or the Europe release folder date.
+    let publishedDate: MapVersion?
+    /// Set for the yearly Europe areas.
+    let europeYear: Int?
+}
+
+/// OpenFietsMap (openfietsmap.nl, author's written permission 2026-11-21)
+/// publishes GPS ZIP archives with one `gmapsupp.img` and a few readme files.
+/// Titles name the map (`OFM_BNL(21-11-2026)`, `OFM(EU2026_C)`), so a map on
+/// a watch is recognized from its header and MDR family ID. Europe areas get
+/// a new folder and family ID (year × 10 + area) every year; the package key
+/// stays, so an update replaces the managed file of the same key.
+struct OpenFietsMapProviderAdapter: MapProviderAdapter, Sendable {
+    let id = "openfietsmap"
+    static let sourceHost = "ligfietser.dev.openstreetmap.org"
+    static let rootPath = "/openfietsmap/"
+    static let maximumIMGBytes: UInt64 = 4_294_967_295
+    static let datePattern = "([0-9]{2}-[0-9]{2}-20[0-9]{2})"
+    static let europeAreas = ["gb", "n", "w", "c", "sw", "se", "e"]
+
+    /// key, path below `/openfietsmap/`, payload, family ID, title pattern, map type.
+    static let fixedAreas: [(key: String, path: String, payload: String, familyID: UInt16, title: String, mapType: String)] = [
+        ("benelux", #"benelux/full/OpenFietsMap\.zip"#, "gmapsupp.img", 10010, #"OFM_BNL\("# + datePattern + #"\)"#, "ofm-full"),
+        ("benelux-light", #"benelux/light/OpenFietsMap_light\.zip"#, "gmapsupp.img", 20010, #"OFM_light\("# + datePattern + #"\)"#, "ofm-light"),
+        ("benelux-hiking", #"benelux/hike/gmapsupp\.zip"#, "gmapsupp.img", 50010, #"OFM_hike\("# + datePattern + #"\)"#, "ofm-hiking"),
+        ("germany", #"germany/OFM_DE\("# + datePattern + #"_gps\)\.zip"#, "Garmin/gmapsupp.img", 4900, #"OFM_DE\("# + datePattern + #"\)"#, "ofm-full"),
+        ("alps", #"Alps/OFM_Alps\("# + datePattern + #"_gps\)\.zip"#, "Garmin/gmapsupp.img", 4143, #"OFM_Alps\("# + datePattern + #"\)"#, "ofm-full"),
+        ("atlantic", #"Atlantic/OFM_Atlantic\("# + datePattern + #"_gps\)\.zip"#, "garmin/gmapsupp.img", 34351, #"OFM_Atlantic"#, "ofm-full"),
+        ("baleares", #"Baleares/OFM_Baleares\("# + datePattern + #"_gps\)\.zip"#, "garmin/gmapsupp.img", 34971, #"OFM_Baleares"#, "ofm-full"),
+        ("iceland", #"Iceland/OFM_Iceland\("# + datePattern + #"_gps\)\.zip"#, "garmin/gmapsupp.img", 35400, #"OFM_Island"#, "ofm-full"),
+    ]
+    static let europePathPattern = #"EU_(20[0-9]{2})/([0-9]{4})/GPS/OFM\(EU(20[0-9]{2})_(GB|N|W|C|SW|SE|E)_GPS\)\.zip"#
+
+    static var keys: Set<String> {
+        Set(fixedAreas.map(\.key) + europeAreas.map { "europe-" + $0 })
+    }
+
+    static func mapType(forKey key: String) -> String? {
+        if let area = fixedAreas.first(where: { $0.key == key }) { return area.mapType }
+        return europeAreas.contains(where: { "europe-" + $0 == key }) ? "ofm-full" : nil
+    }
+
+    static func europeFamilyID(year: Int, area: String) -> UInt16? {
+        guard let index = europeAreas.firstIndex(of: area.lowercased()), (2000...6000).contains(year) else { return nil }
+        return UInt16(year * 10 + index + 1)
+    }
+
+    /// Full-string regular expression match; returns the capture groups.
+    static func fullMatch(_ pattern: String, _ text: String) -> [String?]? {
+        guard let regex = try? NSRegularExpression(pattern: "^(?:" + pattern + ")$"),
+              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) else { return nil }
+        return (1..<match.numberOfRanges).map { index in
+            Range(match.range(at: index), in: text).map { String(text[$0]) }
+        }
+    }
+
+    /// `21-11-2026` → 2026-11-21, rejecting impossible dates.
+    static func day(_ text: String) -> MapVersion? {
+        let parts = text.split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 3 else { return nil }
+        var components = DateComponents()
+        components.calendar = Calendar(identifier: .gregorian)
+        components.timeZone = TimeZone(identifier: "UTC")
+        (components.year, components.month, components.day) = (parts[2], parts[1], parts[0])
+        guard components.isValidDate else { return nil }
+        return MapVersion(year: parts[2], month: parts[1], day: parts[0])
+    }
+
+    /// The reviewed source of a URL: HTTPS on the author's host, below
+    /// `/openfietsmap/`, one of the reviewed GPS file names, no query, port or escapes.
+    static func reviewedSource(_ url: URL) -> OpenFietsMapSource? {
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              components.scheme == "https", components.host == sourceHost,
+              components.user == nil, components.password == nil, components.port == nil,
+              components.query == nil, components.fragment == nil,
+              !url.absoluteString.contains("%"), components.path.hasPrefix(rootPath) else { return nil }
+        let path = String(components.path.dropFirst(rootPath.count))
+        for area in fixedAreas {
+            guard let groups = fullMatch(area.path, path) else { continue }
+            var published: MapVersion?
+            if let text = groups.first ?? nil {
+                guard let value = day(text) else { return nil }
+                published = value
+            }
+            return OpenFietsMapSource(key: area.key, payloadPath: area.payload, familyID: area.familyID,
+                                      titlePattern: area.title, publishedDate: published, europeYear: nil)
+        }
+        guard let groups = fullMatch(europePathPattern, path), groups.count == 4,
+              let yearText = groups[0], let folder = groups[1], groups[2] == yearText, let area = groups[3],
+              let year = Int(yearText), let family = europeFamilyID(year: year, area: area),
+              let month = Int(folder.prefix(2)), let dayOfMonth = Int(folder.suffix(2)),
+              let published = day(String(format: "%02d-%02d-%04d", dayOfMonth, month, year)) else { return nil }
+        return OpenFietsMapSource(key: "europe-" + area.lowercased(), payloadPath: "garmin/gmapsupp.img",
+                                  familyID: family, titlePattern: NSRegularExpression.escapedPattern(for: "OFM(EU\(year)_\(area))"),
+                                  publishedDate: published, europeYear: year)
+    }
+
+    static func validIdentity(_ package: MapPackage) -> Bool {
+        let key = package.providerRegionId
+        return MapIdentity.normalizeProvider(package.providerId) == "openfietsmap"
+            && keys.contains(key)
+            && package.id == "openfietsmap-" + key
+            && package.canonicalRegionId == key.uppercased()
+            && package.regionId == key.uppercased()
+            && package.mapType == mapType(forKey: key)
+            && !package.countryCodes.isEmpty
+            && !package.countryCodes.contains(where: { $0.uppercased() == "RU" })
+            && package.version.day != nil
+    }
+
+    /// The release date of a header title for this source, cross-checked as
+    /// the server does: Europe areas are built up to three days after their
+    /// folder date; other files carry one date in the title and/or file name.
+    static func releaseDate(title: String, source: OpenFietsMapSource) -> MapVersion?? {
+        guard let groups = fullMatch(source.titlePattern, title) else { return nil }
+        if source.europeYear != nil { return .some(nil) }
+        var published = source.publishedDate
+        if let text = groups.first ?? nil {
+            guard let titleDate = day(text), published == nil || published == titleDate else { return nil }
+            published = titleDate
+        }
+        return .some(published)
+    }
+
+    static func dayDistance(from start: MapVersion, to end: MapVersion) -> Int? {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        func date(_ version: MapVersion) -> Date? {
+            guard let day = version.day else { return nil }
+            return calendar.date(from: DateComponents(year: version.year, month: version.month, day: day))
+        }
+        guard let first = date(start), let second = date(end) else { return nil }
+        return calendar.dateComponents([.day], from: first, to: second).day
+    }
+
+    /// The package release must match the published dates of its source.
+    static func releaseMatches(_ version: MapVersion, title: String, source: OpenFietsMapSource) -> Bool {
+        guard let published = releaseDate(title: title, source: source) else { return false }
+        if source.europeYear != nil {
+            guard let folder = source.publishedDate, let distance = dayDistance(from: folder, to: version) else { return false }
+            return (0...3).contains(distance)
+        }
+        return published == version
+    }
+
+    func canonicalRegionIdentity(for package: MapPackage) -> CanonicalMapRegionIdentity? {
+        if package.countryCodes.contains(where: { $0.uppercased() == "RU" }) {
+            return CanonicalMapRegionIdentity(countryCode: "RU")
+        }
+        return package.countryCodes.first.map { CanonicalMapRegionIdentity(countryCode: $0) }
+    }
+
+    func expectedIMGIdentity(for package: MapPackage) -> MapIdentity? {
+        guard Self.validIdentity(package), package.artifacts.count == 1,
+              let artifact = package.mainArtifact, artifact.required,
+              artifact.validationState == .validated,
+              artifact.sourceProof == nil, artifact.osmapaSourceProof == nil, artifact.luckyMapsSourceProof == nil,
+              let proof = artifact.openFietsMapSourceProof,
+              proof.sourceURL == package.downloadURL, artifact.sourceURL == proof.sourceURL,
+              let source = Self.reviewedSource(proof.sourceURL), source.key == package.providerRegionId,
+              Self.releaseMatches(package.version, title: proof.imgTitle, source: source),
+              proof.etag.hasPrefix("\""), proof.etag.hasSuffix("\""), proof.etag.count > 2,
+              !proof.lastModified.isEmpty,
+              ISO8601DateFormatter().date(from: proof.generatedAt) != nil,
+              proof.generatedAt.hasPrefix(package.version.description + "T"),
+              proof.sourceIdentity == "openfietsmap:\(source.key)",
+              proof.area == source.key, proof.mapType == package.mapType,
+              proof.familyId == source.familyID,
+              proof.headerIdentityValidated,
+              proof.payloadPath == source.payloadPath,
+              proof.downloadSizeBytes == package.expectedDownloadSizeBytes,
+              proof.installSizeBytes == package.installSizeBytes,
+              proof.downloadSizeBytes > 0, proof.installSizeBytes >= 0x1000,
+              proof.installSizeBytes <= Self.maximumIMGBytes,
+              artifact.checksum == nil,
+              proof.crc32.range(of: #"^[0-9a-f]{8}$"#, options: .regularExpression) != nil,
+              proof.revision.range(of: #"^[a-f0-9]{64}$"#, options: .regularExpression) != nil else { return nil }
+        return package.identity
     }
 }

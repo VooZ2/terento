@@ -11,7 +11,11 @@ static void fake_release(LIBMTP_mtpdevice_t *);
 static void fake_clear(LIBMTP_mtpdevice_t *);
 static LIBMTP_error_t *fake_error(LIBMTP_mtpdevice_t *);
 static int fake_partial(LIBMTP_mtpdevice_t *, uint32_t, uint64_t, uint32_t, unsigned char **, unsigned int *);
+static int fake_take_transfer_timed_out(void);
+static void fake_begin_read_only(LIBMTP_mtpdevice_t *);
 #define TERENTO_NATIVE_TEST_OPEN fake_open
+#define TERENTO_NATIVE_TEST_TRANSFER_TIMED_OUT fake_take_transfer_timed_out
+#define TERENTO_NATIVE_TEST_BEGIN_READ_ONLY fake_begin_read_only
 #define LIBMTP_Get_Serialnumber fake_serial
 #define LIBMTP_Get_Manufacturername fake_manufacturer
 #define LIBMTP_Get_Modelname fake_model
@@ -26,9 +30,14 @@ static int fake_partial(LIBMTP_mtpdevice_t *, uint32_t, uint64_t, uint32_t, unsi
 static LIBMTP_mtpdevice_t device;
 static LIBMTP_devicestorage_t storage;
 static int scenario, reads, opens, closes, listings, music_listings, fail_next_activity;
+/* Scenario 24/25: the failing listing or header read is a timed-out USB transfer. */
+static int transfer_timed_out, read_only_sessions;
+static int fake_take_transfer_timed_out(void) { int value=transfer_timed_out; transfer_timed_out=0; return value; }
+static void fake_begin_read_only(LIBMTP_mtpdevice_t *d) { ++read_only_sessions; transfer_timed_out=0; }
 static uint32_t ids[8];
 void terento_prefix_test_reset(int value) {
-    scenario=value; reads=opens=closes=listings=music_listings=0; fail_next_activity=value==22;
+    scenario=value; reads=opens=closes=listings=music_listings=0; fail_next_activity=value==22 || value==24;
+    transfer_timed_out=read_only_sessions=0;
     memset(&device,0,sizeof(device)); memset(&storage,0,sizeof(storage));
     storage.id=1; device.storage=&storage;
 }
@@ -98,7 +107,7 @@ static LIBMTP_file_t *scoped_files(uint32_t parent) {
     }
     if(parent==89) return entry("other.img",97,0,16);
     if(parent==92) {
-        if(fail_next_activity) { fail_next_activity=0; error_pending=1; return NULL; }
+        if(fail_next_activity) { fail_next_activity=0; error_pending=1; transfer_timed_out=scenario==24; return NULL; }
         for(int i=0;i<50;++i) { snprintf(name,sizeof(name),"%d.fit",i);
             *tail=entry(name,1000+i,0,1000+i); tail=&(*tail)->next; }
         return head;
@@ -114,7 +123,7 @@ static LIBMTP_file_t *scoped_files(uint32_t parent) {
 static LIBMTP_file_t *fake_files(LIBMTP_mtpdevice_t *d,uint32_t store,uint32_t parent) {
     ++listings;
     if(scenario==18) return heavy_files(parent);
-    if(scenario>=19 && scenario<=23) return scoped_files(parent);
+    if(scenario>=19 && scenario<=24) return scoped_files(parent);
     if(parent==LIBMTP_FILES_AND_FOLDERS_ROOT) return entry(scenario==16?"Garmin":scenario==17?"garmin":"GARMIN",90,1,0);
     if(parent!=90) return NULL;
     LIBMTP_file_t *other=entry("unrelated.img",10,0,8);
@@ -130,6 +139,7 @@ static LIBMTP_file_t *fake_files(LIBMTP_mtpdevice_t *d,uint32_t store,uint32_t p
     return other;
 }
 static int fake_partial(LIBMTP_mtpdevice_t *d,uint32_t id,uint64_t offset,uint32_t length,unsigned char **out,unsigned int *count) {
+    if(scenario==25) { transfer_timed_out=1; return -1; }
     assert(reads<8); ids[reads++]=id;
     assert(id==20 || id==30 || id==10);
     *out=malloc(length); assert(*out); memset(*out,id==20?'A':id==30?'B':'X',length); *count=length; return 0;
@@ -201,6 +211,14 @@ static void test_map_scope_inventory(const TerentoMTPMapOperationProfile *p) {
         terento_mtp_free_file_inventory(&inv);
         printf("PASS: map-scope fallback scenario %d returns the full walk (fallback=%d)\n",cases[i][0],fallback);
     }
+    /* A listing whose USB transfer timed out: the watch stopped answering. No
+     * full walk is asked of it, and the read ends with the stall code. */
+    terento_prefix_test_reset(24); scope=fallback=-1; error[0]=0;
+    assert(terento_mtp_read_map_scope_inventory_bound(p,&inv,&scope,&fallback,error,sizeof(error),&category)
+        ==TERENTO_MTP_READ_STALLED);
+    assert(inv.file_count==0 && music_listings==0 && opens==1 && closes==1 && read_only_sessions==1);
+    assert(strcmp(error,"The device stopped responding")==0);
+    puts("PASS: a stalled scoped listing ends the read without the full walk");
     /* A wrong physical device is refused before any listing, as for the full read. */
     terento_prefix_test_reset(8); scope=fallback=-1;
     assert(terento_mtp_read_map_scope_inventory_bound(p,&inv,&scope,&fallback,error,sizeof(error),&category)!=0);
@@ -231,6 +249,17 @@ int main(void) {
         } else assert(reads==0 && buffers[0].byte_count==0 && buffers[1].byte_count==0);
         for(int i=0;i<2;++i)terento_mtp_free_byte_buffer(&buffers[i]);
         printf("PASS: prefix native scenario %d (reads=%d)\n",test,reads);
+    }
+    {
+        /* A header read whose USB transfer timed out ends with the stall code. */
+        terento_prefix_test_reset(25);
+        TerentoMTPByteBuffer buffers[2]={{0}}; char error[256]={0}; int category=0;
+        assert(terento_mtp_read_file_prefix_diagnostic(&p,targets,0,8,buffers,error,sizeof(error),&category)
+            ==TERENTO_MTP_READ_STALLED);
+        assert(opens==1 && closes==1 && read_only_sessions==1 && buffers[0].byte_count==0);
+        terento_prefix_test_reset(25);
+        assert(terento_mtp_read_file_prefixes(&p,targets,2,8,buffers,error,sizeof(error))==TERENTO_MTP_READ_STALLED);
+        puts("PASS: a stalled header read ends with the stall code");
     }
     for(int i=0;i<3;++i) {
         const char *paths[]={"/GARMIN//expected.img","/GARMIN/./expected.img","/GARMIN/../expected.img"};

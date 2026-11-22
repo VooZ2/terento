@@ -14,10 +14,29 @@ typedef struct {
  * An odd payload length ends in a short packet for USB bulk packet sizes,
  * avoiding libmtp's separate zero-length terminator read. The next request
  * still reads the remaining byte; sample coverage is never shortened. */
-static uint32_t terento_sample_read_request(uint32_t remaining, int short_packet) {
-    uint32_t requested = remaining > 64 * 1024 ? 64 * 1024 : remaining;
+static uint32_t terento_sample_read_request_within(uint32_t remaining, int short_packet, uint32_t limit) {
+    uint32_t requested = remaining > limit ? limit : remaining;
     if (short_packet && requested > 0 && (requested % 2) == 0) requested--;
     return requested;
+}
+
+#define TERENTO_SAMPLE_READ_DEFAULT_LIMIT (64u * 1024u)
+#define TERENTO_SAMPLE_READ_LARGE_LIMIT (1024u * 1024u)
+
+static uint32_t terento_sample_read_request(uint32_t remaining, int short_packet) {
+    return terento_sample_read_request_within(remaining, short_packet, TERENTO_SAMPLE_READ_DEFAULT_LIMIT);
+}
+
+/* Request size for sampled checks (post-install read-back, recorded samples).
+ * Owner's fenix 8 AMOLED (091e:51b8), firmware 24.20, read-only probe
+ * 2026-11-22: every GetPartialObject of 64 KiB or 256 KiB took ~0.5 s
+ * (0.14 / 0.57 MB/s), 1 MiB requests ~0.14 s (6.8-7.8 MB/s), same bytes.
+ * On firmware 23.39 (2026-10-10) all sizes read ~1.7 MB/s. Owner decision
+ * 2026-11-22: 1 MiB for every Garmin. Only the request size changes: every
+ * sampled byte is still read and compared. */
+static uint32_t terento_sample_read_limit(uint16_t vendor_id, uint16_t product_id) {
+    (void)product_id;
+    return vendor_id == 0x091e ? TERENTO_SAMPLE_READ_LARGE_LIMIT : TERENTO_SAMPLE_READ_DEFAULT_LIMIT;
 }
 
 /* Keep every requested byte, reading overlaps only once. Each output entry

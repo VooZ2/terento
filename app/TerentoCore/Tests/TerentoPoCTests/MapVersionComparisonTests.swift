@@ -19,8 +19,37 @@ struct MapVersionComparisonTests {
         testProviderNativeVersionLabelIsUsedForDisplay()
         testOtherInstalledRegionStillMeansInstallAvailable()
         testKnownDifferentRegionCannotMatchByIdentifier()
+        testFreizeitkarteReleaseMatchesRealHeader(fixtures: CommandLine.arguments.dropFirst().first)
 
-        print("PASS: 10 Stage 2 map comparison tests")
+        print("PASS: 11 Stage 2 map comparison tests")
+    }
+
+    /// QA 1.3.0-local: Install maps said 2026-03 for Freizeitkarte Andorra
+    /// and Lithuania, Manage maps and Remove said 2026-09. The provider's
+    /// release "3/2026" (third release of 2026) is built from OpenStreetMap
+    /// data of 2026-09-10 and its maps say "Release 26.09" (real header of
+    /// AND_en_gmapsupp.img, downloaded 2026-11-21). All three show 2026-09.
+    private static func testFreizeitkarteReleaseMatchesRealHeader(fixtures: String?) {
+        guard let fixtures,
+              let header = FileManager.default.contents(atPath: fixtures + "/andorra-header.bin") else {
+            expect(false, "the real Freizeitkarte header fixture is readable")
+            return
+        }
+        let metadata = GarminIMGMetadataParser().parse(Array(header), filename: "gmapsupp.img")
+        expect(metadata?.provider == "Freizeitkarte" && metadata?.region == "AND"
+               && metadata?.rawVersion == "Release 26.09" && metadata?.version?.description == "2026-09",
+               "the real Freizeitkarte Andorra header reads Release 26.09 = 2026-09")
+        // As the live catalog publishes it: release "3/2026", data of 2026-09-10.
+        let catalog = MapPackage(
+            id: "freizeitkarte-and", providerId: "freizeitkarte", regionId: "AND", name: "Andorra",
+            version: MapVersion(year: 2026, month: 9)!, sizeBytes: 4_065_406, sourceURL: nil,
+            releaseDate: "2026-09-10", identifier: "AND",
+            releaseMetadata: MapReleaseMetadata(releaseId: "3/2026", versionLabel: "3/2026",
+                                                generatedAt: nil, sourceUpdatedAt: "2026-09-10")
+        )
+        expect(catalog.displayVersionLabel == metadata?.version?.description,
+               "Install maps shows the same release as Manage maps and Remove (2026-09, not 2026-03)")
+        expect(catalog.version == metadata?.version, "the installed map is the catalog release, not an older one")
     }
 
     private static func testDailyReleasePrecisionAndLegacyCoding() {
@@ -106,7 +135,7 @@ struct MapVersionComparisonTests {
             providerId: "freizeitkarte",
             regionId: "LT",
             name: "Lithuania",
-            version: MapVersion(year: 2000, month: 1)!,
+            version: MapVersion(year: 2026, month: 5)!,
             sizeBytes: 219_000_000,
             sourceURL: nil,
             releaseDate: "2026-05-03",
@@ -120,9 +149,18 @@ struct MapVersionComparisonTests {
         )
 
         expect(
-            package.displayVersionLabel == "2026-02",
-            "provider-native month release label is shown in the list's year-month style"
+            package.displayVersionLabel == "2026-05",
+            "Freizeitkarte release number 2/2026 is not a month: the list shows the release's data month"
         )
+
+        let otmPackage = MapPackage(
+            id: "opentopomap-italy", providerId: "opentopomap", regionId: "IT", name: "Italy",
+            version: MapVersion(year: 2026, month: 5)!, sizeBytes: 100, sourceURL: nil,
+            releaseDate: nil, identifier: nil,
+            releaseMetadata: MapReleaseMetadata(releaseId: "2026-05", versionLabel: "2026-05",
+                                                generatedAt: nil, sourceUpdatedAt: nil)
+        )
+        expect(otmPackage.displayVersionLabel == "2026-05", "other provider labels stay as published")
 
         let fallbackPackage = MapPackage(
             id: "freizeitkarte-unknown",

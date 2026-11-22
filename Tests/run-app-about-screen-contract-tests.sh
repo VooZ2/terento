@@ -14,9 +14,9 @@ if ! grep -Fq 'TerentoAppMetadata.displayVersion' "$about_source"; then
 fi
 # Layout metrics and exact view constructors belong to visual review, not source snapshots.
 for link in \
-    'supportLink("Website ↗", destination: TerentoAppLinks.websiteFromApp)' \
-    'supportLink("GitHub repository ↗", destination: TerentoAppLinks.repository)' \
-    'supportLink("Report an issue ↗", destination: TerentoAppLinks.issues)' \
+    'supportLink("Terento Website ↗", destination: TerentoAppLinks.websiteFromApp)' \
+    'supportLink("Star on GitHub ↗", destination: TerentoAppLinks.repository)' \
+    'supportLink("Report an Issue ↗", destination: TerentoAppLinks.issues)' \
     'supportLink("Donate ↗", destination: TerentoAppLinks.donate)'; do
     if ! grep -Fq "$link" "$standalone_about_source"; then
         print -u2 "FAIL: standalone About link or destination is missing: $link"
@@ -45,7 +45,7 @@ if grep -Fq 'TerentoAppMetadata.description' <<<"$about_content" \
     exit 1
 fi
 
-for label in 'GitHub repository ↗' 'Report an issue ↗' 'Website ↗' 'Donate ↗'; do
+for label in 'Star on GitHub ↗' 'Report an Issue ↗' 'Terento Website ↗' 'Donate ↗'; do
     if ! grep -Fq "$label" <<<"$about_content"; then
         print -u2 "FAIL: Support link is missing: $label"
         exit 1

@@ -33,11 +33,15 @@ These code paths are removed at compile time, not hidden:
   (guideline 2.4.5(vii));
 - the `Donate` links in About and on Maps installed (guideline 3.1.1).
 
-Support reports to Terento are not compiled out (from 1.2.3). The
+Support reports to Terento are not compiled out (from 1.3.0). The
 installation failure dialog offers `Send report to Terento` while results
 are not shared (declined or not chosen yet): it sends only that failure's
 report after the person reviews it and presses Send, and changes no sharing
 choice. Diagnostics and the Help menu still offer only the GitHub report.
+Help also has `Send Feedback…` (a mail draft with only the app version and
+build), `Rate on App Store`, which opens the existing review link, and
+`Star on GitHub`, which opens the repository. Links that open a page have no
+ellipsis; About names each link the same way (with ↗).
 
 ### Opt-in diagnostics (stage 3)
 
@@ -46,7 +50,7 @@ events are sent only after the person opts in (guideline 5.1.1, GDPR):
 
 - A successful operation is a completed installation (not a partial one) or
   a verified map update. After one, while no choice is recorded, the app
-  shows a `Share install results with Terento` callout: on `Map installed`
+  shows a `Help improve Terento` callout: on `Map installed`
   after an installation, above the list in Manage maps after an update. It
   has three equal buttons and nothing pre-selected. `Share` or `Don't share`
   records `accepted` or `declined` for both streams, and `accepted` also
@@ -56,7 +60,7 @@ events are sent only after the person opts in (guideline 5.1.1, GDPR):
   and nothing is sent (`AppStoreReviewPolicy`, local
   `AppStoreSharingQuestionShownCount`).
   Diagnostics keeps both checkboxes to change it later.
-- The App Store notice version is 101 from 1.2.3 (100 in 1.2.x;
+- The App Store notice version is 101 from 1.3.0 (100 in 1.2.x;
   `AppStoreConsentNotice`, used by `VersionedEvidenceConsent` and
   `VersionedMapStatisticsConsent`); only `accepted` under the current version
   permits sharing. At start-up (`AppStoreConsentNotice.migration`):
@@ -77,7 +81,9 @@ events are sent only after the person opts in (guideline 5.1.1, GDPR):
   app asks macOS for the system rating prompt (`requestReview`, guideline
   5.6.1); macOS shows it at most three times a year. One operation is followed
   by at most one of the two: while the sharing callout shows, the request
-  waits for the next successful operation. The count keeps the 1.2.x key
+  waits for the next successful operation. The request is made one second
+  after `Map installed` (or Manage maps after an update) is on screen, never
+  inside the view update that opens the page. The count keeps the 1.2.x key
   `AppStoreSuccessfulInstallCount`. About links to the App Store review page
   instead of `Donate`.
 
@@ -240,11 +246,16 @@ It:
 
 1. archives `AppStore` with automatic signing (`-allowProvisioningUpdates`
    creates the certificates and the Mac App Store profile). The archive
-   embeds the production migration manifest;
+   embeds the production migration manifest. The script stops before any
+   export when the archived app's `TerentoReleaseLabel` (read from its
+   Info.plist, never from the environment) is empty, `development` or
+   contains `-local`: every `-local` build honours the bundled-catalog
+   switch, `TERENTO_DEBUG_UNPAUSE_PROVIDERS` and `?preview=`;
 2. exports a Mac App Store `.pkg` (`method` `app-store-connect`, `destination`
    `export`);
 3. checks the exported package, because the export re-signs nested code:
    - bundle ID, embedded profile, production migration manifest;
+   - the same public release label as the archive;
    - valid app signature and a signed package;
    - app entitlements equal to the file plus only the profile's
      application and team identifiers;

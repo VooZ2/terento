@@ -23,6 +23,88 @@ enum MapCatalogSource: String, Sendable, Equatable {
     }
 }
 
+/// TERENTO_USE_BUNDLED_MAP_CATALOG=1 (or Info.plist TerentoUseBundledMapCatalog)
+/// starts with only the bundled catalog. Builds whose TerentoReleaseLabel ends
+/// in "-local" honour it, App Store configuration included (the owner's local
+/// test build), decided at run time from the label; DMG Debug builds honour
+/// it too. A stable App Store or TestFlight build never has a "-local" label,
+/// so it ignores the switch.
+enum MapCatalogTestSwitch {
+    static let environmentKey = "TERENTO_USE_BUNDLED_MAP_CATALOG"
+    static let infoKey = "TerentoUseBundledMapCatalog"
+
+    static func isAllowed(isDebug: Bool, isAppStore: Bool, releaseLabel: String?) -> Bool {
+        let isLocalTestLabel = releaseLabel?.trimmingCharacters(in: .whitespacesAndNewlines)
+            .hasSuffix("-local") ?? false
+        return isLocalTestLabel || (isDebug && !isAppStore)
+    }
+
+    static func isRequested(environment: [String: String], infoValue: Any?) -> Bool {
+        infoValue as? Bool == true || environment[environmentKey] == "1"
+    }
+
+    /// A "-local" test build (any configuration) or a DMG Debug build.
+    static var currentBuildAllowsLocalTesting: Bool {
+        #if DEBUG
+        let isDebug = true
+        #else
+        let isDebug = false
+        #endif
+        #if TERENTO_APP_STORE
+        let isAppStore = true
+        #else
+        let isAppStore = false
+        #endif
+        return isAllowed(isDebug: isDebug, isAppStore: isAppStore,
+            releaseLabel: Bundle.main.object(forInfoDictionaryKey: "TerentoReleaseLabel") as? String)
+    }
+
+    static var usesBundledCatalog: Bool {
+        currentBuildAllowsLocalTesting
+            && isRequested(environment: ProcessInfo.processInfo.environment,
+                infoValue: Bundle.main.object(forInfoDictionaryKey: infoKey))
+    }
+}
+
+/// When the catalog itself is the cause, the page says so once and rows and
+/// provider groups drop the reason every map shares.
+extension MapCatalogSource {
+    static let catalogUnavailableNotice = "Couldn't load the map list. Maps can't be installed right now."
+
+    /// Install maps: the one notice under the subtitle.
+    var installNotice: String? {
+        switch self {
+        case .remote: return nil
+        case .bundledFallback: return Self.catalogUnavailableNotice
+        case .cachedRemote, .appUpdateRequired: return userLabel
+        }
+    }
+
+    /// Manage maps: the one notice under the "N maps" count line.
+    var manageNotice: String? {
+        switch self {
+        case .remote: return nil
+        case .bundledFallback, .cachedRemote: return MapAcquisitionAvailability.availabilityCheckFailedNotice
+        case .appUpdateRequired: return userLabel
+        }
+    }
+
+    /// The block reason every package carries because of this source.
+    var sharedBlockReason: String? {
+        switch self {
+        case .remote: return nil
+        case .bundledFallback, .cachedRemote: return "STATUS_UNVERIFIED"
+        case .appUpdateRequired: return "APP_UPDATE_REQUIRED"
+        }
+    }
+
+    /// True when this map is blocked only for the reason the whole catalog shares.
+    func isShared(_ availability: MapAcquisitionAvailability) -> Bool {
+        guard let sharedBlockReason, let reason = availability.blockReason else { return false }
+        return reason == sharedBlockReason
+    }
+}
+
 /// Release builds expose only source-validated contour metadata. Debug builds
 /// retain the explicit internal rollout override for focused diagnostics.
 struct MapContourRolloutPolicy: Sendable, Equatable {
@@ -186,14 +268,18 @@ private actor LatestRemoteMapCatalog {
 
 struct MapCatalogLoader: Sendable {
     static let defaultEndpoint: URL? = {
-        #if DEBUG
-        // A local hardware candidate can pin its reviewed metadata snapshot
-        // while the new API/provider is still paused. Public builds ignore it.
-        if Bundle.main.object(forInfoDictionaryKey: "TerentoUseBundledMapCatalog") as? Bool == true {
+        // A local test build can pin its bundled catalog (no remote catalog),
+        // so the "Couldn't load the map list" notice can be checked live.
+        if MapCatalogTestSwitch.usesBundledCatalog {
             return nil
         }
-        #endif
-        return URLComponents(string: "https://api.terento.app/maps/catalog-v5.json")?.url
+        var components = URLComponents(string: "https://api.terento.app/maps/catalog-v6.json")
+        // The server leaves a never-activated provider out of the catalog;
+        // a Debug hardware test names it to see it (still PAUSED there).
+        if let preview = MapCatalogDebugUnpause.previewQuery(MapCatalogDebugUnpause.providerIDs) {
+            components?.queryItems = [URLQueryItem(name: "preview", value: preview)]
+        }
+        return components?.url
     }()
 
     let endpoint: URL?
@@ -413,6 +499,7 @@ struct MapCatalogClientCompatibilityValidator: Sendable {
     func isCompatible(_ catalog: MapCatalog) -> Bool {
         guard satisfiesCatalogInvariants(catalog), !catalog.packages.isEmpty else { return false }
         return duplicateBBBikeIdentityPackageIDs(catalog.packages).isEmpty
+            && LuckyMapsProviderAdapter.duplicateFamilyPackageIDs(catalog.packages).isEmpty
             && catalog.packages.allSatisfy(isPackageCompatible)
     }
 
@@ -439,6 +526,7 @@ struct MapCatalogClientCompatibilityValidator: Sendable {
     func acceptCompatiblePackages(_ catalog: MapCatalog) -> MapCatalogAcceptance? {
         guard satisfiesCatalogInvariants(catalog) else { return nil }
         let duplicateIdentities = duplicateBBBikeIdentityPackageIDs(catalog.packages)
+            .union(LuckyMapsProviderAdapter.duplicateFamilyPackageIDs(catalog.packages))
         let accepted = catalog.packages.filter {
             !duplicateIdentities.contains($0.id) && isPackageCompatible($0)
         }
@@ -481,6 +569,18 @@ struct MapCatalogClientCompatibilityValidator: Sendable {
             return OSMapaProviderAdapter.validIdentity(package) && package.artifacts.count == 1
                 && package.mainArtifact?.carriesSourceProof == false
         }
+        if MapIdentity.normalizeProvider(package.providerId) == "luckymaps",
+           package.mainArtifact?.validationState == .unavailable {
+            return LuckyMapsProviderAdapter.validIdentity(package) && package.artifacts.count == 1
+                && package.mainArtifact?.carriesSourceProof == false
+                && package.mainArtifact?.sourceURL.flatMap(LuckyMapsProviderAdapter.reviewedSource) == package.providerRegionId
+        }
+        if MapIdentity.normalizeProvider(package.providerId) == "openfietsmap",
+           package.mainArtifact?.validationState == .unavailable {
+            return OpenFietsMapProviderAdapter.validIdentity(package) && package.artifacts.count == 1
+                && package.mainArtifact?.carriesSourceProof == false
+                && package.mainArtifact?.sourceURL.flatMap(OpenFietsMapProviderAdapter.reviewedSource)?.key == package.providerRegionId
+        }
         let providerID = MapIdentity.normalizeProvider(package.providerId)
         guard let adapter = providerRegistry.adapter(for: providerID),
               let sourcePolicy = sourcePolicyRegistry.policy(for: providerID),
@@ -505,10 +605,10 @@ struct MapCatalogClientCompatibilityValidator: Sendable {
         )
     }
 
-    /// Two BBBike or OSMapaPL packages claiming one IMG identity are
-    /// ambiguous; neither can be installed safely.
+    /// Two BBBike, OSMapaPL, Lucky Maps or OpenFietsMap packages claiming one
+    /// IMG identity are ambiguous; neither can be installed safely.
     private func duplicateBBBikeIdentityPackageIDs(_ packages: [MapPackage]) -> Set<String> {
-        let bbbike = packages.filter { ["bbbike", "osmapa"].contains(MapIdentity.normalizeProvider($0.providerId)) }
+        let bbbike = packages.filter { ["bbbike", "osmapa", "luckymaps", "openfietsmap"].contains(MapIdentity.normalizeProvider($0.providerId)) }
         let grouped = Dictionary(grouping: bbbike.compactMap { package in
             package.identity.map { ($0, package.id) }
         }, by: \.0)
@@ -688,15 +788,19 @@ enum MapCatalogError: LocalizedError, Sendable {
 }
 
 /// Local hardware testing of a provider the server still holds PAUSED: a
-/// Debug build run with TERENTO_DEBUG_UNPAUSE_PROVIDERS=<id,...> treats that
+/// "-local" test build (App Store configuration included) or a DMG Debug
+/// build run with TERENTO_DEBUG_UNPAUSE_PROVIDERS=<id,...> treats that
 /// provider as active. Only the PROVIDER_PAUSED reason is lifted; region,
-/// package and authorization checks stay. Release builds never read it.
+/// package and authorization checks stay. A stable App Store, TestFlight or
+/// DMG build never reads it (same run-time rule as MapCatalogTestSwitch).
 enum MapCatalogDebugUnpause {
-    #if DEBUG
-    static let providerIDs = parse(ProcessInfo.processInfo.environment["TERENTO_DEBUG_UNPAUSE_PROVIDERS"])
-    #else
-    static let providerIDs: Set<String> = []
-    #endif
+    static let providerIDs: Set<String> = MapCatalogTestSwitch.currentBuildAllowsLocalTesting
+        ? parse(ProcessInfo.processInfo.environment["TERENTO_DEBUG_UNPAUSE_PROVIDERS"]) : []
+
+    /// `nil` when no provider is named, which is always so in stable builds.
+    static func previewQuery(_ ids: Set<String>) -> String? {
+        ids.isEmpty ? nil : ids.sorted().joined(separator: ",")
+    }
 
     static func parse(_ value: String?) -> Set<String> {
         Set((value ?? "").split(separator: ",")

@@ -72,6 +72,13 @@
 		000000000000000000000090 /* app/TerentoCore/Sources/TerentoPoC/Resources/Devices/generic-garmin-watch.png in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000008f /* app/TerentoCore/Sources/TerentoPoC/Resources/Devices/generic-garmin-watch.png */; };
 		000000000000000000000092 /* app/TerentoCore/Sources/TerentoPoC/Resources/Illustrations/connect-illustration.png in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000091 /* app/TerentoCore/Sources/TerentoPoC/Resources/Illustrations/connect-illustration.png */; };
 		000000000000000000000096 /* app/TerentoCore/Sources/TerentoPoC/Resources/Maps/catalog.json in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000095 /* app/TerentoCore/Sources/TerentoPoC/Resources/Maps/catalog.json */; };
+		0000000000000000000000e1 /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/InstrumentSans-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000000e0 /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/InstrumentSans-Regular.ttf */; };
+		0000000000000000000000e3 /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/InstrumentSans-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000000e2 /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/InstrumentSans-SemiBold.ttf */; };
+		0000000000000000000000e5 /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Inter-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000000e4 /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Inter-Regular.ttf */; };
+		0000000000000000000000e7 /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Inter-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000000e6 /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Inter-Medium.ttf */; };
+		0000000000000000000000e9 /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Inter-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000000e8 /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Inter-SemiBold.ttf */; };
+		0000000000000000000000eb /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Inter-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000000ea /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Inter-OFL.txt */; };
+		0000000000000000000000ed /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Instrument-Sans-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000000ec /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Instrument-Sans-OFL.txt */; };
 		000000000000000000000098 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000099 /* LICENSE */; };
 		00000000000000000000009a /* THIRD_PARTY_NOTICES.md in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000009b /* THIRD_PARTY_NOTICES.md */; };
 		00000000000000000000009d /* app/TerentoCore/Sources/TerentoPoC/Views/NavigationPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000009e /* app/TerentoCore/Sources/TerentoPoC/Views/NavigationPresentation.swift */; };
@@ -181,6 +188,13 @@
 		000000000000000000000091 /* app/TerentoCore/Sources/TerentoPoC/Resources/Illustrations/connect-illustration.png */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = image.png; path = "app/TerentoCore/Sources/TerentoPoC/Resources/Illustrations/connect-illustration.png"; sourceTree = SOURCE_ROOT; };
 		000000000000000000000093 /* app/TerentoCore/Sources/TerentoPoC/Resources/Installation/terento-write-test.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "app/TerentoCore/Sources/TerentoPoC/Resources/Installation/terento-write-test.txt"; sourceTree = SOURCE_ROOT; };
 		000000000000000000000095 /* app/TerentoCore/Sources/TerentoPoC/Resources/Maps/catalog.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = app/TerentoCore/Sources/TerentoPoC/Resources/Maps/catalog.json; sourceTree = SOURCE_ROOT; };
+		0000000000000000000000e0 /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/InstrumentSans-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/InstrumentSans-Regular.ttf"; sourceTree = SOURCE_ROOT; };
+		0000000000000000000000e2 /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/InstrumentSans-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/InstrumentSans-SemiBold.ttf"; sourceTree = SOURCE_ROOT; };
+		0000000000000000000000e4 /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Inter-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Inter-Regular.ttf"; sourceTree = SOURCE_ROOT; };
+		0000000000000000000000e6 /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Inter-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Inter-Medium.ttf"; sourceTree = SOURCE_ROOT; };
+		0000000000000000000000e8 /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Inter-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Inter-SemiBold.ttf"; sourceTree = SOURCE_ROOT; };
+		0000000000000000000000ea /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Inter-OFL.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Inter-OFL.txt"; sourceTree = SOURCE_ROOT; };
+		0000000000000000000000ec /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Instrument-Sans-OFL.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Instrument-Sans-OFL.txt"; sourceTree = SOURCE_ROOT; };
 		000000000000000000000097 /* app/TerentoCore/Sources/LibMTPBridge/include/MTPBridge.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = app/TerentoCore/Sources/LibMTPBridge/include/MTPBridge.h; sourceTree = SOURCE_ROOT; };
 		000000000000000000000099 /* LICENSE */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = LICENSE; sourceTree = SOURCE_ROOT; };
 		00000000000000000000009b /* THIRD_PARTY_NOTICES.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = THIRD_PARTY_NOTICES.md; sourceTree = SOURCE_ROOT; };
@@ -371,6 +385,13 @@
 				0000000000000000000000ab /* app/TerentoCore/Sources/TerentoPoC/Resources/Illustrations/connect-illustration-connecting.png */,
 				000000000000000000000093 /* app/TerentoCore/Sources/TerentoPoC/Resources/Installation/terento-write-test.txt */,
 				000000000000000000000095 /* app/TerentoCore/Sources/TerentoPoC/Resources/Maps/catalog.json */,
+				0000000000000000000000e0 /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/InstrumentSans-Regular.ttf */,
+				0000000000000000000000e2 /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/InstrumentSans-SemiBold.ttf */,
+				0000000000000000000000e4 /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Inter-Regular.ttf */,
+				0000000000000000000000e6 /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Inter-Medium.ttf */,
+				0000000000000000000000e8 /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Inter-SemiBold.ttf */,
+				0000000000000000000000ea /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Inter-OFL.txt */,
+				0000000000000000000000ec /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Instrument-Sans-OFL.txt */,
 				000000000000000000000099 /* LICENSE */,
 				00000000000000000000009b /* THIRD_PARTY_NOTICES.md */,
 			);
@@ -440,6 +461,13 @@
 				000000000000000000000092 /* app/TerentoCore/Sources/TerentoPoC/Resources/Illustrations/connect-illustration.png in Resources */,
 				0000000000000000000000aa /* app/TerentoCore/Sources/TerentoPoC/Resources/Illustrations/connect-illustration-connecting.png in Resources */,
 				000000000000000000000096 /* app/TerentoCore/Sources/TerentoPoC/Resources/Maps/catalog.json in Resources */,
+				0000000000000000000000e1 /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/InstrumentSans-Regular.ttf in Resources */,
+				0000000000000000000000e3 /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/InstrumentSans-SemiBold.ttf in Resources */,
+				0000000000000000000000e5 /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Inter-Regular.ttf in Resources */,
+				0000000000000000000000e7 /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Inter-Medium.ttf in Resources */,
+				0000000000000000000000e9 /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Inter-SemiBold.ttf in Resources */,
+				0000000000000000000000eb /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Inter-OFL.txt in Resources */,
+				0000000000000000000000ed /* app/TerentoCore/Sources/TerentoPoC/Resources/Fonts/Instrument-Sans-OFL.txt in Resources */,
 				000000000000000000000098 /* LICENSE in Resources */,
 				00000000000000000000009a /* THIRD_PARTY_NOTICES.md in Resources */,
 			);
@@ -639,7 +667,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = YES;
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 49;
+				CURRENT_PROJECT_VERSION = 50;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = VXALAZU3B5;
 				ENABLE_HARDENED_RUNTIME = NO;
@@ -666,7 +694,7 @@
 					"$(inherited)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 1.2.2;
+				MARKETING_VERSION = 1.3.0;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
@@ -681,7 +709,7 @@
 				SWIFT_OBJC_BRIDGING_HEADER = "$(SRCROOT)/app/Terento/Terento-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				TERENTO_RELEASE_CHANNEL = stable;
-				TERENTO_RELEASE_LABEL = "1.2.2-local";
+				TERENTO_RELEASE_LABEL = "1.3.0-local";
 			};
 			name = Debug;
 		};
@@ -695,7 +723,7 @@
 				CODE_SIGN_IDENTITY = "Developer ID Application";
 				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 49;
+				CURRENT_PROJECT_VERSION = 50;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = VXALAZU3B5;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -723,7 +751,7 @@
 					"$(inherited)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 1.2.2;
+				MARKETING_VERSION = 1.3.0;
 				ONLY_ACTIVE_ARCH = NO;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
@@ -738,7 +766,7 @@
 				SWIFT_OBJC_BRIDGING_HEADER = "$(SRCROOT)/app/Terento/Terento-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				TERENTO_RELEASE_CHANNEL = stable;
-				TERENTO_RELEASE_LABEL = "1.2.2";
+				TERENTO_RELEASE_LABEL = "1.3.0";
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
@@ -765,7 +793,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 49;
+				CURRENT_PROJECT_VERSION = 50;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = VXALAZU3B5;
 				ENABLE_HARDENED_RUNTIME = NO;
@@ -793,7 +821,7 @@
 					"$(inherited)",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 1.2.2;
+				MARKETING_VERSION = 1.3.0;
 				ONLY_ACTIVE_ARCH = NO;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
@@ -810,7 +838,7 @@
 				TERENTO_APP_STORE_SANDBOX = YES;
 				TERENTO_CONTAINER_MIGRATION_MANIFEST = "";
 				TERENTO_RELEASE_CHANNEL = stable;
-				TERENTO_RELEASE_LABEL = "1.2.2";
+				TERENTO_RELEASE_LABEL = "1.3.0";
 				VALIDATE_PRODUCT = YES;
 			};
 			name = AppStore;

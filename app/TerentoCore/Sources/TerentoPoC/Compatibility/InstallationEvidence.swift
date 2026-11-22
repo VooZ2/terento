@@ -368,7 +368,7 @@ struct VersionedEvidenceConsent: Codable, Equatable, Sendable {
     /// App Store builds share only after an explicit opt-in. Their notice
     /// numbers never overlap the direct-download app's, so a choice copied
     /// from that app's container is recognised as made under its notice.
-    /// 101 from 1.2.3, when Don't share became a separate, final answer.
+    /// 101 from 1.3.0, when Don't share became a separate, final answer.
     static let currentNoticeVersion = AppStoreConsentNotice.currentVersion
     #else
     static let currentNoticeVersion = 4

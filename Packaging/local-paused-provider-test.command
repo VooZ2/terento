@@ -10,7 +10,7 @@ if [[ ! -x "$app/Contents/MacOS/Terento" ]]; then
 fi
 
 # The only supported way to install a provider the server still holds PAUSED
-# from a local Debug artifact. Release builds ignore this variable.
-export TERENTO_DEBUG_UNPAUSE_PROVIDERS="${TERENTO_DEBUG_UNPAUSE_PROVIDERS:-osmapa}"
+# from a local test build ("-local" release label). Stable builds ignore it.
+export TERENTO_DEBUG_UNPAUSE_PROVIDERS="${TERENTO_DEBUG_UNPAUSE_PROVIDERS:-luckymaps,openfietsmap}"
 
 exec "$app/Contents/MacOS/Terento"

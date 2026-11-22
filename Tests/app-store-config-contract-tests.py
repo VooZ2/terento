@@ -317,6 +317,75 @@ class AppStoreConfigurationContract(unittest.TestCase):
         self.assertLess(embed.index('!= "YES" ]; then\n    exit 0'), embed.index('"Add :ITSAppUsesNonExemptEncryption'))
         self.assertNotIn("ITSAppUsesNonExemptEncryption", (ROOT / "app" / "Terento" / "Info.plist").read_text(encoding="utf-8"))
 
+    def test_testflight_script_refuses_a_local_release_label(self) -> None:
+        # Owner 2026-11-22: a -local, "development" or empty label never reaches
+        # App Store Connect. The label comes from the archived app, never from
+        # the environment, and is checked before the first export and upload.
+        script = (APP_STORE_DIR / "archive-for-testflight.sh").read_text(encoding="utf-8")
+        self.assertNotIn("TERENTO_RELEASE_LABEL", script)
+        read_archive = script.index(
+            "archived_label=\"$(/usr/libexec/PlistBuddy -c 'Print :TerentoReleaseLabel' \"$archived_app/Contents/Info.plist\"")
+        self.assertGreater(read_archive, script.index('archived_app="$archive/Products/Applications/Terento.app"'))
+        refuse_archive = script.index('refuse_unpublishable_label "$archived_label"')
+        self.assertLess(read_archive, refuse_archive)
+        self.assertLess(refuse_archive, script.index("-exportArchive"))
+        checks = script.index('/usr/sbin/pkgutil --expand-full "$pkg" "$check"')
+        refuse_package = script.index('refuse_unpublishable_label "$package_label"')
+        self.assertLess(checks, refuse_package)
+        self.assertLess(refuse_package, script.index('-exportOptionsPlist "$upload_options"'))
+        self.assertIn('[ "$package_label" = "$archived_label" ] || die', script)
+        # The rule itself, run with real labels.
+        start = script.index("die() {")
+        die = script[start:script.index("}\n", start) + 2]
+        start = script.index("refuse_unpublishable_label() {")
+        refuse = script[start:script.index("\n}\n", start) + 3]
+        for label, allowed in (("", False), ("development", False), ("1.3.0-local", False),
+                               ("1.3.0-local.2", False), ("1.3.0", True), ("1.3.1", True)):
+            result = subprocess.run(["sh", "-c", f'{die}{refuse}refuse_unpublishable_label "$1"', "sh", label],
+                                    capture_output=True, text=True, check=False)
+            self.assertEqual(result.returncode == 0, allowed, (label, result.stderr))
+            if not allowed:
+                self.assertIn("Only a public label", result.stderr, label)
+
+    def test_release_label_guard_covers_the_app_store_configuration(self) -> None:
+        # Owner 2026-11-22: the Xcode build phase applies the Release rule to
+        # every AppStore build that can reach App Store Connect: an archive
+        # (ACTION=install) or a build signed with a real identity. Only the
+        # ad-hoc signed local test build keeps its -local label.
+        guard = ROOT / "Packaging" / "verify-release-label.sh"
+        project = PROJECT.read_text(encoding="utf-8")
+        self.assertIn('\\"${SRCROOT}/Packaging/verify-release-label.sh\\"', project)
+        # The guard runs for every configuration of the app target, AppStore included.
+        self.assertIn("/* Verify public release label */ = {", project)
+        self.assertNotIn("CONFIGURATION\" = \"AppStore\" ]; then\n    exit 0", guard.read_text(encoding="utf-8"))
+
+        def run(configuration: str, label: str, action: str = "build", identity: str = "-") -> int:
+            env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "CONFIGURATION": configuration,
+                   "TERENTO_RELEASE_LABEL": label, "ACTION": action, "CODE_SIGN_IDENTITY": identity}
+            return subprocess.run(["sh", str(guard)], env=env, capture_output=True, check=False).returncode
+
+        for label in ("", "development", "1.3.0-local", "1.3.0-local.2"):
+            self.assertNotEqual(run("AppStore", label, action="install", identity="Apple Development"), 0, label)
+            self.assertNotEqual(run("AppStore", label, action="install"), 0, label)
+            self.assertNotEqual(run("AppStore", label, identity="Apple Development"), 0, label)
+            self.assertNotEqual(run("AppStore", label, identity="Apple Distribution"), 0, label)
+            self.assertNotEqual(run("Release", label), 0, label)
+        for label in ("", "development"):
+            self.assertNotEqual(run("AppStore", label), 0, label)
+        # The ad-hoc local test build (build-local-sandbox-test.sh) stays possible.
+        self.assertEqual(run("AppStore", "1.3.0-local"), 0)
+        local_test = (APP_STORE_DIR / "build-local-sandbox-test.sh").read_text(encoding="utf-8")
+        self.assertIn("CODE_SIGN_IDENTITY=- \\\n", local_test)
+        self.assertIn('TERENTO_RELEASE_LABEL="$marketing_version-local"', local_test)
+        for configuration in ("AppStore", "Release"):
+            self.assertEqual(run(configuration, "1.3.0", action="install", identity="Apple Development"), 0)
+            self.assertEqual(run(configuration, "1.3.0"), 0)
+        self.assertEqual(run("Debug", "1.3.0-local"), 0)
+        self.assertNotEqual(run("Debug", "1.3.0"), 0)
+        # The archive overrides the ad-hoc identity, so the guard sees a real one.
+        archive = (APP_STORE_DIR / "archive-for-testflight.sh").read_text(encoding="utf-8")
+        self.assertIn('CODE_SIGN_IDENTITY="Apple Development"', archive)
+
     def test_ci_scan_covers_all_bundle_code(self) -> None:
         verify = (APP_STORE_DIR / "verify-app-store-build.sh").read_text(encoding="utf-8")
         # Debug builds keep app code in Terento.debug.dylib and the libraries
@@ -365,7 +434,7 @@ class AppStoreConfigurationContract(unittest.TestCase):
             source = (SWIFT_SOURCES / path).read_text(encoding="utf-8")
             app_store, dmg = active_source(source, APP_STORE_ONLY), active_source(source, DMG_ONLY)
             # Notice numbers never overlap, so a copied DMG choice is recognisable.
-            # 1.2.3 raised the App Store notice to 101 (AppStoreConsentNotice).
+            # 1.3.0 raised the App Store notice to 101 (AppStoreConsentNotice).
             self.assertIn("static let currentNoticeVersion = AppStoreConsentNotice.currentVersion", app_store)
             self.assertIn(f"static let currentNoticeVersion = {dmg_version}", dmg)
             self.assertIn("return consent?.choice == .accepted && consent?.noticeVersion == currentNoticeVersion", app_store)
@@ -414,11 +483,44 @@ class AppStoreConfigurationContract(unittest.TestCase):
         self.assertIn("} else if Self.allowsOfficialProductMedia,", registry)
         self.assertIn("|| match.asset.source?.sourceType != .officialProductMedia else {", registry)
 
+    def test_help_menu_order_per_build(self) -> None:
+        source = (SWIFT_SOURCES / "TerentoPoCApp.swift").read_text(encoding="utf-8")
+
+        def help_items(defined: set[str]) -> list[str]:
+            active = active_source(source, defined)
+            block = active[active.index("CommandGroup(replacing: .help) {"):]
+            block = block[:block.index("\n            }\n")]
+            items = re.findall(r'Button\("([^"]+)"\)|(Divider\(\))', block)
+            return [label or divider for label, divider in items]
+
+        common_head = ["Terento Website", "Troubleshooting", "Documentation", "Divider()", "Send Feedback…"]
+        self.assertEqual(help_items(APP_STORE_ONLY), common_head + [
+            "Rate on App Store", "Divider()", "Report an Issue", "Star on GitHub"])
+        self.assertEqual(help_items(DMG_ONLY), common_head + [
+            "Divider()", "Report an Issue", "Send Report to Terento…", "Star on GitHub"])
+        app_store = active_source(source, APP_STORE_ONLY)
+        self.assertIn("openExternalURL(TerentoAppLinks.appStoreReview)", app_store)
+        for defined in (APP_STORE_ONLY, DMG_ONLY):
+            self.assertIn('Button("Star on GitHub") {\n                    openExternalURL(TerentoAppLinks.repository)',
+                          active_source(source, defined))
+        self.assertEqual(source.count("TerentoAppLinks.feedbackMail("), 1)
+        links = (SWIFT_SOURCES / "Views" / "AppLinks.swift").read_text(encoding="utf-8")
+        self.assertIn('static let feedbackAddress = "hello@terento.app"', links)
+        # The mail draft carries only the version and build.
+        mail = links[links.index("static func feedbackMail("):]
+        mail = mail[:mail.index("\n    }\n")]
+        self.assertIn('encode("Terento \\(version) (\\(build))")', mail)
+        for forbidden in ("serial", "Unit", "model", "device", "identity"):
+            self.assertNotIn(forbidden, mail)
+        # A mailto link opened with NSWorkspace needs no sandbox entitlement.
+        self.assertEqual(load_plist(ROOT / "app/Terento/Terento-AppStore.entitlements"), APP_ENTITLEMENTS)
+
     def test_sharing_prompt_and_review_request_are_app_store_only(self) -> None:
         source = (SWIFT_SOURCES / "Views" / "ConnectScreen.swift").read_text(encoding="utf-8")
         app_store, dmg = active_source(source, APP_STORE_ONLY), active_source(source, DMG_ONLY)
         for needle in ("InstallSharingCallout(onDecide: decideSharing)", "requestReview()",
-                       '"Share install results with Terento"', 'SecondaryButton(title: "Share") { onDecide(.share) }',
+                       '"Help improve Terento"',
+                       '"Share whether installs work on your watch, so we can fix problems faster. No serial numbers or files. "', 'SecondaryButton(title: "Share") { onDecide(.share) }',
                        'SecondaryButton(title: "Not now") { onDecide(.notNow) }',
                        'SecondaryButton(title: "Don\'t share") { onDecide(.dontShare) }'):
             self.assertIn(needle, app_store)
@@ -444,8 +546,23 @@ class AppStoreConfigurationContract(unittest.TestCase):
         # the rating request, and a completed installation and a verified
         # update both go through it. A partial installation does not.
         self.assertIn("case .sharingQuestion:\n            sharingQuestion = SharingQuestion(operationID: operationID, isUpdate: isUpdate)", app_store)
-        self.assertIn("case .review:\n            sharingQuestion = nil\n            requestReview()", app_store)
+        # The rating request never runs inside the view update that opens
+        # Map installed (the 2026-11-21 local test lost the Done page that way): the
+        # success handler only marks it, and a task asks after a delay.
+        handler = app_store[app_store.index("private func handleSuccessfulOperation("):]
+        handler = handler[:handler.index("private func decideSharing(")]
+        self.assertIn("case .review:\n            sharingQuestion = nil\n", handler)
+        self.assertIn("pendingReviewRequest = operationID", handler)
+        self.assertNotIn("requestReview()", handler)
         self.assertEqual(app_store.count("requestReview()"), 1)
+        task = app_store[app_store.index(".task(id: pendingReviewRequest) {"):]
+        task = task[:task.index("requestReview()") + len("requestReview()")]
+        self.assertIn("try? await Task.sleep(for: AppStoreReviewPolicy.requestDelay)", task)
+        self.assertLess(task.index("Task.sleep"), task.index("pendingReviewRequest = nil"))
+        for forbidden in ("selectedSection", "localInstallStep", "selectedInstallationPlan"):
+            self.assertNotIn(forbidden, task)
+        links = (SWIFT_SOURCES / "Views" / "AppLinks.swift").read_text(encoding="utf-8")
+        self.assertIn("static let requestDelay: Duration = .seconds(1)", links)
         self.assertIn("if hasPartialInstallation {\n                    sharingQuestion = nil\n                } else {\n                    handleSuccessfulOperation(operationID: evidenceOperationID, isUpdate: false)", app_store)
         self.assertIn(".onChange(of: lifecycleViewModel.lastSuccessfulUpdate) { update in\n            #if TERENTO_APP_STORE\n            if let update { handleSuccessfulOperation(operationID: update.operationID, isUpdate: true) }", source)
         # The definition and its two callers: installation and update.

@@ -124,8 +124,22 @@ require_source 'Text("Nothing was written to your device. Terento waits up to 5 
 [[ "$(grep -c 'Button' <<< "$reconnect_dialog")" == 1 ]] && grep -Fq 'SecondaryButton(title: "Cancel", action: onCancel)' <<< "$reconnect_dialog" \
     || { print -u2 'FAIL: the reconnect wait offers an action other than Cancel'; exit 1; }
 grep -Fq '.keyboardShortcut(.cancelAction)' <<< "$reconnect_dialog" || { print -u2 'FAIL: Escape does not end the reconnect wait'; exit 1; }
-require_active '} else if mapEngine.installationPhase == .preparing {' 'Cancel disappears while the map is prepared'
-require_active 'Text("Can’t cancel while the map is being prepared.")' 'disabled Cancel does not say why'
+# One rule for every step that cannot be cancelled (owner QA 2026-11-22):
+# Cancel is shown only while it works and is hidden in Preparing, Installing
+# and Finishing alike; no disabled Cancel anywhere.
+require_active 'if mapEngine.canCancelInstallationPreparation {' 'Cancel is not limited to the steps that can be cancelled'
+[[ "$(grep -c 'SecondaryButton(title: "Cancel")' <<< "$active_section")" == 1 ]] \
+    || { print -u2 'FAIL: the installation progress shows more than one Cancel'; exit 1; }
+reject_active 'SecondaryButton(title: "Cancel") {}' 'a step that cannot be cancelled shows a disabled Cancel'
+reject_active 'installationPhase == .preparing {' 'Preparing has its own Cancel rule'
+reject_active 'Can’t cancel while' 'a step that cannot be cancelled shows a disabled Cancel with a reason'
+# Owner QA 2026-11-22: while Finishing reads the map back ("X of Y checked")
+# its bar is determinate and follows the checked bytes; the same 0.25 limit
+# picks the bar and the line, and the sweep restarts for the later waits.
+require_source 'progress: finishingReadBackFraction,' 'the Finishing bar does not follow the checked bytes'
+require_source 'checkedBytes: mapEngine.finishingTransferProgress?.bytesTransferred,' 'the Finishing bar is not driven by the read-back bytes'
+require_source 'case ..<InstallationFinishingStepPresentation.readBackPhaseLimit:' 'the "checked" line and the bar use different limits'
+require_source 'withTransaction(transaction) { sweeping = false }' 'the indeterminate bar does not restart after a measured value'
 require_source 'onManageMaps: mapEngine.installationResult?.mayHaveLeftMapOnWatch == true' 'leftover-map failures do not offer Manage maps'
 require_source 'selectedSection = .device' 'failure recovery does not navigate to Device'
 require_source 'title: "Installation stopped"' 'failure modal title is incorrect'

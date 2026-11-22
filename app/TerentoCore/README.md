@@ -105,9 +105,8 @@ status shows an icon with its text and colour, including "Needs attention".
 While maps are downloaded and checked on the Mac, or the no-write preflight
 runs, the install page offers Cancel; it uses the existing task cancellation
 and workspace cleanup, and nothing has been written to the watch. Once the
-install step owns the device it is not cancellable: while it still prepares,
-Cancel stays visible but disabled with "Can’t cancel while the map is being
-prepared." After a failure in which
+install step owns the device it is not cancellable, and every such step
+(Preparing, Installing, Finishing) follows one rule: Cancel is not shown. After a failure in which
 nothing was written, validated provider artifacts are kept for 6 hours of the
 app session (quitting removes them), keyed by package and artifact with their
 SHA-256. A device that disappears before any write (while the download runs,
@@ -232,8 +231,21 @@ map of that type, an unreadable map file or another map with the same ID stops
 the install, and nothing is removed automatically. The download must be the
 single `gmapsupp.img` named by the catalog proof; size, CRC-32, header title,
 release date and the MDR and MPS map IDs are checked on the Mac before
-writing. OpenTopoMap
-contours are optional source-validated components, not a Debug-only feature.
+writing. Lucky Maps (catalog-v6, provider PAUSED until activated) publishes
+raw IMG files whose header names only the file stem; the catalog proof binds
+each file (map and optional `-ct` contour add-on) to its URL, size, title,
+creation day and Garmin family ID, and the Mac rechecks size, header, MDR and
+MPS family, area and publisher (and SHA-256 once published) before writing.
+On rescan a Lucky Maps file is Terento's only through its exact manifest
+record; the same bytes under another name stay an outside map. OpenFietsMap
+(catalog-v6, provider PAUSED until activated) publishes GPS ZIP archives with
+one `gmapsupp.img` beside readme files; before extraction the Mac checks the
+archive's central directory (reviewed payload path, CRC-32 and size, only
+reviewed side files, no second IMG), then the whole IMG's size, CRC-32,
+header title, build day and MDR family ID. Its titles name the map, so an
+OpenFietsMap file on a watch is recognized from its header. OpenTopoMap
+and Lucky Maps contours are optional source-validated components, not a
+Debug-only feature.
 Compatible local IMG imports have no automatic provider update path.
 
 Install Maps provides geographic and provider/type filtering, local search
@@ -245,9 +257,25 @@ owned-map lifecycle actions and exact valid external-map removal with
 separate confirmation. About is opened through `Terento → About Terento`;
 it offers a secondary "Check for updates" and a primary "Update" only once an
 update is found;
-Diagnostics contains sharing settings. The sidebar remains Device, Install
-maps, Manage maps. UI layout and exact copy are reviewed visually; tests should
+Diagnostics contains sharing settings. The sidebar remains Your Garmin
+(the page title of the connected watch), Install maps, Manage maps. UI layout and exact copy are reviewed visually; tests should
 protect actions, state transitions, accessibility and data contracts.
+
+Type and layout (2026-11-22): Terento.app bundles Inter and Instrument Sans
+(`Resources/Fonts`, SIL OFL 1.1 with their licence files) and registers them at
+launch, so the app shows the same faces as the website. Text uses only the six
+`TerentoTypography` roles: page title 42, device name 28, lede 19, row title 16,
+meta 14 and caption 12 (`run-app-typography-tests.sh` fails on any other text
+size; SF Symbol sizes are icon metrics). A map row in Install and Manage maps
+has the title, one metadata line (provider style, release, "Already installed"),
+and, only when the map is blocked or has a warning, the message on its own line
+in the colour of the row's status icon. A BBBike style has one name everywhere:
+"BBBike (OpenTopoMap)", and every Manage row starts with its provider or style
+("Freizeitkarte · 2026-09 · 4 MB"). Install maps opens and closes the import
+panel with "Import map file" next to Refresh (selected look while open), and
+Storage ("14.77 GB free · 0 maps selected"; with a selection "1 map · 4.07 MB
+selected · 14.77 GB free after installation") shares the footer row with
+Continue.
 
 ## Safety and verification
 
@@ -358,6 +386,17 @@ installed, old map removed, protected final inventory, manifest):
   version of the written object. Any failure cleans up only the new object as
   before and keeps the old map installed. A 434 MB map is read as 29,360,128
   bytes instead of 434,000,000.
+- Read-back request size: sampled read-back regions are read with at most
+  1 MiB per `GetPartialObject` on every Garmin (owner decision 2026-11-22;
+  the fēnix 8 AMOLED keeps odd lengths, 1 048 575 bytes). Owner probe
+  2026-11-22, fēnix 8 AMOLED firmware 24.20, read only: 64 KiB and 256 KiB
+  requests each took about 0.5 s (0.14 / 0.57 MB/s), 1 MiB requests about
+  0.14 s (6.8–7.8 MB/s); on firmware 23.39 (2026-10-10) every size read about
+  1.7 MB/s. Only the fēnix 8 AMOLED was measured. Every planned byte is still
+  read and compared. Recorded 65 535-byte proof regions and full-object hashes
+  keep 64 KiB requests. finishing.log records `region_timing` per region and
+  `read_timing` per read-back (chunks, bytes, watch time, slowest chunk and its
+  offset, local read time, MB/s).
 - Old-map removal keeps the removal content check above, and the new entry
   records its removal proof from the validated local artifact as before.
 - Residual limitation, the same as for fresh installation and removal: a
@@ -394,8 +433,9 @@ percentage until a total is known; no timer fabricates progress. Install steps,
 Manage rows and the storage meters share one 6 pt capsule bar
 (`TerentoProgressBar`); a percentage appears only for a measured value above zero,
 so a step that has measured nothing yet shows the bar without "0%". The install
-Finishing step chains several waits and only one of them is measured, so it shows
-one indeterminate bar for the whole step and never moves backwards. While a
+Finishing step chains several waits and only one of them is measured: while the
+transferred map is read back ("X of Y checked") its bar follows the checked bytes
+(0-100 %); the other waits show an indeterminate bar. While a
 provider package is being resolved, before its download starts, the install step
 list shows Downloading as the current step; it is never drawn as complete and then
 current again. The engine's reported phase is unchanged. Device safety checks and mutation order are unchanged.
@@ -412,15 +452,32 @@ for 4 seconds above the list, and VoiceOver announces it. The list stays on
 screen during the rescan that follows: the removed row fades out (no animation
 with Reduce Motion), and "Reading your maps" appears only while there is no
 list yet. Whenever a rescan keeps the list on screen (after Remove, or on opening
-Manage maps), the rows keep their buttons and Refresh stays in place, all disabled
-until the new list is read. While Remove or Update runs, the other Update/Remove buttons and
-Refresh are disabled. The Remove dialog body is one line: provider (as the
-provider filter names it, e.g. "BBBike (Ontrail)"), release and size, then
-"Other maps stay. This can't be undone." VoiceOver names each row action with
+Manage maps, after an install or Refresh), the rows keep their buttons and Refresh stays
+in place, all disabled until the new list is read, and the Device page's spinner with
+"Reading your maps…" stands next to Refresh. While Remove or Update runs, the other
+Update/Remove buttons and Refresh are disabled. A button drawn disabled is disabled: the
+action itself refuses to run while a read or another operation is running, so a click
+never opens the Remove or Update dialog then. The Remove dialog title is "Remove <map>?", centred on
+the trash icon; the one line under that row, aligned with the title, is
+provider (as the provider filter names it, e.g. "BBBike (Ontrail)"), release
+and size in the secondary colour. There is no "can't be undone" line: a
+removed map can be installed again. VoiceOver names each row action with
 the map and provider ("Remove Lithuania, MapRando"). At 93%, the UI says “Confirming the map was removed”; repeated
 inventory checks hold that value rather than increasing it for each retry. Only
 confirmed absence completes removal. The existing settle delays and retry limits
-are unchanged. No watchdog, shortened timeout or new USB recovery is introduced.
+are unchanged.
+
+The confirm step has a time limit (1.3.0, owner QA 2026-11-22): the same bound
+as the read before the delete, 60 s plus 30 ms per object last seen, at most
+600 s. Its rescans run in the bounded helper, like that read, and each one gets
+only the time left. When the limit is reached the row shows the existing failed
+state ("The Garmin device could not be rescanned after removal."), no further
+rescan starts, the delete is never repeated, and the watch is read again. Each
+Remove step (start, check and its helper, delete, confirm start, each confirm
+attempt and its helper, confirm end, result) is logged with its time in log.txt
+("MAP REMOVAL ...") and in finishing.log (`removal_step`, `wall=` epoch
+seconds). Remove state is kept only in memory, so after a relaunch Manage maps
+shows the watch as read, with no stale "Removing" row.
 
 This change is a candidate for the next app release; automated tests do not replace
 a real-device large-map update acceptance check.
@@ -474,6 +531,42 @@ detection IPC carries the device descriptor and serial inside the private,
 per-operation worker directory, which is removed afterwards. USB presence probes
 stay in-process because they only read the USB device list.
 
+Stalled reads (1.3.0, owner QA 2026-11-22). libmtp gives every Garmin
+`DEVICE_FLAG_LONG_TIMEOUT`, so one USB transfer may wait 60 seconds and the
+closing CloseSession another 60. A watch that stopped answering therefore never
+ended a read itself: the app's bound ended the helper in the middle of a
+transfer. Read-only sessions (detection snapshot, inventory, map headers) now
+shorten the per-transfer timeout to 20 seconds after OpenSession (libmtp's own
+timeout for devices without the long-timeout flag; bundled libmtp extension
+`read-timeout-v1`, see `Packaging/NativeDependencies/README.md`). When a
+transfer times out the helper releases the USB interface without CloseSession
+or reset, so nothing more is sent to the watch, and returns
+`TERENTO_MTP_READ_STALLED` (-27), which is classified like a reached bound. A
+stalled GarminDevice.xml read now fails the snapshot instead of letting the
+next read open another session to the same watch, and a stalled map-scope walk
+does not fall back to the full walk. Opening a session, writes, deletes and the
+sampled read-back keep libmtp's timeout.
+
+After a stall, the connect read and the map scan repeat the read once in a new
+helper and USB session, after a 2-second wait (owner decision 2026-11-22,
+`StalledReadRepeat`; one repeat per connect read and per scan). Only if that
+fails too does the user see the existing "stopped responding" message, and the
+first stall is what is reported even when the repeat could not open the watch
+(busy). Opening the repeat's session is the ordinary native open, which may
+reset the USB link on models other than USB product `51b8`. Writes, deletes,
+Remove's checks, the install-path reads and the read-back are never repeated by
+this rule. In the 2026-11-22 incident a replug did not recover the watch and
+only a watch restart did, so the repeat is not expected to fix every stall.
+
+Each connect and Manage maps read step is logged with its time in log.txt
+("MAP READ ...") and finishing.log (`map_read_step`, `wall=` epoch seconds):
+`scan_begin`/`scan_end` (outcome, elapsed, objects), each helper read
+(`connect_snapshot`, `scan_snapshot`, `scan_inventory`, `scan_headers`, with
+`_begin` timeout and `_end` outcome `ok`, `failed`, `timed_out` or `stalled`,
+elapsed, objects or files) and `connect_repeat`/`scan_repeat`. The helper's own
+native lines add `device_xml_begin`/`device_xml_end` and `read_stalled` for the
+snapshot. Fixed labels and numbers only.
+
 For issue #222, a local follow-up now classifies a pre-write inventory worker
 timeout as preflight MTP-read failure instead of verification failure, records
 the measured bounded wait, and never starts upload when inventory has not
@@ -501,8 +594,9 @@ code fix. No new release or API deployment is implied. See
 
 ## Catalog and privacy contracts
 
-The current app uses `/maps/catalog-v5.json` (1.1.0 and later; 1.0.1 used
-`/maps/catalog-v4.json`). Legacy v2, v3 and v4 routes retain
+The current app uses `/maps/catalog-v6.json` (1.3.0 and later: v5 plus Lucky
+Maps and OpenFietsMap); 1.1.0 to 1.2.x use `/maps/catalog-v5.json` and 1.0.1 used
+`/maps/catalog-v4.json`. Legacy v2 to v5 routes retain
 provider sets understood by older clients. The full bundled fallback is a
 native decoder projection; it must not be silently rewritten into an API schema.
 See [shared contracts](../../contracts/README.md).
@@ -613,7 +707,10 @@ a download start without a received outcome is not proof of a failed download.
 - **Install selection guidance.** Every selectable map row shows the catalog
   download size and "about N min" ("Download 412 MB · about 7 min") from the
   median of the last five measured download speeds on this Mac (30 days, local
-  only) or a conservative 1 MB/s. While no map on the watch is managed by
+  only) or a conservative 1 MB/s. The size and the estimate each stay on one
+  line and keep a 14 pt inset from the list's trailing edge, clear of the
+  overlay scroller. The row checkbox has a Text Muted border (3:1 or more on
+  every row background); VoiceOver still reads it as a checkbox. While no map on the watch is managed by
   Terento (first map selection only), the locale recommendation is also
   highlighted with "Recommended for your region" (never selected
   automatically). The keep-connected line appears only on the Installing
@@ -743,7 +840,7 @@ installation authorization. The Map Manager registry includes the officially
 documented fēnix 9 family; exact-model public evidence remains independent.
 That local registry is presentation evidence, not a native write allowlist; it
 never disables a server-approved Install action and is hidden on the Device
-page once the watch is "Ready for maps".
+page once the watch is ready for maps.
 The install/update path requires fresh API catalog authorization before
 acquisition and again before writing. It matches a normalized base model and
 filters candidates only with reliable variant facts. Conflicting variant
@@ -754,11 +851,13 @@ remain pending/fail closed. See the [tracked authorization contract](../../contr
 While the map read that follows every connection is running, Install maps and
 Manage maps are disabled and a small spinner with "Reading your maps…" beside
 them says why.
-After connect the Device page shows the verdict with text and an icon: "Checking…"
-while the policy is resolving (never a connection error), "Ready for maps",
-"Not yet enabled for this model" for PENDING/unknown/ambiguous models (browsing
+After connect the Device page shows the verdict with text and an icon only
+while the watch is not ready: "Checking…" while the policy is resolving (never
+a connection error), "Not yet enabled for this model" for PENDING/unknown/ambiguous models (browsing
 stays available and Install maps is labelled), "Not available for this model",
-or "Couldn't check" with Try again when the policy could not be fetched. The
+or "Couldn't check" with Try again when the policy could not be fetched. An
+approved watch ("Ready for maps") shows no badge: the "Connected and ready."
+subtitle and the sidebar status already say so. The
 five-minute catalog timer re-resolves an unavailable policy. A decision fetched
 at download time is applied to `DeviceEngine`, so a rejection is shown on the
 review page instead of silently returning to it. These are presentation and
@@ -771,14 +870,16 @@ The Done page has no subtitle after a complete installation (the title says it)
 and gives the next step from the install guides: eject it here, then unplug it,
 turn the new map on in the device's map settings, restart the device if it is
 not listed. In App Store builds a successful installation or verified update
-also shows a "Share install results with Terento" callout while no choice is
+also shows a "Help improve Terento" callout while no choice is
 recorded (under those steps, or above the Manage maps list after an update),
 with three equal buttons, Share, Not now and Don't share; nothing is
 pre-selected. Not now, or leaving the page, records no choice and the callout
 comes back once after the next successful operation, then never again. From the
 second successful operation, once per version and never after the same
 operation as the callout, the app asks macOS for the rating prompt
-(`AppStoreReviewPolicy`, Packaging/AppStore/README.md).
+(`AppStoreReviewPolicy`, Packaging/AppStore/README.md). It asks one second
+after the success page is on screen, never inside the view update that opens
+it: asked there, the 2026-11-21 local test lost the Map installed page.
 A map from an unrecognized provider is named by its whole IMG header
 description (20 bytes at 0x49 joined with the 31-byte continuation at 0x65,
 decoded as UTF-8). Recognized providers keep their own parsing. For an
