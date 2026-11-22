@@ -1,5 +1,21 @@
 # App–API compatibility and release contract
 
+## Stable release 1.3.0 build 50 — published
+
+Published on 2026-11-22 from GitHub-verified source
+`9ab9f22f9ce7c3f65c6edcc8313e28ad98c85f94` (main after PR #782), tag
+`v1.3.0-build50`, on the `stable` update channel. It is the first client that
+requests `catalog-v6.json`; that route was live before publication with
+OpenFietsMap `ACTIVE` and Lucky Maps left out (`PAUSED`, never activated). The
+tag is listed in `contracts/released-catalog-clients.json` with
+`catalog-v6.json`.
+
+DMG: 8,682,127 bytes, SHA-256
+`d2f4bc23d8a2c871e439efb5df709ccf00ec413720caee84605f3d759cfb20cb`.
+ZIP: 7,823,941 bytes, SHA-256
+`bf2ca19cb0e02de561b597b7e1d08ec9e0ae413b3ad0d9fb586ebf3c37fdcfb2`.
+Public GitHub asset digests match independently downloaded files.
+
 ## 1.3.0 server-first acceptance (Lucky Maps)
 
 Not deployed yet. The 1.3.0 app requests `/maps/catalog-v6.json`, the closed

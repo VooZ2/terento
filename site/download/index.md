@@ -7,7 +7,7 @@ canonical: https://terento.app/download/
 
 A free, open-source app that installs free maps on Garmin watches and Edge bike computers with map support.
 
-[Download for Mac](https://github.com/VooZ2/terento/releases/download/v1.2.2-build49/Terento-1.2.2-macOS-arm64.dmg) [Download on the Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-download&mt=8)
+[Download for Mac](https://github.com/VooZ2/terento/releases/download/v1.3.0-build50/Terento-1.3.0-macOS-arm64.dmg) [Download on the Mac App Store](https://apps.apple.com/app/apple-store/id6828556832?pt=129348028&ct=site-download&mt=8)
 
 [Use the web installer](https://terento.app/install/)
 
@@ -15,7 +15,7 @@ Terento showing a connected Garmin watch on macOS
 
 ## What you need
 
-Latest version **v1.2.2**, November 20, 2026. [What’s new](https://github.com/VooZ2/terento/releases/tag/v1.2.2-build49) [Star on GitHub](https://github.com/VooZ2/terento)
+Latest version **v1.3.0**, November 22, 2026. [What’s new](https://github.com/VooZ2/terento/releases/tag/v1.3.0-build50) [Star on GitHub](https://github.com/VooZ2/terento)
 
 - A Mac with Apple Silicon
 - macOS 13 or later
