@@ -1463,8 +1463,12 @@ Public map style preview manifest (`contracts/map-preview-manifest.schema.json`)
 It lists every curated area with its extent, zoom range, tags, `featured` flag,
 `diffScore` (0–1, how different the rendered styles look; `null` until two
 layers exist) and one layer per style with status `AVAILABLE`, `NOT_COVERED`
-or `PENDING`. Only providers with previews switched on can report
-`AVAILABLE`, and only for layers present in the current tile release.
+or `PENDING`. Only ACTIVE providers with previews switched on can report
+`AVAILABLE`, and only for layers present in the current tile release. The
+renderer also draws a PAUSED provider whose previews are switched on, so a
+provider prepared for a release has its previews ready when it becomes ACTIVE;
+until then its styles and layers stay out of the manifest (its tiles exist
+under the release path but nothing links to them).
 `release` and `tileUrlTemplate` are `null` before the first release. The body
 is rebuilt from PostgreSQL at most once a minute per API process and is served
 with `Cache-Control: public, max-age=300` and `X-Robots-Tag: noindex`.

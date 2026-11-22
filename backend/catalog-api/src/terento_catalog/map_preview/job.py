@@ -185,7 +185,7 @@ class PreviewRun:
             packages = packages_from_snapshot(rows)
             layers = self.db.layers()
             bounds = self.db.package_bounds()
-            enabled = self.db.enabled_providers()
+            enabled = self.db.render_providers()
             current = self.store.current_release()
             published = self.store.layers(current) if current else set()
             if current:
