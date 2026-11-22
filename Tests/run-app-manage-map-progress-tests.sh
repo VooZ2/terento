@@ -64,8 +64,8 @@ assert_contains 'static let manageProgressWidth: CGFloat = 236' "$connect_screen
 assert_contains 'Text(operation.phase.userLabel)' "$connect_screen"
 assert_contains 'return "Removing"' "$phase_source"
 assert_contains 'return "Checking"' "$phase_source"
-# A confirmed removal leaves a short "<Map> removed." line for a few seconds.
-assert_contains 'showRemovalNotice(context.item.title)' "$lifecycle_view_model"
+# A confirmed removal leaves a short "<Map> · <style> removed." line for a few seconds.
+assert_contains 'showRemovalNotice(context.item.removalNotice)' "$lifecycle_view_model"
 assert_contains 'if let notice = lifecycleViewModel.removalNotice {' "$connect_screen"
 assert_contains '.onChange(of: lifecycleViewModel.removalNotice) { notice in' "$connect_screen"
 assert_contains '.announcement: notice,' "$connect_screen"
