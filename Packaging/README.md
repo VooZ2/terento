@@ -40,6 +40,26 @@ same override is used by the web, native, backend, and release checks.
 
 ## Full release validation
 
+The next candidate is **1.3.0 / build 50** on the `stable` channel (see
+[versioning](../VERSIONING.md)), built from the `release-1.3.0` branch. 1.2.3
+was never released; its changes ship in 1.3.0. It carries the changes of
+#760: downloads kept for Try again for 6 hours and across a disconnect before
+any write, the "Terento can no longer see your device" message, the inventory
+rule and side in the failure context, the reconnect-wait funnel outcome and
+connection facts in a Help-menu `CONNECTION` support report; and of #765: a
+read-only "Garmin maps" section in Manage maps (merged after #760, before this
+candidate); of #766: one "Garmin maps" row, the App Store sharing question
+copy, the rating request after Map installed is shown, and the Help menu
+(Send Feedback, Rate on App Store, Star on GitHub); and of #770: bundled brand
+fonts, one type scale, map rows and the Install maps layout. It adds the
+`inventoryRule`/`inventorySide` fields and the `RECONNECT_WAIT` funnel stage
+(migration 096), so the API from #760 must be deployed and verified before the
+candidate is published; it still reads `catalog-v5.json`. Public metadata
+continues to identify 1.2.2 until signed, notarized artifacts exist, and the
+draft release-note section stays marked as a draft until then. The AppStore
+configuration carries the same 1.3.0 / 50 identity; the App Store build is
+prepared separately from the same tag.
+
 The published release is **1.2.2 / build 49** on the `stable` channel (see
 [versioning](../VERSIONING.md)), from GitHub-verified source
 `b612cf5c8e49c96b1ee2d1076a8a496449186bcc` (main after PR #747, tag
@@ -59,7 +79,14 @@ build is prepared separately from the same tag.
 
 The current published build is identified by `site/updates/macos-arm64.json`
 and `RELEASE_NOTES.md`. Packaging a new artifact does not publish it. Public
-labels never use `-local`; local device-test candidates do.
+labels never use `-local`; local device-test candidates do. The Xcode build
+phase `Packaging/verify-release-label.sh` refuses an empty, `development` or
+`-local` label in Release, and in AppStore for every build that can reach App
+Store Connect (an archive, or one signed with a real identity); only the
+ad-hoc signed AppStore test build (`CODE_SIGN_IDENTITY=-`, for example
+`Packaging/AppStore/build-local-sandbox-test.sh`) keeps its `-local` label.
+`Packaging/AppStore/archive-for-testflight.sh` checks the archived app's
+label again before it exports or uploads anything.
 
 For a same-label replacement, the next numbered beta or release candidate,
 `Packaging/release-candidate.json` records only the reviewed marketing version,
@@ -119,7 +146,12 @@ xcrun swift Packaging/generate-app-icon.swift
 
 The Xcode asset catalog contains the 1x/2x macOS renditions from 16 pt through
 512 pt. The native Help menu and the `About Terento` window are part of the
-SwiftUI app shell. User documentation is available in the public
+SwiftUI app shell. Help lists Terento Website, Troubleshooting, Documentation;
+then `Send Feedback…` (a mail draft to `hello@terento.app`, subject "Terento
+feedback", body only "Terento <version> (<build>)") and, in App Store builds,
+`Rate on App Store` (`TerentoAppLinks.appStoreReview`); then Report an
+Issue, `Send Report to Terento…` (GitHub build only) and `Star on GitHub`
+(`TerentoAppLinks.repository`). User documentation is available in the public
 [installation guide](https://terento.app/guides/install-garmin-maps-mac/).
 
 The release entry point invokes `Tests/run-all-tests.sh`. Its checked-in suite
@@ -193,15 +225,20 @@ diagnostic and map-statistics events are classified as purgeable test data.
 
 ## Local paused-provider test build
 
-A provider the server holds `PAUSED` stays visible but cannot be installed.
+A provider the server holds `PAUSED` stays visible but cannot be installed;
+one that has never been `ACTIVE` (a new provider) is not in the catalog at all.
 To hardware-test it before activation, put
-`Packaging/local-paused-provider-test.command` beside a Debug `*-local`
-`Terento.app` and start the app with it. It sets the Debug-only
-`TERENTO_DEBUG_UNPAUSE_PROVIDERS` (default `osmapa`), which lifts only the
-`PROVIDER_PAUSED` reason for the named providers; `RETIRED`, other block
+`Packaging/local-paused-provider-test.command` beside a `*-local`
+`Terento.app` (Debug, or the App Store configuration with a `-local`
+release label) and start the app with it. It sets
+`TERENTO_DEBUG_UNPAUSE_PROVIDERS` (default `luckymaps,openfietsmap`), which lifts only the
+`PROVIDER_PAUSED` reason for the named providers and asks catalog-v6 for
+them with `?preview=`, so a new provider appears; `RETIRED`, other block
 reasons, region policy and installation authorization still apply, and the
 server state is not changed. Launching `Terento.app` directly keeps the
-provider paused. Release builds ignore the variable.
+provider paused. Builds without a `-local` release label (stable DMG,
+App Store and TestFlight) ignore the variable, decided at run time from
+`TerentoReleaseLabel`.
 
 ## Local Finishing diagnostic build
 

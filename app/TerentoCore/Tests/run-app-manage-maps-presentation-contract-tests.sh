@@ -49,7 +49,7 @@ require_text 'static func productionMenuActions' "$presentation" "production men
 require_text 'return []' "$presentation" "production overflow menu is not empty"
 require_text '.frame(width: 152, alignment: .trailing)' "$connect_screen" "row actions do not use a stable right-side column"
 require_text 'action == .update ? 72 : 68' "$connect_screen" "Update and Remove widths are not stable"
-require_text 'return action == .update ? .white : TerentoColors.graphite' "$connect_screen" "Update does not use a white primary label"
+require_text 'return action == .update ? .white : TerentoColors.error' "$connect_screen" "Update must use a white label and Remove Error Rust text"
 require_text 'return TerentoColors.interactive' "$connect_screen" "Update does not use the Terento primary fill"
 
 require_text '.accessibilityLabel("\(title) \(mapTitle)")' "$connect_screen" "visible actions lack map-specific accessibility labels"
@@ -60,6 +60,37 @@ require_text 'managedMapRow(item, provider: group.title)' "$connect_screen" "pro
 require_text 'return TerentoGeneratedTokens.Light.textDisabled' "$connect_screen" "disabled Manage actions still look active"
 require_text '.disabled(mapManagementActionsBusy)
                     .help("Refresh map information")' "$connect_screen" "Manage Refresh is not disabled during an operation"
+# Owner QA 2026-11-22: a button drawn disabled is disabled. While the list is
+# read (opening, after an install, Refresh, after a Remove) or another
+# operation runs, Remove, Update and Refresh do nothing, and the Device page's
+# reading state stands next to Refresh.
+python3 - "$connect_screen" <<'PYREAD'
+import sys
+screen = open(sys.argv[1]).read()
+button = screen[screen.index("private struct ManageActionButton"):screen.index("private struct ManageOperationProgress")]
+action = button[button.index("Button {"):button.index("} label: {")]
+assert "guard isInteractive else { return }" in action and action.index("guard isInteractive") < action.index("onAction(action)"), \
+    "a disabled-looking Remove or Update still runs its action"
+row = screen[screen.index("private func managedMapRow("):screen.index("private func deviceVariantLine(")]
+for request in ("lifecycleViewModel.requestRemove(itemID: item.id)", "lifecycleViewModel.requestUpdate(itemID: item.id)"):
+    before = row[:row.index(request)][-120:]
+    assert "guard !mapManagementActionsBusy else { return }" in before, f"{request} is not refused while a read or operation runs"
+page = screen[screen.index("private var managedMapsContent: some View {"):screen.index("private func managedMapGroups")]
+header = page[:page.index("if let lifecycleInventory = filteredManagedInventory {")]
+assert "if isReadingDeviceMaps && managedInventory != nil {\n                    MapReadingIndicator()" in header, \
+    "Manage maps does not show the reading state while the kept list is read"
+assert header.index("MapReadingIndicator()") < header.index('Label("Refresh", systemImage: "arrow.clockwise")'), "the reading state is not next to Refresh"
+refresh = header[header.index("Button {"):header.index("} label: {")]
+assert "guard !mapManagementActionsBusy else { return }" in refresh, "a disabled-looking Refresh still reads the maps"
+indicator = screen[screen.index("private struct MapReadingIndicator: View {"):screen.index("private struct TerentoKeyIndependentButtonStyle")]
+assert 'Text("Reading your maps…")' in indicator and "ProgressView()" in indicator and ".lineLimit(1)" in indicator, \
+    "the reading state is not the Device page's existing one"
+assert screen.count('Text("Reading your maps…")') == 1, "the reading state is defined more than once"
+device = screen[screen.index('PrimaryButton(title: "Install maps") {\n                    navigate(to: .installMaps)'):]
+assert "if isReadingDeviceMaps {\n                    MapReadingIndicator()" in device[:1200], "the Device page lost its reading state"
+print("PASS: disabled Manage actions do nothing; the reading state stands next to Refresh")
+PYREAD
+
 # After Remove the list stays on screen and refreshes in place; the reading card is only for no list.
 require_text 'if inventory == nil, managedInventory != nil, isReadingDeviceMaps { return }' "$connect_screen" "rescan replaces the list with the reading card"
 # QA round 3: a rescan keeps the rows' buttons and Refresh in place, disabled, instead of drawing them late.
@@ -72,13 +103,14 @@ require_text '? "This can take a minute."' "$connect_screen" "reading card lacks
 reject_text 'Map information will appear here when your device is ready.' "$connect_screen" "reading card repeats itself"
 require_text 'TextField("Search installed maps", text: $managedSearchText)' "$connect_screen" "Manage search placeholder differs from its label"
 
-# Garmin-installed images: one read-only section after External maps.
-require_text 'title: "Garmin maps"' "$connect_screen" "Garmin maps section is missing"
-require_text 'Text("Installed by Garmin. Terento does not change these.")' "$connect_screen" "Garmin maps section text is missing"
-require_text 'isExpanded: $garminMapsExpanded' "$connect_screen" "Garmin maps section does not collapse like the others"
-require_text 'if lifecycleInventory.allItems.isEmpty && filteredGarminMaps.isEmpty {' "$connect_screen" "empty state shows next to Garmin rows"
-require_text 'filteredGarminMaps = GarminSystemMap.filtered(managedGarminMaps,' "$connect_screen" "Manage search does not reach Garmin rows"
-require_text 'visibleGarminMaps: filteredGarminMaps' "$connect_screen" "the Manage map count leaves out Garmin rows"
+# Garmin-installed images: one read-only row at the bottom, no group header,
+# not counted in "N maps" (owner decision 2026-11-22).
+reject_text 'title: "Garmin maps"' "$connect_screen" "Garmin maps still has its own group header"
+reject_text 'Installed by Garmin. Terento does not change these.' "$connect_screen" "Garmin maps section still shows a caption"
+reject_text 'garminMapsExpanded' "$connect_screen" "Garmin maps still collapses like a group"
+require_text 'if lifecycleInventory.allItems.isEmpty && visibleGarminSummary == nil {' "$connect_screen" "empty state shows next to the Garmin row"
+require_text 'visibleGarminSummary = GarminMapsSummary.visible(managedGarminMaps,' "$connect_screen" "Manage search does not reach the Garmin row"
+reject_text 'visibleGarminSummary: visibleGarminSummary' "$connect_screen" "the Manage map count counts the Garmin row"
 
 print "PASS: Manage maps simplified action contract"
 
@@ -95,12 +127,162 @@ assert "TerentoProgressBar(value: 0" in component, "initial operations must stil
 print("PASS: determinate Manage maps progress, description and initial state")
 
 groups = source.split("private func managedMapGroups(", 1)[1].split("private func confirmationItem(", 1)[0]
-assert groups.index('title: "External maps"') < groups.index('title: "Garmin maps"'), "Garmin maps must follow External maps"
-section = groups.split('title: "Garmin maps"', 1)[1].split("if lifecycleInventory.allItems.isEmpty", 1)[0]
-row = source.split("private struct GarminSystemMapRow: View {", 1)[1].split("private struct ", 1)[0]
+assert groups.index('title: "External maps"') < groups.index('if let garminSummary = visibleGarminSummary {'), "Garmin maps must follow External maps"
+section = groups.split('if let garminSummary = visibleGarminSummary {', 1)[1].split("if lifecycleInventory.allItems.isEmpty", 1)[0]
+assert "TerentoMapSection(" not in section, "the Garmin row must not sit under its own group header"
+row = source.split("private struct GarminMapsSummaryRow: View {", 1)[1].split("private struct ", 1)[0]
 for forbidden in ("Button", "contextMenu", "onRemove", "onUpdate", "ManageAction", "lifecycleViewModel", "onTapGesture", "selection"):
     assert forbidden not in row, f"Garmin rows must not offer {forbidden}"
     assert forbidden not in section, f"the Garmin section must not offer {forbidden}"
-assert "GarminSystemMapRow(map: map)" in section, "Garmin rows must use the read-only row"
-print("PASS: Garmin maps are read-only rows after External maps")
+assert "GarminMapsSummaryRow(summary: garminSummary)" in section, "the Garmin section must use the read-only summary row"
+assert "ForEach" not in section, "the Garmin section must show one summary row, not one row per file"
+assert "Text(" not in section, "the Garmin section must not add a caption"
+print("PASS: Garmin maps are one read-only row at the bottom, without a group header")
 PYTEST
+
+# Unavailability reasons (owner 2026-11-22): provider-wide ones once under the
+# provider header, map-specific ones on line 3, one sentence, no retry advice.
+map_models="$project_root/Sources/TerentoPoC/MapCatalog/MapModels.swift"
+python3 - "$connect_screen" "$presentation" "$map_models" <<'PYAVAIL'
+import sys
+screen, presentation, models = (open(p).read() for p in sys.argv[1:4])
+group = models[models.index("var manageGroupNotice: String?"):models.index("var manageRowReason: String?")]
+row = models[models.index("var manageRowReason: String?"):models.index("var shortStatus: String?")]
+for text in ('"\\(provider) servers are unreachable."', '"\\(provider) is limiting downloads."',
+             '"\\(provider) downloads are paused."', 'case "STATUS_UNVERIFIED", "STATUS_STALE": return Self.availabilityCheckFailedNotice'):
+    assert text in group, f"provider-wide reason missing: {text}"
+assert 'static let availabilityCheckFailedNotice = "Couldn\'t check for updates."' in models, \
+    "the failed-check notice must use the owner's wording"
+for text in ('"Downloads for this map are turned off."', '"Update Terento to download this map."',
+             '"This map is unavailable."'):
+    assert text in row, f"map-specific reason missing: {text}"
+for banned in ("try again", "connection", "internet"):
+    assert banned not in (group + row).lower(), f"Manage reasons must not say '{banned}'"
+assert "groupNotice: acquisitionAvailability.manageGroupNotice" in presentation, "the resolver must pass the group notice"
+assert "acquisitionAvailability.manageRowReason ?? reason" in presentation, "line 3 must use the short row reason"
+assert "acquisitionAvailability.detailedExplanation" not in presentation, "Manage must not use the long explanation"
+groups = screen[screen.index("private func managedMapGroups"):screen.index('title: "Imported maps"')]
+assert groups.count("providerGroupNotices(group.items)") == 1, "the notices must appear once per provider group"
+assert groups.index("providerGroupNotices(group.items)") < groups.index("ForEach(group.items)"), \
+    "the notices must sit under the provider header, before the rows"
+helper = screen[screen.index("private func providerGroupNotices"):screen.index("private func managedAvailability")]
+assert "!notices.contains(notice)" in helper, "each provider-wide reason is said once"
+status = screen[screen.index("private var manageStatus: TerentoMapRowStatus?"):]
+status = status[:status.index("\n    }\n")]
+assert "availability.groupNotice == nil" in status, "rows must not repeat a provider-wide reason"
+install_row = screen[screen.index("TerentoMapRow(\n                title: item.title,"):]
+install_row = install_row[:install_row.index("contentSpacing: 9")]
+assert "note: item.acquisitionAvailability.installRowNote," in install_row, \
+    "Install maps rows must keep only the short status for a blocked map"
+note = models[models.index("var installRowNote: String?"):models.index("static let availabilityCheckFailedNotice")]
+assert "if case .blocked = self { return nil }" in note, "a blocked Install maps row has no second line"
+block = models[models.index("var detailedExplanation: String?"):models.index("enum MapAcquisitionPolicyError")]
+assert "Check your connection" not in block, "availability texts must not blame the connection"
+print("PASS: unavailability reasons: provider-wide once under the header, map-specific on line 3, one sentence")
+PYAVAIL
+
+# Update appears only when usable; Remove is Error Rust text with an Error
+# Rust tint; the failed-check notice starts where the provider name starts.
+python3 - "$connect_screen" "$project_root/Sources/TerentoPoC/Views/WindowPresentation.swift" <<'PYROW'
+import sys
+screen, layout = (open(p).read() for p in sys.argv[1:3])
+group = screen[screen.index("private struct ManageActionGroup"):screen.index("private struct TerentoKeyIndependentButtonStyle")]
+assert "updateBlocked" not in group and "isEnabled: false" not in group, "Manage rows must never draw a disabled Update"
+assert "updateBlocked: availability.updateBlocked" not in screen, "the row must not pass a blocked Update to the action group"
+button = screen[screen.index("private struct ManageActionButton"):screen.index("private struct ManageOperationProgress")]
+background = button[button.index("private var backgroundColor"):button.index("private var foregroundColor")]
+assert "sky" not in background, "Remove hover and focus must not use Sky"
+assert "TerentoColors.error.opacity(0.14)" in background and "TerentoColors.error.opacity(0.08)" in background, \
+    "Remove hover and focus must use a light Error Rust tint"
+assert "return TerentoGeneratedTokens.Light.textDisabled" in button, "disabled Remove keeps the disabled text token"
+assert "static let sectionHeaderTitleInset: CGFloat = sectionHeaderChevronWidth + sectionHeaderItemSpacing" in layout, \
+    "the header title inset must come from the header geometry"
+groups = screen[screen.index("private func managedMapGroups"):screen.index('title: "Imported maps"')]
+notice = groups[groups.index("providerGroupNotices(group.items)"):groups.index("ForEach(group.items)")]
+assert "iconColumnWidth: TerentoPageLayout.sectionHeaderChevronWidth" in notice \
+    and "spacing: TerentoPageLayout.sectionHeaderItemSpacing" in notice and ".padding(.horizontal" not in notice, \
+    "the group notice text must start at the provider name (icon in the chevron column)"
+print("PASS: usable-only Update, Error Rust Remove, notice aligned with the provider name")
+PYROW
+
+# Catalog-level notice (owner 2026-11-22): one shared warning component on both
+# pages; the catalog's shared reason is said once, never on rows or groups.
+python3 - "$connect_screen" "$presentation" "$project_root/Sources/TerentoPoC/MapCatalog/MapCatalogLoader.swift" <<'PYCAT'
+import sys
+screen, presentation, loader = (open(p).read() for p in sys.argv[1:4])
+comp = screen[screen.index("struct TerentoWarningNotice: View"):screen.index("private struct TerentoListTopDivider")]
+assert ".foregroundStyle(TerentoColors.warning)" in comp and "TerentoColors.error" not in comp, \
+    "the notice is a warning in Stone Dark, not Error Rust"
+assert 'Image(systemName: "exclamationmark.triangle")' in comp, "the notice carries the warning icon"
+assert ".font(.terento(.meta, weight: .semibold))" in comp, "the notice text is semibold"
+assert ".accessibilityElement(children: .ignore)" in comp and ".accessibilityLabel(text)" in comp, \
+    "VoiceOver reads the notice once"
+assert screen.count("TerentoWarningNotice(") == 3, "Install page, Manage page and provider groups share one component"
+assert "Using local catalog" not in screen and "wifi.slash" not in screen, "the grey fallback line is gone"
+manage = screen[screen.index("private var managedMapsContent: some View"):screen.index("private func managedMapGroups")]
+assert manage.index("managedCatalogToolbar") < manage.index("managePageNotice(lifecycleInventory)") < manage.index("ScrollView {"), \
+    "the Manage notice sits once under the count line, above the list"
+assert ".overlay(alignment: .top) { TerentoListTopDivider() }" in manage, "the Manage count line has the list divider"
+region = screen[screen.index("private var catalogMapRegion: some View"):]
+region = region[:region.index(".clipped()") + 10]
+assert ".overlay(alignment: .top) { TerentoListTopDivider() }" in region, "Install maps uses the same list divider"
+assert "return availability.removingCatalogWideReason(mapEngine.catalogSource?.sharedBlockReason)" in screen, \
+    "Manage rows and groups drop the catalog-wide reason"
+assert "guard let sharedBlockReason, blockReason == sharedBlockReason else { return self }" in presentation
+row = screen[screen.index("private var rowStatus: String? {"):]
+row = row[:row.index("guard item.package.sourceKind != .custom")]
+assert row.index("if hidesCatalogWideReason") < row.index("shortStatus"), \
+    "Install rows drop the catalog-wide reason before the short status"
+assert 'case .bundledFallback, .cachedRemote: return "STATUS_UNVERIFIED"' in loader
+assert 'case .appUpdateRequired: return "APP_UPDATE_REQUIRED"' in loader
+assert 'static let environmentKey = "TERENTO_USE_BUNDLED_MAP_CATALOG"' in loader and "environment[environmentKey] == \"1\"" in loader, \
+    "a local test build can show the fallback without editing Info.plist"
+print("PASS: catalog-level reason said once per page with the shared warning notice")
+PYCAT
+
+# The bundled-catalog switch works in Debug and "-local" builds, never in App
+# Store or TestFlight builds (run-time check of the release label).
+python3 - "$project_root/Sources/TerentoPoC/MapCatalog/MapCatalogLoader.swift" <<'PYSWITCH'
+import sys
+loader = open(sys.argv[1]).read()
+switch = loader[loader.index("enum MapCatalogTestSwitch {"):loader.index("/// When the catalog itself is the cause")]
+assert 'hasSuffix("-local")' in switch and "return isLocalTestLabel || (isDebug && !isAppStore)" in switch, \
+    "only a -local label (any configuration) or a DMG Debug build may use the switch"
+uses = switch[switch.index("static var currentBuildAllowsLocalTesting: Bool {"):]
+assert "return false" not in uses, "the switch must be decided at run time, not compiled out of App Store -local builds"
+assert "let isAppStore = true" in uses and 'forInfoDictionaryKey: "TerentoReleaseLabel"' in uses
+endpoint = loader[loader.index("static let defaultEndpoint: URL? = {"):]
+endpoint = endpoint[:endpoint.index("}()")]
+assert "if MapCatalogTestSwitch.usesBundledCatalog {\n            return nil" in endpoint
+assert "#if DEBUG" not in endpoint, "the switch must not be Debug-only (the -local build is Release)"
+unpause = loader[loader.index("enum MapCatalogDebugUnpause {"):]
+unpause = unpause[:unpause.index("static func previewQuery")]
+assert "MapCatalogTestSwitch.currentBuildAllowsLocalTesting" in unpause and "#if DEBUG" not in unpause, \
+    "the paused-provider test switch must follow the same -local run-time rule"
+print("PASS: bundled-catalog and paused-provider switches only in -local and DMG Debug builds")
+PYSWITCH
+
+
+python3 - "$project_root/Sources/TerentoPoC/Installation/MapLifecycleViewModel.swift" "$presentation" <<'PYREMOVE'
+import sys
+view_model = open(sys.argv[1]).read()
+presentation = open(sys.argv[2]).read()
+remove = view_model[view_model.index("    private func remove(itemID: String) {"):view_model.index("    private func update(itemID: String) {")]
+# Remove 92% hang (owner 2026-11-22): the confirm step is bounded and runs in the helper.
+assert "SafeDeleteAdapter(confirmTimeLimit: confirmTimeLimit)" in remove, "Remove's confirm step has no time limit"
+assert "MTPFinishingWorker.removalConfirmTimeLimit(" in remove
+assert 'MapRemovalLog.helper("confirm")' in remove and "timeLimit: timeLimit" in remove, \
+    "the confirm rescan must run in the bounded helper with the time left"
+assert "MTPTransport(" not in remove, "Remove must not read the watch in-process after the delete"
+assert "onStep: { step in MapRemovalLog.record(step) }" in remove and "step=remove_result" in remove, \
+    "every Remove step and the result are logged"
+failed = remove[remove.index("phase: .failed,"):]
+assert "mapEngine.refreshCurrentDeviceMaps()" in failed[:400], "a failed Remove does not read the watch again"
+# After relaunch Manage shows the watch: Remove state lives only in memory.
+assert "@Published private(set) var operations: [String: MapLifecycleOperationState] = [:]" in view_model
+for persisted in ("UserDefaults", "@AppStorage", "@SceneStorage"):
+    assert persisted not in view_model, f"Remove state must not survive relaunch ({persisted})"
+state = presentation[presentation.index("struct MapLifecycleOperationState"):]
+assert "Codable" not in state[:state.index("{")], "Remove state must not be encodable"
+print("PASS: Remove confirm is bounded, logged, re-reads the watch, and its state does not survive relaunch")
+PYREMOVE

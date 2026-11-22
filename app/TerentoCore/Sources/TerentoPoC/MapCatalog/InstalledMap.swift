@@ -127,6 +127,7 @@ struct GarminIMGMetadataParser: Sendable {
 
         if let metadata = mapRandoMetadata(bytes) { return metadata }
         if let metadata = OSMapaIMGMetadata.metadata(bytes) { return metadata }
+        if let metadata = OpenFietsMapIMGMetadata.metadata(bytes) { return metadata }
         if let metadata = BBBikeIMGMetadata.standaloneMetadata(bytes) { return metadata }
 
         let description = text(bytes, offset: 0x49, length: 20)
@@ -630,7 +631,7 @@ struct GarminMapScanner: Sendable {
         // conflict and storage decision.
         let garminMaps = mapFiles.filter(isKnownGarminOwned)
             .map { GarminSystemMap(path: $0.path, filename: $0.filename, sizeBytes: $0.sizeBytes) }
-            .sorted { $0.sortKey < $1.sortKey }
+            .sorted { $0.path < $1.path }
         var inspectedFiles: [InstalledMapFile] = []
         var installedMaps: [InstalledMap] = []
         var otherMaps: [InstalledMap] = []
@@ -661,7 +662,20 @@ struct GarminMapScanner: Sendable {
             let restoredBBBike = exactBBBikeRecords.count == 1 ? exactBBBikeRecords.first.flatMap { record in
                 record.bbbikeMetadata.flatMap { BBBikeIMGMetadata.metadata(prefixes[file.stableIdentity] ?? [], context: $0, version: record.version) }
             } : nil
-            let metadata = restoredBBBike ?? parser.parse(
+            // Lucky Maps headers name only the file stem: identity is restored
+            // from one exact manifest record and corroborated by the header.
+            let exactLuckyMapsRecords = ownershipRecords.filter {
+                MapIdentity.normalizeProvider($0.providerId) == "luckymaps"
+                    && $0.devicePath == file.path && $0.filename == file.filename && $0.sizeBytes == file.sizeBytes
+                    && file.filename.hasPrefix("terento_luckymaps_")
+                    && TerentoManagedFilenameGenerator().artifactKind(for: file.filename) == ($0.artifactKind ?? .main)
+            }
+            let restoredLuckyMaps = restoredBBBike == nil && exactLuckyMapsRecords.count == 1
+                ? exactLuckyMapsRecords.first.flatMap { record in
+                    LuckyMapsIMGMetadata.metadata(prefixes[file.stableIdentity] ?? [], regionId: record.regionId,
+                                                  kind: record.artifactKind ?? .main)
+                } : nil
+            let metadata = restoredBBBike ?? restoredLuckyMaps ?? parser.parse(
                 prefixes[file.stableIdentity] ?? [],
                 filename: file.filename
             )
@@ -858,58 +872,62 @@ struct MapScanResult: Sendable, Equatable {
 /// A map or system image that Garmin installed. It is built only from the file
 /// listing (path, filename, size): its content is never read. It has no
 /// lifecycle identity, ownership or actions, so Remove, Update and storage
-/// planning cannot reach it. The name comes from the known Garmin filename;
-/// region or product names are never guessed.
+/// planning cannot reach it.
 struct GarminSystemMap: Identifiable, Equatable, Sendable {
     let path: String
     let filename: String
     let sizeBytes: UInt64
 
     var id: String { path }
+}
 
-    var title: String { Self.title(forFilename: filename) }
+/// The single read-only "Garmin maps" row in Manage. It summarises every
+/// Garmin-installed image as one line, "Preinstalled · N files · size", and
+/// takes no actions.
+struct GarminMapsSummary: Equatable, Sendable {
+    static let title = "Garmin maps"
 
-    static func title(forFilename filename: String) -> String {
-        switch filename.lowercased() {
-        case "gmapbmap.img": return "Base map"
-        case "gmapdem.img": return "Elevation data"
-        case "gmaptz.img": return "Time zones"
-        case "gmap3d.img": return "3D data"
-        default: return "Garmin map"
+    let fileCount: Int
+    let totalSizeBytes: UInt64
+
+    init?(_ maps: [GarminSystemMap]) {
+        guard !maps.isEmpty else { return nil }
+        fileCount = maps.count
+        totalSizeBytes = maps.reduce(UInt64(0)) { total, map in
+            let (sum, overflow) = total.addingReportingOverflow(map.sizeBytes)
+            return overflow ? UInt64.max : sum
         }
     }
 
+    /// Same size format as the other Manage rows (decimal, omitted at zero).
     var formattedSize: String? {
-        guard sizeBytes > 0 else { return nil }
+        guard totalSizeBytes > 0 else { return nil }
         return ByteCountFormatter.string(
-            fromByteCount: Int64(min(sizeBytes, UInt64(Int64.max))),
+            fromByteCount: Int64(min(totalSizeBytes, UInt64(Int64.max))),
             countStyle: .decimal
         )
     }
 
-    /// Named images first, then "Garmin map" rows by filename.
-    fileprivate var sortKey: String {
-        let named = title != "Garmin map"
-        return (named ? "0 " : "1 ") + title.lowercased() + " " + filename.lowercased() + " " + path.lowercased()
+    var detail: String {
+        ["Preinstalled", "\(fileCount) \(fileCount == 1 ? "file" : "files")", formattedSize]
+            .compactMap { $0 }
+            .joined(separator: " · ")
     }
 
-    /// The "N maps" line above the Manage list: every visible row, lifecycle
-    /// rows and Garmin rows alike, after the same search and provider filter.
-    static func manageListCount(lifecycleItemCount: Int, visibleGarminMaps: [GarminSystemMap]) -> Int {
-        lifecycleItemCount + visibleGarminMaps.count
+    /// The "N maps" line above the Manage list counts the maps Terento can
+    /// manage; the Garmin maps row is not one of them (owner decision
+    /// 2026-11-22), whatever search and filters leave visible.
+    static func manageListCount(lifecycleItemCount: Int) -> Int {
+        lifecycleItemCount
     }
 
-    /// Manage search. These are Garmin's own fixed filenames, so unlike
-    /// imported maps the filename is searchable. A provider filter hides them:
-    /// they belong to no community provider.
-    static func filtered(_ maps: [GarminSystemMap], query: String, providerID: String = "") -> [GarminSystemMap] {
-        guard providerID.isEmpty else { return [] }
+    /// Manage search matches the row's visible words. A provider filter hides
+    /// the row: Garmin images belong to no community provider.
+    static func visible(_ maps: [GarminSystemMap], query: String, providerID: String = "") -> GarminMapsSummary? {
+        guard providerID.isEmpty, let summary = GarminMapsSummary(maps) else { return nil }
         let terms = fold(query).split(whereSeparator: \.isWhitespace).map(String.init)
-        guard !terms.isEmpty else { return maps }
-        return maps.filter { map in
-            let text = fold([map.title, map.filename, "Garmin"].joined(separator: " "))
-            return terms.allSatisfy { text.contains($0) }
-        }
+        let text = fold(title + " Preinstalled")
+        return terms.allSatisfy { text.contains($0) } ? summary : nil
     }
 
     private static func fold(_ value: String) -> String {
@@ -995,6 +1013,108 @@ struct GarminIMGPrefixEvidence: Equatable, Sendable {
         }
         self.init(isGarminIMG: true, osmapa: OSMapaIMGMetadata.marker(prefix),
                   mdrFamilyIDs: OSMapaIMGMetadata.mdrFamilyIDs(prefix))
+    }
+}
+
+/// Lucky Maps IMG headers: the description is the source file stem
+/// (`andorra`, `andorra-ct`), the creation date at 0x39 is the release, and a
+/// main map names exactly one MDR family ID while a contour file names none.
+/// The header alone never says "Lucky Maps"; callers pass the catalog or
+/// manifest region it must match.
+enum LuckyMapsIMGMetadata {
+    static func title(_ bytes: [UInt8]) -> String? {
+        guard OSMapaIMGMetadata.isGarminIMG(bytes) else { return nil }
+        func trimmed(_ field: ArraySlice<UInt8>) -> [UInt8] {
+            var value = Array(field)
+            while let last = value.last, last == 0x20 || last == 0 { value.removeLast() }
+            return value
+        }
+        let first = trimmed(bytes[0x49..<0x5D])
+        let continuation = trimmed(bytes[0x65..<0x83])
+        let title: [UInt8]
+        if first.count == 20 {
+            title = first + continuation
+        } else {
+            guard continuation.isEmpty else { return nil }
+            title = first
+        }
+        guard let text = String(bytes: title, encoding: .ascii), LuckyMapsProviderAdapter.isStem(text) else { return nil }
+        return text
+    }
+
+    static func metadata(_ bytes: [UInt8], regionId: String, kind: MapArtifactKind) -> GarminIMGMetadata? {
+        guard let title = title(bytes) else { return nil }
+        let region = MapIdentity.normalizeRegion(regionId)
+        let families = OSMapaIMGMetadata.mdrFamilyIDs(bytes)
+        guard !region.isEmpty else { return nil }
+        switch kind {
+        case .main:
+            guard MapIdentity.normalizeRegion(title) == region, families.count == 1,
+                  let version = OSMapaIMGMetadata.version(bytes) else { return nil }
+            return GarminIMGMetadata(
+                name: "Lucky Maps \(title)", provider: "Lucky Maps", region: region, family: "Lucky Maps",
+                rawVersion: version.description, version: version, identifier: title,
+                productId: nil, familyId: families.first
+            )
+        case .contours:
+            // Contour headers carry an older creation date that is not the package release.
+            guard MapIdentity.normalizeRegion(title) == region + "CT", title.hasSuffix("-ct"), families.isEmpty,
+                  OSMapaIMGMetadata.version(bytes) != nil else { return nil }
+            return GarminIMGMetadata(
+                name: "Lucky Maps \(title)", provider: "Lucky Maps", region: region, family: "Lucky Maps",
+                rawVersion: nil, version: nil, identifier: title, productId: nil, familyId: nil
+            )
+        }
+    }
+}
+
+/// OpenFietsMap headers name the map in the description (`OFM_BNL(21-11-2026)`,
+/// `OFM(EU2026_C)`, `OFM_Island`), carry the build date at 0x39 and name one
+/// MDR family ID. A map is recognized only when title and family ID are one
+/// reviewed package; anything else is left to the generic parser.
+enum OpenFietsMapIMGMetadata {
+    static func title(_ bytes: [UInt8]) -> String? {
+        guard OSMapaIMGMetadata.isGarminIMG(bytes) else { return nil }
+        func trimmed(_ field: ArraySlice<UInt8>) -> [UInt8] {
+            var value = Array(field)
+            while let last = value.last, last == 0x20 || last == 0 { value.removeLast() }
+            return value
+        }
+        let first = trimmed(bytes[0x49..<0x5D])
+        let continuation = trimmed(bytes[0x65..<0x83])
+        let title: [UInt8]
+        if first.count == 20 {
+            title = first + continuation
+        } else {
+            guard continuation.isEmpty else { return nil }
+            title = first
+        }
+        guard title.starts(with: Array("OFM".utf8)) else { return nil }
+        return String(bytes: title, encoding: .ascii)
+    }
+
+    /// The package key a header names, from its title and MDR family ID.
+    static func key(title: String, familyIDs: Set<UInt16>) -> String? {
+        guard familyIDs.count == 1, let family = familyIDs.first else { return nil }
+        for area in OpenFietsMapProviderAdapter.fixedAreas where area.familyID == family {
+            guard let groups = OpenFietsMapProviderAdapter.fullMatch(area.title, title) else { continue }
+            if let text = groups.first ?? nil, OpenFietsMapProviderAdapter.day(text) == nil { return nil }
+            return area.key
+        }
+        guard let groups = OpenFietsMapProviderAdapter.fullMatch(#"OFM\(EU(20[0-9]{2})_(GB|N|W|C|SW|SE|E)\)"#, title),
+              groups.count == 2, let yearText = groups[0], let year = Int(yearText), let area = groups[1],
+              OpenFietsMapProviderAdapter.europeFamilyID(year: year, area: area) == family else { return nil }
+        return "europe-" + area.lowercased()
+    }
+
+    static func metadata(_ bytes: [UInt8]) -> GarminIMGMetadata? {
+        guard let title = title(bytes), let version = OSMapaIMGMetadata.version(bytes), version.day != nil,
+              let key = key(title: title, familyIDs: OSMapaIMGMetadata.mdrFamilyIDs(bytes)) else { return nil }
+        return GarminIMGMetadata(
+            name: "OpenFietsMap \(title)", provider: "OpenFietsMap", region: key.uppercased(),
+            family: "OpenFietsMap", rawVersion: version.description, version: version,
+            identifier: title, productId: nil, familyId: OSMapaIMGMetadata.mdrFamilyIDs(bytes).first
+        )
     }
 }
 

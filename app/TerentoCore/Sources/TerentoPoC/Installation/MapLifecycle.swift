@@ -91,12 +91,32 @@ struct MapLifecycleItem: Identifiable, Equatable, Sendable {
         return "Installed"
     }
 
-    /// Row title with the BBBike map style, as the Install list shows it
-    /// ("Lithuania · OpenTopoMap"); the plain BBBike style needs no suffix.
-    var manageTitle: String {
-        guard MapIdentity.normalizeProvider(provider ?? "") == "bbbike",
-              let style = BBBikeMapType(regionToken: region ?? "")?.styleName else { return title }
-        return "\(title) · \(style)"
+    /// The Manage row's second line. Every provider row starts with its
+    /// provider or map style named as Install maps names it ("BBBike
+    /// (OpenTopoMap) · 2026-11 · 120 MB", "Freizeitkarte · 2026-09 · 4 MB"),
+    /// so the same map has one name in every place. Custom maps have none.
+    /// "Andorra · Freizeitkarte removed.": the map named as its row names it,
+    /// so another Andorra map that stays is not mistaken for it.
+    var removalNotice: String {
+        [title, manageProviderTitle].compactMap { $0 }.filter { !$0.isEmpty }
+            .joined(separator: " · ") + " removed."
+    }
+
+    var manageRowMetadata: String {
+        guard isInstalled, let title = manageProviderTitle else { return manageMetadataLabel }
+        return [title, manageMetadataLabel].filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+
+    /// The provider or style as the row and the provider filter name it
+    /// ("Freizeitkarte", "BBBike (Ontrail)"); nil for a custom map.
+    var manageProviderTitle: String? {
+        guard sourceKind == .provider,
+              let provider = provider?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !provider.isEmpty else { return nil }
+        let id = MapIdentity.normalizeProvider(provider)
+        let known = MapProviderDisplay.downloadName(id)
+        return MapProviderDisplay.title(providerID: id, regionID: region,
+                                        fallback: known == MapProviderDisplay.downloadName("") ? provider : known)
     }
 
     /// Compact metadata for the consumer-facing Manage Maps row. Provider and
@@ -142,7 +162,7 @@ struct MapLifecycleItem: Identifiable, Equatable, Sendable {
     }
 
     private var hasInstalledContours: Bool {
-        guard MapIdentity.normalizeProvider(provider ?? "") == "opentopomap" else {
+        guard ["opentopomap", "luckymaps"].contains(MapIdentity.normalizeProvider(provider ?? "")) else {
             return false
         }
 

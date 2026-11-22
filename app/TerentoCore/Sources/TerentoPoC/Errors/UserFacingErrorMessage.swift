@@ -215,7 +215,7 @@ enum UserFacingErrorMessage {
                 outcome: .failed,
                 title: "Your device isn't responding",
                 reason: "The device stopped answering while Terento was checking it.",
-                finding: "Your device didn't answer for about 90 seconds",
+                finding: "Your device stopped answering",
                 steps: [
                     ConnectStep(systemImage: "cable.connector", text: "Unplug the device and wait 5 seconds"),
                     restartStep,

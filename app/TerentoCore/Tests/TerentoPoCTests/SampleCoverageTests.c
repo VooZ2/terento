@@ -5,8 +5,8 @@
 
 /* Independent byte bitmap checks exact original coverage, not the planner's
    algorithm. The output emulates production's bounded 64 KiB read requests. */
-static void check_bytes(uint64_t size, const uint64_t *offsets, size_t count,
-                        uint32_t length, uint64_t expected_total) {
+static void check_bytes_within(uint64_t size, const uint64_t *offsets, size_t count,
+                               uint32_t length, uint64_t expected_total, uint32_t limit) {
   for (int short_packet = 0; short_packet <= 1; short_packet++) {
     unsigned char *requested = calloc((size_t)size, 1);
     unsigned char *read = calloc((size_t)size, 1);
@@ -20,8 +20,8 @@ static void check_bytes(uint64_t size, const uint64_t *offsets, size_t count,
     assert(terento_plan_sample_coverage(size, offsets, count, length, regions, &total) == 0);
     for (size_t i = 0; i < count; i++) {
         for (uint32_t consumed = 0; consumed < regions[i].length;) {
-            uint32_t chunk = terento_sample_read_request(regions[i].length - consumed, short_packet);
-            assert(chunk > 0 && chunk <= 65536);
+            uint32_t chunk = terento_sample_read_request_within(regions[i].length - consumed, short_packet, limit);
+            assert(chunk > 0 && chunk <= limit);
             if (short_packet) assert(chunk % 2 == 1);
             uint64_t start = regions[i].offset + consumed;
             assert(start < size && chunk <= size - start);
@@ -45,6 +45,12 @@ static void check_bytes(uint64_t size, const uint64_t *offsets, size_t count,
   }
 }
 
+static void check_bytes(uint64_t size, const uint64_t *offsets, size_t count,
+                        uint32_t length, uint64_t expected_total) {
+    check_bytes_within(size, offsets, count, length, expected_total, TERENTO_SAMPLE_READ_DEFAULT_LIMIT);
+    check_bytes_within(size, offsets, count, length, expected_total, TERENTO_SAMPLE_READ_LARGE_LIMIT);
+}
+
 int main(void) {
     assert(terento_sample_read_request(0, 1) == 0);
     for (uint32_t remaining = 1; remaining <= 131073; remaining++) {
@@ -52,6 +58,17 @@ int main(void) {
         assert(n > 0 && n <= remaining && n <= 65536 && n % 2 == 1);
         uint32_t ordinary = remaining > 65536 ? 65536 : remaining;
         assert(terento_sample_read_request(remaining, 0) == ordinary);
+    }
+    /* 1 MiB requests for every Garmin; odd with the 51b8 short-packet rule. */
+    assert(terento_sample_read_limit(0x091e, 0x51b8) == 1048576);
+    assert(terento_sample_read_limit(0x091e, 0x4f42) == 1048576);
+    assert(terento_sample_read_limit(0x1234, 0x51b8) == 65536);
+    assert(terento_sample_read_request_within(4194304, 1, TERENTO_SAMPLE_READ_LARGE_LIMIT) == 1048575);
+    assert(terento_sample_read_request_within(4194304, 0, TERENTO_SAMPLE_READ_LARGE_LIMIT) == 1048576);
+    assert(terento_sample_read_request_within(70000, 1, TERENTO_SAMPLE_READ_LARGE_LIMIT) == 69999);
+    for (uint32_t remaining = 1; remaining <= 1048578; remaining += 997) {
+        uint32_t n = terento_sample_read_request_within(remaining, 1, TERENTO_SAMPLE_READ_LARGE_LIMIT);
+        assert(n > 0 && n <= remaining && n <= 1048576 && n % 2 == 1);
     }
     uint64_t single[] = {0};
     check_bytes(1, single, 1, 4194304, 1);
@@ -86,5 +103,6 @@ int main(void) {
     assert(total == 3 && regions[0].length == 3);
     puts("PASS: native sample coverage preserves every requested byte, without overlap or out-of-range reads");
     puts("PASS: Andorra 7 x 4 MiB verification reads 4,591,616 unique bytes; minimum, tail, large, and overflow bounds pass");
+    puts("PASS: 1 MiB sampled requests (Garmin) keep the same exact byte coverage");
     return 0;
 }

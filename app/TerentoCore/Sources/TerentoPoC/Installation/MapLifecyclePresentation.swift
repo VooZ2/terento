@@ -18,6 +18,22 @@ struct MapLifecycleActionAvailability: Equatable, Sendable {
     /// Set when the catalog has a newer release but Update is not offered,
     /// so the row can say why instead of showing only Remove.
     var updateNotice: String? = nil
+    /// A provider-wide reason (provider down, paused, limiting, or the check
+    /// failed). Manage maps says it once under the provider group header
+    /// instead of on every row.
+    var groupNotice: String? = nil
+    /// The acquisition block code, so a reason the whole catalog shares can be
+    /// said once for the page instead.
+    var blockReason: String? = nil
+
+    /// The page says a catalog-wide reason once; the row and its provider
+    /// group then say nothing about it (Update stays unavailable).
+    func removingCatalogWideReason(_ sharedBlockReason: String?) -> MapLifecycleActionAvailability {
+        guard let sharedBlockReason, blockReason == sharedBlockReason else { return self }
+        return MapLifecycleActionAvailability(
+            actions: actions, status: status, reason: nil, updateBlocked: updateBlocked,
+            updateNotice: updateNotice, groupNotice: nil, blockReason: blockReason)
+    }
 
     func allows(_ action: MapLifecycleAction) -> Bool {
         actions.contains(action)
@@ -171,7 +187,7 @@ struct MapLifecyclePresentationResolver: Sendable {
             switch comparison.status {
             case .updateAvailable where acquisitionAvailability != .available:
                 status = "Updates are not offered for this map"
-                reason = acquisitionAvailability.detailedExplanation
+                reason = acquisitionAvailability.manageRowReason
             case .updateAvailable where hasValidatedUpdateProfile:
                 actions.insert(.update)
                 status = "Update available"
@@ -192,12 +208,14 @@ struct MapLifecyclePresentationResolver: Sendable {
         return MapLifecycleActionAvailability(
             actions: actions,
             status: status,
-            reason: acquisitionAvailability.detailedExplanation ?? reason,
+            reason: acquisitionAvailability.manageRowReason ?? reason,
             updateBlocked: acquisitionAvailability != .available,
             updateNotice: comparison?.status == .updateAvailable
                 && acquisitionAvailability == .available
                 && !actions.contains(.update)
-                ? "Newer release available. \(Self.noProfileUpdateReason)" : nil
+                ? "Newer release available. \(Self.noProfileUpdateReason)" : nil,
+            groupNotice: acquisitionAvailability.manageGroupNotice,
+            blockReason: acquisitionAvailability.blockReason
         )
     }
 
@@ -431,8 +449,7 @@ enum MapLifecycleConfirmationCopy {
             .filter { !$0.isEmpty }.joined(separator: " · ")
     }
 
-    static func removeMessage(metadata: String) -> String {
-        let action = "Other maps stay. This can't be undone."
-        return metadata.isEmpty ? action : "\(metadata). \(action)"
-    }
+    // The Remove dialog names the map in its title and shows `metadata` as
+    // its only line under the title row. No "can't be undone": a removed map
+    // can be installed again (owner 2026-11-22).
 }

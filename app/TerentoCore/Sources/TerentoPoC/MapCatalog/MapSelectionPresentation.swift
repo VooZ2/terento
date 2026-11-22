@@ -348,6 +348,16 @@ enum InstallationFlowPresentation: Sendable {
         phase != .idle
     }
 
+    /// On the "Map installed" page every sidebar item opens its own page
+    /// (Install maps opens a new selection), as Back to device does.
+    static func sidebarLeavesSuccessPage(
+        onInstallMaps: Bool,
+        showsSuccess: Bool,
+        phase: InstallationProcessPhase
+    ) -> Bool {
+        onInstallMaps && showsSuccess && !isActive(phase)
+    }
+
     static func isActive(_ phase: InstallationProcessPhase) -> Bool {
         switch phase {
         case .downloading, .preparing, .awaitingConfirmation, .installing, .finishing:

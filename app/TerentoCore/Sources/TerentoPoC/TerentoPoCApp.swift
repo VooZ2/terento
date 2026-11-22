@@ -6,6 +6,8 @@ import SwiftUI
 struct TerentoEntryPoint {
     static func main() {
         if MTPFinishingWorker.runIfRequested() { return }
+        // Inter and Instrument Sans ship in the app; register them before any view.
+        TerentoBundledFonts.register()
         LocalTerentoFailedInstallRecoveryStore.onSetAside = { url in
             Task { @MainActor in TerentoDiagnosticLog.recordRecoveryQuarantine(url) }
         }
@@ -106,6 +108,18 @@ struct TerentoPoCApp: App {
                 Button("Documentation") {
                     openExternalURL(TerentoAppLinks.documentation)
                 }
+                Divider()
+                Button("Send Feedback…") {
+                    openExternalURL(TerentoAppLinks.feedbackMail(
+                        version: TerentoTelemetryMetadata.version,
+                        build: TerentoTelemetryMetadata.build))
+                }
+                #if TERENTO_APP_STORE
+                Button("Rate on App Store") {
+                    openExternalURL(TerentoAppLinks.appStoreReview)
+                }
+                #endif
+                Divider()
                 Button("Report an Issue") {
                     openExternalURL(TerentoAppLinks.issues)
                 }
@@ -114,7 +128,7 @@ struct TerentoPoCApp: App {
                     openWindow(id: "support-report")
                 }
                 #endif
-                Button("GitHub Repository") {
+                Button("Star on GitHub") {
                     openExternalURL(TerentoAppLinks.repository)
                 }
             }

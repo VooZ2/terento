@@ -210,8 +210,17 @@ struct Stage42ArtifactValidator: MapInstallationArtifactValidator, Sendable {
             throw Stage42ArtifactValidationError.sourceSizeMismatch
         }
 
-        if packageProvider == "bbbike" || packageProvider == "osmapa" {
+        if packageProvider == "bbbike" || packageProvider == "osmapa" || packageProvider == "openfietsmap" {
             let source = try MapSourceValidator().validate(fileURL: artifact.localIMGURL, expectedPackage: package)
+            guard source.sha256 == artifact.sha256 else { throw Stage42ArtifactValidationError.sourceHashMismatch }
+        }
+        if packageProvider == "luckymaps" {
+            // Main map or contour add-on: revalidate against that artifact's own proof.
+            guard let catalogArtifact = package.artifacts.first(where: { $0.kind == artifact.artifactKind }) else {
+                throw Stage42ArtifactValidationError.notExactValidatedArtifact
+            }
+            let source = try MapSourceValidator().validate(fileURL: artifact.localIMGURL,
+                expectedPackage: package.acquisitionPackage(for: catalogArtifact))
             guard source.sha256 == artifact.sha256 else { throw Stage42ArtifactValidationError.sourceHashMismatch }
         }
         let actualHash = try localFileSHA256(of: artifact.localIMGURL)

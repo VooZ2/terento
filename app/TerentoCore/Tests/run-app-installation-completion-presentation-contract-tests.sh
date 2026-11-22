@@ -54,8 +54,8 @@ reject_source 'InstallSharingDialog' 'the sharing question is still a dialog'
 require_finish 'InstallSharingCallout(onDecide: decideSharing)' 'the sharing question is not on the Done page'
 donate="$(sed -n '/if showsDonationLine, !hasPartialInstallation {/,/#endif/p' "$screen")"
 grep -Fq 'Link("Donate ↗", destination: TerentoAppLinks.donate)' <<< "$donate" || { print -u2 'FAIL: Donate line is missing'; exit 1; }
-if grep -Fq 'size: 13' <<< "$donate" || [[ "$(grep -c 'size: 15' <<< "$donate")" != 2 ]]; then
-  print -u2 'FAIL: the Donate line is not body size (15)'; exit 1
+if grep -Fq 'size:' <<< "$donate" || [[ "$(grep -c '\.terento(\.meta)' <<< "$donate")" != 2 ]]; then
+  print -u2 'FAIL: the Donate line is not meta text (14)'; exit 1
 fi
 reject_source 'ready and verified' 'Done still says verified, which reads as a promise that the device shows the map'
 reject_source 'Compatibility report sent.' 'telemetry status remains visible on Done'

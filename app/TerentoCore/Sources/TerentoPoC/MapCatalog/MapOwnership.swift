@@ -52,14 +52,15 @@ struct MapOwnershipRecord: Sendable, Equatable {
 /// path available for a valid unprotected map. App versions do not grant or
 /// revoke ownership, and a filename alone never grants managed update.
 struct MapOwnershipMatcher: Sendable {
-    /// A missing release is accepted only for a recorded managed OTM contour.
-    /// Callers must still match the exact path, size and provider/region identity.
+    /// A missing release is accepted only for a recorded managed OTM or Lucky
+    /// Maps contour. Callers must still match the exact path, size and
+    /// provider/region identity.
     static func lifecycleVersionMatches(
         scanned: MapVersion?, recorded: MapVersion,
         provider: String, filename: String, artifactKind: MapArtifactKind?
     ) -> Bool {
         if let scanned { return scanned == recorded }
-        return MapIdentity.normalizeProvider(provider) == "opentopomap"
+        return ["opentopomap", "luckymaps"].contains(MapIdentity.normalizeProvider(provider))
             && artifactKind == .contours
             && TerentoManagedFilenameGenerator().artifactKind(for: filename) == .contours
     }

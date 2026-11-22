@@ -613,7 +613,20 @@ enum MTPFinishingWorker {
             message: "The device operation could not be completed.", createdItemID: nil, context: context)
     }
 
+    /// Remove's confirm step uses the same bound as the inventory read before
+    /// the delete: 60 s plus 30 ms per object last seen, at most 600 s.
+    static func removalConfirmTimeLimit(expectedObjectCount: Int?) -> TimeInterval {
+        timeout(for: Request(operation: .inventory, expectedObjectCount: expectedObjectCount), sampleTimeout: 0)
+    }
+
     static func timeout(for request: Request, sampleTimeout: TimeInterval) -> TimeInterval {
+        let bound = operationTimeout(for: request, sampleTimeout: sampleTimeout)
+        // A caller's own deadline can only shorten the bound, never extend it.
+        guard let timeLimit = request.timeLimit, timeLimit.isFinite else { return bound }
+        return min(bound, max(0, timeLimit))
+    }
+
+    private static func operationTimeout(for request: Request, sampleTimeout: TimeInterval) -> TimeInterval {
         switch request.operation {
         case .samples:
             return min(600, sampleTimeout)
@@ -650,6 +663,9 @@ enum MTPFinishingWorker {
         var files: [DeviceFile]? = nil
         /// `.inventory` only: read the map scope (storage roots + GARMIN subtree).
         var mapScope: Bool? = nil
+        /// Time left in the caller's own step (Remove's confirm step). It only
+        /// shortens the operation's bound.
+        var timeLimit: TimeInterval? = nil
     }
     struct PrefixResult: Codable, Equatable {
         var index: Int
@@ -902,6 +918,46 @@ private struct BoundedInstallationDeviceReader: InstallationDeviceReader {
     }
 }
 
+/// Owner decision 2026-11-22: a read-only connect or Manage maps read whose
+/// watch stopped answering (the helper's bound, or a USB transfer that timed
+/// out, `TERENTO_MTP_READ_STALLED`) is repeated once in a new helper and USB
+/// session, after a short wait, before the user is asked to unplug. Only these
+/// reads: never a write, a delete, a map read-back or an install-path read.
+/// Opening the repeat's session is the ordinary native open, which may reset
+/// the USB link on models other than USB product `51b8` (ADR 0026 addendum).
+enum StalledReadRepeat {
+    static let delay: TimeInterval = 2
+
+    static func isStall(_ error: Error) -> Bool {
+        DeviceDetectionErrorClassifier.classify(error) == .stoppedResponding
+    }
+
+    /// `body` runs once, and once more only after a stall when `mayRepeat`
+    /// allows it and the caller was not cancelled. When the repeat fails too,
+    /// the first stall is reported: a watch that stopped answering often
+    /// refuses the next session (busy), and the user must see that it stopped.
+    static func run<T>(mayRepeat: () -> Bool = { true },
+                       onRepeat: () -> Void = {},
+                       sleep: (TimeInterval) -> Void = { Thread.sleep(forTimeInterval: $0) },
+                       cancelled: () -> Bool = { Task<Never, Never>.isCancelled },
+                       _ body: () throws -> T) throws -> T {
+        do {
+            return try body()
+        } catch {
+            guard isStall(error), !cancelled(), mayRepeat() else { throw error }
+            onRepeat()
+            sleep(delay)
+            guard !cancelled() else { throw error }
+            do {
+                return try body()
+            } catch let repeatError {
+                if repeatError is CancellationError || cancelled() { throw repeatError }
+                throw error
+            }
+        }
+    }
+}
+
 /// Default detection transport: USB-only probes stay in-process (libusb device
 /// list, no session); the libmtp detection snapshot runs in the bounded worker
 /// so a stalled watch cannot hold the operation gate indefinitely.
@@ -910,19 +966,29 @@ struct BoundedDeviceTransport: DeviceSnapshotReader, DevicePresenceReader,
     typealias WorkerCall = @Sendable (MTPFinishingWorker.Request) throws -> MTPFinishingWorker.Response
     let operationGate: MTPOperationGate
     private let worker: WorkerCall
+    private let onRepeat: @Sendable () -> Void
+    private let sleep: @Sendable (TimeInterval) -> Void
 
     init(operationGate: MTPOperationGate = .shared,
-         worker: @escaping WorkerCall = { try MTPFinishingWorker.perform($0) }) {
+         worker: @escaping WorkerCall = { try MTPFinishingWorker.perform($0) },
+         onRepeat: @escaping @Sendable () -> Void = {},
+         sleep: @escaping @Sendable (TimeInterval) -> Void = { Thread.sleep(forTimeInterval: $0) }) {
         self.operationGate = operationGate
         self.worker = worker
+        self.onRepeat = onRepeat
+        self.sleep = sleep
     }
 
+    /// One repeat in a new helper after a stall (`StalledReadRepeat`). The
+    /// wait happens outside the operation gate.
     func readSnapshot() throws -> DeviceSnapshot {
-        try operationGate.withOperation(kind: .presence) {
-            guard let snapshot = try worker(.init(operation: .deviceSnapshot)).snapshot else {
-                throw MTPFinishingWorker.failure(for: .deviceSnapshot, kind: .invalidResponse)
+        try StalledReadRepeat.run(onRepeat: onRepeat, sleep: sleep) {
+            try operationGate.withOperation(kind: .presence) {
+                guard let snapshot = try worker(.init(operation: .deviceSnapshot)).snapshot else {
+                    throw MTPFinishingWorker.failure(for: .deviceSnapshot, kind: .invalidResponse)
+                }
+                return snapshot
             }
-            return snapshot
         }
     }
 
@@ -941,22 +1007,31 @@ struct BoundedDeviceTransport: DeviceSnapshotReader, DevicePresenceReader,
 
 /// Read-only map-scan reader. Snapshot, inventory and header reads use the
 /// bounded worker under the scan's lifecycle lease; what is read is unchanged.
-/// After one read reaches its deadline, later reads fail immediately so a
-/// stalled watch is reported once instead of retried file by file.
+/// The first read whose watch stopped answering is repeated once in a new
+/// helper (`StalledReadRepeat`); one repeat per scan. After a read stalls
+/// again, later reads fail immediately so a stalled watch is reported once
+/// instead of retried file by file.
 final class BoundedMapScanReader: DeviceFileReader, @unchecked Sendable {
     private let operationGate: MTPOperationGate
     private let lifecycleLease: MTPOperationLease?
     private let worker: BoundedDeviceTransport.WorkerCall
+    private let onRepeat: @Sendable () -> Void
+    private let sleep: @Sendable (TimeInterval) -> Void
     private let lock = NSLock()
     private var expectedObjectCount: Int?
     private var deadlineError: Error?
+    private var repeatUsed = false
 
     init(operationGate: MTPOperationGate, lifecycleLease: MTPOperationLease?, expectedObjectCount: Int?,
-         worker: @escaping BoundedDeviceTransport.WorkerCall = { try MTPFinishingWorker.perform($0) }) {
+         worker: @escaping BoundedDeviceTransport.WorkerCall = { try MTPFinishingWorker.perform($0) },
+         onRepeat: @escaping @Sendable () -> Void = {},
+         sleep: @escaping @Sendable (TimeInterval) -> Void = { Thread.sleep(forTimeInterval: $0) }) {
         self.operationGate = operationGate
         self.lifecycleLease = lifecycleLease
         self.expectedObjectCount = expectedObjectCount
         self.worker = worker
+        self.onRepeat = onRepeat
+        self.sleep = sleep
     }
 
     /// Object count observed by this scan's inventory (or the expected count).
@@ -1019,8 +1094,16 @@ final class BoundedMapScanReader: DeviceFileReader, @unchecked Sendable {
                             _ decode: (MTPFinishingWorker.Response) throws -> T) throws -> T {
         if let deadlineError = stoppedRespondingError { throw deadlineError }
         do {
-            return try operationGate.withOperation(kind: .inventory, lifecycleLease: lifecycleLease) {
-                try decode(worker(request))
+            return try StalledReadRepeat.run(
+                mayRepeat: { lock.withLock { () -> Bool in
+                    defer { repeatUsed = true }
+                    return !repeatUsed
+                } },
+                onRepeat: onRepeat, sleep: sleep
+            ) {
+                try operationGate.withOperation(kind: .inventory, lifecycleLease: lifecycleLease) {
+                    try decode(worker(request))
+                }
             }
         } catch {
             if DeviceDetectionErrorClassifier.classify(error) == .stoppedResponding {

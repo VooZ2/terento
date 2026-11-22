@@ -30,6 +30,18 @@ die() {
 }
 
 usage() { sed -n '2,/^# Usage:/p' "$0"; exit 2; }
+
+# Owner 2026-11-22: a build whose release label is empty, "development" or
+# contains -local never reaches App Store Connect (every -local build honours
+# the bundled-catalog switch, TERENTO_DEBUG_UNPAUSE_PROVIDERS and ?preview=).
+# The label is read from the built app's Info.plist, never from the environment.
+refuse_unpublishable_label() {
+    case "$1" in
+        "" | development | *-local*)
+            die "The archived app's TerentoReleaseLabel is \"$1\". Only a public label (for example 1.3.0) may go to App Store Connect."
+            ;;
+    esac
+}
 [ "$#" -le 1 ] || usage
 sequence="${1:-}"
 case "$sequence" in
@@ -109,6 +121,8 @@ xcodebuild \
 
 archived_app="$archive/Products/Applications/Terento.app"
 [ -d "$archived_app" ] || die "The archive has no Terento.app: $archived_app"
+archived_label="$(/usr/libexec/PlistBuddy -c 'Print :TerentoReleaseLabel' "$archived_app/Contents/Info.plist" 2>/dev/null || true)"
+refuse_unpublishable_label "$archived_label"
 /usr/bin/cmp -s "$production_manifest" "$archived_app/Contents/Resources/container-migration.plist" \
     || die "The archive does not carry the production migration manifest."
 
@@ -140,6 +154,10 @@ helper="$app/Contents/MacOS/TerentoFinishingWorker"
     || die "The package has the wrong bundle ID."
 [ "$(/usr/libexec/PlistBuddy -c 'Print :ITSAppUsesNonExemptEncryption' "$app/Contents/Info.plist")" = "false" ] \
     || die "The package does not declare ITSAppUsesNonExemptEncryption = NO."
+# The exported package carries the same public label as the archive.
+package_label="$(/usr/libexec/PlistBuddy -c 'Print :TerentoReleaseLabel' "$app/Contents/Info.plist" 2>/dev/null || true)"
+refuse_unpublishable_label "$package_label"
+[ "$package_label" = "$archived_label" ] || die "The package's release label differs from the archive's."
 /usr/bin/codesign --verify --deep --strict "$app" || die "The package's app signature is invalid."
 /usr/sbin/pkgutil --check-signature "$pkg" >"$output/pkg-signature.txt" || die "The package is not signed."
 

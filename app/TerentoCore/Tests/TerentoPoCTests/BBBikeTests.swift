@@ -76,7 +76,7 @@ private struct PrefixReader: DeviceFileReader {
             check(BBBikeProviderAdapter.conflictingType(package, provider: other.providerId, region: other.canonicalRegionId) == installedType,
                 "conflict resolves the exact installed variant")
             check(BBBikeProviderAdapter.installedTypeConflictMessage(for: package, installedType: installedType) ==
-                "Can't install next to the \(installedType.versionName) version of this map. Remove that one in Manage maps first.",
+                "Remove \(installedType.title) in Manage maps first.",
                 "conflict copy names exact selected and installed variants in both directions")
             for provider in ["maprando", "opentopomap", "freizeitkarte"] {
                 check(!BBBikeProviderAdapter.conflicts(package, provider: provider, region: other.canonicalRegionId),
@@ -101,13 +101,13 @@ private struct PrefixReader: DeviceFileReader {
                 && BBBikeProviderAdapter.conflictingType(package, filename: openTopoName) == .opentopo,
                 "installed OpenTopoMap blocks \(selectedTitle) of the same region")
             check(BBBikeProviderAdapter.installedTypeConflictMessage(for: package, installedType: .opentopo) ==
-                "Can't install next to the OpenTopoMap version of this map. Remove that one in Manage maps first.",
+                "Remove BBBike (OpenTopoMap) in Manage maps first.",
                 "OpenTopoMap conflict copy names the installed variant")
             check(BBBikeProviderAdapter.unverifiedTypeConflictMessage(for: package) ==
-                "Can't install next to another version of this map on your Garmin. Remove that one in Manage maps first.",
+                "Remove the other BBBike map of this region in Manage maps first.",
                 "unknown conflicting variant is not guessed")
             check(BBBikeProviderAdapter.unverifiedTypeConflictMessage(for: package, otherType: .opentopo) ==
-                "Can't install next to the OpenTopoMap version of this map on your Garmin. Remove that one in Manage maps first.",
+                "Remove BBBike (OpenTopoMap) in Manage maps first.",
                 "unchecked conflict points to Remove, not to a check Manage cannot do")
         }
         check(!BBBikeProviderAdapter.conflicts(andorra[0], provider: "bbbike",

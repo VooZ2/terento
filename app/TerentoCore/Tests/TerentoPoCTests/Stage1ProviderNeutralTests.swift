@@ -74,6 +74,7 @@ struct Stage1ProviderNeutralTests {
 
     static func main() async {
         testBlockedCatalogStaysVisible()
+        testCatalogLevelNoticeAndTestSwitch()
         testLegacyPackageGetsRequiredMainArtifact()
         testOptionalContoursDoesNotHideMainArtifact()
         testProviderNativeMetadataDecodesWithoutFZKSemantics()
@@ -112,6 +113,48 @@ struct Stage1ProviderNeutralTests {
         await testRemoteAcceptanceAndAcquisitionValidation()
 
         print("PASS: 36 Stage 1 provider-neutral core tests")
+    }
+
+    /// Owner 2026-11-22: a reason the whole catalog shares is said once per
+    /// page; the bundled-catalog switch works only in Debug and -local builds.
+    private static func testCatalogLevelNoticeAndTestSwitch() {
+        expect(MapCatalogSource.bundledFallback.installNotice
+                == "Couldn't load the map list. Maps can't be installed right now."
+                && MapCatalogSource.remote.installNotice == nil
+                && MapCatalogSource.cachedRemote.installNotice == MapCatalogSource.cachedRemote.userLabel
+                && MapCatalogSource.appUpdateRequired.installNotice == MapCatalogSource.appUpdateRequired.userLabel,
+            "Install maps has one catalog notice, keeping the cached and update wording")
+        expect(MapCatalogSource.bundledFallback.manageNotice == "Couldn't check for updates."
+                && MapCatalogSource.cachedRemote.manageNotice == "Couldn't check for updates."
+                && MapCatalogSource.remote.manageNotice == nil,
+            "Manage maps says the failed check once for the page")
+        let fallbackBlocked = MapAcquisitionAvailability.blocked(provider: "Freizeitkarte", reason: "STATUS_UNVERIFIED")
+        let ownOutage = MapAcquisitionAvailability.blocked(provider: "BBBike", reason: "PROVIDER_DOWN")
+        expect(MapCatalogSource.bundledFallback.sharedBlockReason == "STATUS_UNVERIFIED"
+                && MapCatalogSource.bundledFallback.isShared(fallbackBlocked)
+                && !MapCatalogSource.bundledFallback.isShared(ownOutage)
+                && !MapCatalogSource.remote.isShared(fallbackBlocked)
+                && !MapCatalogSource.bundledFallback.isShared(.withheldRussia)
+                && MapCatalogSource.appUpdateRequired.isShared(.blocked(provider: "X", reason: "APP_UPDATE_REQUIRED")),
+            "only the reason the whole catalog shares is hidden from rows")
+
+        expect(!MapCatalogTestSwitch.isAllowed(isDebug: false, isAppStore: true, releaseLabel: "1.3.0")
+                && !MapCatalogTestSwitch.isAllowed(isDebug: true, isAppStore: true, releaseLabel: "1.3.0")
+                && !MapCatalogTestSwitch.isAllowed(isDebug: false, isAppStore: true, releaseLabel: nil),
+            "a stable App Store or TestFlight build ignores the bundled-catalog switch")
+        expect(MapCatalogTestSwitch.isAllowed(isDebug: false, isAppStore: true, releaseLabel: "1.3.0-local")
+                && MapCatalogTestSwitch.isAllowed(isDebug: false, isAppStore: true, releaseLabel: " 1.3.0-local\n"),
+            "an App Store configuration -local build honours the switch")
+        expect(!MapCatalogTestSwitch.isAllowed(isDebug: false, isAppStore: false, releaseLabel: "1.3.0")
+                && !MapCatalogTestSwitch.isAllowed(isDebug: false, isAppStore: false, releaseLabel: nil),
+            "a stable DMG build ignores the switch")
+        expect(MapCatalogTestSwitch.isAllowed(isDebug: false, isAppStore: false, releaseLabel: "1.3.0-local")
+                && MapCatalogTestSwitch.isAllowed(isDebug: true, isAppStore: false, releaseLabel: "1.3.0"),
+            "a -local Release build and a Debug build honour the switch")
+        expect(MapCatalogTestSwitch.isRequested(environment: ["TERENTO_USE_BUNDLED_MAP_CATALOG": "1"], infoValue: nil)
+                && MapCatalogTestSwitch.isRequested(environment: [:], infoValue: true)
+                && !MapCatalogTestSwitch.isRequested(environment: ["TERENTO_USE_BUNDLED_MAP_CATALOG": "0"], infoValue: nil),
+            "the switch is on only when asked for")
     }
 
     private static func bundledDocument() throws -> [String: Any] {

@@ -1,3 +1,23 @@
+# Terento v1.3.0 (build 50)
+<!-- DRAFT: staged 1.3.0 build 50 (1.2.3 was never released; its changes are here); not published until the signed, notarized DMG is on GitHub. -->
+
+Terento 1.3.0 is an update to Terento 1.2.2, the free, open-source app for installing community maps on map-capable Garmin smartwatches and Edge bike computers from Apple Silicon Macs running macOS 13 or later. Compatibility is still evaluated model by model.
+
+Installed 1.2.2 and earlier builds are offered it by the in-app update check. The Mac App Store version is updated separately.
+
+## WHAT'S NEW?
+
+- New map source: OpenFietsMap, cycling maps for the Netherlands, Belgium and the rest of Europe.
+- A polished design: Terento's own fonts and one consistent look throughout the app.
+- Import map file is now a button next to Refresh.
+
+## WHAT'S FIXED?
+
+- A downloaded map is kept for 6 hours, so Try again doesn't download it again.
+- Cancel during a download keeps your selection.
+- Manage maps rows no longer jump while a map is removed.
+- When maps can't be downloaded, the message is shown once instead of under every map.
+
 # Terento v1.2.2 (build 49)
 
 Terento 1.2.2 is an update to Terento 1.2.1, the free, open-source app for installing community maps on map-capable Garmin smartwatches and Edge bike computers from Apple Silicon Macs running macOS 13 or later. Compatibility is still evaluated model by model.
