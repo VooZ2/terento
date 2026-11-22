@@ -271,6 +271,29 @@ func runMapLifecyclePresentationTests() throws {
     try require(unverified.removingCatalogWideReason(nil) == unverified,
         "a remote catalog keeps every reason")
 
+    // The bundled-catalog test switch: Debug and "-local" builds only.
+    try require(!MapCatalogTestSwitch.isAllowed(isDebug: false, isAppStore: true, releaseLabel: "1.3.0")
+            && !MapCatalogTestSwitch.isAllowed(isDebug: false, isAppStore: true, releaseLabel: "1.3.0-local")
+            && !MapCatalogTestSwitch.isAllowed(isDebug: true, isAppStore: true, releaseLabel: "1.3.0-local"),
+        "an App Store or TestFlight build ignores the bundled-catalog switch")
+    try require(!MapCatalogTestSwitch.isAllowed(isDebug: false, isAppStore: false, releaseLabel: "1.3.0")
+            && !MapCatalogTestSwitch.isAllowed(isDebug: false, isAppStore: false, releaseLabel: nil),
+        "a stable DMG build ignores the switch")
+    try require(MapCatalogTestSwitch.isAllowed(isDebug: false, isAppStore: false, releaseLabel: "1.3.0-local")
+            && MapCatalogTestSwitch.isAllowed(isDebug: true, isAppStore: false, releaseLabel: "1.3.0"),
+        "a -local Release build and a Debug build honour the switch")
+    try require(MapCatalogTestSwitch.isRequested(environment: ["TERENTO_USE_BUNDLED_MAP_CATALOG": "1"], infoValue: nil)
+            && MapCatalogTestSwitch.isRequested(environment: [:], infoValue: true)
+            && !MapCatalogTestSwitch.isRequested(environment: ["TERENTO_USE_BUNDLED_MAP_CATALOG": "0"], infoValue: nil),
+        "the switch is on only when asked for")
+
+    // From "Map installed" every sidebar item opens its own page.
+    try require(InstallationFlowPresentation.sidebarLeavesSuccessPage(onInstallMaps: true, showsSuccess: true, phase: .completed)
+            && !InstallationFlowPresentation.sidebarLeavesSuccessPage(onInstallMaps: true, showsSuccess: true, phase: .installing)
+            && !InstallationFlowPresentation.sidebarLeavesSuccessPage(onInstallMaps: true, showsSuccess: false, phase: .idle)
+            && !InstallationFlowPresentation.sidebarLeavesSuccessPage(onInstallMaps: false, showsSuccess: true, phase: .completed),
+        "the success page is left by any sidebar item, but never during an active installation")
+
     let unverifiedText = MapAcquisitionAvailability.blocked(provider: "Freizeitkarte", reason: "STATUS_UNVERIFIED")
         .detailedExplanation ?? ""
     try require(!unverifiedText.lowercased().contains("connection") && !unverifiedText.lowercased().contains("internet"),

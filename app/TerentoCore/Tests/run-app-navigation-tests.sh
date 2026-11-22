@@ -76,8 +76,26 @@ if ! grep -Fq 'mapEngine.beginInstallation(plan: plan, operationId: operationID)
     exit 1
 fi
 
+# From "Map installed" every sidebar item opens its own page (owner 2026-11-22).
+python3 - "$connect_screen" "$project_root/Sources/TerentoPoC/MapCatalog/MapSelectionPresentation.swift" <<'PYSUCCESS'
+import sys
+screen, presentation = (open(p).read() for p in sys.argv[1:3])
+nav = screen[screen.index("private func navigate(to section: TerentoSection) {"):screen.index("private func updatePresenceMonitoring")]
+assert "InstallationFlowPresentation.sidebarLeavesSuccessPage(" in nav, "navigation does not know the success page"
+assert "guard selectedSection != section || leavesSuccessPage else" in nav, "Install maps on the success page does nothing"
+assert nav.index("if leavesSuccessPage {") < nav.index("selectedSection = section"), "the success page is not left before the new page opens"
+assert "localInstallStep = .choose" in nav[nav.index("if leavesSuccessPage {"):], "Install maps does not open a new selection"
+assert "let shouldRefreshMapInventory = leavesSuccessPage" in nav, "leaving the success page does not read the watch again"
+back = screen[screen.index("private func returnToDeviceAfterSuccess() {"):]
+back = back[:back.index("\n    }\n")]
+assert "navigate(to: .device)" in back, "Back to device and the sidebar take different paths"
+rule = presentation[presentation.index("static func sidebarLeavesSuccessPage("):presentation.index("static func isActive(")]
+assert "onInstallMaps && showsSuccess && !isActive(phase)" in rule
+print("PASS: every sidebar item leaves the Map installed page")
+PYSUCCESS
+
 # Opening Install maps or Manage maps reuses a fresh read of the same watch.
-if ! grep -Fq 'let shouldRefreshMapInventory = (section == .manageMaps' "$connect_screen" \
+if ! grep -Fq '|| ((section == .manageMaps' "$connect_screen" \
     || ! grep -Fq '&& !mapEngine.hasFreshInventory(for: identity)' "$connect_screen" \
     || ! grep -Fq 'refreshMapInventory()' "$connect_screen"; then
     print -u2 "FAIL: map navigation does not refresh the device-backed inventory"

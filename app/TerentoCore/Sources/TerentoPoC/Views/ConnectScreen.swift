@@ -640,7 +640,14 @@ struct ConnectScreen: View {
     }
 
     private func navigate(to section: TerentoSection) {
-        guard selectedSection != section else {
+        // From "Map installed" every sidebar item, Install maps too, opens its
+        // own page; the watch is read again, as Back to device does.
+        let leavesSuccessPage = InstallationFlowPresentation.sidebarLeavesSuccessPage(
+            onInstallMaps: selectedSection == .installMaps,
+            showsSuccess: localInstallStep == .done,
+            phase: mapEngine.installationPhase
+        )
+        guard selectedSection != section || leavesSuccessPage else {
             return
         }
 
@@ -649,13 +656,19 @@ struct ConnectScreen: View {
             return
         }
 
+        if leavesSuccessPage {
+            selectedInstallationPlan = nil
+            localInstallStep = .choose
+        }
+
         // Install maps and Manage maps show the last read while it still
         // describes the watch (same connection, nothing written since), so
         // opening a page does not re-read the watch or disable its actions;
         // Refresh reads again.
-        let shouldRefreshMapInventory = (section == .manageMaps
-            || (section == .installMaps && !installationFlowHasStarted))
-            && !mapEngine.hasFreshInventory(for: identity)
+        let shouldRefreshMapInventory = leavesSuccessPage
+            || ((section == .manageMaps
+                || (section == .installMaps && !installationFlowHasStarted))
+                && !mapEngine.hasFreshInventory(for: identity))
 
         if section == .installMaps, !installationFlowHasStarted {
             localInstallStep = .choose
@@ -3267,10 +3280,8 @@ struct ConnectScreen: View {
     }
 
     private func returnToDeviceAfterSuccess() {
-        selectedSection = .device
-        selectedInstallationPlan = nil
-        localInstallStep = .choose
-        refreshMapInventory()
+        // The same path as the sidebar from the success page.
+        navigate(to: .device)
     }
 
     private func storageFillRatio(for snapshot: DeviceSnapshot) -> Double {
@@ -4790,7 +4801,8 @@ private struct ManageMapRow: View {
             title: item.title,
             detail: item.manageRowMetadata,
             status: manageStatus,
-            note: operation == nil && !availability.updateBlocked ? availability.updateNotice : nil,
+            // Kept during an operation too, so the row keeps its height.
+            note: !availability.updateBlocked ? availability.updateNotice : nil,
             contentSpacing: 9,
             rowVerticalPadding: 10
         ) {
@@ -4799,32 +4811,20 @@ private struct ManageMapRow: View {
                 .foregroundStyle(item.failedInstallRecovery == nil ? TerentoColors.lichenDark : TerentoColors.error)
                 .frame(width: 24, height: 24)
         } trailing: {
-            if let operation, operationIsActive {
-                VStack(alignment: .leading, spacing: 4) {
-                    ManageOperationProgress(operation: operation)
-                    // The time line keeps its height while empty, so the row
-                    // does not grow when "Less than a minute left" appears.
-                    HStack(spacing: 10) {
-                        ZStack(alignment: .leading) {
-                            Label("Less than a minute left", systemImage: "clock")
-                                .labelStyle(.titleAndIcon)
-                                .font(.terento(.caption))
-                                .hidden()
-                            if let timeRemaining {
-                                TimeRemainingLabel(estimate: timeRemaining)
-                            }
-                        }
-                        Spacer(minLength: 0)
-                    }
+            // One fixed trailing height for actions and every operation step
+            // (Checking, Removing, time left, done), so no row below jumps.
+            ZStack(alignment: .trailing) {
+                ManageRowTrailingHeight()
+                if let operation, operationIsActive {
+                    ManageOperationProgress(operation: operation, timeRemaining: timeRemaining)
+                } else if !availableActions.isEmpty {
+                    ManageActionGroup(
+                        mapTitle: providerLabel.isEmpty ? item.title : "\(item.title), \(providerLabel)",
+                        primaryActions: primaryActions,
+                        isEnabled: !isLifecycleBusy,
+                        onAction: perform
+                    )
                 }
-                .frame(width: InstallationTimelineLayout.manageProgressWidth, alignment: .leading)
-            } else if !availableActions.isEmpty {
-                ManageActionGroup(
-                    mapTitle: providerLabel.isEmpty ? item.title : "\(item.title), \(providerLabel)",
-                    primaryActions: primaryActions,
-                    isEnabled: !isLifecycleBusy,
-                    onAction: perform
-                )
             }
         }
     }
@@ -5035,6 +5035,7 @@ private struct ManageActionButton: View {
 
 private struct ManageOperationProgress: View {
     let operation: MapLifecycleOperationState
+    var timeRemaining: RemainingTimeEstimate? = nil
 
     private var isRemoval: Bool {
         operation.action == .remove
@@ -5052,12 +5053,33 @@ private struct ManageOperationProgress: View {
         TerentoProgressBar.measured(progress?.fractionCompleted)
     }
 
+    /// Line 3 while no time estimate is shown.
+    private var detailLine: String {
+        guard let progress else {
+            return isRemoval ? "Verifying map removal" : operation.message
+        }
+        if isRemoval {
+            return progress.detail ?? "Verifying map removal"
+        }
+        if progress.phaseFraction != nil {
+            return progress.detail ?? operation.message
+        }
+        var line = "\(formatBytes(progress.bytesCompleted)) of \(formatBytes(progress.totalBytes))"
+        if progress.bytesPerSecond > 0 {
+            line += "  \(formatBytesPerSecond(progress.bytesPerSecond))/s"
+        }
+        return line
+    }
+
+    /// Three single lines (step, bar, detail or time left) in the fixed
+    /// ManageRowTrailingHeight, so the row never changes height.
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: ManageRowTrailingHeight.lineSpacing) {
             HStack(alignment: .firstTextBaseline) {
                 Text(operation.phase.userLabel)
                     .font(.terento(.meta, weight: .semibold))
                     .foregroundStyle(TerentoColors.graphite)
+                    .lineLimit(1)
 
                 Spacer()
 
@@ -5066,44 +5088,25 @@ private struct ManageOperationProgress: View {
                     Text("\(Int(measuredFraction * 100))%")
                         .font(.terento(.meta, weight: .semibold))
                         .foregroundStyle(TerentoColors.graphite)
+                        .lineLimit(1)
                 }
             }
 
+            // An initial operation shows an empty determinate bar.
             if let progress {
                 TerentoProgressBar(value: progress.fractionCompleted, label: operation.phase.userLabel)
-
-                if isRemoval {
-                    Text(progress.detail ?? "Verifying map removal")
-                        .font(.terento(.caption))
-                        .foregroundStyle(TerentoColors.secondaryText)
-                        .lineLimit(1)
-                } else if progress.phaseFraction != nil {
-                    Text(progress.detail ?? operation.message)
-                        .font(.terento(.caption))
-                        .foregroundStyle(TerentoColors.secondaryText)
-                        .fixedSize(horizontal: false, vertical: true)
-                } else {
-                    HStack(spacing: 8) {
-                        Text("\(formatBytes(progress.bytesCompleted)) of \(formatBytes(progress.totalBytes))")
-                        if progress.bytesPerSecond > 0 {
-                            Text("\(formatBytesPerSecond(progress.bytesPerSecond))/s")
-                        }
-                    }
-                    .font(.terento(.caption))
-                    .foregroundStyle(TerentoColors.secondaryText)
-                }
-            } else if isRemoval {
+            } else {
                 TerentoProgressBar(value: 0, label: operation.phase.userLabel)
+            }
 
-                Text("Verifying map removal")
+            if let timeRemaining {
+                TimeRemainingLabel(estimate: timeRemaining)
+                    .lineLimit(1)
+            } else {
+                Text(detailLine)
                     .font(.terento(.caption))
                     .foregroundStyle(TerentoColors.secondaryText)
                     .lineLimit(1)
-            } else {
-                TerentoProgressBar(value: 0, label: operation.phase.userLabel)
-                Text(operation.message)
-                    .font(.terento(.caption))
-                    .foregroundStyle(TerentoColors.secondaryText)
             }
         }
         .frame(width: InstallationTimelineLayout.manageProgressWidth, alignment: .leading)
@@ -5144,6 +5147,28 @@ private struct ManageOperationProgress: View {
 
 /// The third line of a map row: a blocked or warning message, never part of
 /// the metadata line. Its colour matches the row's status icon.
+/// The trailing height of every Manage maps row, idle or busy: the three
+/// single lines of the operation progress, drawn hidden. Zero width, so it
+/// never takes room from the title.
+private struct ManageRowTrailingHeight: View {
+    static let lineSpacing: CGFloat = 4
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Self.lineSpacing) {
+            Text("Removing")
+                .font(.terento(.meta, weight: .semibold))
+            TerentoProgressBar(value: 0)
+            Label("Less than a minute left", systemImage: "clock")
+                .labelStyle(.titleAndIcon)
+                .font(.terento(.caption))
+        }
+        .lineLimit(1)
+        .frame(width: 0)
+        .hidden()
+        .accessibilityHidden(true)
+    }
+}
+
 /// The one warning notice (Install maps, Manage maps): Stone Dark semibold
 /// text with the warning icon, so colour is never the only signal. Not Error
 /// Rust, which is for destructive actions and real errors. VoiceOver reads it once.

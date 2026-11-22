@@ -105,7 +105,18 @@ device = block('struct DeviceCard: View {', 'extension DeviceAuthorizationPresen
 assert 'if let authorization, authorization.tone != .success {' in device, '"Ready for maps" badge is shown in the ready state'
 assert 'static let manageProgressWidth: CGFloat = 236' in source, 'Manage progress is too narrow for "Checking map contents before removal"'
 manage_row = block('private struct ManageMapRow: View {', 'private struct ManageActionGroup')
-assert '.hidden()' in manage_row and 'TimeRemainingLabel(estimate: timeRemaining)' in manage_row, 'the time line does not keep its height while empty'
+# A Manage row keeps one height for the whole removal (Checking, Removing,
+# time left, done): one hidden zero-width height block under actions and progress.
+assert 'ZStack(alignment: .trailing) {\n                ManageRowTrailingHeight()' in manage_row, 'the Manage row has no fixed trailing height'
+assert 'ManageOperationProgress(operation: operation, timeRemaining: timeRemaining)' in manage_row, 'time left is not inside the fixed progress block'
+assert 'note: !availability.updateBlocked ? availability.updateNotice : nil' in manage_row, 'the row note disappears during an operation and the row shrinks'
+height = block('private struct ManageRowTrailingHeight: View {', '/// The one warning notice')
+assert '.frame(width: 0)' in height and '.hidden()' in height and '.lineLimit(1)' in height, 'the height block takes room or can wrap'
+assert height.count('.font(.terento(') == 2 and 'TerentoProgressBar(value: 0)' in height, 'the height block does not mirror the three progress lines'
+progress = block('private struct ManageOperationProgress: View {', '    private var accessibilityValue: String {')
+assert 'spacing: ManageRowTrailingHeight.lineSpacing' in progress, 'progress and height block use different line spacing'
+assert progress.count('.lineLimit(1)') >= 4, 'a progress line can wrap and grow the row'
+assert 'TimeRemainingLabel(estimate: timeRemaining)' in progress and 'Text(detailLine)' in progress, 'line 3 must show time left or the detail'
 assert 'countStyle: .binary' not in source, 'a size uses binary units; the app shows decimal sizes everywhere'
 manage_page = block('private var managedMapsContent: some View {', 'private func managedMapGroups')
 assert 'managedMapGroups(lifecycleInventory)' in manage_page and '.clipped()\n                .overlay(alignment: .top) { TerentoListTopDivider() }\n                .padding(.top, 8)' in manage_page, 'Manage rows can scroll visibly under the count line'

@@ -23,6 +23,40 @@ enum MapCatalogSource: String, Sendable, Equatable {
     }
 }
 
+/// TERENTO_USE_BUNDLED_MAP_CATALOG=1 (or Info.plist TerentoUseBundledMapCatalog)
+/// starts with only the bundled catalog. Debug builds and builds whose
+/// TerentoReleaseLabel ends in "-local" honour it; App Store and TestFlight
+/// builds never contain it.
+enum MapCatalogTestSwitch {
+    static let environmentKey = "TERENTO_USE_BUNDLED_MAP_CATALOG"
+    static let infoKey = "TerentoUseBundledMapCatalog"
+
+    static func isAllowed(isDebug: Bool, isAppStore: Bool, releaseLabel: String?) -> Bool {
+        guard !isAppStore else { return false }
+        return isDebug || (releaseLabel?.trimmingCharacters(in: .whitespacesAndNewlines).hasSuffix("-local") ?? false)
+    }
+
+    static func isRequested(environment: [String: String], infoValue: Any?) -> Bool {
+        infoValue as? Bool == true || environment[environmentKey] == "1"
+    }
+
+    static var usesBundledCatalog: Bool {
+        #if TERENTO_APP_STORE
+        return false
+        #else
+        #if DEBUG
+        let isDebug = true
+        #else
+        let isDebug = false
+        #endif
+        return isAllowed(isDebug: isDebug, isAppStore: false,
+                releaseLabel: Bundle.main.object(forInfoDictionaryKey: "TerentoReleaseLabel") as? String)
+            && isRequested(environment: ProcessInfo.processInfo.environment,
+                infoValue: Bundle.main.object(forInfoDictionaryKey: infoKey))
+        #endif
+    }
+}
+
 /// When the catalog itself is the cause, the page says so once and rows and
 /// provider groups drop the reason every map shares.
 extension MapCatalogSource {
@@ -225,16 +259,11 @@ private actor LatestRemoteMapCatalog {
 
 struct MapCatalogLoader: Sendable {
     static let defaultEndpoint: URL? = {
-        #if DEBUG
-        // A local hardware candidate can pin its reviewed metadata snapshot
-        // while the new API/provider is still paused. Public builds ignore it.
-        // TERENTO_USE_BUNDLED_MAP_CATALOG=1 shows the no-catalog notice in a
-        // local Debug build without editing its Info.plist.
-        if Bundle.main.object(forInfoDictionaryKey: "TerentoUseBundledMapCatalog") as? Bool == true
-            || ProcessInfo.processInfo.environment["TERENTO_USE_BUNDLED_MAP_CATALOG"] == "1" {
+        // A local test build can pin its bundled catalog (no remote catalog),
+        // so the "Couldn't load the map list" notice can be checked live.
+        if MapCatalogTestSwitch.usesBundledCatalog {
             return nil
         }
-        #endif
         var components = URLComponents(string: "https://api.terento.app/maps/catalog-v6.json")
         // The server leaves a never-activated provider out of the catalog;
         // a Debug hardware test names it to see it (still PAUSED there).
