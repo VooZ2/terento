@@ -482,7 +482,8 @@ def map_sections(locale: str) -> str:
             f'<img class="map-styles-v2-map-image" src="/assets/home/maps-{thumb}.webp?v={HOME["ASSET_VERSION"]}" width="640" height="400" alt="{esc(v2["image_alt"].replace("{name}", name))}" loading="lazy" decoding="async">'
             f'<div class="map-styles-v2-map-copy"><h2 id="{map_id}-title">{esc(name)}</h2>'
             f'<p class="map-styles-v2-map-summary">{esc(PROVIDER_COPY[locale][card]["summary"])}</p>'
-            f'<p>{esc(facts["look"])}</p>'
+            + (f'<p class="map-styles-v2-app-note">{esc(HOME["OPENFIETSMAP_APP_NOTES"][locale])}</p>' if card == "openfietsmap" else "")
+            + f'<p>{esc(facts["look"])}</p>'
             + (f'<ul class="map-styles-v2-variants">{variants}</ul>' if variants else "")
             + f'<dl class="map-styles-v2-facts">{rows}</dl></div></section>'
         )

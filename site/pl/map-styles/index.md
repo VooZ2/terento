@@ -139,6 +139,8 @@ Mapa OpenFietsMap Tatr Wysokich
 
 Na rower w Holandii, Belgii i w całej Europie.
 
+W aplikacji na Maca od wersji 1.3.0.
+
 Mapa rowerowa z wyznaczaniem tras, która wyróżnia trasy rowerowe i numerowane sieci węzłów, nie do nawigacji samochodowej. Benelux ma też wersję lekką i osobną warstwę szlaków pieszych.
 
 Zasięg

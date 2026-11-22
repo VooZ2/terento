@@ -139,6 +139,8 @@ Mapa OpenFietsMap Vysokých Tater
 
 Na kolo v Nizozemsku, Belgii a po celé Evropě.
 
+V aplikaci pro Mac od verze 1.3.0.
+
 Cyklomapa s plánováním tras, která zvýrazňuje cyklotrasy a číslované uzlové sítě, ne pro navigaci autem. Benelux má i lehkou verzi a samostatnou vrstvu turistických tras.
 
 Pokrytí

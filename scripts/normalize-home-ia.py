@@ -664,10 +664,15 @@ HIDDEN_UNTIL_ACTIVE = {"osmapa", "openfietsmap", "luckymaps"}
 
 MAPRANDO_LANGUAGE_NOTES = {'en': 'Some map labels are in French.', 'de': 'Einige Kartenbeschriftungen sind auf Französisch.', 'fr': 'Certains libellés de la carte sont en français.', 'pl': 'Niektóre opisy na mapie są po francusku.', 'cs': 'Některé popisky mapy jsou ve francouzštině.', 'it': 'Alcune etichette della mappa sono in francese.'}
 
+# OpenFietsMap needs the 1.3.0 Mac app (catalog-v6); 1.2.x reads catalog-v5 without it.
+OPENFIETSMAP_APP_NOTES = {'en': 'In the Mac app from version 1.3.0.', 'de': 'In der Mac-App ab Version 1.3.0.', 'fr': 'Dans l’app Mac à partir de la version 1.3.0.', 'pl': 'W aplikacji na Maca od wersji 1.3.0.', 'cs': 'V aplikaci pro Mac od verze 1.3.0.', 'it': 'Nell’app per Mac dalla versione 1.3.0.'}
+
 def provider_card_addon(locale: str, provider_id: str, contour_count: bool = True) -> str:
     """The note or add-on under a provider card's benefits; the map styles page reuses it."""
     if provider_id == "maprando":
         return f'<p class="provider-language-note"><span aria-hidden="true">ⓘ</span><span>{html.escape(MAPRANDO_LANGUAGE_NOTES[locale])}</span></p>'
+    if provider_id == "openfietsmap":
+        return f'<p class="provider-language-note"><span aria-hidden="true">ⓘ</span><span>{html.escape(OPENFIETSMAP_APP_NOTES[locale])}</span></p>'
     if provider_id == "bbbike-opentopo":
         return f'<p class="provider-language-note"><span aria-hidden="true">ⓘ</span><span>{html.escape(BBBIKE_OPENTOPO_NOTES[locale])}</span></p>'
     if provider_id == "opentopomap":

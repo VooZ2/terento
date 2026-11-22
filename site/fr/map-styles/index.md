@@ -139,6 +139,8 @@ La carte OpenFietsMap des Hautes Tatras
 
 Pour le vélo aux Pays-Bas, en Belgique et dans toute l’Europe.
 
+Dans l’app Mac à partir de la version 1.3.0.
+
 Une carte vélo routable qui met en avant les itinéraires cyclables et les réseaux de points-nœuds numérotés, pas faite pour la navigation en voiture. Le Benelux existe aussi en version légère, avec une couche randonnée à part.
 
 Couverture
