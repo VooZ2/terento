@@ -10,6 +10,12 @@ int main(void) {
     terento_trace_event(&trace, "verify_begin", 0, 0, 7);
     terento_trace_verified(&trace, 65536, 65536);
     for (int i = 0; i < 100; i++) terento_trace_verified(&trace, 131072, 131072);
+    TerentoReadTiming timing = {0};
+    terento_read_timing_add(&timing, 0.020, 0.001, 65536, 65535);
+    terento_read_timing_add(&timing, 0.500, 0.002, 131071, 65535);
+    terento_read_timing_add(&timing, 0.030, 0.001, 196606, 65535);
+    terento_trace_read_timing(&trace, "region_timing", 2, &timing);
+    terento_trace_read_timing(&trace, "read_timing", -1, &timing);
     terento_trace_event(&trace, "read_failed", 131072, -1, 0);
     terento_trace_finish(&trace);
     return 0;
@@ -24,6 +30,10 @@ done
 TERENTO_FINISHING_TRACE_FILE="$build/public.trace" "$build/native-release" 2> "$build/public-stderr.log"
 [[ ! -s "$build/public-stderr.log" ]]
 grep -q "event=read_failed.*last_verified_end=131072 verified_bytes=131072" "$build/public.trace"
+# Chunk timing: three chunks, the slowest at its own offset, watch and local time apart.
+grep -q "event=region_timing region=2 chunks=3 bytes=196605 total_ms=550 slowest_ms=500 slowest_offset=131071 local_ms=4 mbps=0.36$" "$build/public.trace"
+grep -q "event=read_timing chunks=3 bytes=196605 total_ms=550 slowest_ms=500 slowest_offset=131071 local_ms=4 mbps=0.36$" "$build/public.trace"
+if grep -q "event=read_timing region=" "$build/public.trace"; then exit 1; fi
 TERENTO_FINISHING_TRACE=0 "$build/native-debug" 2> "$build/off.log"
 [[ ! -s "$build/native-release.log" && ! -s "$build/off.log" ]]
 [[ "$(grep -c 'event=read_checkpoint' "$build/native-debug.log")" == 1 ]]
@@ -52,6 +62,11 @@ bridge_source="$project_root/Sources/LibMTPBridge/MTPBridge.c"
 trace_source="$project_root/Sources/TerentoPoC/MTPTransport/BoundedNativeProcess.swift"
 for event in session_open_begin session_open_end file_list_begin file_list_end \
     session_close_begin session_close_end native_cleanup_begin native_cleanup_end; do
+    grep -Fq "\"$event\"" "$bridge_source"
+    grep -Fq "\"$event\"" "$trace_source"
+done
+# The sampled read-back reports chunk timing per region and in total.
+for event in region_timing read_timing; do
     grep -Fq "\"$event\"" "$bridge_source"
     grep -Fq "\"$event\"" "$trace_source"
 done

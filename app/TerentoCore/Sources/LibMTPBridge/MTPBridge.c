@@ -2648,6 +2648,7 @@ int terento_mtp_verify_managed_map_samples(
     terento_trace_event(&trace, "verify_begin", 0, 0, sample_count);
     LIBMTP_mtpdevice_t *device = NULL;
     int result = 0;
+    TerentoReadTiming read_timing = {0};
 
     /* The same device policy applies to sampled verification and full deletion hashes. */
     int short_packet_reads = map_short_packet_reads(profile);
@@ -2656,6 +2657,7 @@ int terento_mtp_verify_managed_map_samples(
 
     for (size_t index = 0; index < sample_count; index += 1) {
         terento_trace_event(&trace, "region_begin", sample_regions[index].offset, 0, index);
+        TerentoReadTiming region_timing = {0};
         uint32_t region_length = sample_regions[index].length;
         /* Keep the exact sampled byte coverage, but do not ask Garmin firmware
            to buffer a multi-megabyte GetPartialObject response in one call. */
@@ -2724,6 +2726,7 @@ int terento_mtp_verify_managed_map_samples(
             unsigned char *raw_bytes = NULL;
             unsigned int actual_length = 0;
             LIBMTP_Clear_Errorstack(device);
+            double read_started = terento_trace_time();
             int read_result = LIBMTP_GetPartialObject(
                 device,
                 *resolved_item_id,
@@ -2732,8 +2735,10 @@ int terento_mtp_verify_managed_map_samples(
                 &raw_bytes,
                 &actual_length
             );
+            double read_returned = terento_trace_time();
 
             if (read_result != 0 || actual_length != requested) {
+                terento_trace_read_timing(&trace, "region_timing", (int)index, &region_timing);
                 terento_trace_event(&trace, "read_failed", offset, read_result, actual_length);
                 if (trace.enabled) {
                     LIBMTP_error_t *trace_error = LIBMTP_Get_Errorstack(device);
@@ -2780,6 +2785,12 @@ int terento_mtp_verify_managed_map_samples(
                 && memcmp(source_bytes, raw_bytes, requested) == 0;
             free(source_bytes);
             LIBMTP_FreeMemory(raw_bytes);
+            /* Watch read and local source read + compare are timed apart. */
+            double compared = terento_trace_time();
+            terento_read_timing_add(&region_timing, read_returned - read_started,
+                                    compared - read_returned, offset, requested);
+            terento_read_timing_add(&read_timing, read_returned - read_started,
+                                    compared - read_returned, offset, requested);
 
             if (!matches) {
                 terento_trace_event(&trace, "compare_failed", offset, seek_result, source_length);
@@ -2799,11 +2810,13 @@ int terento_mtp_verify_managed_map_samples(
             }
         }
         *matched_samples += 1;
+        terento_trace_read_timing(&trace, "region_timing", (int)index, &region_timing);
         /* Healthy reads retain one session across every sample. A transport
            failure exits; only the parent owns any recoverable retry. */
     }
 
 sample_cleanup:
+    terento_trace_read_timing(&trace, "read_timing", -1, &read_timing);
     terento_trace_event(&trace, "verify_result", trace.last_verified_end, result, *matched_samples);
     if (device != NULL) {
         terento_trace_event(&trace, "final_close_begin", trace.last_verified_end, result, 0);

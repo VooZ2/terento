@@ -122,7 +122,8 @@ manage_page = block('private var managedMapsContent: some View {', 'private func
 # Group header (owner 2026-11-22): name and count on one baseline, chevron
 # centred on the name; the count is the number of rows the group shows.
 header = block('private struct TerentoMapSectionHeader: View {', 'private struct ')
-assert header.index('alignment: .center') < header.index('TerentoDisclosureIndicator(isExpanded: isExpanded)') < header.index('alignment: .firstTextBaseline') < header.index('Text(title)') < header.index('Text(countLabel)'), 'group header name and count are not on one baseline with the chevron centred'
+assert header.index('alignment: .center') < header.index('TerentoDisclosureIndicator(isExpanded: isExpanded)') < header.index('TerentoTitleCountLabel(') < header.index('count: countLabel,'), 'group header name and count are not on one baseline with the chevron centred'
+assert 'Text(title)' not in header, 'the group header must use the shared baseline label that TypographyTests measures'
 groups = block('private func managedMapGroups', 'title: "Imported maps"')
 assert 'count: group.items.count,' in groups and 'ForEach(group.items) { item in' in groups, 'the group count and its rows come from different lists'
 

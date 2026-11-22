@@ -6204,18 +6204,11 @@ private struct TerentoMapSectionHeader: View {
             ) {
                 TerentoDisclosureIndicator(isExpanded: isExpanded)
 
-                HStack(
-                    alignment: .firstTextBaseline,
+                TerentoTitleCountLabel(
+                    title: title,
+                    count: countLabel,
                     spacing: TerentoPageLayout.sectionHeaderItemSpacing
-                ) {
-                    Text(title)
-                        .font(.terento(.rowTitle))
-                        .foregroundStyle(TerentoColors.graphite)
-
-                    Text(countLabel)
-                        .font(.terento(.caption, weight: .semibold))
-                        .foregroundStyle(TerentoColors.secondaryText)
-                }
+                )
             }
             .frame(minHeight: TerentoPageLayout.sectionHeaderMinHeight, alignment: .leading)
             .contentShape(Rectangle())

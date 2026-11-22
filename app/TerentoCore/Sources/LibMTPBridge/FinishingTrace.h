@@ -71,4 +71,50 @@ static void terento_trace_verified(TerentoFinishingTrace *trace,
         terento_trace_event(trace, "read_checkpoint", end, 0, bytes);
     }
 }
+
+/* Per-chunk read timing of one sampled read-back: how many chunks, their
+   bytes, the summed watch read time, the slowest watch read with its file
+   offset, and the summed local source read and compare time. Numbers only.
+   Timing never changes which bytes are read or compared. */
+typedef struct {
+    uint32_t chunks;
+    uint64_t bytes;
+    double total_ms;
+    double slowest_ms;
+    uint64_t slowest_offset;
+    double local_ms;
+} TerentoReadTiming;
+
+static void terento_read_timing_add(TerentoReadTiming *timing, double device_seconds,
+                                    double local_seconds, uint64_t offset, uint32_t bytes) {
+    double device_ms = device_seconds > 0 ? device_seconds * 1000.0 : 0;
+    timing->chunks += 1;
+    timing->bytes += bytes;
+    timing->total_ms += device_ms;
+    timing->local_ms += local_seconds > 0 ? local_seconds * 1000.0 : 0;
+    if (timing->chunks == 1 || device_ms > timing->slowest_ms) {
+        timing->slowest_ms = device_ms;
+        timing->slowest_offset = offset;
+    }
+}
+
+/* `region_timing` (with the sample index) after each sample region and
+   `read_timing` once for the whole read-back. mbps = bytes / watch time. */
+static void terento_trace_read_timing(TerentoFinishingTrace *trace, const char *event,
+                                      int region, const TerentoReadTiming *timing) {
+    if (!trace->enabled) return;
+    char line[384];
+    char region_field[32] = "";
+    if (region >= 0) snprintf(region_field, sizeof(region_field), " region=%d", region);
+    double seconds = timing->total_ms / 1000.0;
+    double mbps = seconds > 0 ? (double)timing->bytes / seconds / 1000000.0 : 0;
+    int length = snprintf(line, sizeof(line),
+        "FINISH_TRACE native t=%.6f pid=%d event=%s%s chunks=%u bytes=%llu total_ms=%.0f slowest_ms=%.0f slowest_offset=%llu local_ms=%.0f mbps=%.2f\n",
+        terento_trace_time(), getpid(), event, region_field, timing->chunks,
+        (unsigned long long)timing->bytes, timing->total_ms, timing->slowest_ms,
+        (unsigned long long)timing->slowest_offset, timing->local_ms, mbps);
+    if (length > 0 && length < (int)sizeof(line)) {
+        (void)write(trace->fd, line, (size_t)length);
+    }
+}
 #endif
