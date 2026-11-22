@@ -15,7 +15,7 @@ V aplikaci stažené z terento.app jsou dva proudy standardně zapnuté pro zlep
 
 Zprávy neobsahují Garmin Unit IDs, hodnoty sériových čísel, účty, místní cesty, mapy ani surové protokoly. Jednotlivé zprávy jsou soukromé; zveřejňují se jen ověřené souhrnné výsledky kompatibility. Základem jsou oprávněné zájmy na spolehlivosti a pokrytí zařízení podle čl. 6 odst. 1 písm. f GDPR.
 
-**Verze z Mac App Store.** Oba proudy jsou vypnuté, dokud se nerozhodnete sdílet. Po úspěšné instalaci nebo aktualizaci mapy se Terento zeptá, zda chcete sdílet výsledky instalace s Terento; nic není předvybráno. **Share** zapne oba proudy a sdílí i tuto instalaci nebo aktualizaci; **Don't share** ponechá oba vypnuté. Po **Not now** se nic nesdílí a Terento se zeptá ještě jednou po další úspěšné instalaci nebo aktualizaci, pak už ne. Verze do 1.2.2 včetně se ptají jen po instalaci, nabízejí jen **Share** a **Not now** a **Not now** zaznamenají jako nesdílení; od verze 1.2.3 se Terento zeptá ještě jednou, pokud jste v některé z těchto verzí odmítli. Volbu můžete kdykoli změnit v **Terento → Diagnostics**. U této verze je základem váš souhlas podle čl. 6 odst. 1 písm. a GDPR; jeho odvolání zastaví další sdílení a neovlivní to, co již bylo odesláno. Zprávy z této verze mají ve verzi aplikace označení App Store.
+**Verze z Mac App Store.** Oba proudy jsou vypnuté, dokud se nerozhodnete sdílet. Po úspěšné instalaci nebo aktualizaci mapy se Terento zeptá, zda chcete sdílet výsledky instalace s Terento; nic není předvybráno. **Share** zapne oba proudy a sdílí i tuto instalaci nebo aktualizaci; **Don't share** ponechá oba vypnuté. Po **Not now** se nic nesdílí a Terento se zeptá ještě jednou po další úspěšné instalaci nebo aktualizaci, pak už ne. Verze do 1.2.2 včetně se ptají jen po instalaci, nabízejí jen **Share** a **Not now** a **Not now** zaznamenají jako nesdílení; od verze 1.3.0 se Terento zeptá ještě jednou, pokud jste v některé z těchto verzí odmítli. Volbu můžete kdykoli změnit v **Terento → Diagnostics**. U této verze je základem váš souhlas podle čl. 6 odst. 1 písm. a GDPR; jeho odvolání zastaví další sdílení a neovlivní to, co již bylo odesláno. Zprávy z této verze mají ve verzi aplikace označení App Store.
 
 ## Webový instalátor
 
@@ -51,7 +51,7 @@ GitHub issue je oddělené od automatické diagnostiky: sami jej zkontrolujete a
 
 ## Zprávy podpoře
 
-Pokud aplikace nabízí odeslání zprávy podpoře Terento, zpráva se odešle jen tehdy, když se tak rozhodnete po zobrazení jejího obsahu. Obsahuje očištěné údaje o problému, které se používají i pro hlášení na GitHubu: verze aplikace a macOS, model a variantu hodinek, neúspěšný krok, kategorii a zprávu chyby, poskytovatele a oblast mapy a časové údaje, spolu s volitelným popisem. Neobsahuje sériová čísla, Unit IDs, účty, místní cesty, surové protokoly ani mapy; účet na GitHubu není potřeba. Do popisu neuvádějte osobní údaje. Od verze 1.2.3 to verze z Mac App Store nabízí po neúspěšné instalaci, dokud nesdílíte výsledky instalace.
+Pokud aplikace nabízí odeslání zprávy podpoře Terento, zpráva se odešle jen tehdy, když se tak rozhodnete po zobrazení jejího obsahu. Obsahuje očištěné údaje o problému, které se používají i pro hlášení na GitHubu: verze aplikace a macOS, model a variantu hodinek, neúspěšný krok, kategorii a zprávu chyby, poskytovatele a oblast mapy a časové údaje, spolu s volitelným popisem. Neobsahuje sériová čísla, Unit IDs, účty, místní cesty, surové protokoly ani mapy; účet na GitHubu není potřeba. Do popisu neuvádějte osobní údaje. Od verze 1.3.0 to verze z Mac App Store nabízí po neúspěšné instalaci, dokud nesdílíte výsledky instalace.
 
 Zprávy podpoře slouží jen k diagnostice nahlášeného problému, nepoužívají se pro statistiky a uchovávají se 12 měsíců. Přístup má správa projektu, která vidí zprávu spolu s diagnostikou téže instalace nebo aktualizace, aby problém prošetřila. Vaše IP adresa se používá v paměti serveru k omezení opakovaného odesílání; neukládá se se zprávou ani do databáze a průběžně se maže, také při restartu serveru. Základem jsou oprávněné zájmy na vyřízení vašeho požadavku a údržbě aplikace podle čl. 6 odst. 1 písm. f GDPR.
 
@@ -79,4 +79,4 @@ Kompatibilita může zahrnovat očištěný název modelu MTP, USB VID/PID, tran
 
 Zprávy mohou navíc obsahovat původní popis modelu z XML (nejvýše 160 znaků) a produktový kód modelu (nejvýše 64 písmen ASCII, číslic nebo spojovníků). Tyto údaje označují model výrobku, nikoli jednotlivé hodinky. Celé dokumenty XML, Unit ID a sériová čísla jsou vyloučeny. Přiřazení kódů modelů a opravy správce se ukládají odděleně od původní zprávy.
 
-Aktualizováno: 21. listopadu 2026.
+Aktualizováno: 22. listopadu 2026.
