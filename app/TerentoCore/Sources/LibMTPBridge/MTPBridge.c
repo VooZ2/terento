@@ -2025,6 +2025,13 @@ static int map_short_packet_reads(const TerentoMTPMapOperationProfile *profile) 
 #endif
 }
 
+/* Sampled checks only (post-install read-back, recorded samples); full-object
+ * hashes keep 64 KiB requests. */
+static uint32_t map_sample_read_limit(const TerentoMTPMapOperationProfile *profile) {
+    return profile ? terento_sample_read_limit(profile->vendor_id, profile->product_id)
+                   : TERENTO_SAMPLE_READ_DEFAULT_LIMIT;
+}
+
 /* Full-object reads only: the caller resolved this exact object and size in the
  * current session and bounds each request by it. The bundled extension skips
  * libmtp's per-chunk metadata transactions for every Garmin; content proof is
@@ -2154,7 +2161,8 @@ static int verify_recorded_samples(LIBMTP_mtpdevice_t *device,
         uint32_t length = (uint32_t)(available < region_length ? available : region_length);
         for (uint32_t consumed = 0; consumed < length;) {
             uint64_t offset = start + consumed;
-            uint32_t requested = terento_sample_read_request(length - consumed, map_short_packet_reads(profile));
+            uint32_t requested = terento_sample_read_request_within(length - consumed,
+                map_short_packet_reads(profile), map_sample_read_limit(profile));
             unsigned char *bytes = NULL;
             unsigned int received = 0;
             int result = LIBMTP_GetPartialObject(device, object_id, offset, requested, &bytes, &received);
@@ -2652,19 +2660,21 @@ int terento_mtp_verify_managed_map_samples(
 
     /* The same device policy applies to sampled verification and full deletion hashes. */
     int short_packet_reads = map_short_packet_reads(profile);
+    uint32_t read_limit = map_sample_read_limit(profile);
     terento_trace_event(&trace, "read_chunk_limit", 0, short_packet_reads,
-                        terento_sample_read_request(64 * 1024, short_packet_reads));
+                        terento_sample_read_request_within(read_limit, short_packet_reads, read_limit));
 
     for (size_t index = 0; index < sample_count; index += 1) {
         terento_trace_event(&trace, "region_begin", sample_regions[index].offset, 0, index);
         TerentoReadTiming region_timing = {0};
         uint32_t region_length = sample_regions[index].length;
         /* Keep the exact sampled byte coverage, but do not ask Garmin firmware
-           to buffer a multi-megabyte GetPartialObject response in one call. */
+           to buffer a multi-megabyte GetPartialObject response in one call:
+           at most 1 MiB per request for Garmin. */
         for (uint32_t consumed = 0; consumed < region_length;) {
             uint64_t offset = sample_regions[index].offset + consumed;
-            uint32_t requested = terento_sample_read_request(
-                region_length - consumed, short_packet_reads);
+            uint32_t requested = terento_sample_read_request_within(
+                region_length - consumed, short_packet_reads, read_limit);
             if (device == NULL) {
                 uint16_t vendor_id = 0;
                 uint16_t product_id = 0;

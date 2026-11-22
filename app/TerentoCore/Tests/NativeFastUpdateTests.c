@@ -45,7 +45,7 @@ static const char *new_name = "terento_test_map_2026-10.img";
 static uint64_t object_size, observed_old_size;
 static int old_present, new_present, duplicate_old, substitute_after_read, sends, deletes;
 static uint64_t flip_old = UINT64_MAX, flip_new = UINT64_MAX, fail_offset = UINT64_MAX;
-static uint64_t bytes_read, read_requests, full_reads, progress_total, progress_done;
+static uint64_t bytes_read, read_requests, full_reads, progress_total, progress_done, largest_request;
 static char directory[] = "/private/tmp/terento-fast-update-XXXXXX";
 static char claim[PATH_MAX];
 static unsigned operation;
@@ -91,7 +91,8 @@ static int fake_send(LIBMTP_mtpdevice_t *d,const char *path,LIBMTP_file_t *f,LIB
 }
 static int fake_delete(LIBMTP_mtpdevice_t *d,uint32_t id) { (void)d; assert(id==OLD_ID); ++deletes; old_present=0; return 0; }
 static int fake_partial(LIBMTP_mtpdevice_t *d,uint32_t id,uint64_t offset,uint32_t size,unsigned char **out,unsigned int *count) {
-    (void)d; assert((id==OLD_ID || id==NEW_ID) && size>0 && size<=65536);
+    (void)d; assert((id==OLD_ID || id==NEW_ID) && size>0 && size<=1048576);
+    if (size>largest_request) largest_request=size;
     if (offset+size>object_size) return -1;
     if (fail_offset>=offset && fail_offset<offset+size) return -1;
     *out=malloc(size); assert(*out);
@@ -165,7 +166,7 @@ static void write_source(uint64_t size, const uint64_t *offsets, size_t count) {
 }
 static void reset(uint64_t size) {
     object_size=observed_old_size=size; old_present=1; new_present=1; duplicate_old=substitute_after_read=0;
-    flip_old=flip_new=fail_offset=UINT64_MAX; bytes_read=read_requests=full_reads=progress_total=progress_done=0;
+    flip_old=flip_new=fail_offset=UINT64_MAX; bytes_read=read_requests=full_reads=progress_total=progress_done=largest_request=0;
 }
 static TerentoMTPMutationAuthorization grant_update_old(uint64_t size, int with_proof) {
     static char id[64]; snprintf(id,sizeof(id),"update-%u",++operation);
@@ -234,8 +235,12 @@ int main(void) {
     assert(proof_check(size,plan,N,L,old_hash,sample_hash,&resolved,&sampled)==0);
     assert(resolved==OLD_ID && sampled==(uint64_t)N*L && bytes_read==sampled && read_requests==N);
     assert(progress_total==sampled && progress_done==sampled && full_reads==0);
-    uint64_t after_current=bytes_read; progress_done=0;
+    assert(largest_request<=65535); /* recorded 65 535-byte regions: one request each */
+    uint64_t after_current=bytes_read; uint64_t requests_before_readback=read_requests; largest_request=0; progress_done=0;
     uint64_t new_sampled=0; assert(install_readback(size,install_offsets,install_count,&new_sampled)==0);
+    /* Garmin read-back: 1 MiB requests (odd on 51b8 under macOS), same bytes. */
+    assert(largest_request==1048575 || largest_request==1048576);
+    assert(read_requests-requests_before_readback <= install_bytes/1048575 + install_count);
     uint64_t after_new=bytes_read-after_current;
     assert(new_sampled==install_bytes && after_new==install_bytes && full_reads==0);
     mark=bytes_read; progress_done=0; assert(delete_old(size,1)==0 && deletes==1); uint64_t after_delete=bytes_read-mark;

@@ -387,6 +387,17 @@ installed, old map removed, protected final inventory, manifest):
   version of the written object. Any failure cleans up only the new object as
   before and keeps the old map installed. A 434 MB map is read as 29,360,128
   bytes instead of 434,000,000.
+- Read-back request size: sampled read-back regions are read with at most
+  1 MiB per `GetPartialObject` on every Garmin (owner decision 2026-11-22;
+  the fēnix 8 AMOLED keeps odd lengths, 1 048 575 bytes). Owner probe
+  2026-11-22, fēnix 8 AMOLED firmware 24.20, read only: 64 KiB and 256 KiB
+  requests each took about 0.5 s (0.14 / 0.57 MB/s), 1 MiB requests about
+  0.14 s (6.8–7.8 MB/s); on firmware 23.39 (2026-10-10) every size read about
+  1.7 MB/s. Only the fēnix 8 AMOLED was measured. Every planned byte is still
+  read and compared. Recorded 65 535-byte proof regions and full-object hashes
+  keep 64 KiB requests. finishing.log records `region_timing` per region and
+  `read_timing` per read-back (chunks, bytes, watch time, slowest chunk and its
+  offset, local read time, MB/s).
 - Old-map removal keeps the removal content check above, and the new entry
   records its removal proof from the validated local artifact as before.
 - Residual limitation, the same as for fresh installation and removal: a
