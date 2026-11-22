@@ -168,7 +168,44 @@ assert "static let sectionHeaderTitleInset: CGFloat = sectionHeaderChevronWidth 
     "the header title inset must come from the header geometry"
 groups = screen[screen.index("private func managedMapGroups"):screen.index('title: "Imported maps"')]
 notice = groups[groups.index("providerGroupNotices(group.items)"):groups.index("ForEach(group.items)")]
-assert ".padding(.leading, TerentoPageLayout.sectionHeaderTitleInset)" in notice and ".padding(.horizontal" not in notice, \
-    "the failed-check notice must start at the provider name, not at the chevron"
+assert "iconColumnWidth: TerentoPageLayout.sectionHeaderChevronWidth" in notice \
+    and "spacing: TerentoPageLayout.sectionHeaderItemSpacing" in notice and ".padding(.horizontal" not in notice, \
+    "the group notice text must start at the provider name (icon in the chevron column)"
 print("PASS: usable-only Update, Error Rust Remove, notice aligned with the provider name")
 PYROW
+
+# Catalog-level notice (owner 2026-11-22): one shared warning component on both
+# pages; the catalog's shared reason is said once, never on rows or groups.
+python3 - "$connect_screen" "$presentation" "$project_root/Sources/TerentoPoC/MapCatalog/MapCatalogLoader.swift" <<'PYCAT'
+import sys
+screen, presentation, loader = (open(p).read() for p in sys.argv[1:4])
+comp = screen[screen.index("struct TerentoWarningNotice: View"):screen.index("private struct TerentoListTopDivider")]
+assert ".foregroundStyle(TerentoColors.warning)" in comp and "TerentoColors.error" not in comp, \
+    "the notice is a warning in Stone Dark, not Error Rust"
+assert 'Image(systemName: "exclamationmark.triangle")' in comp, "the notice carries the warning icon"
+assert ".font(.terento(.meta, weight: .semibold))" in comp, "the notice text is semibold"
+assert ".accessibilityElement(children: .ignore)" in comp and ".accessibilityLabel(text)" in comp, \
+    "VoiceOver reads the notice once"
+assert screen.count("TerentoWarningNotice(") == 3, "Install page, Manage page and provider groups share one component"
+assert "Using local catalog" not in screen and "wifi.slash" not in screen, "the grey fallback line is gone"
+manage = screen[screen.index("private var managedMapsContent: some View"):screen.index("private func managedMapGroups")]
+assert manage.index("managedCatalogToolbar") < manage.index("managePageNotice(lifecycleInventory)") < manage.index("ScrollView {"), \
+    "the Manage notice sits once under the count line, above the list"
+assert ".overlay(alignment: .top) { TerentoListTopDivider() }" in manage, "the Manage count line has the list divider"
+region = screen[screen.index("private var catalogMapRegion: some View"):]
+region = region[:region.index(".clipped()") + 10]
+assert ".overlay(alignment: .top) { TerentoListTopDivider() }" in region, "Install maps uses the same list divider"
+assert "return availability.removingCatalogWideReason(mapEngine.catalogSource?.sharedBlockReason)" in screen, \
+    "Manage rows and groups drop the catalog-wide reason"
+assert "guard let sharedBlockReason, blockReason == sharedBlockReason else { return self }" in presentation
+row = screen[screen.index("private var rowStatus: String? {"):]
+row = row[:row.index("guard item.package.sourceKind != .custom")]
+assert row.index("if hidesCatalogWideReason") < row.index("shortStatus"), \
+    "Install rows drop the catalog-wide reason before the short status"
+assert 'case .bundledFallback, .cachedRemote: return "STATUS_UNVERIFIED"' in loader
+assert 'case .appUpdateRequired: return "APP_UPDATE_REQUIRED"' in loader
+assert 'ProcessInfo.processInfo.environment["TERENTO_USE_BUNDLED_MAP_CATALOG"] == "1"' in loader, \
+    "a local Debug build can show the fallback without editing Info.plist"
+print("PASS: catalog-level reason said once per page with the shared warning notice")
+PYCAT
+

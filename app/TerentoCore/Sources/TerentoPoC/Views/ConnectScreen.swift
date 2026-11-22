@@ -649,11 +649,13 @@ struct ConnectScreen: View {
             return
         }
 
-        // Install maps shows the last read while it still describes the
-        // watch (same connection, nothing written since); Refresh reads again.
-        let shouldRefreshMapInventory = section == .manageMaps
-            || (section == .installMaps && !installationFlowHasStarted
-                && !mapEngine.hasFreshInventory(for: identity))
+        // Install maps and Manage maps show the last read while it still
+        // describes the watch (same connection, nothing written since), so
+        // opening a page does not re-read the watch or disable its actions;
+        // Refresh reads again.
+        let shouldRefreshMapInventory = (section == .manageMaps
+            || (section == .installMaps && !installationFlowHasStarted))
+            && !mapEngine.hasFreshInventory(for: identity)
 
         if section == .installMaps, !installationFlowHasStarted {
             localInstallStep = .choose
@@ -1389,6 +1391,10 @@ struct ConnectScreen: View {
                     managedCatalogToolbar
                         .padding(.top, TerentoPageLayout.firstSectionTopPadding)
                 }
+                if let notice = managePageNotice(lifecycleInventory) {
+                    TerentoWarningNotice(text: notice)
+                        .padding(.top, 6)
+                }
                 if let notice = lifecycleViewModel.removalNotice {
                     Label {
                         Text(notice)
@@ -1416,9 +1422,10 @@ struct ConnectScreen: View {
                 }
                 .scrollIndicators(.automatic)
                 // As in Install maps: a 12 pt gap under the count line (4 + 8)
-                // outside the scroll view, and rows clipped at its edge, so
-                // they never scroll visibly under the count line.
+                // outside the scroll view, and rows clipped at its edge under
+                // the shared list divider, so they never scroll under the count line.
                 .clipped()
+                .overlay(alignment: .top) { TerentoListTopDivider() }
                 .padding(.top, 8)
                 // VoiceOver hears "<Map> · <style> removed." even when focus is elsewhere.
                 .onChange(of: lifecycleViewModel.removalNotice) { notice in
@@ -1511,12 +1518,14 @@ struct ConnectScreen: View {
                         isExpanded: providerGroupExpansionBinding(for: group.id)
                     ) {
                         ForEach(providerGroupNotices(group.items), id: \.self) { notice in
-                            Text(notice)
-                                .font(.terento(.meta, weight: .semibold))
-                                .foregroundStyle(TerentoColors.warning)
-                                // Starts where the provider name starts in the header.
-                                .padding(.leading, TerentoPageLayout.sectionHeaderTitleInset)
-                                .padding(.bottom, 4)
+                            // Icon in the chevron column, so the text starts
+                            // where the provider name starts in the header.
+                            TerentoWarningNotice(
+                                text: notice,
+                                iconColumnWidth: TerentoPageLayout.sectionHeaderChevronWidth,
+                                spacing: TerentoPageLayout.sectionHeaderItemSpacing
+                            )
+                            .padding(.bottom, 4)
                         }
                         ForEach(group.items) { item in
                             managedMapRow(item, provider: group.title)
@@ -1749,9 +1758,25 @@ struct ConnectScreen: View {
     }
 
     private func managedAvailability(for item: MapLifecycleItem) -> MapLifecycleActionAvailability {
-        isReadingDeviceMaps
+        let availability = isReadingDeviceMaps
             ? keptManagedAvailability[item.id] ?? lifecycleViewModel.availability(for: item)
             : lifecycleViewModel.availability(for: item)
+        return availability.removingCatalogWideReason(mapEngine.catalogSource?.sharedBlockReason)
+    }
+
+    /// Said once under the count line when every provider map shares the
+    /// catalog's reason; a group says only what is its provider's alone.
+    private func managePageNotice(_ inventory: MapLifecycleInventory) -> String? {
+        guard let source = mapEngine.catalogSource, let notice = source.manageNotice,
+              let shared = source.sharedBlockReason else { return nil }
+        let providerItems = inventory.providerGroups.flatMap(\.items)
+        let sharesReason = providerItems.contains { item in
+            let availability = isReadingDeviceMaps
+                ? keptManagedAvailability[item.id] ?? lifecycleViewModel.availability(for: item)
+                : lifecycleViewModel.availability(for: item)
+            return availability.blockReason == shared
+        }
+        return sharesReason ? notice : nil
     }
 
     @ViewBuilder
@@ -1921,6 +1946,8 @@ struct ConnectScreen: View {
                 }
             }
         }
+        // Rows are clipped at the shared list divider.
+        .overlay(alignment: .top) { TerentoListTopDivider() }
         // Keep this gap outside both scroll views so rows cannot slide under
         // the toolbar; it matches the gap before the custom import panel.
         .padding(.top, 12)
@@ -1942,6 +1969,7 @@ struct ConnectScreen: View {
                         ForEach(filteredAvailableSelectionItems) { item in
                             MapSelectionRow(
                                 item: item,
+                                catalogSource: mapEngine.catalogSource,
                                 isSelected: Binding(
                                     get: { selectedMapIDs.contains(item.id) },
                                     set: { selected in
@@ -2036,24 +2064,10 @@ struct ConnectScreen: View {
                             .padding(.top, 10)
                     }
 
-                    if mapEngine.catalogSource == .bundledFallback {
-                        Label(
-                            MapCatalogSource.bundledFallback.userLabel,
-                            systemImage: "wifi.slash"
-                        )
-                        .font(.terento(.caption))
-                        .foregroundStyle(TerentoColors.secondaryText)
-                        .padding(.top, 10)
-                        .accessibilityHint("Terento is using its bundled local map list. It may be out of date.")
-                    } else if mapEngine.catalogSource == .appUpdateRequired {
-                        Label(
-                            MapCatalogSource.appUpdateRequired.userLabel,
-                            systemImage: "arrow.down.circle"
-                        )
-                        .font(.terento(.caption))
-                        .foregroundStyle(TerentoColors.secondaryText)
-                        .padding(.top, 10)
-                        .accessibilityHint("This Terento version can't use the current map catalog. Maps can be browsed; installing needs a Terento update.")
+                    // The catalog itself is the cause: said once here, not on every row.
+                    if let notice = mapEngine.catalogSource?.installNotice {
+                        TerentoWarningNotice(text: notice)
+                            .padding(.top, 10)
                     }
 
                     if mapEngine.state == .loadingCatalog || mapEngine.state == .scanning {
@@ -5130,6 +5144,43 @@ private struct ManageOperationProgress: View {
 
 /// The third line of a map row: a blocked or warning message, never part of
 /// the metadata line. Its colour matches the row's status icon.
+/// The one warning notice (Install maps, Manage maps): Stone Dark semibold
+/// text with the warning icon, so colour is never the only signal. Not Error
+/// Rust, which is for destructive actions and real errors. VoiceOver reads it once.
+struct TerentoWarningNotice: View {
+    let text: String
+    /// Provider-group notices put the icon in the chevron column so the text
+    /// starts at the provider name; page notices start at the content edge.
+    var iconColumnWidth: CGFloat? = nil
+    var spacing: CGFloat = 6
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: spacing) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 11, weight: .semibold))
+                .frame(width: iconColumnWidth)
+            Text(text)
+                .font(.terento(.meta, weight: .semibold))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .foregroundStyle(TerentoColors.warning)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(text)
+    }
+}
+
+/// The line under the Install maps and Manage maps count line; rows are
+/// clipped at it.
+private struct TerentoListTopDivider: View {
+    var body: some View {
+        Rectangle()
+            .fill(TerentoColors.border.opacity(0.82))
+            .frame(height: 1)
+            .accessibilityHidden(true)
+    }
+}
+
 struct TerentoMapRowStatus: Equatable {
     let text: String
     var color: Color = TerentoColors.warning
@@ -5728,9 +5779,12 @@ struct MapSelectionRow: View {
     let downloadEstimate: String?
     /// Already installed: Manage maps offers a safe Update for this map.
     let updateOfferedInManage: Bool
+    /// A reason the whole catalog shares is said once by the page notice.
+    let catalogSource: MapCatalogSource?
 
     init(
         item: MapSelectionItem,
+        catalogSource: MapCatalogSource? = nil,
         isSelected: Binding<Bool>,
         selectedOptionalArtifactIDs: Binding<Set<String>> = .constant([]),
         isAvailable: Bool,
@@ -5746,6 +5800,7 @@ struct MapSelectionRow: View {
         self.highlightsRecommendation = highlightsRecommendation
         self.downloadEstimate = downloadEstimate
         self.item = item
+        self.catalogSource = catalogSource
         self._isSelected = isSelected
         self._selectedOptionalArtifactIDs = selectedOptionalArtifactIDs
         self.isAvailable = isAvailable
@@ -5898,7 +5953,7 @@ struct MapSelectionRow: View {
 
         if item.package.sourceKind == .custom, item.acquisitionAvailability.shortStatus == nil {
             return "From this Mac"
-        } else if rowStatus != nil {
+        } else if rowStatus != nil || hidesCatalogWideReason {
             baseDetail = ""
         } else if isAlreadyInstalledSearchResult {
             baseDetail = item.alreadyInstalledDetail(updateOffered: updateOfferedInManage)
@@ -5929,8 +5984,17 @@ struct MapSelectionRow: View {
         return values.joined(separator: " · ")
     }
 
+    /// Blocked only for the reason the whole catalog shares: the row keeps
+    /// only "Unavailable" on the right.
+    private var hidesCatalogWideReason: Bool {
+        catalogSource?.isShared(item.acquisitionAvailability) ?? false
+    }
+
     /// Line 3: why this map can't be installed now, on its own line.
     private var rowStatus: String? {
+        if hidesCatalogWideReason {
+            return nil
+        }
         if let status = item.acquisitionAvailability.shortStatus {
             return status
         }
@@ -5986,6 +6050,10 @@ struct MapSelectionRow: View {
 
     private var accessibilityLabel: String {
         if item.acquisitionAvailability != .available {
+            // The page notice already says why for the whole catalog.
+            if hidesCatalogWideReason {
+                return "\(item.comparison.providerName), \(item.title), unavailable"
+            }
             return "\(item.comparison.providerName), \(item.acquisitionAccessibilityLabel ?? "\(item.title), unavailable")"
         }
 

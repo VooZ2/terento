@@ -23,6 +23,45 @@ enum MapCatalogSource: String, Sendable, Equatable {
     }
 }
 
+/// When the catalog itself is the cause, the page says so once and rows and
+/// provider groups drop the reason every map shares.
+extension MapCatalogSource {
+    static let catalogUnavailableNotice = "Couldn't load the map list. Maps can't be installed right now."
+
+    /// Install maps: the one notice under the subtitle.
+    var installNotice: String? {
+        switch self {
+        case .remote: return nil
+        case .bundledFallback: return Self.catalogUnavailableNotice
+        case .cachedRemote, .appUpdateRequired: return userLabel
+        }
+    }
+
+    /// Manage maps: the one notice under the "N maps" count line.
+    var manageNotice: String? {
+        switch self {
+        case .remote: return nil
+        case .bundledFallback, .cachedRemote: return MapAcquisitionAvailability.availabilityCheckFailedNotice
+        case .appUpdateRequired: return userLabel
+        }
+    }
+
+    /// The block reason every package carries because of this source.
+    var sharedBlockReason: String? {
+        switch self {
+        case .remote: return nil
+        case .bundledFallback, .cachedRemote: return "STATUS_UNVERIFIED"
+        case .appUpdateRequired: return "APP_UPDATE_REQUIRED"
+        }
+    }
+
+    /// True when this map is blocked only for the reason the whole catalog shares.
+    func isShared(_ availability: MapAcquisitionAvailability) -> Bool {
+        guard let sharedBlockReason, let reason = availability.blockReason else { return false }
+        return reason == sharedBlockReason
+    }
+}
+
 /// Release builds expose only source-validated contour metadata. Debug builds
 /// retain the explicit internal rollout override for focused diagnostics.
 struct MapContourRolloutPolicy: Sendable, Equatable {
@@ -189,7 +228,10 @@ struct MapCatalogLoader: Sendable {
         #if DEBUG
         // A local hardware candidate can pin its reviewed metadata snapshot
         // while the new API/provider is still paused. Public builds ignore it.
-        if Bundle.main.object(forInfoDictionaryKey: "TerentoUseBundledMapCatalog") as? Bool == true {
+        // TERENTO_USE_BUNDLED_MAP_CATALOG=1 shows the no-catalog notice in a
+        // local Debug build without editing its Info.plist.
+        if Bundle.main.object(forInfoDictionaryKey: "TerentoUseBundledMapCatalog") as? Bool == true
+            || ProcessInfo.processInfo.environment["TERENTO_USE_BUNDLED_MAP_CATALOG"] == "1" {
             return nil
         }
         #endif

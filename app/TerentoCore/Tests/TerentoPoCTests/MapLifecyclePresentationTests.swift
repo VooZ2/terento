@@ -241,6 +241,36 @@ func runMapLifecyclePresentationTests() throws {
                 && !manageText.contains("internet"),
             "\(code) Manage text has no retry advice and does not blame the connection")
     }
+    // Catalog-level cause (owner 2026-11-22): the bundled fallback is said
+    // once by the page; a single provider's own reason stays on its rows.
+    try require(MapCatalogSource.bundledFallback.installNotice
+            == "Couldn't load the map list. Maps can't be installed right now."
+            && MapCatalogSource.remote.installNotice == nil
+            && MapCatalogSource.cachedRemote.installNotice == MapCatalogSource.cachedRemote.userLabel
+            && MapCatalogSource.appUpdateRequired.installNotice == MapCatalogSource.appUpdateRequired.userLabel,
+        "Install maps has one catalog notice, keeping the cached and update wording")
+    try require(MapCatalogSource.bundledFallback.manageNotice == "Couldn't check for updates."
+            && MapCatalogSource.cachedRemote.manageNotice == "Couldn't check for updates."
+            && MapCatalogSource.remote.manageNotice == nil,
+        "Manage maps says the failed check once for the page")
+    let fallbackBlocked = MapAcquisitionAvailability.blocked(provider: "Freizeitkarte", reason: "STATUS_UNVERIFIED")
+    let ownOutage = MapAcquisitionAvailability.blocked(provider: "BBBike", reason: "PROVIDER_DOWN")
+    try require(MapCatalogSource.bundledFallback.isShared(fallbackBlocked)
+            && !MapCatalogSource.bundledFallback.isShared(ownOutage)
+            && !MapCatalogSource.remote.isShared(fallbackBlocked)
+            && !MapCatalogSource.bundledFallback.isShared(.withheldRussia)
+            && MapCatalogSource.appUpdateRequired.isShared(.blocked(provider: "X", reason: "APP_UPDATE_REQUIRED")),
+        "only the reason the whole catalog shares is hidden from rows")
+    let sharedRow = unverified.removingCatalogWideReason(MapCatalogSource.bundledFallback.sharedBlockReason)
+    try require(sharedRow.groupNotice == nil && sharedRow.reason == nil && sharedRow.updateBlocked
+            && !sharedRow.allows(.update) && sharedRow.allows(.remove),
+        "a Manage row and group say nothing about the catalog-wide reason; Update stays unavailable")
+    let ownRow = providerDown.removingCatalogWideReason(MapCatalogSource.bundledFallback.sharedBlockReason)
+    try require(ownRow.groupNotice == "Freizeitkarte servers are unreachable.",
+        "a single provider's outage keeps its own group notice under the fallback")
+    try require(unverified.removingCatalogWideReason(nil) == unverified,
+        "a remote catalog keeps every reason")
+
     let unverifiedText = MapAcquisitionAvailability.blocked(provider: "Freizeitkarte", reason: "STATUS_UNVERIFIED")
         .detailedExplanation ?? ""
     try require(!unverifiedText.lowercased().contains("connection") && !unverifiedText.lowercased().contains("internet"),

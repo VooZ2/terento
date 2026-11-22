@@ -76,7 +76,9 @@ if ! grep -Fq 'mapEngine.beginInstallation(plan: plan, operationId: operationID)
     exit 1
 fi
 
-if ! grep -Fq 'let shouldRefreshMapInventory = section == .manageMaps' "$connect_screen" \
+# Opening Install maps or Manage maps reuses a fresh read of the same watch.
+if ! grep -Fq 'let shouldRefreshMapInventory = (section == .manageMaps' "$connect_screen" \
+    || ! grep -Fq '&& !mapEngine.hasFreshInventory(for: identity)' "$connect_screen" \
     || ! grep -Fq 'refreshMapInventory()' "$connect_screen"; then
     print -u2 "FAIL: map navigation does not refresh the device-backed inventory"
     exit 1

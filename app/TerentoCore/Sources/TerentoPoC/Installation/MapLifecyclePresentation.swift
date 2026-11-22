@@ -22,6 +22,18 @@ struct MapLifecycleActionAvailability: Equatable, Sendable {
     /// failed). Manage maps says it once under the provider group header
     /// instead of on every row.
     var groupNotice: String? = nil
+    /// The acquisition block code, so a reason the whole catalog shares can be
+    /// said once for the page instead.
+    var blockReason: String? = nil
+
+    /// The page says a catalog-wide reason once; the row and its provider
+    /// group then say nothing about it (Update stays unavailable).
+    func removingCatalogWideReason(_ sharedBlockReason: String?) -> MapLifecycleActionAvailability {
+        guard let sharedBlockReason, blockReason == sharedBlockReason else { return self }
+        return MapLifecycleActionAvailability(
+            actions: actions, status: status, reason: nil, updateBlocked: updateBlocked,
+            updateNotice: updateNotice, groupNotice: nil, blockReason: blockReason)
+    }
 
     func allows(_ action: MapLifecycleAction) -> Bool {
         actions.contains(action)
@@ -202,7 +214,8 @@ struct MapLifecyclePresentationResolver: Sendable {
                 && acquisitionAvailability == .available
                 && !actions.contains(.update)
                 ? "Newer release available. \(Self.noProfileUpdateReason)" : nil,
-            groupNotice: acquisitionAvailability.manageGroupNotice
+            groupNotice: acquisitionAvailability.manageGroupNotice,
+            blockReason: acquisitionAvailability.blockReason
         )
     }
 

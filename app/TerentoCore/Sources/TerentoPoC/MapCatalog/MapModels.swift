@@ -507,6 +507,12 @@ enum MapAcquisitionAvailability: Equatable, Hashable, Sendable {
 
     static let availabilityCheckFailedNotice = "Couldn't check for updates."
 
+    /// The server or app block code, for a blocked map only.
+    var blockReason: String? {
+        if case .blocked(_, let reason) = self { return reason }
+        return nil
+    }
+
     /// Manage maps: a reason that applies to the whole provider, said once
     /// under its group header. One sentence; Refresh is the retry.
     var manageGroupNotice: String? {

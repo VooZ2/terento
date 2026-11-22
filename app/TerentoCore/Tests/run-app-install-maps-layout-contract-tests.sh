@@ -32,7 +32,8 @@ reject_in_file 'Install a third-party map (.img) from this Mac.' "$connect_scree
 reject_in_file 'Install a third-party map (.img) file from this Mac.' "$connect_screen" 'old mechanical Import subtitle remains'
 require_in_file 'Using local catalog — may be out of date' "$catalog_loader" 'neutral local-catalog fallback label is missing'
 reject_in_file 'Offline catalog — may be out of date' "$catalog_loader" 'misleading offline fallback label remains'
-require_in_file 'if mapEngine.catalogSource == .bundledFallback' "$connect_screen" 'fallback status is not limited to the bundled catalog state'
+require_in_file 'if let notice = mapEngine.catalogSource?.installNotice {' "$connect_screen" 'the catalog-level notice is not driven by the catalog source'
+require_in_file 'static let catalogUnavailableNotice = "Couldn'"'"'t load the map list. Maps can'"'"'t be installed right now."' "$catalog_loader" 'the no-catalog notice must use the owner wording'
 require_in_file 'HStack(spacing: 10)' "$connect_screen" 'filter/search controls do not use the compact shared gap'
 require_in_file 'ViewThatFits(in: .horizontal)' "$connect_screen" 'catalog toolbar cannot adapt to narrow windows'
 require_in_file '.fixedSize(horizontal: true, vertical: false)' "$connect_screen" 'filter menus cannot retain their intrinsic width'
@@ -107,6 +108,6 @@ manage_row = block('private struct ManageMapRow: View {', 'private struct Manage
 assert '.hidden()' in manage_row and 'TimeRemainingLabel(estimate: timeRemaining)' in manage_row, 'the time line does not keep its height while empty'
 assert 'countStyle: .binary' not in source, 'a size uses binary units; the app shows decimal sizes everywhere'
 manage_page = block('private var managedMapsContent: some View {', 'private func managedMapGroups')
-assert 'managedMapGroups(lifecycleInventory)' in manage_page and '.clipped()\n                .padding(.top, 8)' in manage_page, 'Manage rows can scroll visibly under the count line'
+assert 'managedMapGroups(lifecycleInventory)' in manage_page and '.clipped()\n                .overlay(alignment: .top) { TerentoListTopDivider() }\n                .padding(.top, 8)' in manage_page, 'Manage rows can scroll visibly under the count line'
 print('PASS: map row status line, one style name, Import in the header, Storage beside Continue, no ready badge')
 PYTEST
