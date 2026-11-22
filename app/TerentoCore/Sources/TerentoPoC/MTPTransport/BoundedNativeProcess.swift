@@ -148,7 +148,9 @@ extension FinishingTrace {
     static func freezeFailure() {
         lock.lock(); defer { lock.unlock() }
         let significant = entries.filter {
+            // Per-region timing stays in finishing.log; the report keeps the total.
             !$0.contains("event=read_checkpoint") && !$0.contains("event=region_begin")
+                && !$0.contains("event=region_timing")
         }
         let first = significant.firstIndex { line in
             line.contains("event=read_failed") || line.contains("event=compare_failed") ||
@@ -208,7 +210,7 @@ extension FinishingTrace {
         "session_close_begin", "session_close_end", "native_cleanup_begin", "native_cleanup_end",
         "read_chunk_limit", "abort_close_begin", "abort_close_returned", "target_begin", "target_end", "read_failed", "read_error_code", "read_ptp_response", "retry_close_begin",
         "retry_close_returned", "compare_failed", "verify_result", "final_close_begin",
-        "final_close_returned", "read_checkpoint", "target_matches", "target_size", "final_inventory", "installation_failure", "cleanup_result",
+        "final_close_returned", "read_checkpoint", "region_timing", "read_timing", "target_matches", "target_size", "final_inventory", "installation_failure", "cleanup_result",
         "prewrite_inventory_duplicates", "postwrite_inventory_duplicates",
         "prewrite_inventory_metrics", "postwrite_inventory_metrics", "update_inventory_metrics", "inventory_scope",
         "removal_check", "update_current_check", "update_new_check", "global_inventory_observation",
@@ -225,7 +227,8 @@ extension FinishingTrace {
         "t", "pid", "child", "timeout", "attempt", "delay", "status", "reason", "offset", "rc",
         "detail", "last_verified_end", "verified_bytes", "elapsed", "matches", "expected_size", "actual_size", "folder", "zero_id", "filename_match", "succeeded",
         "duplicates", "objects", "baseline", "duration_ms", "bytes", "regions", "declined",
-        "before", "after", "removedOrChanged", "addedOrChanged", "wall", "limit", "components"
+        "before", "after", "removedOrChanged", "addedOrChanged", "wall", "limit", "components",
+        "region", "chunks", "total_ms", "slowest_ms", "slowest_offset", "local_ms", "mbps"
     ]
     static func safeLine(_ line: String) -> String? {
         guard line.utf8.count < 1024 else { return nil }
