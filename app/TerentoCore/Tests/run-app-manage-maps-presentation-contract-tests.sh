@@ -217,13 +217,17 @@ loader = open(sys.argv[1]).read()
 switch = loader[loader.index("enum MapCatalogTestSwitch {"):loader.index("/// When the catalog itself is the cause")]
 assert 'hasSuffix("-local")' in switch and "return isLocalTestLabel || (isDebug && !isAppStore)" in switch, \
     "only a -local label (any configuration) or a DMG Debug build may use the switch"
-uses = switch[switch.index("static var usesBundledCatalog: Bool {"):]
+uses = switch[switch.index("static var currentBuildAllowsLocalTesting: Bool {"):]
 assert "return false" not in uses, "the switch must be decided at run time, not compiled out of App Store -local builds"
 assert "let isAppStore = true" in uses and 'forInfoDictionaryKey: "TerentoReleaseLabel"' in uses
 endpoint = loader[loader.index("static let defaultEndpoint: URL? = {"):]
 endpoint = endpoint[:endpoint.index("}()")]
 assert "if MapCatalogTestSwitch.usesBundledCatalog {\n            return nil" in endpoint
 assert "#if DEBUG" not in endpoint, "the switch must not be Debug-only (the -local build is Release)"
-print("PASS: bundled-catalog switch only in -local and DMG Debug builds")
+unpause = loader[loader.index("enum MapCatalogDebugUnpause {"):]
+unpause = unpause[:unpause.index("static func previewQuery")]
+assert "MapCatalogTestSwitch.currentBuildAllowsLocalTesting" in unpause and "#if DEBUG" not in unpause, \
+    "the paused-provider test switch must follow the same -local run-time rule"
+print("PASS: bundled-catalog and paused-provider switches only in -local and DMG Debug builds")
 PYSWITCH
 

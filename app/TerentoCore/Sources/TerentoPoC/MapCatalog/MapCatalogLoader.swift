@@ -43,7 +43,8 @@ enum MapCatalogTestSwitch {
         infoValue as? Bool == true || environment[environmentKey] == "1"
     }
 
-    static var usesBundledCatalog: Bool {
+    /// A "-local" test build (any configuration) or a DMG Debug build.
+    static var currentBuildAllowsLocalTesting: Bool {
         #if DEBUG
         let isDebug = true
         #else
@@ -55,7 +56,11 @@ enum MapCatalogTestSwitch {
         let isAppStore = false
         #endif
         return isAllowed(isDebug: isDebug, isAppStore: isAppStore,
-                releaseLabel: Bundle.main.object(forInfoDictionaryKey: "TerentoReleaseLabel") as? String)
+            releaseLabel: Bundle.main.object(forInfoDictionaryKey: "TerentoReleaseLabel") as? String)
+    }
+
+    static var usesBundledCatalog: Bool {
+        currentBuildAllowsLocalTesting
             && isRequested(environment: ProcessInfo.processInfo.environment,
                 infoValue: Bundle.main.object(forInfoDictionaryKey: infoKey))
     }
@@ -783,17 +788,16 @@ enum MapCatalogError: LocalizedError, Sendable {
 }
 
 /// Local hardware testing of a provider the server still holds PAUSED: a
-/// Debug build run with TERENTO_DEBUG_UNPAUSE_PROVIDERS=<id,...> treats that
+/// "-local" test build (App Store configuration included) or a DMG Debug
+/// build run with TERENTO_DEBUG_UNPAUSE_PROVIDERS=<id,...> treats that
 /// provider as active. Only the PROVIDER_PAUSED reason is lifted; region,
-/// package and authorization checks stay. Release builds never read it.
+/// package and authorization checks stay. A stable App Store, TestFlight or
+/// DMG build never reads it (same run-time rule as MapCatalogTestSwitch).
 enum MapCatalogDebugUnpause {
-    #if DEBUG
-    static let providerIDs = parse(ProcessInfo.processInfo.environment["TERENTO_DEBUG_UNPAUSE_PROVIDERS"])
-    #else
-    static let providerIDs: Set<String> = []
-    #endif
+    static let providerIDs: Set<String> = MapCatalogTestSwitch.currentBuildAllowsLocalTesting
+        ? parse(ProcessInfo.processInfo.environment["TERENTO_DEBUG_UNPAUSE_PROVIDERS"]) : []
 
-    /// `nil` when no provider is named, which is always so in Release builds.
+    /// `nil` when no provider is named, which is always so in stable builds.
     static func previewQuery(_ ids: Set<String>) -> String? {
         ids.isEmpty ? nil : ids.sorted().joined(separator: ",")
     }

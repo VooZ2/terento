@@ -221,14 +221,17 @@ diagnostic and map-statistics events are classified as purgeable test data.
 A provider the server holds `PAUSED` stays visible but cannot be installed;
 one that has never been `ACTIVE` (a new provider) is not in the catalog at all.
 To hardware-test it before activation, put
-`Packaging/local-paused-provider-test.command` beside a Debug `*-local`
-`Terento.app` and start the app with it. It sets the Debug-only
+`Packaging/local-paused-provider-test.command` beside a `*-local`
+`Terento.app` (Debug, or the App Store configuration with a `-local`
+release label) and start the app with it. It sets
 `TERENTO_DEBUG_UNPAUSE_PROVIDERS` (default `luckymaps,openfietsmap`), which lifts only the
 `PROVIDER_PAUSED` reason for the named providers and asks catalog-v6 for
 them with `?preview=`, so a new provider appears; `RETIRED`, other block
 reasons, region policy and installation authorization still apply, and the
 server state is not changed. Launching `Terento.app` directly keeps the
-provider paused. Release builds ignore the variable.
+provider paused. Builds without a `-local` release label (stable DMG,
+App Store and TestFlight) ignore the variable, decided at run time from
+`TerentoReleaseLabel`.
 
 ## Local Finishing diagnostic build
 
