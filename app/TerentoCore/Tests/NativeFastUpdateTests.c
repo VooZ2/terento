@@ -240,7 +240,9 @@ int main(void) {
     uint64_t new_sampled=0; assert(install_readback(size,install_offsets,install_count,&new_sampled)==0);
     /* Garmin read-back: 1 MiB requests (odd on 51b8 under macOS), same bytes. */
     assert(largest_request==1048575 || largest_request==1048576);
-    assert(read_requests-requests_before_readback <= install_bytes/1048575 + install_count);
+    /* Per region: full 1 MiB requests, then at most two for the tail (an even
+       tail on 51b8 is read as odd length + 1 byte). */
+    assert(read_requests-requests_before_readback <= install_bytes/1048575 + 2*install_count);
     uint64_t after_new=bytes_read-after_current;
     assert(new_sampled==install_bytes && after_new==install_bytes && full_reads==0);
     mark=bytes_read; progress_done=0; assert(delete_old(size,1)==0 && deletes==1); uint64_t after_delete=bytes_read-mark;
