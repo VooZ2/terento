@@ -224,6 +224,89 @@ struct SafeDeleteResult: Equatable, Sendable {
     }
 }
 
+/// What the confirm step after a delete observed.
+enum SafeDeleteConfirmOutcome: String, Equatable, Sendable {
+    case absent
+    case stillPresent = "still_present"
+    case readFailed = "read_failed"
+    case timedOut = "timed_out"
+}
+
+/// One Remove step, for the local log. Fixed labels only: no names or paths.
+enum SafeDeleteStep: Equatable, Sendable {
+    case checkStarted
+    case checkFinished(succeeded: Bool)
+    case deleteStarted
+    case deleteFinished(succeeded: Bool)
+    case confirmStarted(timeLimit: TimeInterval?)
+    case confirmAttemptStarted(attempt: Int)
+    case confirmAttemptFinished(attempt: Int, outcome: SafeDeleteConfirmOutcome)
+    case confirmFinished(outcome: SafeDeleteConfirmOutcome, elapsed: TimeInterval)
+
+    /// "step=<label> key=value ..." with numeric or fixed values.
+    var logFields: String {
+        switch self {
+        case .checkStarted: return "step=check_begin"
+        case .checkFinished(let ok): return "step=check_end outcome=\(ok ? "ok" : "failed")"
+        case .deleteStarted: return "step=delete_begin"
+        case .deleteFinished(let ok): return "step=delete_end outcome=\(ok ? "ok" : "failed")"
+        case .confirmStarted(let limit):
+            return "step=confirm_begin" + (limit.map { " limit=\(Int($0.rounded(.up)))" } ?? "")
+        case .confirmAttemptStarted(let attempt): return "step=confirm_attempt_begin attempt=\(attempt)"
+        case .confirmAttemptFinished(let attempt, let outcome):
+            return "step=confirm_attempt_end attempt=\(attempt) outcome=\(outcome.rawValue)"
+        case .confirmFinished(let outcome, let elapsed):
+            return "step=confirm_end outcome=\(outcome.rawValue) elapsed=\(String(format: "%.1f", elapsed))"
+        }
+    }
+}
+
+/// Shared between the confirm thread and the caller that waits for it.
+private final class SafeDeleteConfirmBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storedOutcome: SafeDeleteConfirmOutcome?
+    private var expired = false
+
+    var isExpired: Bool { lock.withLock { expired } }
+    var outcome: SafeDeleteConfirmOutcome? { lock.withLock { expired ? nil : storedOutcome } }
+
+    func store(_ outcome: SafeDeleteConfirmOutcome) {
+        lock.withLock { if !expired { storedOutcome = outcome } }
+    }
+
+    func expire() {
+        lock.withLock { if storedOutcome == nil { expired = true } }
+    }
+
+    func whileActive(_ body: () -> Void) {
+        lock.withLock { if !expired { body() } }
+    }
+}
+
+/// The confirm step's remaining time, counted from its first rescan, so a
+/// bounded rescan read ends with the confirm step instead of after it.
+final class SafeDeleteConfirmWindow: @unchecked Sendable {
+    private let lock = NSLock()
+    private let limit: TimeInterval
+    private let now: @Sendable () -> TimeInterval
+    private var startedAt: TimeInterval?
+
+    init(limit: TimeInterval,
+         now: @escaping @Sendable () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }) {
+        self.limit = limit
+        self.now = now
+    }
+
+    func remaining() -> TimeInterval {
+        lock.withLock {
+            let current = now()
+            let start = startedAt ?? current
+            startedAt = start
+            return max(0, limit - (current - start))
+        }
+    }
+}
+
 /// Isolated Stage 5.2 safety coordinator. It is deliberately not connected
 /// to SwiftUI or MapEngine. A caller must provide explicit confirmation, a
 /// live device check, exact manifest identity, and a post-delete rescan.
@@ -231,8 +314,23 @@ struct SafeDeleteResult: Equatable, Sendable {
 /// adapter to remove the exact previous object. No local backup is required.
 struct SafeDeleteAdapter: Sendable {
     private static let postDeleteRescanAttempts = 3
-    private static let postDeleteRescanSettleInterval: TimeInterval = 0.75
-    private static let postDeleteRescanRetryInterval: TimeInterval = 0.5
+    static let rescanFailedMessage = "The Garmin device could not be rescanned after removal."
+
+    /// The confirm step (the rescans after the delete) ends at this limit.
+    /// nil keeps the unbounded wait for callers whose rescan is bounded on
+    /// its own. When the limit is reached Remove reports the confirm as
+    /// failed at once; it never retries the delete.
+    let confirmTimeLimit: TimeInterval?
+    let settleInterval: TimeInterval
+    let retryInterval: TimeInterval
+
+    init(confirmTimeLimit: TimeInterval? = nil,
+         settleInterval: TimeInterval = 0.75,
+         retryInterval: TimeInterval = 0.5) {
+        self.confirmTimeLimit = confirmTimeLimit
+        self.settleInterval = settleInterval
+        self.retryInterval = retryInterval
+    }
 
     func delete(
         target: SafeDeleteTarget,
@@ -240,7 +338,8 @@ struct SafeDeleteAdapter: Sendable {
         deviceConnected: Bool,
         rescan: @escaping @Sendable () throws -> [InstalledMapFile],
         transport: any SafeDeleteTransport,
-        onProgress: (@Sendable (SafeDeleteProgress) -> Void)? = nil
+        onProgress: (@Sendable (SafeDeleteProgress) -> Void)? = nil,
+        onStep: (@Sendable (SafeDeleteStep) -> Void)? = nil
     ) -> SafeDeleteResult {
         guard confirmed else {
             return result(
@@ -282,6 +381,7 @@ struct SafeDeleteAdapter: Sendable {
         progressReporter.report(state: .verifying, fraction: 0)
 
         let current: SafeDeleteDeviceObject
+        onStep?(.checkStarted)
         do {
             current = try transport.inspectExactObject(target, onProgress: { transfer in
                 progressReporter.report(
@@ -290,9 +390,12 @@ struct SafeDeleteAdapter: Sendable {
                     bytesPerSecond: transfer.bytesPerSecond
                 )
             })
+            onStep?(.checkFinished(succeeded: true))
         } catch let error as SafeDeleteTransportError {
+            onStep?(.checkFinished(succeeded: false))
             return result(target, status: status(for: error), message: message(for: error))
         } catch {
+            onStep?(.checkFinished(succeeded: false))
             return result(
                 target,
                 status: .failedOperation,
@@ -319,14 +422,18 @@ struct SafeDeleteAdapter: Sendable {
         let resolvedTarget = target.resolvingObjectID(currentObjectID)
         progressReporter.report(state: .checkingContent, fraction: 0.20)
 
+        onStep?(.deleteStarted)
         do {
             try transport.deleteExactObject(resolvedTarget, onProgress: { transfer in
                 progressReporter.report(state: .checkingContent,
                     fraction: 0.20 + 0.70 * transfer.fractionCompleted)
             })
+            onStep?(.deleteFinished(succeeded: true))
         } catch let error as SafeDeleteTransportError {
+            onStep?(.deleteFinished(succeeded: false))
             return result(target, status: status(for: error), message: message(for: error))
         } catch {
+            onStep?(.deleteFinished(succeeded: false))
             return result(
                 target,
                 status: .failedOperation,
@@ -335,23 +442,85 @@ struct SafeDeleteAdapter: Sendable {
         }
 
         progressReporter.report(state: .postVerifying, fraction: 0.93)
+        onStep?(.confirmStarted(timeLimit: confirmTimeLimit))
+        let confirmStarted = ProcessInfo.processInfo.systemUptime
+        let outcome = boundedConfirm(target: target, rescan: rescan, onStep: onStep,
+            reportConfirming: { progressReporter.report(state: .postVerifying, fraction: 0.93) })
+        let elapsed = ProcessInfo.processInfo.systemUptime - confirmStarted
+        onStep?(.confirmFinished(outcome: outcome, elapsed: elapsed))
 
-        // DeleteObject completes before the watch has necessarily published
-        // its refreshed object list. Wait briefly, then use fresh read-only
-        // MTP sessions for bounded verification retries. This never retries
-        // the destructive delete itself.
-        Thread.sleep(forTimeInterval: Self.postDeleteRescanSettleInterval)
+        switch outcome {
+        case .absent:
+            progressReporter.report(state: .completed, fraction: 1)
+            return result(
+                target,
+                status: .success,
+                message: target.ownership == .detectedNotManaged
+                    ? "The third-party map was removed and verified as absent."
+                    : "The Terento-managed map was removed and verified as absent."
+            )
+        case .stillPresent:
+            return result(
+                target,
+                status: .failedPostVerify,
+                message: "Removal could not be verified after rescanning the Garmin device."
+            )
+        case .readFailed, .timedOut:
+            return result(target, status: .failedPostVerify, message: Self.rescanFailedMessage)
+        }
+    }
+
+    /// Runs the confirm step under `confirmTimeLimit`. A rescan that does not
+    /// return in time is left to its own bounded read; no further attempt
+    /// starts once the limit is reached.
+    private func boundedConfirm(
+        target: SafeDeleteTarget,
+        rescan: @escaping @Sendable () throws -> [InstalledMapFile],
+        onStep: (@Sendable (SafeDeleteStep) -> Void)?,
+        reportConfirming: @escaping @Sendable () -> Void
+    ) -> SafeDeleteConfirmOutcome {
+        guard let confirmTimeLimit else {
+            return confirmRemoval(target: target, rescan: rescan, isExpired: { false },
+                                  onStep: onStep, reportConfirming: reportConfirming)
+        }
+        let box = SafeDeleteConfirmBox()
+        let finished = DispatchSemaphore(value: 0)
+        let adapter = self
+        Thread.detachNewThread {
+            box.store(adapter.confirmRemoval(target: target, rescan: rescan,
+                isExpired: { box.isExpired }, onStep: onStep,
+                // A rescan left running past the limit never moves the row again.
+                reportConfirming: { box.whileActive(reportConfirming) }))
+            finished.signal()
+        }
+        if finished.wait(timeout: .now() + max(0, confirmTimeLimit)) == .timedOut {
+            box.expire()
+        }
+        return box.outcome ?? .timedOut
+    }
+
+    // DeleteObject completes before the watch has necessarily published
+    // its refreshed object list. Wait briefly, then use fresh read-only
+    // MTP sessions for bounded verification retries. This never retries
+    // the destructive delete itself.
+    private func confirmRemoval(
+        target: SafeDeleteTarget,
+        rescan: @Sendable () throws -> [InstalledMapFile],
+        isExpired: () -> Bool,
+        onStep: (@Sendable (SafeDeleteStep) -> Void)?,
+        reportConfirming: () -> Void
+    ) -> SafeDeleteConfirmOutcome {
+        Thread.sleep(forTimeInterval: settleInterval)
         var observedSuccessfulRescan = false
         for attempt in 0..<Self.postDeleteRescanAttempts {
             if attempt > 0 {
-                Thread.sleep(forTimeInterval: Self.postDeleteRescanRetryInterval)
+                Thread.sleep(forTimeInterval: retryInterval)
             }
+            guard !isExpired() else { return .timedOut }
 
+            reportConfirming()
+            onStep?(.confirmAttemptStarted(attempt: attempt + 1))
             do {
-                progressReporter.report(
-                    state: .postVerifying,
-                    fraction: 0.93
-                )
                 let remaining = try rescan()
                 observedSuccessfulRescan = true
                 // Rescans open fresh sessions, where the deleted object's
@@ -360,34 +529,17 @@ struct SafeDeleteAdapter: Sendable {
                 let stillPresent = remaining.contains {
                     $0.path == target.expectedPath
                 }
+                onStep?(.confirmAttemptFinished(attempt: attempt + 1,
+                                                outcome: stillPresent ? .stillPresent : .absent))
                 if !stillPresent {
-                    progressReporter.report(state: .completed, fraction: 1)
-                    return result(
-                        target,
-                        status: .success,
-                        message: target.ownership == .detectedNotManaged
-                            ? "The third-party map was removed and verified as absent."
-                            : "The Terento-managed map was removed and verified as absent."
-                    )
+                    return .absent
                 }
             } catch {
+                onStep?(.confirmAttemptFinished(attempt: attempt + 1, outcome: .readFailed))
                 continue
             }
         }
-
-        if observedSuccessfulRescan {
-            return result(
-                target,
-                status: .failedPostVerify,
-                message: "Removal could not be verified after rescanning the Garmin device."
-            )
-        }
-
-        return result(
-            target,
-            status: .failedPostVerify,
-            message: "The Garmin device could not be rescanned after removal."
-        )
+        return observedSuccessfulRescan ? .stillPresent : .readFailed
     }
 
     private func isEligibleTarget(_ target: SafeDeleteTarget) -> Bool {
@@ -563,7 +715,8 @@ struct MapLifecycleManager: Sendable {
         rescan: @escaping @Sendable () throws -> [InstalledMapFile],
         transport: any SafeDeleteTransport,
         ownershipSource: MapLifecycleOwnershipSource = .manifest,
-        onProgress: (@Sendable (SafeDeleteProgress) -> Void)? = nil
+        onProgress: (@Sendable (SafeDeleteProgress) -> Void)? = nil,
+        onStep: (@Sendable (SafeDeleteStep) -> Void)? = nil
     ) -> SafeDeleteResult {
         let result = safeDeleteAdapter.delete(
             target: target,
@@ -571,7 +724,8 @@ struct MapLifecycleManager: Sendable {
             deviceConnected: deviceConnected,
             rescan: rescan,
             transport: transport,
-            onProgress: onProgress
+            onProgress: onProgress,
+            onStep: onStep
         )
 
         guard result.isSuccess else {

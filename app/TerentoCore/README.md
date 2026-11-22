@@ -451,7 +451,19 @@ removed map can be installed again. VoiceOver names each row action with
 the map and provider ("Remove Lithuania, MapRando"). At 93%, the UI says “Confirming the map was removed”; repeated
 inventory checks hold that value rather than increasing it for each retry. Only
 confirmed absence completes removal. The existing settle delays and retry limits
-are unchanged. No watchdog, shortened timeout or new USB recovery is introduced.
+are unchanged.
+
+The confirm step has a time limit (1.3.0, owner QA 2026-11-22): the same bound
+as the read before the delete, 60 s plus 30 ms per object last seen, at most
+600 s. Its rescans run in the bounded helper, like that read, and each one gets
+only the time left. When the limit is reached the row shows the existing failed
+state ("The Garmin device could not be rescanned after removal."), no further
+rescan starts, the delete is never repeated, and the watch is read again. Each
+Remove step (start, check and its helper, delete, confirm start, each confirm
+attempt and its helper, confirm end, result) is logged with its time in log.txt
+("MAP REMOVAL ...") and in finishing.log (`removal_step`, `wall=` epoch
+seconds). Remove state is kept only in memory, so after a relaunch Manage maps
+shows the watch as read, with no stale "Removing" row.
 
 This change is a candidate for the next app release; automated tests do not replace
 a real-device large-map update acceptance check.

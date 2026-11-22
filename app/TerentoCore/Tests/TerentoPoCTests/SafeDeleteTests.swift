@@ -606,6 +606,99 @@ private func testPostDeleteRescanRetriesWithoutRepeatingDelete() throws {
     try require(transport.events == ["inspect", "delete"], "rescan retry must never repeat the destructive delete")
 }
 
+private final class StepCollector: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored: [SafeDeleteStep] = []
+    var values: [SafeDeleteStep] { lock.withLock { stored } }
+    func append(_ step: SafeDeleteStep) { lock.withLock { stored.append(step) } }
+}
+
+/// A rescan that never answers until the test releases it.
+private final class HangingRescan: @unchecked Sendable {
+    private let lock = NSLock()
+    private let release = DispatchSemaphore(value: 0)
+    private var calls = 0
+    private let files: [InstalledMapFile]
+    init(files: [InstalledMapFile]) { self.files = files }
+    var callCount: Int { lock.withLock { calls } }
+    func scan() -> [InstalledMapFile] {
+        lock.withLock { calls += 1 }
+        release.wait()
+        return files
+    }
+    func finish() { release.signal() }
+}
+
+private func testConfirmTimeLimitEndsHangingRescan() throws {
+    let prepared = validTarget()
+    let transport = FakeSafeDeleteTransport()
+    transport.currentObject = deviceObject(for: prepared.target)
+    let hanging = HangingRescan(files: [prepared.target.sourceFile])
+    let steps = StepCollector()
+    let progress = ProgressCollector()
+    let started = Date()
+    let result = SafeDeleteAdapter(confirmTimeLimit: 0.3, settleInterval: 0, retryInterval: 0).delete(
+        target: prepared.target, confirmed: true, deviceConnected: true,
+        rescan: { hanging.scan() }, transport: transport,
+        onProgress: { progress.append($0) }, onStep: { steps.append($0) })
+    let elapsed = Date().timeIntervalSince(started)
+
+    try require(elapsed < 2, "a rescan that never answers must end at the confirm limit (took \(elapsed) s)")
+    try require(result.status == .failedPostVerify, "a confirm that cannot finish must fail the row")
+    try require(result.message == SafeDeleteAdapter.rescanFailedMessage, "the timed-out confirm uses the existing rescan message")
+    try require(transport.events == ["inspect", "delete"], "the confirm limit never repeats the delete")
+    try require(!progress.values.contains { $0.state == .completed || $0.fractionCompleted == 1 },
+                "a confirm that timed out must never report completion")
+    try require(steps.values.contains { step in
+        if case .confirmFinished(.timedOut, _) = step { return true }
+        return false
+    }, "the timed-out confirm is logged as timed_out")
+    try require(steps.values.contains(.confirmStarted(timeLimit: 0.3)), "the confirm start logs its limit")
+
+    let reportsAtLimit = progress.values.count
+    hanging.finish()
+    Thread.sleep(forTimeInterval: 0.2)
+    try require(hanging.callCount == 1, "no further rescan starts after the confirm limit")
+    try require(progress.values.count == reportsAtLimit, "a late rescan never moves the row again")
+}
+
+private func testConfirmWithinLimitLogsEachStep() throws {
+    let prepared = validTarget()
+    let transport = FakeSafeDeleteTransport()
+    transport.currentObject = deviceObject(for: prepared.target)
+    let scans = SafeDeleteScanSequence([[prepared.target.sourceFile], []])
+    let steps = StepCollector()
+    let result = SafeDeleteAdapter(confirmTimeLimit: 5, settleInterval: 0, retryInterval: 0).delete(
+        target: prepared.target, confirmed: true, deviceConnected: true,
+        rescan: { scans.next() }, transport: transport, onStep: { steps.append($0) })
+    try require(result.status == .success, "a confirm inside its limit still succeeds")
+    let labels = steps.values.map { $0.logFields.split(separator: " ").first.map(String.init) ?? "" }
+    try require(labels == ["step=check_begin", "step=check_end", "step=delete_begin", "step=delete_end",
+                           "step=confirm_begin", "step=confirm_attempt_begin", "step=confirm_attempt_end",
+                           "step=confirm_attempt_begin", "step=confirm_attempt_end", "step=confirm_end"],
+                "every Remove step is logged in order: \(labels)")
+    try require(steps.values.last?.logFields.hasPrefix("step=confirm_end outcome=absent elapsed=") == true,
+                "the confirm end logs its outcome and time")
+}
+
+private final class FakeClock: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: TimeInterval = 100
+    var now: TimeInterval { lock.withLock { value } }
+    func advance(_ seconds: TimeInterval) { lock.withLock { value += seconds } }
+}
+
+private func testConfirmWindowCountsFromFirstRescan() throws {
+    let clock = FakeClock()
+    let window = SafeDeleteConfirmWindow(limit: 60, now: { clock.now })
+    clock.advance(30)
+    try require(window.remaining() == 60, "the window starts at the first rescan")
+    clock.advance(45)
+    try require(window.remaining() == 15, "a later rescan gets only the time left")
+    clock.advance(30)
+    try require(window.remaining() == 0, "an exhausted window never goes negative")
+}
+
 private func testTransportFailureIsReported() throws {
     let prepared = validTarget()
     let transport = FakeSafeDeleteTransport()
@@ -758,6 +851,9 @@ struct SafeDeleteTests {
             ("post-delete rescan and exact identity are required", testPostDeleteRescanAndExactIdentityAreRequired),
             ("post-delete rescan retries without repeating delete", testPostDeleteRescanRetriesWithoutRepeatingDelete),
             ("post-delete verification uses stable path across sessions", testPostDeleteUsesStablePathAcrossSessions),
+            ("confirm time limit ends a hanging rescan", testConfirmTimeLimitEndsHangingRescan),
+            ("confirm within its limit logs each step", testConfirmWithinLimitLogsEachStep),
+            ("confirm window counts from the first rescan", testConfirmWindowCountsFromFirstRescan),
             ("transport failure is reported", testTransportFailureIsReported),
             ("lifecycle manager cleans manifest after verified delete", testLifecycleManagerCleansManifestAfterVerifiedDelete),
             ("durable ownership and cross-computer removal", testDurableOwnershipAndCrossComputerRemoval)

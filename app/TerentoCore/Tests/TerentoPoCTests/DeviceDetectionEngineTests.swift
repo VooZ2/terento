@@ -256,6 +256,16 @@ struct DeviceDetectionEngineTests {
         check(MTPFinishingWorker.timeout(for: .init(operation: .snapshot), sampleTimeout: 600) == 45, "post-write snapshot bound is unchanged")
         check(MTPFinishingWorker.timeout(for: .init(operation: .inventory), sampleTimeout: 600) == 60, "pre-write inventory without a baseline keeps 60 s")
         check(MTPFinishingWorker.timeout(for: .init(operation: .samples), sampleTimeout: 900) == 600, "existing sample bound is unchanged")
+        check(MTPFinishingWorker.removalConfirmTimeLimit(expectedObjectCount: nil) == 60, "Remove's confirm limit without a baseline is 60 s")
+        check(MTPFinishingWorker.removalConfirmTimeLimit(expectedObjectCount: 2_000) == 120, "Remove's confirm limit scales like the read before the delete")
+        check(MTPFinishingWorker.timeout(for: .init(operation: .inventory, timeLimit: 5), sampleTimeout: 600) == 5, "a caller's time limit shortens the bound")
+        check(MTPFinishingWorker.timeout(for: .init(operation: .inventory, timeLimit: 900), sampleTimeout: 600) == 60, "a caller's time limit never extends the bound")
+        check(FinishingTrace.safeLine("FINISH_TRACE swift t=1 event=removal_step step=confirm_end outcome=timed_out elapsed=60.0 wall=1763786048.123") != nil,
+              "Remove steps reach finishing.log with their time")
+        check(FinishingTrace.safeLine("FINISH_TRACE swift event=removal_step step=remove_result result=DELETE_FAILED_POST_VERIFY outcome=failed") != nil,
+              "the Remove result is logged")
+        check(FinishingTrace.safeLine("FINISH_TRACE swift event=removal_step step=/GARMIN/x.img") == nil,
+              "a Remove step never carries a path")
         for operation in ["deviceSnapshot", "scanInventory", "prefixes"] {
             check(FinishingTrace.safeLine("FINISH_TRACE swift event=operation_begin operation=\(operation)") != nil,
                   "trace accepts the \(operation) worker operation")

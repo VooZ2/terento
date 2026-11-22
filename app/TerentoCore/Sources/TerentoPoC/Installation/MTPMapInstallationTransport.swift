@@ -613,7 +613,20 @@ enum MTPFinishingWorker {
             message: "The device operation could not be completed.", createdItemID: nil, context: context)
     }
 
+    /// Remove's confirm step uses the same bound as the inventory read before
+    /// the delete: 60 s plus 30 ms per object last seen, at most 600 s.
+    static func removalConfirmTimeLimit(expectedObjectCount: Int?) -> TimeInterval {
+        timeout(for: Request(operation: .inventory, expectedObjectCount: expectedObjectCount), sampleTimeout: 0)
+    }
+
     static func timeout(for request: Request, sampleTimeout: TimeInterval) -> TimeInterval {
+        let bound = operationTimeout(for: request, sampleTimeout: sampleTimeout)
+        // A caller's own deadline can only shorten the bound, never extend it.
+        guard let timeLimit = request.timeLimit, timeLimit.isFinite else { return bound }
+        return min(bound, max(0, timeLimit))
+    }
+
+    private static func operationTimeout(for request: Request, sampleTimeout: TimeInterval) -> TimeInterval {
         switch request.operation {
         case .samples:
             return min(600, sampleTimeout)
@@ -650,6 +663,9 @@ enum MTPFinishingWorker {
         var files: [DeviceFile]? = nil
         /// `.inventory` only: read the map scope (storage roots + GARMIN subtree).
         var mapScope: Bool? = nil
+        /// Time left in the caller's own step (Remove's confirm step). It only
+        /// shortens the operation's bound.
+        var timeLimit: TimeInterval? = nil
     }
     struct PrefixResult: Codable, Equatable {
         var index: Int

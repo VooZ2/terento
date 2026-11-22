@@ -11,14 +11,11 @@ enum TerentoLogLocation {
               !path.isEmpty else { return nil }
         return URL(fileURLWithPath: path, isDirectory: true)
     }()
-}
 
-@MainActor
-enum TerentoDiagnosticLog {
-    static let fileURL: URL = {
-        // Test runners point this at a temporary folder so they never touch
-        // the user's real diagnostic log or saved failure report.
-        if let override = TerentoLogLocation.overrideDirectory {
+    /// log.txt. Test runners point this at a temporary folder so they never
+    /// touch the user's real diagnostic log or saved failure report.
+    static let logFileURL: URL = {
+        if let override = overrideDirectory {
             return override.appendingPathComponent("log.txt")
         }
         let libraryURL = FileManager.default.urls(
@@ -31,6 +28,60 @@ enum TerentoDiagnosticLog {
             .appendingPathComponent("Terento", isDirectory: true)
             .appendingPathComponent("log.txt")
     }()
+
+    private static let appendLock = NSLock()
+
+    /// One "=== time ===" block appended to log.txt from any thread.
+    static func appendBlock(_ entry: String, at date: Date = Date()) {
+        let block = "\n=== \(ISO8601DateFormatter().string(from: date)) ===\n\(entry)\n"
+        appendLock.lock(); defer { appendLock.unlock() }
+        try? FileManager.default.createDirectory(at: logFileURL.deletingLastPathComponent(),
+                                                 withIntermediateDirectories: true)
+        let fd = open(logFileURL.path, O_WRONLY | O_APPEND | O_CREAT | O_NOFOLLOW, 0o600)
+        guard fd >= 0 else { return }
+        defer { close(fd) }
+        let data = Data(block.utf8)
+        data.withUnsafeBytes { buffer in
+            if let address = buffer.baseAddress { _ = write(fd, address, buffer.count) }
+        }
+    }
+}
+
+/// Remove steps with their time, in log.txt (one block per step) and in
+/// finishing.log next to the helper's own start and exit lines.
+/// Fixed labels and numbers only: never map names, paths or messages.
+enum MapRemovalLog {
+    static func record(_ fields: String) {
+        let now = Date()
+        FinishingTrace.event("removal_step",
+                             fields + " wall=\(String(format: "%.3f", now.timeIntervalSince1970))")
+        TerentoLogLocation.appendBlock("MAP REMOVAL \(fields)", at: now)
+    }
+
+    static func record(_ step: SafeDeleteStep) {
+        record(step.logFields)
+    }
+
+    /// The bounded helper read, with its start and exit logged as Remove steps.
+    static func helper(_ purpose: String) -> BoundedDeviceTransport.WorkerCall {
+        { request in
+            let started = ProcessInfo.processInfo.systemUptime
+            record("step=\(purpose)_helper_begin timeout=\(Int(MTPFinishingWorker.timeout(for: request, sampleTimeout: 0).rounded(.up)))")
+            do {
+                let response = try MTPFinishingWorker.perform(request)
+                record("step=\(purpose)_helper_end outcome=ok elapsed=\(String(format: "%.1f", ProcessInfo.processInfo.systemUptime - started))")
+                return response
+            } catch {
+                record("step=\(purpose)_helper_end outcome=failed elapsed=\(String(format: "%.1f", ProcessInfo.processInfo.systemUptime - started))")
+                throw error
+            }
+        }
+    }
+}
+
+@MainActor
+enum TerentoDiagnosticLog {
+    static let fileURL: URL = TerentoLogLocation.logFileURL
 
     /// Separate from the detailed local log: only the reviewed, sanitized issue
     /// body is suitable for a public GitHub report. Never attach log.txt wholesale.
@@ -378,25 +429,7 @@ enum TerentoDiagnosticLog {
     }
 
     private static func append(_ entry: String) {
-        let directoryURL = fileURL.deletingLastPathComponent()
-        do {
-            try FileManager.default.createDirectory(
-                at: directoryURL,
-                withIntermediateDirectories: true
-            )
-
-            let block = "\n=== \(timestamp()) ===\n\(entry)\n"
-            let data = Data(block.utf8)
-            if FileManager.default.fileExists(atPath: fileURL.path) {
-                let handle = try FileHandle(forWritingTo: fileURL)
-                try handle.seekToEnd()
-                try handle.write(contentsOf: data)
-                try handle.close()
-            } else {
-                try data.write(to: fileURL, options: .atomic)
-            }
-        } catch {
-            // Diagnostics must never change the installation result.
-        }
+        // Diagnostics must never change the installation result.
+        TerentoLogLocation.appendBlock(entry)
     }
 }

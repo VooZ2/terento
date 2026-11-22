@@ -231,3 +231,27 @@ assert "MapCatalogTestSwitch.currentBuildAllowsLocalTesting" in unpause and "#if
 print("PASS: bundled-catalog and paused-provider switches only in -local and DMG Debug builds")
 PYSWITCH
 
+
+python3 - "$project_root/Sources/TerentoPoC/Installation/MapLifecycleViewModel.swift" "$presentation" <<'PYREMOVE'
+import sys
+view_model = open(sys.argv[1]).read()
+presentation = open(sys.argv[2]).read()
+remove = view_model[view_model.index("    private func remove(itemID: String) {"):view_model.index("    private func update(itemID: String) {")]
+# Remove 92% hang (owner 2026-11-22): the confirm step is bounded and runs in the helper.
+assert "SafeDeleteAdapter(confirmTimeLimit: confirmTimeLimit)" in remove, "Remove's confirm step has no time limit"
+assert "MTPFinishingWorker.removalConfirmTimeLimit(" in remove
+assert 'MapRemovalLog.helper("confirm")' in remove and "timeLimit: timeLimit" in remove, \
+    "the confirm rescan must run in the bounded helper with the time left"
+assert "MTPTransport(" not in remove, "Remove must not read the watch in-process after the delete"
+assert "onStep: { step in MapRemovalLog.record(step) }" in remove and "step=remove_result" in remove, \
+    "every Remove step and the result are logged"
+failed = remove[remove.index("phase: .failed,"):]
+assert "mapEngine.refreshCurrentDeviceMaps()" in failed[:400], "a failed Remove does not read the watch again"
+# After relaunch Manage shows the watch: Remove state lives only in memory.
+assert "@Published private(set) var operations: [String: MapLifecycleOperationState] = [:]" in view_model
+for persisted in ("UserDefaults", "@AppStorage", "@SceneStorage"):
+    assert persisted not in view_model, f"Remove state must not survive relaunch ({persisted})"
+state = presentation[presentation.index("struct MapLifecycleOperationState"):]
+assert "Codable" not in state[:state.index("{")], "Remove state must not be encodable"
+print("PASS: Remove confirm is bounded, logged, re-reads the watch, and its state does not survive relaunch")
+PYREMOVE
