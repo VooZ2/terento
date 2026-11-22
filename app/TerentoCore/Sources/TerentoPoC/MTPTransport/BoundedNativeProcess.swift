@@ -212,7 +212,7 @@ extension FinishingTrace {
         "prewrite_inventory_duplicates", "postwrite_inventory_duplicates",
         "prewrite_inventory_metrics", "postwrite_inventory_metrics", "update_inventory_metrics", "inventory_scope",
         "removal_check", "update_current_check", "update_new_check", "global_inventory_observation",
-        "removal_step"
+        "removal_step", "map_read_step", "device_xml_begin", "device_xml_end", "read_stalled"
     ]
     /// Remove steps (`removal_step`), logged with their wall-clock time.
     static let removalSteps: Set<String> = [
@@ -221,11 +221,24 @@ extension FinishingTrace {
         "confirm_helper_begin", "confirm_helper_end", "confirm_end"
     ]
     static let removalOutcomes: Set<String> = ["ok", "failed", "absent", "still_present", "read_failed", "timed_out"]
+    /// Connect and Manage maps read steps (`map_read_step`), with wall-clock time.
+    static let mapReadSteps: Set<String> = {
+        var steps: Set<String> = ["scan_begin", "scan_end", "scan_repeat", "connect_repeat"]
+        for purpose in ["connect", "scan"] {
+            for part in ["snapshot", "inventory", "headers"] {
+                steps.insert("\(purpose)_\(part)_begin")
+                steps.insert("\(purpose)_\(part)_end")
+            }
+        }
+        return steps
+    }()
+    /// A read whose watch stopped answering (a USB transfer timed out).
+    static let mapReadOutcomes: Set<String> = ["ok", "failed", "timed_out", "stalled"]
     private static let numericKeys: Set<String> = [
         "t", "pid", "child", "timeout", "attempt", "delay", "status", "reason", "offset", "rc",
         "detail", "last_verified_end", "verified_bytes", "elapsed", "matches", "expected_size", "actual_size", "folder", "zero_id", "filename_match", "succeeded",
         "duplicates", "objects", "baseline", "duration_ms", "bytes", "regions", "declined",
-        "before", "after", "removedOrChanged", "addedOrChanged", "wall", "limit", "components"
+        "before", "after", "removedOrChanged", "addedOrChanged", "wall", "limit", "components", "files"
     ]
     static func safeLine(_ line: String) -> String? {
         guard line.utf8.count < 1024 else { return nil }
@@ -258,8 +271,12 @@ extension FinishingTrace {
                 guard ["none", "no_root", "ambiguous_root", "scoped_failed"].contains(value) else { return nil }
             }
             else if key == "trace" { guard UUID(uuidString: value) != nil else { return nil } }
-            else if key == "step" { guard removalSteps.contains(value) else { return nil } }
-            else if key == "outcome" { guard removalOutcomes.contains(value) else { return nil } }
+            else if key == "step" {
+                guard removalSteps.contains(value) || mapReadSteps.contains(value) else { return nil }
+            }
+            else if key == "outcome" {
+                guard removalOutcomes.contains(value) || mapReadOutcomes.contains(value) else { return nil }
+            }
             else if key == "result" {
                 guard value.hasPrefix("DELETE_"), value.count <= 64,
                       value.utf8.allSatisfy({ (65...90).contains($0) || $0 == 95 }) else { return nil }

@@ -79,6 +79,69 @@ enum MapRemovalLog {
     }
 }
 
+/// Connect and Manage maps read steps with their time, in log.txt (one block
+/// per step) and in finishing.log next to the helper's own lines. Fixed labels
+/// and numbers only: never map names, paths, serials or messages.
+enum MapReadLog {
+    enum Purpose: String, Sendable {
+        case connect
+        case scan
+    }
+
+    static func record(_ fields: String) {
+        let now = Date()
+        FinishingTrace.event("map_read_step",
+                             fields + " wall=\(String(format: "%.3f", now.timeIntervalSince1970))")
+        TerentoLogLocation.appendBlock("MAP READ \(fields)", at: now)
+    }
+
+    static func part(_ operation: MTPFinishingWorker.Operation) -> String {
+        switch operation {
+        case .deviceSnapshot, .snapshot: return "snapshot"
+        case .scanInventory, .inventory, .samples: return "inventory"
+        case .prefixes: return "headers"
+        }
+    }
+
+    /// stalled: a USB transfer timed out inside the helper; timed_out: the
+    /// helper's own bound ended it.
+    static func outcome(_ error: Error) -> String {
+        guard let context = (error as? any InstallationFailureContextProviding)?.failureContext else {
+            return "failed"
+        }
+        if context.isReadStalled { return "stalled" }
+        return context.resultKind == .timeout ? "timed_out" : "failed"
+    }
+
+    /// The bounded helper read, with its start and end logged as read steps.
+    static func helper(
+        _ purpose: Purpose,
+        worker: @escaping BoundedDeviceTransport.WorkerCall = { try MTPFinishingWorker.perform($0) }
+    ) -> BoundedDeviceTransport.WorkerCall {
+        { request in
+            let step = "\(purpose.rawValue)_\(part(request.operation))"
+            let started = ProcessInfo.processInfo.systemUptime
+            let bound = MTPFinishingWorker.timeout(for: request, sampleTimeout: 0)
+            record("step=\(step)_begin timeout=\(Int(bound.rounded(.up)))")
+            do {
+                let response = try worker(request)
+                var fields = "step=\(step)_end outcome=ok elapsed=\(elapsed(since: started))"
+                if let files = response.files { fields += " objects=\(files.count)" }
+                if let prefixes = response.prefixes { fields += " files=\(prefixes.count)" }
+                record(fields)
+                return response
+            } catch {
+                record("step=\(step)_end outcome=\(outcome(error)) elapsed=\(elapsed(since: started))")
+                throw error
+            }
+        }
+    }
+
+    static func elapsed(since started: TimeInterval) -> String {
+        String(format: "%.1f", ProcessInfo.processInfo.systemUptime - started)
+    }
+}
+
 @MainActor
 enum TerentoDiagnosticLog {
     static let fileURL: URL = TerentoLogLocation.logFileURL

@@ -517,6 +517,42 @@ detection IPC carries the device descriptor and serial inside the private,
 per-operation worker directory, which is removed afterwards. USB presence probes
 stay in-process because they only read the USB device list.
 
+Stalled reads (1.3.0, owner QA 2026-11-22). libmtp gives every Garmin
+`DEVICE_FLAG_LONG_TIMEOUT`, so one USB transfer may wait 60 seconds and the
+closing CloseSession another 60. A watch that stopped answering therefore never
+ended a read itself: the app's bound ended the helper in the middle of a
+transfer. Read-only sessions (detection snapshot, inventory, map headers) now
+shorten the per-transfer timeout to 20 seconds after OpenSession (libmtp's own
+timeout for devices without the long-timeout flag; bundled libmtp extension
+`read-timeout-v1`, see `Packaging/NativeDependencies/README.md`). When a
+transfer times out the helper releases the USB interface without CloseSession
+or reset, so nothing more is sent to the watch, and returns
+`TERENTO_MTP_READ_STALLED` (-27), which is classified like a reached bound. A
+stalled GarminDevice.xml read now fails the snapshot instead of letting the
+next read open another session to the same watch, and a stalled map-scope walk
+does not fall back to the full walk. Opening a session, writes, deletes and the
+sampled read-back keep libmtp's timeout.
+
+After a stall, the connect read and the map scan repeat the read once in a new
+helper and USB session, after a 2-second wait (owner decision 2026-11-22,
+`StalledReadRepeat`; one repeat per connect read and per scan). Only if that
+fails too does the user see the existing "stopped responding" message, and the
+first stall is what is reported even when the repeat could not open the watch
+(busy). Opening the repeat's session is the ordinary native open, which may
+reset the USB link on models other than USB product `51b8`. Writes, deletes,
+Remove's checks, the install-path reads and the read-back are never repeated by
+this rule. In the 2026-11-22 incident a replug did not recover the watch and
+only a watch restart did, so the repeat is not expected to fix every stall.
+
+Each connect and Manage maps read step is logged with its time in log.txt
+("MAP READ ...") and finishing.log (`map_read_step`, `wall=` epoch seconds):
+`scan_begin`/`scan_end` (outcome, elapsed, objects), each helper read
+(`connect_snapshot`, `scan_snapshot`, `scan_inventory`, `scan_headers`, with
+`_begin` timeout and `_end` outcome `ok`, `failed`, `timed_out` or `stalled`,
+elapsed, objects or files) and `connect_repeat`/`scan_repeat`. The helper's own
+native lines add `device_xml_begin`/`device_xml_end` and `read_stalled` for the
+snapshot. Fixed labels and numbers only.
+
 For issue #222, a local follow-up now classifies a pre-write inventory worker
 timeout as preflight MTP-read failure instead of verification failure, records
 the measured bounded wait, and never starts upload when inventory has not

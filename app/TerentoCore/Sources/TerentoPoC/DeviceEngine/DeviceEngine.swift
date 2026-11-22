@@ -56,7 +56,10 @@ final class DeviceEngine: ObservableObject {
     private let usbChangeSignal: USBChangeSignal?
 
     init(
-        transport: any DeviceSnapshotReader = BoundedDeviceTransport(),
+        transport: any DeviceSnapshotReader = BoundedDeviceTransport(
+            worker: MapReadLog.helper(.connect),
+            onRepeat: { MapReadLog.record("step=connect_repeat") }
+        ),
         operationGate: MTPOperationGate = .shared,
         compatibilityStatusClient: CompatibilityStatusClient = CompatibilityStatusClient(),
         installationAuthorizationClient: InstallationAuthorizationClient = InstallationAuthorizationClient()
@@ -953,7 +956,7 @@ enum DeviceDetectionErrorClassifier {
             return .multipleDevices
         }
         if let context = (error as? any InstallationFailureContextProviding)?.failureContext {
-            if context.resultKind == .timeout {
+            if context.resultKind == .timeout || context.isReadStalled {
                 return .stoppedResponding
             }
             if context.isWatchSessionBusy { return .busy }

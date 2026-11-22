@@ -143,6 +143,11 @@ struct DeviceDetectionEngineTests {
         testBoundedScanReaderStopsAfterDeadline()
         testBoundedScanReaderPrefixes()
         testBoundedDetectionSnapshotKeepsIdentity()
+        testStalledReadClassification()
+        testStalledScanReadRepeatsOnce()
+        testStalledReadRepeatReportsTheStall()
+        testStalledConnectReadRepeatsOnce()
+        testMapReadStepTraceLines()
         print("PASS: device detection engine")
     }
 
@@ -288,11 +293,12 @@ struct DeviceDetectionEngineTests {
                 calls.increment()
                 if request.operation == .scanInventory { throw timeoutError(.scanInventory) }
                 return MTPFinishingWorker.Response(files: [])
-            })
+            }, sleep: { _ in })
         check((try? reader.readFileInventory()) == nil, "a stalled inventory read fails")
         check(reader.stoppedRespondingError != nil, "the scan remembers that the device stopped responding")
+        check(calls.value == 2, "the stalled read was repeated exactly once in a new worker")
         let file = DeviceFile(itemID: 2, parentID: 1, storageID: 1, path: "/GARMIN/a.img", filename: "a.img", sizeBytes: 9, isFolder: false)
-        check((try? reader.readFilePrefix(for: file, maxLength: 4096)) == nil && calls.value == 1,
+        check((try? reader.readFilePrefix(for: file, maxLength: 4096)) == nil && calls.value == 2,
               "later reads fail immediately instead of starting another bounded worker")
     }
 
@@ -331,13 +337,134 @@ struct DeviceDetectionEngineTests {
         let snapshot = try? transport.readSnapshot()
         check(snapshot?.serialNumber == "1234567890" && snapshot?.garminDeviceXMLStatus == .available
               && snapshot?.garminDeviceXML == Data("<Device/>".utf8), "the bounded detection snapshot keeps every identity field")
-        let stalled = BoundedDeviceTransport(operationGate: MTPOperationGate(), worker: { _ in throw timeoutError(.deviceSnapshot) })
+        let stalled = BoundedDeviceTransport(operationGate: MTPOperationGate(), worker: { _ in throw timeoutError(.deviceSnapshot) },
+                                             sleep: { _ in })
         do {
             _ = try stalled.readSnapshot()
             check(false, "a stalled detection snapshot must fail")
         } catch {
             check(DeviceDetectionErrorClassifier.classify(error) == .stoppedResponding, "a detection deadline is classified as stopped responding")
         }
+    }
+
+    /// `TERENTO_MTP_READ_STALLED` from the helper: a USB transfer timed out.
+    static func stalledError(_ operation: MTPFinishingWorker.Operation,
+                             namespace: InstallationFailureContext.NativeCodeNamespace = .terentoInventory,
+                             code: Int32 = -27) -> Error {
+        let native = MTPTransport.nativeReadError(message: "The device stopped responding", result: code,
+            operation: .inventory, namespace: namespace, boundary: .initialInventory, category: 4)
+        return MTPFinishingWorker.failure(for: operation, kind: .nativeError, native: native.failureContext)
+    }
+
+    static func sessionBusyError() -> Error {
+        let native = MTPTransport.nativeReadError(message: "Garmin MTP device could not be opened", result: -5,
+            operation: .snapshot, namespace: .terentoSnapshot, boundary: .initialSnapshot, category: 2)
+        return MTPFinishingWorker.failure(for: .deviceSnapshot, kind: .nativeError, native: native.failureContext)
+    }
+
+    static func testStalledReadClassification() {
+        for namespace in [InstallationFailureContext.NativeCodeNamespace.terentoSnapshot, .terentoInventory, .terentoFilePrefix] {
+            check(DeviceDetectionErrorClassifier.classify(stalledError(.scanInventory, namespace: namespace)) == .stoppedResponding,
+                  "a stalled \(namespace.rawValue) read means the device stopped responding")
+        }
+        check(DeviceDetectionErrorClassifier.classify(stalledError(.samples, namespace: .terentoMapVerify)) != .stoppedResponding,
+              "-27 is a read stall only in the read-only namespaces")
+        check(DeviceDetectionErrorClassifier.classify(stalledError(.scanInventory, code: -3)) != .stoppedResponding,
+              "an ordinary inventory failure is not a stall")
+        check(MapReadLog.outcome(stalledError(.scanInventory)) == "stalled"
+              && MapReadLog.outcome(timeoutError(.scanInventory)) == "timed_out"
+              && MapReadLog.outcome(sessionBusyError()) == "failed", "read steps name how a read ended")
+    }
+
+    static func testStalledScanReadRepeatsOnce() {
+        let calls = CallCounter()
+        let repeats = CallCounter()
+        let waits = RequestRecorder()
+        let reader = BoundedMapScanReader(operationGate: MTPOperationGate(), lifecycleLease: nil, expectedObjectCount: nil,
+            worker: { request in
+                calls.increment()
+                if request.operation == .scanInventory, calls.value == 1 { throw stalledError(.scanInventory) }
+                if request.operation == .prefixes { throw stalledError(.prefixes, namespace: .terentoFilePrefix) }
+                return MTPFinishingWorker.Response(files: [])
+            }, onRepeat: { repeats.increment() },
+            sleep: { delay in waits.record(.init(operation: .inventory, timeLimit: delay)) })
+        check((try? reader.readFileInventory()) != nil, "the repeat in a new session can still read the watch")
+        check(calls.value == 2 && repeats.value == 1, "a stalled read is repeated exactly once")
+        check(waits.requests.map(\.timeLimit) == [StalledReadRepeat.delay], "the repeat waits once before the new session")
+        check(reader.stoppedRespondingError == nil, "a successful repeat does not mark the scan as stopped")
+        let file = DeviceFile(itemID: 2, parentID: 1, storageID: 1, path: "/GARMIN/a.img", filename: "a.img", sizeBytes: 9, isFolder: false)
+        check((try? reader.readFilePrefix(for: file, maxLength: 4096)) == nil, "a second stall fails the read")
+        check(calls.value == 3 && repeats.value == 1, "one scan uses at most one repeat")
+        check(reader.stoppedRespondingError != nil, "the second stall ends the scan as stopped responding")
+
+        let plain = CallCounter()
+        let failing = BoundedMapScanReader(operationGate: MTPOperationGate(), lifecycleLease: nil, expectedObjectCount: nil,
+            worker: { _ in plain.increment(); throw MTPFinishingWorker.failure(for: .scanInventory, kind: .processExit) },
+            sleep: { _ in })
+        check((try? failing.readFileInventory()) == nil && plain.value == 1, "an ordinary failure is never repeated")
+    }
+
+    static func testStalledReadRepeatReportsTheStall() {
+        let calls = CallCounter()
+        let reader = BoundedMapScanReader(operationGate: MTPOperationGate(), lifecycleLease: nil, expectedObjectCount: nil,
+            worker: { _ in
+                calls.increment()
+                if calls.value == 1 { throw stalledError(.scanInventory) }
+                throw sessionBusyError()
+            }, sleep: { _ in })
+        do {
+            _ = try reader.readFileInventory()
+            check(false, "a repeat that cannot open the watch fails")
+        } catch {
+            check(DeviceDetectionErrorClassifier.classify(error) == .stoppedResponding,
+                  "the user sees that the watch stopped answering, not that it is busy")
+        }
+        var cancelledCalls = 0
+        do {
+            _ = try StalledReadRepeat.run(sleep: { _ in }, cancelled: { true }) { () throws -> Int in
+                cancelledCalls += 1
+                throw stalledError(.scanInventory)
+            }
+        } catch {}
+        check(cancelledCalls == 1, "a cancelled read is never repeated")
+    }
+
+    static func testStalledConnectReadRepeatsOnce() {
+        let calls = CallCounter()
+        let repeats = CallCounter()
+        let transport = BoundedDeviceTransport(operationGate: MTPOperationGate(), worker: { request in
+            precondition(request.operation == .deviceSnapshot)
+            calls.increment()
+            if calls.value == 1 { throw stalledError(.deviceSnapshot, namespace: .terentoSnapshot) }
+            return MTPFinishingWorker.Response(snapshot: DeviceSnapshot(manufacturer: "Garmin", model: "fenix 8 - 47mm",
+                deviceVersion: "1", vendorID: 0x091e, productID: 0x51b8, storages: []))
+        }, onRepeat: { repeats.increment() }, sleep: { _ in })
+        check((try? transport.readSnapshot())?.model == "fenix 8 - 47mm" && calls.value == 2 && repeats.value == 1,
+              "a stalled connect read is repeated once in a new session")
+        let dead = CallCounter()
+        let stalled = BoundedDeviceTransport(operationGate: MTPOperationGate(),
+            worker: { _ in dead.increment(); throw stalledError(.deviceSnapshot, namespace: .terentoSnapshot) },
+            sleep: { _ in })
+        check((try? stalled.readSnapshot()) == nil && dead.value == 2, "a connect read is repeated at most once")
+    }
+
+    static func testMapReadStepTraceLines() {
+        for step in ["scan_begin", "scan_end", "scan_repeat", "connect_repeat", "connect_snapshot_begin",
+                     "connect_snapshot_end", "scan_inventory_end", "scan_headers_begin"] {
+            check(FinishingTrace.safeLine("FINISH_TRACE swift t=1 pid=2 event=map_read_step step=\(step) outcome=stalled elapsed=20.1 objects=3 files=2 baseline=4 timeout=90 wall=1795313931.251") != nil,
+                  "the \(step) read step is kept in the local log")
+        }
+        check(FinishingTrace.safeLine("FINISH_TRACE swift event=map_read_step step=scan_mapname_end") == nil,
+              "an unknown read step is dropped")
+        check(FinishingTrace.safeLine("FINISH_TRACE swift event=map_read_step step=scan_end outcome=Andorra") == nil,
+              "a read step never carries free text")
+        for event in ["device_xml_begin", "device_xml_end", "read_stalled"] {
+            check(FinishingTrace.safeLine("FINISH_TRACE native t=1.5 pid=2 event=\(event) offset=0 rc=-27 detail=0 last_verified_end=0 verified_bytes=0") != nil,
+                  "the native \(event) step is kept")
+        }
+        let part = { (operation: MTPFinishingWorker.Operation) in MapReadLog.part(operation) }
+        check(part(.deviceSnapshot) == "snapshot" && part(.scanInventory) == "inventory" && part(.prefixes) == "headers",
+              "each helper read has a fixed step label")
     }
 
     @MainActor static func testAuthorizationResolvesAndRetries() async {

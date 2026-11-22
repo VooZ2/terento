@@ -21,6 +21,8 @@
 #if defined(TERENTO_BUNDLED_MTP)
 extern void LIBMTP_Terento_End_Operation(void);
 extern void LIBMTP_Terento_Abort_Device(void *usbinfo);
+extern void LIBMTP_Terento_Set_Transfer_Timeout(void *usbinfo, int milliseconds);
+extern int LIBMTP_Terento_Take_Transfer_Timed_Out(void);
 extern int LIBMTP_Terento_GetPartialObject_Validated(LIBMTP_mtpdevice_t *device,
     uint32_t const id, uint64_t offset, uint32_t maxbytes,
     unsigned char **data, unsigned int *size);
@@ -39,6 +41,49 @@ static void abort_failed_device(LIBMTP_mtpdevice_t *device) {
     /* Legacy Homebrew harness lacks local extensions; never use for delivery. */
     (void)device; /* ordinary upstream close in the legacy development harness */
 #endif
+}
+
+/* Read-only sessions (detection snapshot, inventory, map headers): after
+ * OpenSession one USB transfer may wait this long instead of libmtp's 60 s
+ * Garmin bound (DEVICE_FLAG_LONG_TIMEOUT). A watch that stops answering then
+ * ends the read inside the helper, which releases the USB link without
+ * sending anything more to the watch, well before the helper's own bound.
+ * Writes, deletes and map read-back keep libmtp's timeout. 20 s is libmtp's
+ * own timeout for devices without the long-timeout flag. */
+#define TERENTO_READ_TRANSFER_TIMEOUT_MS 20000
+
+static void begin_read_only_session(LIBMTP_mtpdevice_t *device) {
+#if defined(TERENTO_NATIVE_TEST_BEGIN_READ_ONLY)
+    TERENTO_NATIVE_TEST_BEGIN_READ_ONLY(device);
+#elif defined(TERENTO_BUNDLED_MTP)
+    (void)LIBMTP_Terento_Take_Transfer_Timed_Out();
+    LIBMTP_Terento_Set_Transfer_Timeout(device->usbinfo, TERENTO_READ_TRANSFER_TIMEOUT_MS);
+#else
+    (void)device; /* legacy harness keeps libmtp's timeout */
+#endif
+}
+
+/* Whether a USB transfer of this read timed out (clears the flag). */
+static int read_transfer_timed_out(void) {
+#if defined(TERENTO_NATIVE_TEST_TRANSFER_TIMED_OUT)
+    return TERENTO_NATIVE_TEST_TRANSFER_TIMED_OUT();
+#elif defined(TERENTO_BUNDLED_MTP)
+    return LIBMTP_Terento_Take_Transfer_Timed_Out();
+#else
+    return 0;
+#endif
+}
+
+static void set_error(char *buffer, size_t capacity, const char *message);
+
+/* A read-only session whose USB transfer timed out: release the host USB
+ * resources without CloseSession, so the following Release_Device sends
+ * nothing more to a watch that stopped answering. */
+static int end_stalled_read(LIBMTP_mtpdevice_t *device, char *error_message,
+                            size_t error_message_capacity) {
+    if (device != NULL) abort_failed_device(device);
+    set_error(error_message, error_message_capacity, "The device stopped responding");
+    return TERENTO_MTP_READ_STALLED;
 }
 
 #define GARMIN_VENDOR_ID 0x091e
@@ -759,6 +804,7 @@ static int read_file_inventory_session(
     TerentoFinishingTrace trace = terento_trace_start();
     int result = 0;
     int list_started = 0;
+    int stalled = 0;
     read_category(category, TERENTO_READ_SESSION_OPEN);
     terento_trace_event(&trace, "session_open_begin", 0, 0, 0);
 
@@ -775,6 +821,7 @@ static int read_file_inventory_session(
         result = -2;
         goto cleanup;
     }
+    begin_read_only_session(device);
 
     if (profile != NULL && validate_live_map_operation_device(profile, vendor_id, product_id,
             device, error_message, error_message_capacity) != 0) {
@@ -805,6 +852,11 @@ static int read_file_inventory_session(
             result = walk_file_tree_in_scope(device, storage->id, LIBMTP_FILES_AND_FOLDERS_ROOT,
                 "", 0, 1, inventory, error_message, error_message_capacity, category);
             if (result != 0) break;
+        }
+        /* A watch that stopped answering is not asked for the full walk. */
+        if (result != 0 && read_transfer_timed_out()) {
+            stalled = 1;
+            goto cleanup;
         }
         fallback = result != 0 ? TERENTO_INVENTORY_FALLBACK_SCOPED_FAILED
             : map_scope_root_state(inventory);
@@ -842,6 +894,11 @@ static int read_file_inventory_session(
     if (map_scope) terento_trace_event(&trace, "inventory_scope", 0, fallback, (uint64_t)used_scope);
 
 cleanup:
+    if (!stalled && result != 0 && device != NULL && read_transfer_timed_out()) stalled = 1;
+    if (stalled) {
+        result = end_stalled_read(device, error_message, error_message_capacity);
+        terento_trace_event(&trace, "read_stalled", 0, result, 0);
+    }
     if (list_started) {
         terento_trace_event(&trace, "file_list_end", 0, result, inventory->file_count);
     }
@@ -896,6 +953,7 @@ static int read_prefixes_in_session(
     LIBMTP_mtpdevice_t *device = open_single_garmin_device_diagnostic(
         &vendor_id, &product_id, error_message, error_message_capacity, 1, category);
     if (device == NULL) return -2;
+    begin_read_only_session(device);
     TerentoMTPFileInventory inventory = {0};
     uint32_t *resolved = calloc(count, sizeof(*resolved));
     int result = 0;
@@ -977,6 +1035,9 @@ static int read_prefixes_in_session(
 cleanup:
     free(resolved);
     clear_file_inventory(&inventory);
+    if (result != 0 && read_transfer_timed_out()) {
+        result = end_stalled_read(device, error_message, error_message_capacity);
+    }
     LIBMTP_Release_Device(device);
     if (result != 0) for (size_t i = 0; i < count; ++i) terento_mtp_free_byte_buffer(&buffers[i]);
     return result;
@@ -4044,18 +4105,24 @@ int terento_mtp_read_snapshot_diagnostic(
     snapshot->vendor_id = selected_device.device_entry.vendor_id;
     snapshot->product_id = selected_device.device_entry.product_id;
 
+    TerentoFinishingTrace trace = terento_trace_start();
     read_category(category, TERENTO_READ_SESSION_OPEN);
+    terento_trace_event(&trace, "session_open_begin", 0, 0, 0);
     LIBMTP_mtpdevice_t *device = LIBMTP_Open_Raw_Device_Uncached(&raw_devices[selected_index]);
     free(raw_devices);
     raw_devices = NULL;
+    terento_trace_event(&trace, "session_open_end", 0, device == NULL ? -5 : 0, 0);
 
     if (device == NULL) {
         set_error(error_message, error_message_capacity, "Garmin MTP device could not be opened");
         clear_snapshot(snapshot);
+        terento_trace_finish(&trace);
         return -5;
     }
+    begin_read_only_session(device);
 
     int result = 0;
+    int stalled = 0;
     read_category(category, TERENTO_READ_ALLOCATION);
 
     LIBMTP_Clear_Errorstack(device);
@@ -4155,11 +4222,27 @@ int terento_mtp_read_snapshot_diagnostic(
     }
 
     /* Optional read-only identity fallback. Failure here must not hide a
-       usable MTP serial or prevent ordinary read-only device detection. */
+       usable MTP serial or prevent ordinary read-only device detection.
+       A USB transfer that timed out is different: the watch stopped
+       answering, so the snapshot fails instead of opening the next read. */
+    terento_trace_event(&trace, "device_xml_begin", 0, 0, 0);
     read_garmin_device_xml(device, snapshot);
+    terento_trace_event(&trace, "device_xml_end", 0, snapshot->garmin_device_xml_status, 0);
+    if (snapshot->garmin_device_xml_status == TERENTO_GARMIN_DEVICE_XML_READ_FAILED
+        && read_transfer_timed_out()) {
+        stalled = 1;
+    }
 
 cleanup:
+    if (!stalled && result != 0 && read_transfer_timed_out()) stalled = 1;
+    if (stalled) {
+        result = end_stalled_read(device, error_message, error_message_capacity);
+        terento_trace_event(&trace, "read_stalled", 0, result, 0);
+    }
+    terento_trace_event(&trace, "session_close_begin", 0, result, 0);
     LIBMTP_Release_Device(device);
+    terento_trace_event(&trace, "session_close_end", 0, result, 0);
+    terento_trace_finish(&trace);
     if (result != 0) {
         clear_snapshot(snapshot);
     }

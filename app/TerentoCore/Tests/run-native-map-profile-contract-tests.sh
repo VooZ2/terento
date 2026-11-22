@@ -274,6 +274,44 @@ python3 "$project_root/Tests/TerentoPoCTests/USBDeviceReferenceTests.py" \
 python3 "$project_root/Tests/TerentoPoCTests/ValidatedPartialReadPatchTests.py" \
     "$project_root/../../Packaging/NativeDependencies/patch-validated-partial-read.py"
 
+python3 "$project_root/Tests/TerentoPoCTests/ReadTransferTimeoutPatchTests.py" \
+    "$project_root/../../Packaging/NativeDependencies/patch-read-transfer-timeout.py"
+
+# Read-only sessions shorten the USB transfer timeout after OpenSession; a
+# stalled read releases USB without CloseSession and never takes the fallback
+# full walk. Writes, deletes and the sampled read-back keep libmtp's timeout.
+build_script="$project_root/../../Packaging/NativeDependencies/build.sh"
+if ! grep -q 'patch-read-transfer-timeout.py" "$libmtp_source/src/libusb1-glue.c" "$libmtp_source/src/libmtp.sym"' "$build_script" \
+    || ! grep -q '^LIBMTP_LOCAL_PATCH=".*-read-timeout-v1"$' "$build_script"; then
+    print -u2 "FAIL: the bundled libmtp build does not apply the read transfer timeout patch"
+    exit 1
+fi
+for reader in read_file_inventory_session read_prefixes_in_session terento_mtp_read_snapshot_diagnostic; do
+    body="$(awk "/^(static )?int ${reader}\\(/,/^}/" "$bridge")"
+    if ! print -r -- "$body" | grep -q 'begin_read_only_session(device);' \
+        || ! print -r -- "$body" | grep -q 'read_transfer_timed_out()' \
+        || ! print -r -- "$body" | grep -q 'end_stalled_read(device'; then
+        print -u2 "FAIL: $reader does not bound and end a stalled read"
+        exit 1
+    fi
+done
+if [[ "$(grep -c 'begin_read_only_session(device);' "$bridge")" -ne 3 ]]; then
+    print -u2 "FAIL: the read transfer timeout is used outside the three read-only sessions"
+    exit 1
+fi
+stall_end="$(awk '/^static int end_stalled_read\(/,/^}/' "$bridge")"
+if ! print -r -- "$stall_end" | grep -q 'abort_failed_device(device)' \
+    || print -r -- "$stall_end" | grep -q 'LIBMTP_[A-Z][A-Za-z_]*(\|ptp_[a-z_]*('; then
+    print -u2 "FAIL: a stalled read must release USB without further device I/O"
+    exit 1
+fi
+scope_session="$(awk '/^static int read_file_inventory_session\(/,/^}/' "$bridge")"
+if ! print -r -- "$scope_session" | grep -B2 -A3 'read_transfer_timed_out()' | grep -q 'goto cleanup'; then
+    print -u2 "FAIL: a stalled scoped walk must not fall back to the full walk"
+    exit 1
+fi
+print "PASS: read-only sessions end a stalled USB transfer themselves, without CloseSession"
+
 # Full-object deletion hashing keeps exact counts. Bundled builds use the
 # validated read for every Garmin; only the legacy harness keeps upstream.
 validated_helper="$(awk '/^static int read_validated_partial_object\(/,/^}/' "$bridge")"

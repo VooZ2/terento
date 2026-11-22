@@ -625,12 +625,24 @@ final class MapEngine: ObservableObject {
                     defer { operationGate.endLifecycle(lease) }
 
                     // Bounded worker reads: a stalled watch ends this scan with
-                    // a recovery message instead of holding the gate forever.
+                    // a recovery message instead of holding the gate forever,
+                    // after one repeat in a new session. Each step is logged.
+                    let scanStarted = ProcessInfo.processInfo.systemUptime
+                    MapReadLog.record("step=scan_begin" + (expectedObjectCount.map { " baseline=\($0)" } ?? ""))
                     let lifecycleReader = BoundedMapScanReader(
                         operationGate: operationGate,
                         lifecycleLease: lease,
-                        expectedObjectCount: expectedObjectCount
+                        expectedObjectCount: expectedObjectCount,
+                        worker: MapReadLog.helper(.scan),
+                        onRepeat: { MapReadLog.record("step=scan_repeat") }
                     )
+                    var scanSucceeded = false
+                    defer {
+                        let outcome = scanSucceeded ? "ok"
+                            : lifecycleReader.stoppedRespondingError.map(MapReadLog.outcome) ?? "failed"
+                        MapReadLog.record("step=scan_end outcome=\(outcome) elapsed=\(MapReadLog.elapsed(since: scanStarted))"
+                            + (lifecycleReader.observedObjectCount.map { " objects=\($0)" } ?? ""))
+                    }
 
                     // Automatic ownership requires one physical namespace across
                     // both observations. Missing live identity or a changed watch
@@ -654,6 +666,7 @@ final class MapEngine: ObservableObject {
                     // Header reads are best-effort inside the scanner; a stalled
                     // watch must not turn into a silently incomplete map list.
                     if let stalled = lifecycleReader.stoppedRespondingError { throw stalled }
+                    scanSucceeded = true
                     return MapInventoryScanOutput(
                         inventory: inventory,
                         ownershipManifestDeviceKeys: manifestKeys,
