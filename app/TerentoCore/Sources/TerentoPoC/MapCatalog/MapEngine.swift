@@ -34,9 +34,9 @@ private final class MapEngineAcquisitionRelay: @unchecked Sendable {
     weak var engine: MapEngine?
     let generation: Int
 
-    init(engine: MapEngine) {
+    init(engine: MapEngine, generation: Int) {
         self.engine = engine
-        generation = engine.acquisitionRunGeneration
+        self.generation = generation
     }
 
     func send(_ state: MapAcquisitionState) {
@@ -94,8 +94,7 @@ private final class MapEnginePhaseProgressRelay: @unchecked Sendable {
 private final class MapEngineDownloadProgressRelay: @unchecked Sendable {
     private let relay: MainActorProgressRelay<MapDownloadProgress>
 
-    init(engine: MapEngine) {
-        let generation = engine.acquisitionRunGeneration
+    init(engine: MapEngine, generation: Int) {
         relay = MainActorProgressRelay { [weak engine] in
             guard let engine, engine.acquisitionRunGeneration == generation else { return }
             engine.receiveDownloadProgress($0)
@@ -434,8 +433,8 @@ final class MapEngine: ObservableObject {
     /// download relays them, for the acquisition run active now.
     func acquisitionRelaysForTesting() -> (state: (MapAcquisitionState) -> Void,
                                            progress: (MapDownloadProgress) -> Void) {
-        let stateRelay = MapEngineAcquisitionRelay(engine: self)
-        let progressRelay = MapEngineDownloadProgressRelay(engine: self)
+        let stateRelay = MapEngineAcquisitionRelay(engine: self, generation: acquisitionRunGeneration)
+        let progressRelay = MapEngineDownloadProgressRelay(engine: self, generation: acquisitionRunGeneration)
         return ({ stateRelay.send($0) }, { progressRelay.send($0) })
     }
 
@@ -1935,8 +1934,8 @@ final class MapEngine: ObservableObject {
         activeTask?.cancel()
         // A new run: whatever an earlier run still relays is dropped.
         acquisitionRunGeneration &+= 1
-        let stateRelay = MapEngineAcquisitionRelay(engine: self)
-        let progressRelay = MapEngineDownloadProgressRelay(engine: self)
+        let stateRelay = MapEngineAcquisitionRelay(engine: self, generation: acquisitionRunGeneration)
+        let progressRelay = MapEngineDownloadProgressRelay(engine: self, generation: acquisitionRunGeneration)
         let diagnostics = operationDiagnostics
         let inFlightOwner = UUID()
         validatedArtifactSetsInFlight = [:]

@@ -60,7 +60,7 @@ assert_contains 'TerentoProgressBar(value: normalizedFillRatio, fill: TerentoCol
 assert_contains 'selectedValue: projection.fraction(for: projection.selectedMapBytes)' "$connect_screen"
 
 assert_contains 'static let progressBarHeight: CGFloat = 6' "$connect_screen"
-assert_contains 'static let manageProgressWidth: CGFloat = 220' "$connect_screen"
+assert_contains 'static let manageProgressWidth: CGFloat = 236' "$connect_screen"
 assert_contains 'Text(operation.phase.userLabel)' "$connect_screen"
 assert_contains 'return "Removing"' "$phase_source"
 assert_contains 'return "Checking"' "$phase_source"
