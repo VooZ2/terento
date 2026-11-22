@@ -67,6 +67,9 @@ class DefaultProviderProbe:
             path = suffix.rsplit("/", 1)[0]
             map_type = suffix.rsplit(".osm.garmin-", 1)[-1].removesuffix(".zip")
             return inspect_bbbike(url, path, map_type)
+        if url.startswith("https://ligfietser.dev.openstreetmap.org/openfietsmap/"):
+            from .openfietsmap import inspect_openfietsmap, source_for_url
+            return inspect_openfietsmap(source_for_url(url))
         if url.startswith("https://osmapa-garmin.las.org.pl/products/"):
             from .osmapa import inspect_osmapa, source_url as osmapa_source
             coverage, style, _, _ = osmapa_source(url)
@@ -286,6 +289,10 @@ def check_provider(
         )
     if "DOWN" in availability_statuses:
         status = "DOWN"
+    elif not checked_downloads and not rate_limited:
+        # Without one download sample the check proves nothing about
+        # downloads: it must not read as HEALTHY (the activation gate trusts it).
+        status = "UNKNOWN"
     elif "DEGRADED" in availability_statuses or last_update_status == "DEGRADED":
         status = "DEGRADED"
     elif "UNKNOWN" in availability_statuses:

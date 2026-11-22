@@ -1003,7 +1003,11 @@ all maps; website failure alone does not. Up to eight original source URLs are
 sampled. All transport/5xx failures mean DOWN; mixed outcomes or missing maps
 mean DEGRADED. A missing/unknown observation or one older than its interval plus
 10 minutes means STATUS_STALE; a known outage remains blocked until checked
-again. HTTP 429 stops further probes and persists a cooldown.
+again. HTTP 429 stops further probes and persists a cooldown. A check that had
+no download to sample (for example, run before the provider's first catalog
+collection) has overall status UNKNOWN, so it never satisfies the activation
+gate, and the first successful collection with packages after it makes the
+provider due again on the next scheduler minute instead of after its interval.
 
 Catalog responses use `Cache-Control: no-store` and return a fresh body even
 for conditional requests because eligibility can change with elapsed time.
@@ -1463,8 +1467,12 @@ Public map style preview manifest (`contracts/map-preview-manifest.schema.json`)
 It lists every curated area with its extent, zoom range, tags, `featured` flag,
 `diffScore` (0–1, how different the rendered styles look; `null` until two
 layers exist) and one layer per style with status `AVAILABLE`, `NOT_COVERED`
-or `PENDING`. Only providers with previews switched on can report
-`AVAILABLE`, and only for layers present in the current tile release.
+or `PENDING`. Only ACTIVE providers with previews switched on can report
+`AVAILABLE`, and only for layers present in the current tile release. The
+renderer also draws a PAUSED provider whose previews are switched on, so a
+provider prepared for a release has its previews ready when it becomes ACTIVE;
+until then its styles and layers stay out of the manifest (its tiles exist
+under the release path but nothing links to them).
 `release` and `tileUrlTemplate` are `null` before the first release. The body
 is rebuilt from PostgreSQL at most once a minute per API process and is served
 with `Cache-Control: public, max-age=300` and `X-Robots-Tag: noindex`.
@@ -1857,7 +1865,8 @@ provider content is unchanged.
 `/maps/catalog-v6.json` is the v5 provider set plus `luckymaps` (Lucky Maps,
 https://luckymaps.ch). `catalog.json` and v3 to v5 never contain `luckymaps`;
 released 1.1.0 to 1.2.x clients request v5. Migration 097 registers the
-provider `PAUSED`.
+provider `PAUSED`. OpenFietsMap (migration 098) is the second v6 provider and is
+registered `PAUSED` the same way.
 
 A provider that has never been `ACTIVE` (`map_provider.first_activated_at` is
 null) is left out of every projection, so a registered but unreleased provider
@@ -1916,6 +1925,67 @@ HTTP 403, 429 or 5xx on the index or any range closes the source gate: the run
 fails and the previous snapshot stays. A main file that fails validation is
 not offered; if it was known before, it stays `UNAVAILABLE` as a single
 proof-free main artifact. Compatibility events accept `luckymaps`.
+
+### OpenFietsMap in the v6 projection
+
+`/maps/catalog-v6.json` also contains `openfietsmap` (OpenFietsMap by Minko,
+https://www.openfietsmap.nl/); `catalog.json` and v3 to v5 never do. The
+cartography licence is CC BY-NC-SA 3.0 with further distribution only with the
+author's permission, which he gave Terento in writing on 2026-11-21. Terento
+lists the original files and never hosts or mirrors them. Migration 098
+registers the provider `PAUSED`, so every package carries
+`downloadBlockReason=PROVIDER_PAUSED` until the hardware activation gate.
+
+Source: the author's server `https://ligfietser.dev.openstreetmap.org/openfietsmap/`
+(hosted by OpenStreetMap.org). The 2024 copy on ftp.nluug.nl is stale and never
+used. Fifteen GPS (`gmapsupp.img`) packages, id `openfietsmap-<key>`,
+`providerRegionId` = key, `region`/`canonicalRegionId`/`geographicRegionId` =
+upper-cased key:
+
+| key | file | payload | family ID | IMG title | mapType |
+|---|---|---|---|---|---|
+| `benelux` | `benelux/full/OpenFietsMap.zip` | `gmapsupp.img` | 10010 | `OFM_BNL(dd-mm-yyyy)` | `ofm-full` |
+| `benelux-light` | `benelux/light/OpenFietsMap_light.zip` | `gmapsupp.img` | 20010 | `OFM_light(dd-mm-yyyy)` | `ofm-light` |
+| `benelux-hiking` | `benelux/hike/gmapsupp.zip` | `gmapsupp.img` | 50010 | `OFM_hike(dd-mm-yyyy)` | `ofm-hiking` |
+| `germany` | `germany/OFM_DE(dd-mm-yyyy_gps).zip` | `Garmin/gmapsupp.img` | 4900 | `OFM_DE(dd-mm-yyyy)` | `ofm-full` |
+| `alps` | `Alps/OFM_Alps(dd-mm-yyyy_gps).zip` | `Garmin/gmapsupp.img` | 4143 | `OFM_Alps(dd-mm-yyyy)` | `ofm-full` |
+| `atlantic` | `Atlantic/OFM_Atlantic(dd-mm-yyyy_gps).zip` | `garmin/gmapsupp.img` | 34351 | `OFM_Atlantic` | `ofm-full` |
+| `baleares` | `Baleares/OFM_Baleares(dd-mm-yyyy_gps).zip` | `garmin/gmapsupp.img` | 34971 | `OFM_Baleares` | `ofm-full` |
+| `iceland` | `Iceland/OFM_Iceland(dd-mm-yyyy_gps).zip` | `garmin/gmapsupp.img` | 35400 | `OFM_Island` | `ofm-full` |
+| `europe-<gb,n,w,c,sw,se,e>` | `EU_<year>/<mmdd>/GPS/OFM(EU<year>_<AREA>_GPS).zip` | `garmin/gmapsupp.img` | year × 10 + area position (GB 1 … E 7) | `OFM(EU<year>_<AREA>)` | `ofm-full` |
+
+Measured on every published file on 2026-11-21 (and the Europe family-ID rule
+also on the 2024 release). Every family ID is distinct, so no two packages
+conflict; overlapping areas (Germany or the Alps and Central Europe) may be
+installed together. A Europe update gets a new folder and a new family ID each
+year; the package identity is the key, so Update replaces the managed file of
+the same key. The Europe areas are the author's rectangles: `europe-e` reaches
+Kaliningrad and `europe-n` the St Petersburg, Pskov and Vyborg area (owner
+decisions 2026-11-21: listed). `RU` is never a package country code.
+
+Discovery reads the eight area listings (newest dated `_gps` file; the Benelux
+names are stable), the root listing (newest `EU_<year>/`) and that year's
+`EU_<year>/map.html` (links in the area popups; all seven areas must be there).
+Listings may be UTF-16 with a BOM. Per package two ranged GETs (64 KiB tail
+with the classic ZIP central directory, 64 KiB head) must return HTTP 206 with
+the exact `Content-Range`, a strong ETag and Last-Modified, unchanged between
+the two. The archive holds at most eight entries: exactly one deflated,
+unencrypted payload at the reviewed path, at most its empty folder entry and
+only readme/leesmij/leesme `.html`/`.txt` and `setup.exe` side files. The first
+4 KiB of the IMG must be an unencrypted Garmin header whose title matches the
+table, whose only MDR family ID is the reviewed one and whose creation date
+equals the filename or title date (Europe: from the folder date up to three
+days later, since the areas are built over two days). `sourceProof` records URL,
+ETag, Last-Modified, sizes, `payloadPath`, ZIP `crc32`, `sourceIdentity`
+(`openfietsmap:<key>`), `area`, `mapType`, `familyId`, `imgTitle`,
+`generatedAt` and a revision. No SHA-256 is published. Release and `version`
+(with `day`) are the IMG creation day.
+
+HTTP 403, 429 or 5xx on a listing or range closes the source gate: the run
+fails and the previous snapshot stays. A listing that lacks a package fails the
+run. A file that fails validation is not offered; if it was known before, it
+stays `UNAVAILABLE` as a single proof-free main artifact. Compatibility events
+accept `openfietsmap`.
 
 ### Acquisition lifecycle extension
 

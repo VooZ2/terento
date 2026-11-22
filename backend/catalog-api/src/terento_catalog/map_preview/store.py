@@ -35,9 +35,23 @@ class PreviewDatabase:
 
     # Providers ---------------------------------------------------------------
     def enabled_providers(self) -> set[str]:
+        """Providers whose previews the public manifest lists."""
         with self.database.connection() as c:
             rows = c.execute(
                 "SELECT id FROM map_provider WHERE preview_enabled AND status='ACTIVE'"
+            ).fetchall()
+        return {row["id"] for row in rows}
+
+    def render_providers(self) -> set[str]:
+        """Providers whose previews the renderer draws.
+
+        A PAUSED provider with previews switched on is drawn too, so a provider
+        prepared for a release has its previews ready on the day it becomes
+        ACTIVE. The manifest still lists only ``enabled_providers``.
+        """
+        with self.database.connection() as c:
+            rows = c.execute(
+                "SELECT id FROM map_provider WHERE preview_enabled AND status IN ('ACTIVE','PAUSED')"
             ).fetchall()
         return {row["id"] for row in rows}
 

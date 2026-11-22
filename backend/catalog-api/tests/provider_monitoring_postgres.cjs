@@ -7,9 +7,10 @@ const input = JSON.parse(fs.readFileSync(0, 'utf8'));
  await db.exec(`
  CREATE TABLE map_provider(id text PRIMARY KEY,status text,updated_at timestamptz);
  CREATE TABLE map_package(id text PRIMARY KEY,provider_id text,availability text,release text,updated_at timestamptz, provider_region_id text,canonical_region_id text, name text,region text,country text,release_id text,version_label text,generated_at timestamptz,source_updated_at timestamptz,map_type text,geographic_region_id text,country_codes jsonb,region_kind text);
- CREATE TABLE provider_health_check(id serial PRIMARY KEY,provider_id text,checked_at timestamptz);
+ CREATE TABLE provider_health_check(id serial PRIMARY KEY,provider_id text,checked_at timestamptz,artifact_count int);
+ CREATE TABLE catalog_collection_run(id serial PRIMARY KEY,provider_id text,status text,package_count int,finished_at timestamptz);
  CREATE TABLE admin_audit_log(admin_user_id int,action text,provider_id text,old_status text,new_status text,reason text,target text,request_id text,details jsonb);
- INSERT INTO map_provider(id,status) VALUES ('due','ACTIVE'),('fresh','ACTIVE'),('paused','PAUSED'),('cooldown','ACTIVE'),('never','ACTIVE');
+ INSERT INTO map_provider(id,status) VALUES ('due','ACTIVE'),('fresh','ACTIVE'),('paused','PAUSED'),('cooldown','ACTIVE'),('never','ACTIVE'),('empty','ACTIVE'),('empty-old','ACTIVE');
  INSERT INTO map_package(id,provider_id,availability) VALUES ('pkg','due','AVAILABLE');
  `);
  await db.exec(input.migration);
@@ -28,7 +29,15 @@ const input = JSON.parse(fs.readFileSync(0, 'utf8'));
  assert.equal((await db.query('SELECT count(*)::int AS n FROM admin_audit_log')).rows[0].n,3);
  await db.exec(`INSERT INTO provider_health_check(provider_id,checked_at) VALUES
  ('due',now()-interval '7 hours'),('fresh',now()),('paused',now()-interval '2 days'),('cooldown',now()-interval '2 days');
- UPDATE map_provider SET health_retry_not_before=now()+interval '2 hours' WHERE id='cooldown';`);
+ UPDATE map_provider SET health_retry_not_before=now()+interval '2 hours' WHERE id='cooldown';
+ -- A check with no download sample is superseded by a later successful collection only.
+ INSERT INTO provider_health_check(provider_id,checked_at,artifact_count) VALUES
+ ('empty',now()-interval '10 minutes',0),('empty-old',now()-interval '10 minutes',0);
+ INSERT INTO catalog_collection_run(provider_id,status,package_count,finished_at) VALUES
+ ('empty','SUCCEEDED',15,now()-interval '5 minutes'),('empty-old','SUCCEEDED',15,now()-interval '20 minutes'),
+ ('empty-old','FAILED',0,now()-interval '1 minute'),('fresh','SUCCEEDED',5,now()+interval '1 minute');`);
+ assert.deepEqual((await command(input.due)).rows.map(r=>r.id),['never','due','empty']);
+ await db.exec("DELETE FROM map_provider WHERE id IN ('empty','empty-old'); DELETE FROM provider_health_check WHERE provider_id IN ('empty','empty-old'); DELETE FROM catalog_collection_run;");
  assert.deepEqual((await command(input.due)).rows.map(r=>r.id),['never','due']);
  await command(input.cooldown);
  assert.deepEqual((await command(input.due)).rows.map(r=>r.id),['never']);

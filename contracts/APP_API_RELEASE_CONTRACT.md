@@ -15,6 +15,14 @@ it needs no app update. When 1.3.0 is
 published, add its tag to `contracts/released-catalog-clients.json` with
 `catalog-v6.json`.
 
+OpenFietsMap (`openfietsmap`, migration 098) joins the same catalog-v6
+projection, also inserted `PAUSED`: 15 GPS packages from the author's server,
+each proof binding the ZIP payload path, CRC-32, IMG title, build day and
+Garmin family ID. It has never been `ACTIVE`, so it is likewise left out of
+v6 (a Debug build sees it with `?preview=openfietsmap`) and activation is an
+Admin change with no app update. The live-catalog gate allows `openfietsmap`
+in v6 only.
+
 ## 1.3.0 server-first acceptance (installation reports)
 
 Not deployed yet. Deploy and verify this API before any client that sends it
