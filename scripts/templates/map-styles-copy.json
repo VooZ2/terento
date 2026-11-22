@@ -1,7 +1,7 @@
 {
   "en": {
     "h1": "Free maps for your Garmin",
-    "lead": "OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL, Lucky Maps and OpenFietsMap are free topographic maps made from OpenStreetMap, for Garmin watches and Edge bike computers. See how each one draws the same place, then install the one that fits your trips.",
+    "lead": "OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL and OpenFietsMap are free topographic maps made from OpenStreetMap, for Garmin watches and Edge bike computers. See how each one draws the same place, then install the one that fits your trips.",
     "picker_label": "Maps on this page",
     "image_alt": "The {name} map of the High Tatras",
     "fields": {
@@ -82,20 +82,8 @@
           "Hiking and cycling in Poland"
         ]
       },
-      "luckymaps": {
-        "look": "A hiking and cycling map that marks trails and routes in red, for regions on every continent.",
-        "covers": "Countries and regions on every continent. The United States are split into states, with larger US regions as well.",
-        "contours": "A separate package, offered for most regions.",
-        "updates": "New editions about twice a year.",
-        "licence": "Map data © OpenStreetMap contributors (ODbL). Lucky Maps © luckymaps.ch (CC BY-SA 4.0).",
-        "row": [
-          "Worldwide",
-          "Separate package",
-          "Hiking and cycling worldwide"
-        ]
-      },
       "openfietsmap": {
-        "look": "A cycling map that highlights cycle routes and the numbered cycle node networks.",
+        "look": "A routable cycling map that highlights cycle routes and the numbered cycle node networks, not made for car navigation. Benelux also comes as a light version and has a separate hiking layer.",
         "covers": "The Netherlands, Belgium and Luxembourg, Germany, the Alps and the rest of Europe in seven parts, plus Iceland, the Balearic Islands and the Atlantic islands.",
         "contours": "Included.",
         "updates": "Benelux and Germany several times a year, the rest of Europe once a year.",
@@ -142,7 +130,7 @@
       ],
       [
         "Do the maps show contour lines?",
-        "Freizeitkarte and OpenFietsMap include them. OpenTopoMap offers them as an optional add-on, and OSMapaPL and Lucky Maps as a separate package. The BBBike OpenTopoMap look has none."
+        "Freizeitkarte and OpenFietsMap include them. OpenTopoMap offers them as an optional add-on, and OSMapaPL as a separate package. The BBBike OpenTopoMap look has none."
       ],
       [
         "How do I install one?",
@@ -152,7 +140,7 @@
   },
   "de": {
     "h1": "Kostenlose Karten für deinen Garmin",
-    "lead": "OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL, Lucky Maps und OpenFietsMap sind kostenlose topografische Karten aus OpenStreetMap für Garmin-Uhren und Edge-Fahrradcomputer. Sieh dir an, wie jede denselben Ort darstellt, und installiere die, die zu deinen Touren passt.",
+    "lead": "OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL und OpenFietsMap sind kostenlose topografische Karten aus OpenStreetMap für Garmin-Uhren und Edge-Fahrradcomputer. Sieh dir an, wie jede denselben Ort darstellt, und installiere die, die zu deinen Touren passt.",
     "picker_label": "Karten auf dieser Seite",
     "image_alt": "Die Karte {name} der Hohen Tatra",
     "fields": {
@@ -233,20 +221,8 @@
           "Wandern und Radfahren in Polen"
         ]
       },
-      "luckymaps": {
-        "look": "Eine Wander- und Radkarte, die Wege und Routen rot hervorhebt, für Regionen auf allen Kontinenten.",
-        "covers": "Länder und Regionen auf allen Kontinenten. Die USA sind in Bundesstaaten aufgeteilt, dazu gibt es größere US-Regionen.",
-        "contours": "Als eigenes Paket, für die meisten Regionen.",
-        "updates": "Neue Ausgaben etwa zweimal im Jahr.",
-        "licence": "Kartendaten © OpenStreetMap-Mitwirkende (ODbL). Lucky Maps © luckymaps.ch (CC BY-SA 4.0).",
-        "row": [
-          "Weltweit",
-          "Eigenes Paket",
-          "Wandern und Radfahren weltweit"
-        ]
-      },
       "openfietsmap": {
-        "look": "Eine Radkarte, die Radrouten und nummerierte Knotenpunktnetze hervorhebt.",
+        "look": "Eine routingfähige Radkarte, die Radrouten und nummerierte Knotenpunktnetze hervorhebt, nicht für die Autonavigation. Für Benelux gibt es auch eine leichte Version und eine eigene Wanderebene.",
         "covers": "Niederlande, Belgien und Luxemburg, Deutschland, die Alpen und das übrige Europa in sieben Teilen, dazu Island, die Balearen und die Atlantikinseln.",
         "contours": "Enthalten.",
         "updates": "Benelux und Deutschland mehrmals im Jahr, das übrige Europa einmal im Jahr.",
@@ -293,7 +269,7 @@
       ],
       [
         "Zeigen die Karten Höhenlinien?",
-        "Freizeitkarte und OpenFietsMap enthalten sie. OpenTopoMap bietet sie als optionales Extra an, OSMapaPL und Lucky Maps als eigenes Paket. Der OpenTopoMap-Stil von BBBike hat keine."
+        "Freizeitkarte und OpenFietsMap enthalten sie. OpenTopoMap bietet sie als optionales Extra an, OSMapaPL als eigenes Paket. Der OpenTopoMap-Stil von BBBike hat keine."
       ],
       [
         "Wie installiere ich eine Karte?",
@@ -303,7 +279,7 @@
   },
   "fr": {
     "h1": "Cartes gratuites pour votre Garmin",
-    "lead": "OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL, Lucky Maps et OpenFietsMap sont des cartes topographiques gratuites issues d’OpenStreetMap, pour les montres Garmin et les compteurs vélo Edge. Voyez comment chacune représente le même lieu, puis installez celle qui convient à vos sorties.",
+    "lead": "OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL et OpenFietsMap sont des cartes topographiques gratuites issues d’OpenStreetMap, pour les montres Garmin et les compteurs vélo Edge. Voyez comment chacune représente le même lieu, puis installez celle qui convient à vos sorties.",
     "picker_label": "Cartes de cette page",
     "image_alt": "La carte {name} des Hautes Tatras",
     "fields": {
@@ -384,20 +360,8 @@
           "Randonnée et vélo en Pologne"
         ]
       },
-      "luckymaps": {
-        "look": "Une carte de randonnée et de vélo qui met en rouge les sentiers et les itinéraires, pour des régions de tous les continents.",
-        "covers": "Des pays et des régions sur tous les continents. Les États-Unis sont découpés par État, avec aussi de grandes régions américaines.",
-        "contours": "Dans un paquet séparé, proposé pour la plupart des régions.",
-        "updates": "Nouvelles éditions environ deux fois par an.",
-        "licence": "Données © contributeurs OpenStreetMap (ODbL). Lucky Maps © luckymaps.ch (CC BY-SA 4.0).",
-        "row": [
-          "Monde entier",
-          "Paquet séparé",
-          "Randonnée et vélo dans le monde"
-        ]
-      },
       "openfietsmap": {
-        "look": "Une carte vélo qui met en avant les itinéraires cyclables et les réseaux de points-nœuds numérotés.",
+        "look": "Une carte vélo routable qui met en avant les itinéraires cyclables et les réseaux de points-nœuds numérotés, pas faite pour la navigation en voiture. Le Benelux existe aussi en version légère, avec une couche randonnée à part.",
         "covers": "Les Pays-Bas, la Belgique et le Luxembourg, l’Allemagne, les Alpes et le reste de l’Europe en sept parties, plus l’Islande, les Baléares et les îles de l’Atlantique.",
         "contours": "Incluses.",
         "updates": "Benelux et Allemagne plusieurs fois par an, le reste de l’Europe une fois par an.",
@@ -444,7 +408,7 @@
       ],
       [
         "Les cartes affichent-elles les courbes de niveau ?",
-        "Freizeitkarte et OpenFietsMap les incluent. OpenTopoMap les propose en option, et OSMapaPL et Lucky Maps dans un paquet séparé. Le style OpenTopoMap de BBBike n’en a pas."
+        "Freizeitkarte et OpenFietsMap les incluent. OpenTopoMap les propose en option, et OSMapaPL dans un paquet séparé. Le style OpenTopoMap de BBBike n’en a pas."
       ],
       [
         "Comment en installer une ?",
@@ -454,7 +418,7 @@
   },
   "pl": {
     "h1": "Darmowe mapy na Twojego Garmina",
-    "lead": "OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL, Lucky Maps i OpenFietsMap to darmowe mapy topograficzne z OpenStreetMap na zegarki Garmin i liczniki rowerowe Edge. Zobacz, jak każda przedstawia to samo miejsce, i zainstaluj tę, która pasuje do Twoich wycieczek.",
+    "lead": "OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL i OpenFietsMap to darmowe mapy topograficzne z OpenStreetMap na zegarki Garmin i liczniki rowerowe Edge. Zobacz, jak każda przedstawia to samo miejsce, i zainstaluj tę, która pasuje do Twoich wycieczek.",
     "picker_label": "Mapy na tej stronie",
     "image_alt": "Mapa {name} Tatr Wysokich",
     "fields": {
@@ -535,20 +499,8 @@
           "Piesze i rowerowe wycieczki po Polsce"
         ]
       },
-      "luckymaps": {
-        "look": "Mapa piesza i rowerowa, która zaznacza szlaki i trasy na czerwono, dla regionów na wszystkich kontynentach.",
-        "covers": "Kraje i regiony na wszystkich kontynentach. Stany Zjednoczone są podzielone na stany, są też większe regiony USA.",
-        "contours": "Jako osobny pakiet, dla większości regionów.",
-        "updates": "Nowe wydania mniej więcej dwa razy w roku.",
-        "licence": "Dane mapy © autorzy OpenStreetMap (ODbL). Lucky Maps © luckymaps.ch (CC BY-SA 4.0).",
-        "row": [
-          "Cały świat",
-          "Osobny pakiet",
-          "Piesze i rowerowe wycieczki na całym świecie"
-        ]
-      },
       "openfietsmap": {
-        "look": "Mapa rowerowa, która wyróżnia trasy rowerowe i numerowane sieci węzłów rowerowych.",
+        "look": "Mapa rowerowa z wyznaczaniem tras, która wyróżnia trasy rowerowe i numerowane sieci węzłów, nie do nawigacji samochodowej. Benelux ma też wersję lekką i osobną warstwę szlaków pieszych.",
         "covers": "Holandia, Belgia i Luksemburg, Niemcy, Alpy i reszta Europy w siedmiu częściach, a także Islandia, Baleary i wyspy atlantyckie.",
         "contours": "W zestawie.",
         "updates": "Benelux i Niemcy kilka razy w roku, reszta Europy raz w roku.",
@@ -595,7 +547,7 @@
       ],
       [
         "Czy mapy pokazują poziomice?",
-        "Freizeitkarte i OpenFietsMap mają je w zestawie. OpenTopoMap oferuje je jako opcjonalny dodatek, a OSMapaPL i Lucky Maps jako osobny pakiet. Styl OpenTopoMap od BBBike ich nie ma."
+        "Freizeitkarte i OpenFietsMap mają je w zestawie. OpenTopoMap oferuje je jako opcjonalny dodatek, a OSMapaPL jako osobny pakiet. Styl OpenTopoMap od BBBike ich nie ma."
       ],
       [
         "Jak zainstalować mapę?",
@@ -605,7 +557,7 @@
   },
   "cs": {
     "h1": "Mapy zdarma pro váš Garmin",
-    "lead": "OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL, Lucky Maps a OpenFietsMap jsou bezplatné topografické mapy z OpenStreetMap pro hodinky Garmin a cyklopočítače Edge. Podívejte se, jak každá zobrazuje stejné místo, a nainstalujte tu, která sedí vašim výletům.",
+    "lead": "OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL a OpenFietsMap jsou bezplatné topografické mapy z OpenStreetMap pro hodinky Garmin a cyklopočítače Edge. Podívejte se, jak každá zobrazuje stejné místo, a nainstalujte tu, která sedí vašim výletům.",
     "picker_label": "Mapy na této stránce",
     "image_alt": "Mapa {name} Vysokých Tater",
     "fields": {
@@ -686,20 +638,8 @@
           "Pěší a cyklistické výlety po Polsku"
         ]
       },
-      "luckymaps": {
-        "look": "Turistická a cyklistická mapa, která zvýrazňuje stezky a trasy červeně, pro regiony na všech kontinentech.",
-        "covers": "Země a regiony na všech kontinentech. Spojené státy jsou rozdělené na jednotlivé státy a jsou k dispozici i větší regiony USA.",
-        "contours": "Jako samostatný balíček, pro většinu regionů.",
-        "updates": "Nová vydání zhruba dvakrát ročně.",
-        "licence": "Mapová data © přispěvatelé OpenStreetMap (ODbL). Lucky Maps © luckymaps.ch (CC BY-SA 4.0).",
-        "row": [
-          "Celý svět",
-          "Samostatný balíček",
-          "Pěší a cyklistické výlety po celém světě"
-        ]
-      },
       "openfietsmap": {
-        "look": "Cyklomapa, která zvýrazňuje cyklotrasy a číslované uzlové sítě.",
+        "look": "Cyklomapa s plánováním tras, která zvýrazňuje cyklotrasy a číslované uzlové sítě, ne pro navigaci autem. Benelux má i lehkou verzi a samostatnou vrstvu turistických tras.",
         "covers": "Nizozemsko, Belgie a Lucembursko, Německo, Alpy a zbytek Evropy v sedmi částech, k tomu Island, Baleáry a atlantské ostrovy.",
         "contours": "Obsahuje.",
         "updates": "Benelux a Německo několikrát ročně, zbytek Evropy jednou ročně.",
@@ -746,7 +686,7 @@
       ],
       [
         "Zobrazují mapy vrstevnice?",
-        "Freizeitkarte a OpenFietsMap je obsahují. OpenTopoMap je nabízí jako volitelný doplněk, OSMapaPL a Lucky Maps jako samostatný balíček. Styl OpenTopoMap od BBBike je nemá."
+        "Freizeitkarte a OpenFietsMap je obsahují. OpenTopoMap je nabízí jako volitelný doplněk, OSMapaPL jako samostatný balíček. Styl OpenTopoMap od BBBike je nemá."
       ],
       [
         "Jak mapu nainstaluji?",
@@ -756,7 +696,7 @@
   },
   "it": {
     "h1": "Mappe gratuite per il tuo Garmin",
-    "lead": "OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL, Lucky Maps e OpenFietsMap sono mappe topografiche gratuite create da OpenStreetMap, per orologi Garmin e ciclocomputer Edge. Guarda come ognuna disegna lo stesso luogo, poi installa quella adatta alle tue uscite.",
+    "lead": "OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL e OpenFietsMap sono mappe topografiche gratuite create da OpenStreetMap, per orologi Garmin e ciclocomputer Edge. Guarda come ognuna disegna lo stesso luogo, poi installa quella adatta alle tue uscite.",
     "picker_label": "Mappe in questa pagina",
     "image_alt": "La mappa {name} degli Alti Tatra",
     "fields": {
@@ -837,20 +777,8 @@
           "Escursioni a piedi e in bici in Polonia"
         ]
       },
-      "luckymaps": {
-        "look": "Una mappa per escursioni a piedi e in bici che segna sentieri e percorsi in rosso, per regioni di tutti i continenti.",
-        "covers": "Paesi e regioni di tutti i continenti. Gli Stati Uniti sono divisi per stato, con anche grandi regioni degli USA.",
-        "contours": "In un pacchetto separato, per la maggior parte delle regioni.",
-        "updates": "Nuove edizioni circa due volte l’anno.",
-        "licence": "Dati © contributori di OpenStreetMap (ODbL). Lucky Maps © luckymaps.ch (CC BY-SA 4.0).",
-        "row": [
-          "Tutto il mondo",
-          "Pacchetto separato",
-          "Escursioni a piedi e in bici nel mondo"
-        ]
-      },
       "openfietsmap": {
-        "look": "Una mappa per la bici che mette in evidenza i percorsi ciclabili e le reti a nodi numerati.",
+        "look": "Una mappa per la bici con calcolo del percorso che mette in evidenza percorsi ciclabili e reti a nodi numerati, non pensata per la navigazione in auto. Per il Benelux c’è anche una versione leggera e un livello escursionistico separato.",
         "covers": "Paesi Bassi, Belgio e Lussemburgo, Germania, Alpi e il resto d’Europa in sette parti, più Islanda, Baleari e isole atlantiche.",
         "contours": "Incluse.",
         "updates": "Benelux e Germania più volte l’anno, il resto d’Europa una volta l’anno.",
@@ -897,7 +825,7 @@
       ],
       [
         "Le mappe mostrano le curve di livello?",
-        "Freizeitkarte e OpenFietsMap le includono. OpenTopoMap le offre come aggiunta facoltativa, OSMapaPL e Lucky Maps in un pacchetto separato. Lo stile OpenTopoMap di BBBike non le ha."
+        "Freizeitkarte e OpenFietsMap le includono. OpenTopoMap le offre come aggiunta facoltativa, OSMapaPL in un pacchetto separato. Lo stile OpenTopoMap di BBBike non le ha."
       ],
       [
         "Come ne installo una?",

@@ -18,7 +18,7 @@ The software licence does not grant trademark rights in Terento. Modified versio
 
 ## Map licences
 
-Maps come from [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [Freizeitkarte](https://www.freizeitkarte-osm.de/), [OpenTopoMap](https://garmin.opentopomap.org/), [BBBike](https://garmin.bbbike.org), [OSMapaPL](https://osmapa-garmin.las.org.pl/), Lucky Maps and [OpenFietsMap](https://www.openfietsmap.nl/) and remain subject to their providers’ licences and [OpenStreetMap attribution](https://www.openstreetmap.org/copyright). Your own imported maps remain subject to their applicable terms.
+Maps come from [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [Freizeitkarte](https://www.freizeitkarte-osm.de/), [OpenTopoMap](https://garmin.opentopomap.org/), [BBBike](https://garmin.bbbike.org), [OSMapaPL](https://osmapa-garmin.las.org.pl/) and [OpenFietsMap](https://www.openfietsmap.nl/) and remain subject to their providers’ licences and [OpenStreetMap attribution](https://www.openstreetmap.org/copyright). Your own imported maps remain subject to their applicable terms.
 
 The map pictures on this website, including the watch and Edge screens, show these maps. Map data © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright).
 

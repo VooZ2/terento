@@ -5,7 +5,7 @@ canonical: https://terento.app/fr/map-styles/
 
 # Cartes gratuites pour votre Garmin
 
-OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL, Lucky Maps et OpenFietsMap sont des cartes topographiques gratuites issues d’OpenStreetMap, pour les montres Garmin et les compteurs vélo Edge. Voyez comment chacune représente le même lieu, puis installez celle qui convient à vos sorties.
+OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL et OpenFietsMap sont des cartes topographiques gratuites issues d’OpenStreetMap, pour les montres Garmin et les compteurs vélo Edge. Voyez comment chacune représente le même lieu, puis installez celle qui convient à vos sorties.
 
 Style de la carte de gauche Style de la carte de droite
 
@@ -37,10 +37,6 @@ Les aperçus sont proches, mais pas exacts : votre montre dessine elle-même la 
 | Pologne
 | Paquet séparé
 | Randonnée et vélo en Pologne
-| [Lucky Maps](https://terento.app/fr/map-styles/#luckymaps)
-| Monde entier
-| Paquet séparé
-| Randonnée et vélo dans le monde
 | [OpenFietsMap](https://terento.app/fr/map-styles/#openfietsmap)
 | Europe
 | Incluses
@@ -137,30 +133,13 @@ Dans un paquet séparé.
 Licence
 Données © contributeurs OpenStreetMap (ODbL). OSMapaPL par les bénévoles d’OSMapa.
 
-La carte Lucky Maps des Hautes Tatras
-
-## Lucky Maps
-
-Des cartes de randonnée et de vélo pour des régions du monde entier.
-
-Une carte de randonnée et de vélo qui met en rouge les sentiers et les itinéraires, pour des régions de tous les continents.
-
-Couverture
-Des pays et des régions sur tous les continents. Les États-Unis sont découpés par État, avec aussi de grandes régions américaines.
-Courbes de niveau
-Dans un paquet séparé, proposé pour la plupart des régions.
-Mises à jour
-Nouvelles éditions environ deux fois par an.
-Licence
-Données © contributeurs OpenStreetMap (ODbL). Lucky Maps © luckymaps.ch (CC BY-SA 4.0).
-
 La carte OpenFietsMap des Hautes Tatras
 
 ## OpenFietsMap
 
-Des cartes vélo pour les Pays-Bas, la Belgique et le reste de l’Europe.
+Des cartes vélo routables pour le Benelux et l’Europe, pas pour la navigation en voiture.
 
-Une carte vélo qui met en avant les itinéraires cyclables et les réseaux de points-nœuds numérotés.
+Une carte vélo routable qui met en avant les itinéraires cyclables et les réseaux de points-nœuds numérotés, pas faite pour la navigation en voiture. Le Benelux existe aussi en version légère, avec une couche randonnée à part.
 
 Couverture
 Les Pays-Bas, la Belgique et le Luxembourg, l’Allemagne, les Alpes et le reste de l’Europe en sept parties, plus l’Islande, les Baléares et les îles de l’Atlantique.
@@ -195,7 +174,7 @@ Non. La nouvelle carte s’ajoute à celles déjà présentes sur l’appareil. 
 
 Les cartes affichent-elles les courbes de niveau ?
 
-Freizeitkarte et OpenFietsMap les incluent. OpenTopoMap les propose en option, et OSMapaPL et Lucky Maps dans un paquet séparé. Le style OpenTopoMap de BBBike n’en a pas.
+Freizeitkarte et OpenFietsMap les incluent. OpenTopoMap les propose en option, et OSMapaPL dans un paquet séparé. Le style OpenTopoMap de BBBike n’en a pas.
 
 Comment en installer une ?
 

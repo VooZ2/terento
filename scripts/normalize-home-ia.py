@@ -582,67 +582,69 @@ for _locale, (_summary, _benefits) in OSMAPA_CARD_COPY.items():
 # OpenFietsMap and Lucky Maps ship hidden like OSMapaPL; provider-list.js shows
 # each card once catalog-v6 lists that provider as active.
 OPENFIETSMAP_CARD_COPY = {
-    "en": ("Cycling maps for the Netherlands, Belgium and the rest of Europe.", [
-        "Cycle routes and node networks clearly marked",
-        "Benelux as a full, light or hiking map",
-        "Contour lines built in, no extra package",
+    "en": ("Routable cycling maps for Benelux and Europe, not for car navigation.", [
+        "Benelux full and light, with contour lines",
+        "Hiking routes as a separate layer",
+        "For personal use (CC BY-NC-SA 3.0)",
     ]),
-    "de": ("Radkarten für die Niederlande, Belgien und das übrige Europa.", [
-        "Radrouten und Knotenpunktnetze gut sichtbar",
-        "Benelux als volle, leichte oder Wanderkarte",
-        "Höhenlinien enthalten, kein Extra-Paket",
+    "de": ("Routingfähige Radkarten für Benelux und Europa, nicht für die Autonavigation.", [
+        "Benelux als volle und leichte Karte, mit Höhenlinien",
+        "Wanderwege als eigene Ebene",
+        "Für die private Nutzung (CC BY-NC-SA 3.0)",
     ]),
-    "fr": ("Des cartes vélo pour les Pays-Bas, la Belgique et le reste de l’Europe.", [
-        "Itinéraires cyclables et réseaux de points-nœuds bien visibles",
-        "Benelux en carte complète, légère ou de randonnée",
-        "Courbes de niveau incluses, sans paquet en plus",
+    "fr": ("Des cartes vélo routables pour le Benelux et l’Europe, pas pour la navigation en voiture.", [
+        "Benelux en version complète et légère, avec courbes de niveau",
+        "Les sentiers de randonnée dans une couche à part",
+        "Pour un usage personnel (CC BY-NC-SA 3.0)",
     ]),
-    "pl": ("Mapy rowerowe dla Holandii, Belgii i reszty Europy.", [
-        "Wyraźnie zaznaczone trasy rowerowe i sieci węzłów",
-        "Benelux jako mapa pełna, lekka lub piesza",
-        "Poziomice w zestawie, bez dodatkowego pakietu",
+    "pl": ("Mapy rowerowe z wyznaczaniem tras dla Beneluksu i Europy, nie do nawigacji samochodowej.", [
+        "Benelux w wersji pełnej i lekkiej, z poziomicami",
+        "Szlaki piesze jako osobna warstwa",
+        "Do użytku osobistego (CC BY-NC-SA 3.0)",
     ]),
-    "cs": ("Cyklomapy pro Nizozemsko, Belgii a zbytek Evropy.", [
-        "Výrazně vyznačené cyklotrasy a uzlové sítě",
-        "Benelux jako plná, lehká nebo turistická mapa",
-        "Vrstevnice v mapě, bez dalšího balíčku",
+    "cs": ("Cyklomapy s plánováním tras pro Benelux a Evropu, ne pro navigaci autem.", [
+        "Benelux v plné a lehké verzi, s vrstevnicemi",
+        "Turistické trasy jako samostatná vrstva",
+        "Pro osobní použití (CC BY-NC-SA 3.0)",
     ]),
-    "it": ("Mappe per la bici per Paesi Bassi, Belgio e il resto d’Europa.", [
-        "Percorsi ciclabili e reti a nodi ben visibili",
-        "Benelux come mappa completa, leggera o escursionistica",
-        "Curve di livello incluse, senza pacchetti in più",
+    "it": ("Mappe per la bici con calcolo del percorso per Benelux ed Europa, non per la navigazione in auto.", [
+        "Benelux in versione completa e leggera, con curve di livello",
+        "Sentieri escursionistici in un livello separato",
+        "Per uso personale (CC BY-NC-SA 3.0)",
     ]),
 }
+# Lucky Maps text from the owner (2026-11-22). The card stays hidden until the
+# provider is ACTIVE; the last benefit reuses the OSMapaPL wording.
 LUCKYMAPS_CARD_COPY = {
-    "en": ("Hiking and cycling maps for regions around the world.", [
-        "Regions on every continent",
+    "en": ("For hiking and cycling in regions around the world.", [
+        "Europe, Asia, Africa, the Americas and Oceania",
         "One map per US state, or a whole US region",
-        "Contour lines as a separate package",
+        OSMAPA_CARD_COPY["en"][1][2],
     ]),
-    "de": ("Wander- und Radkarten für Regionen auf der ganzen Welt.", [
-        "Regionen auf allen Kontinenten",
+    "de": ("Zum Wandern und Radfahren in Regionen auf der ganzen Welt.", [
+        "Europa, Asien, Afrika, Amerika und Ozeanien",
         "Eine Karte pro US-Bundesstaat oder eine ganze US-Region",
-        "Höhenlinien als eigenes Paket",
+        OSMAPA_CARD_COPY["de"][1][2],
     ]),
-    "fr": ("Des cartes de randonnée et de vélo pour des régions du monde entier.", [
-        "Des régions sur tous les continents",
+    "fr": ("Pour la randonnée et le vélo dans des régions du monde entier.", [
+        "Europe, Asie, Afrique, Amériques et Océanie",
         "Une carte par État américain, ou une grande région des USA",
-        "Courbes de niveau dans un paquet séparé",
+        OSMAPA_CARD_COPY["fr"][1][2],
     ]),
-    "pl": ("Mapy piesze i rowerowe dla regionów na całym świecie.", [
-        "Regiony na wszystkich kontynentach",
+    "pl": ("Na piesze i rowerowe wycieczki w regionach na całym świecie.", [
+        "Europa, Azja, Afryka, obie Ameryki i Oceania",
         "Osobna mapa dla każdego stanu USA lub całego regionu USA",
-        "Poziomice jako osobny pakiet",
+        OSMAPA_CARD_COPY["pl"][1][2],
     ]),
-    "cs": ("Turistické a cyklistické mapy pro regiony po celém světě.", [
-        "Regiony na všech kontinentech",
+    "cs": ("Na pěší a cyklistické výlety v regionech po celém světě.", [
+        "Evropa, Asie, Afrika, Amerika a Oceánie",
         "Mapa pro každý stát USA nebo celý region USA",
-        "Vrstevnice jako samostatný balíček",
+        OSMAPA_CARD_COPY["cs"][1][2],
     ]),
-    "it": ("Mappe per escursioni a piedi e in bici per regioni di tutto il mondo.", [
-        "Regioni in tutti i continenti",
+    "it": ("Per escursioni a piedi e in bici in regioni di tutto il mondo.", [
+        "Europa, Asia, Africa, Americhe e Oceania",
         "Una mappa per ogni stato USA, o un’intera regione USA",
-        "Curve di livello in un pacchetto separato",
+        OSMAPA_CARD_COPY["it"][1][2],
     ]),
 }
 for _provider_id, _name, _copy in (

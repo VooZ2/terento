@@ -5,7 +5,7 @@ canonical: https://terento.app/de/map-styles/
 
 # Kostenlose Karten für deinen Garmin
 
-OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL, Lucky Maps und OpenFietsMap sind kostenlose topografische Karten aus OpenStreetMap für Garmin-Uhren und Edge-Fahrradcomputer. Sieh dir an, wie jede denselben Ort darstellt, und installiere die, die zu deinen Touren passt.
+OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL und OpenFietsMap sind kostenlose topografische Karten aus OpenStreetMap für Garmin-Uhren und Edge-Fahrradcomputer. Sieh dir an, wie jede denselben Ort darstellt, und installiere die, die zu deinen Touren passt.
 
 Kartenstil links Kartenstil rechts
 
@@ -37,10 +37,6 @@ Vorschauen sind nah dran, aber nicht exakt: Deine Uhr zeichnet die Karte selbst,
 | Polen
 | Eigenes Paket
 | Wandern und Radfahren in Polen
-| [Lucky Maps](https://terento.app/de/map-styles/#luckymaps)
-| Weltweit
-| Eigenes Paket
-| Wandern und Radfahren weltweit
 | [OpenFietsMap](https://terento.app/de/map-styles/#openfietsmap)
 | Europa
 | Enthalten
@@ -137,30 +133,13 @@ Als eigenes Paket.
 Lizenz
 Kartendaten © OpenStreetMap-Mitwirkende (ODbL). OSMapaPL von OSMapa-Freiwilligen.
 
-Die Karte Lucky Maps der Hohen Tatra
-
-## Lucky Maps
-
-Wander- und Radkarten für Regionen auf der ganzen Welt.
-
-Eine Wander- und Radkarte, die Wege und Routen rot hervorhebt, für Regionen auf allen Kontinenten.
-
-Gebiet
-Länder und Regionen auf allen Kontinenten. Die USA sind in Bundesstaaten aufgeteilt, dazu gibt es größere US-Regionen.
-Höhenlinien
-Als eigenes Paket, für die meisten Regionen.
-Updates
-Neue Ausgaben etwa zweimal im Jahr.
-Lizenz
-Kartendaten © OpenStreetMap-Mitwirkende (ODbL). Lucky Maps © luckymaps.ch (CC BY-SA 4.0).
-
 Die Karte OpenFietsMap der Hohen Tatra
 
 ## OpenFietsMap
 
-Radkarten für die Niederlande, Belgien und das übrige Europa.
+Routingfähige Radkarten für Benelux und Europa, nicht für die Autonavigation.
 
-Eine Radkarte, die Radrouten und nummerierte Knotenpunktnetze hervorhebt.
+Eine routingfähige Radkarte, die Radrouten und nummerierte Knotenpunktnetze hervorhebt, nicht für die Autonavigation. Für Benelux gibt es auch eine leichte Version und eine eigene Wanderebene.
 
 Gebiet
 Niederlande, Belgien und Luxemburg, Deutschland, die Alpen und das übrige Europa in sieben Teilen, dazu Island, die Balearen und die Atlantikinseln.
@@ -195,7 +174,7 @@ Nein. Die neue Karte kommt zu den Karten hinzu, die schon auf deinem Gerät sind
 
 Zeigen die Karten Höhenlinien?
 
-Freizeitkarte und OpenFietsMap enthalten sie. OpenTopoMap bietet sie als optionales Extra an, OSMapaPL und Lucky Maps als eigenes Paket. Der OpenTopoMap-Stil von BBBike hat keine.
+Freizeitkarte und OpenFietsMap enthalten sie. OpenTopoMap bietet sie als optionales Extra an, OSMapaPL als eigenes Paket. Der OpenTopoMap-Stil von BBBike hat keine.
 
 Wie installiere ich eine Karte?
 

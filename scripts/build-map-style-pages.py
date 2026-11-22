@@ -34,7 +34,6 @@ GUIDE_MAPS = (
     ("maprando", "maprando", "maprando"),
     ("bbbike", "bbbike-all", "bbbike-ontrail"),
     ("osmapa", "osmapa", "osmapa-podstawowa"),
-    ("luckymaps", "luckymaps", "luckymaps"),
     ("openfietsmap", "openfietsmap", "openfietsmap"),
 )
 LEAFLET_VERSION = "1.9.4"

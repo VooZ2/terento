@@ -23,7 +23,7 @@ The software licence does not grant trademark rights in Terento. Modified versio
 
 ## Map licences
 
-Maps come from [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [Freizeitkarte](https://www.freizeitkarte-osm.de/), [OpenTopoMap](https://garmin.opentopomap.org/), [BBBike](https://garmin.bbbike.org), [OSMapaPL](https://osmapa-garmin.las.org.pl/), Lucky Maps and [OpenFietsMap](https://www.openfietsmap.nl/) and remain subject to their providers’ licences and [OpenStreetMap attribution](https://www.openstreetmap.org/copyright). Your own imported maps remain subject to their applicable terms.
+Maps come from [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [Freizeitkarte](https://www.freizeitkarte-osm.de/), [OpenTopoMap](https://garmin.opentopomap.org/), [BBBike](https://garmin.bbbike.org), [OSMapaPL](https://osmapa-garmin.las.org.pl/) and [OpenFietsMap](https://www.openfietsmap.nl/) and remain subject to their providers’ licences and [OpenStreetMap attribution](https://www.openstreetmap.org/copyright). Your own imported maps remain subject to their applicable terms.
 
 The map pictures on this website, including the watch and Edge screens, show these maps. Map data © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright).
 
@@ -65,7 +65,7 @@ Die Softwarelizenz gewährt keine Markenrechte an Terento. Veränderte Versionen
 
 ## Kartenlizenzen
 
-Karten stammen von [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [Freizeitkarte](https://www.freizeitkarte-osm.de/), [OpenTopoMap](https://garmin.opentopomap.org/), [BBBike](https://garmin.bbbike.org), [OSMapaPL](https://osmapa-garmin.las.org.pl/), Lucky Maps und [OpenFietsMap](https://www.openfietsmap.nl/). Es gelten die jeweiligen Lizenzen und die [OpenStreetMap-Namensnennung](https://www.openstreetmap.org/copyright). Für selbst importierte Karten gelten deren jeweilige Bedingungen.
+Karten stammen von [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [Freizeitkarte](https://www.freizeitkarte-osm.de/), [OpenTopoMap](https://garmin.opentopomap.org/), [BBBike](https://garmin.bbbike.org), [OSMapaPL](https://osmapa-garmin.las.org.pl/) und [OpenFietsMap](https://www.openfietsmap.nl/). Es gelten die jeweiligen Lizenzen und die [OpenStreetMap-Namensnennung](https://www.openstreetmap.org/copyright). Für selbst importierte Karten gelten deren jeweilige Bedingungen.
 
 Die Kartenbilder auf dieser Website, auch auf den Uhr- und Edge-Bildschirmen, zeigen diese Karten. Kartendaten © [OpenStreetMap-Mitwirkende](https://www.openstreetmap.org/copyright).
 
@@ -107,7 +107,7 @@ La licence du logiciel n’accorde pas de droits sur la marque Terento. Une vers
 
 ## Licences des cartes
 
-Les cartes proviennent de [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [Freizeitkarte](https://www.freizeitkarte-osm.de/), d’ [OpenTopoMap](https://garmin.opentopomap.org/), de [BBBike](https://garmin.bbbike.org), d’ [OSMapaPL](https://osmapa-garmin.las.org.pl/), de Lucky Maps et d’ [OpenFietsMap](https://www.openfietsmap.nl/). Elles restent soumises aux licences de leurs fournisseurs et à l’ [attribution OpenStreetMap](https://www.openstreetmap.org/copyright). Vos cartes importées restent soumises à leurs propres conditions.
+Les cartes proviennent de [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [Freizeitkarte](https://www.freizeitkarte-osm.de/), d’ [OpenTopoMap](https://garmin.opentopomap.org/), de [BBBike](https://garmin.bbbike.org), d’ [OSMapaPL](https://osmapa-garmin.las.org.pl/) et d’ [OpenFietsMap](https://www.openfietsmap.nl/). Elles restent soumises aux licences de leurs fournisseurs et à l’ [attribution OpenStreetMap](https://www.openstreetmap.org/copyright). Vos cartes importées restent soumises à leurs propres conditions.
 
 Les images de cartes de ce site, y compris les écrans de montre et d’Edge, montrent ces cartes. Données cartographiques © [contributeurs OpenStreetMap](https://www.openstreetmap.org/copyright).
 
@@ -149,7 +149,7 @@ Licencja oprogramowania nie przyznaje praw do znaku Terento. Zmienionych wersji 
 
 ## Licencje map
 
-Mapy pochodzą z [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [Freizeitkarte](https://www.freizeitkarte-osm.de/), [OpenTopoMap](https://garmin.opentopomap.org/), [BBBike](https://garmin.bbbike.org), [OSMapaPL](https://osmapa-garmin.las.org.pl/), Lucky Maps i [OpenFietsMap](https://www.openfietsmap.nl/) i podlegają licencjom dostawców oraz [zasadom uznania autorstwa OpenStreetMap](https://www.openstreetmap.org/copyright). Własne importowane mapy nadal podlegają odpowiednim warunkom.
+Mapy pochodzą z [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [Freizeitkarte](https://www.freizeitkarte-osm.de/), [OpenTopoMap](https://garmin.opentopomap.org/), [BBBike](https://garmin.bbbike.org), [OSMapaPL](https://osmapa-garmin.las.org.pl/) i [OpenFietsMap](https://www.openfietsmap.nl/) i podlegają licencjom dostawców oraz [zasadom uznania autorstwa OpenStreetMap](https://www.openstreetmap.org/copyright). Własne importowane mapy nadal podlegają odpowiednim warunkom.
 
 Obrazy map na tej stronie, także na ekranach zegarka i Edge, pokazują te mapy. Dane mapy © [współtwórcy OpenStreetMap](https://www.openstreetmap.org/copyright).
 
@@ -191,7 +191,7 @@ Softwarová licence neposkytuje práva k ochranné známce Terento. Upravené ve
 
 ## Licence map
 
-Mapy pocházejí od [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [Freizeitkarte](https://www.freizeitkarte-osm.de/), [OpenTopoMap](https://garmin.opentopomap.org/), [BBBike](https://garmin.bbbike.org), [OSMapaPL](https://osmapa-garmin.las.org.pl/), Lucky Maps a [OpenFietsMap](https://www.openfietsmap.nl/) a podléhají jejich licencím a [uvedení autorství OpenStreetMap](https://www.openstreetmap.org/copyright). Pro vlastní importované mapy nadále platí příslušné podmínky.
+Mapy pocházejí od [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [Freizeitkarte](https://www.freizeitkarte-osm.de/), [OpenTopoMap](https://garmin.opentopomap.org/), [BBBike](https://garmin.bbbike.org), [OSMapaPL](https://osmapa-garmin.las.org.pl/) a [OpenFietsMap](https://www.openfietsmap.nl/) a podléhají jejich licencím a [uvedení autorství OpenStreetMap](https://www.openstreetmap.org/copyright). Pro vlastní importované mapy nadále platí příslušné podmínky.
 
 Obrázky map na tomto webu, včetně displejů hodinek a Edge, ukazují tyto mapy. Mapová data © [přispěvatelé OpenStreetMap](https://www.openstreetmap.org/copyright).
 
@@ -233,7 +233,7 @@ La licenza software non concede diritti sul marchio Terento. Le versioni modific
 
 ## Licenze delle mappe
 
-Le mappe provengono da [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [Freizeitkarte](https://www.freizeitkarte-osm.de/), [OpenTopoMap](https://garmin.opentopomap.org/), [BBBike](https://garmin.bbbike.org), [OSMapaPL](https://osmapa-garmin.las.org.pl/), Lucky Maps e [OpenFietsMap](https://www.openfietsmap.nl/) e restano soggette alle licenze dei fornitori e all’ [attribuzione OpenStreetMap](https://www.openstreetmap.org/copyright). Le mappe importate dall’utente mantengono le proprie condizioni.
+Le mappe provengono da [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [Freizeitkarte](https://www.freizeitkarte-osm.de/), [OpenTopoMap](https://garmin.opentopomap.org/), [BBBike](https://garmin.bbbike.org), [OSMapaPL](https://osmapa-garmin.las.org.pl/) e [OpenFietsMap](https://www.openfietsmap.nl/) e restano soggette alle licenze dei fornitori e all’ [attribuzione OpenStreetMap](https://www.openstreetmap.org/copyright). Le mappe importate dall’utente mantengono le proprie condizioni.
 
 Le immagini delle mappe su questo sito, compresi gli schermi dell’orologio e dell’Edge, mostrano queste mappe. Dati cartografici © [contributori OpenStreetMap](https://www.openstreetmap.org/copyright).
 
