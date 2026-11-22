@@ -102,3 +102,25 @@ extension Font {
             : .custom(name, size: size).weight(weight)
     }
 }
+
+/// A group heading and its count on one text baseline: "Freizeitkarte  2 maps".
+/// Centring the two lines put the smaller count about 1.5 pt above the name
+/// (owner QA 1.3.0-local, 2026-11-22); TypographyTests renders this view with
+/// the bundled fonts and measures both baselines.
+struct TerentoTitleCountLabel: View {
+    let title: String
+    let count: String
+    let spacing: CGFloat
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: spacing) {
+            Text(title)
+                .font(.terento(.rowTitle))
+                .foregroundStyle(TerentoGeneratedTokens.Brand.graphite)
+
+            Text(count)
+                .font(.terento(.caption, weight: .semibold))
+                .foregroundStyle(TerentoGeneratedTokens.Functional.secondaryText)
+        }
+    }
+}

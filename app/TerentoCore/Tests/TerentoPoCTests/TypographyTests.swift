@@ -6,7 +6,7 @@ import SwiftUI
 /// fonts are registered from that built Terento.app, exactly as at launch.
 @main
 struct TypographyTests {
-    static func main() {
+    @MainActor static func main() {
         let arguments = CommandLine.arguments
         guard arguments.count == 2 else {
             fail("usage: typography-tests <Terento.app or font directory>")
@@ -43,6 +43,58 @@ struct TypographyTests {
             "the Instrument Sans family has the regular and semibold faces: \(brandFaces)")
 
         print("PASS: app type scale and bundled brand fonts")
+
+        guard #available(macOS 13, *) else { fail("the group header baseline test needs macOS 13") }
+        _ = NSApplication.shared
+        testGroupHeaderBaseline()
+    }
+
+    /// Manage maps group header (owner QA 2026-11-22): the name and the count
+    /// sit on one baseline. Renders the shared label at 2x with the bundled
+    /// fonts and compares the bottom of the flat "B" with the bottom of the
+    /// flat "1". Centred lines put the count about 3 px (1.5 pt) higher.
+    @available(macOS 13, *)
+    @MainActor private static func testGroupHeaderBaseline() {
+        let renderer = ImageRenderer(content: TerentoTitleCountLabel(title: "BBBike", count: "1 map", spacing: 8)
+            .fixedSize()
+            .padding(4))
+        renderer.scale = 2
+        guard let image = renderer.cgImage else { fail("the group header label did not render") }
+        let width = image.width, height = image.height
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        let drawn = pixels.withUnsafeMutableBytes { buffer -> Bool in
+            guard let context = CGContext(data: buffer.baseAddress, width: width, height: height,
+                bitsPerComponent: 8, bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+        expect(drawn, "the rendered group header label could not be read")
+        func ink(_ x: Int, _ y: Int) -> Bool { pixels[(y * width + x) * 4 + 3] >= 128 }
+        let inkColumns = (0..<width).filter { x in (0..<height).contains { ink(x, $0) } }
+        guard let titleStart = inkColumns.first else { fail("the group header label has no text") }
+        // The name ends at the first gap wider than any gap between its letters.
+        var titleEnd = titleStart
+        for x in inkColumns.dropFirst() {
+            if x - titleEnd > 10 { break }
+            titleEnd = x
+        }
+        guard let countStart = inkColumns.first(where: { $0 > titleEnd + 10 }) else {
+            fail("the count is missing from the group header label")
+        }
+        // Rows grow downwards in the bitmap: the baseline is the lowest ink row.
+        // The band covers the whole "1" (its flag alone does not reach the baseline).
+        func baseline(_ columns: Range<Int>) -> Int? {
+            (0..<height).last { y in columns.contains { ink($0, y) } }
+        }
+        let firstLetter = titleStart..<min(titleStart + 10, titleEnd + 1)
+        let firstDigit = countStart..<min(countStart + 12, width)
+        guard let name = baseline(firstLetter), let count = baseline(firstDigit) else {
+            fail("no baseline found in the group header label")
+        }
+        expect(abs(name - count) <= 1,
+            "the count sits on the name's baseline (name \(name) px, count \(count) px at 2x)")
+        print("PASS: group header name and count share one baseline (name \(name) px, count \(count) px at 2x)")
     }
 
     private static func expect(_ condition: Bool, _ message: String) {
