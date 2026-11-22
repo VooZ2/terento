@@ -34,6 +34,8 @@ GUIDE_MAPS = (
     ("maprando", "maprando", "maprando"),
     ("bbbike", "bbbike-all", "bbbike-ontrail"),
     ("osmapa", "osmapa", "osmapa-podstawowa"),
+    ("luckymaps", "luckymaps", "luckymaps"),
+    ("openfietsmap", "openfietsmap", "openfietsmap"),
 )
 LEAFLET_VERSION = "1.9.4"
 SCRIPT_VERSION = "20261117-map-styles-v17"
@@ -93,12 +95,12 @@ OPTIONAL_STYLES = {
     },
     "luckymaps": {
         "luckymaps": ("Lucky Maps", {
-            "en": "The Freizeitkarte look for regions around the world.",
-            "de": "Der Freizeitkarte-Stil für Regionen auf der ganzen Welt.",
-            "fr": "Le style Freizeitkarte pour des régions du monde entier.",
-            "pl": "Styl Freizeitkarte dla regionów na całym świecie.",
-            "cs": "Styl Freizeitkarte pro regiony po celém světě.",
-            "it": "Lo stile Freizeitkarte per regioni di tutto il mondo.",
+            "en": "A hiking and cycling map with trails marked in red.",
+            "de": "Eine Wander- und Radkarte mit rot markierten Wegen.",
+            "fr": "Une carte de randonnée et de vélo aux sentiers marqués en rouge.",
+            "pl": "Mapa piesza i rowerowa ze szlakami zaznaczonymi na czerwono.",
+            "cs": "Turistická a cyklistická mapa s červeně vyznačenými stezkami.",
+            "it": "Una mappa per escursioni e bici con i sentieri segnati in rosso.",
         }),
     },
 }

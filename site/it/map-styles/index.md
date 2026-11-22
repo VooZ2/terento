@@ -5,7 +5,7 @@ canonical: https://terento.app/it/map-styles/
 
 # Mappe gratuite per il tuo Garmin
 
-OpenTopoMap, Freizeitkarte, MapRando, BBBike e OSMapaPL sono mappe topografiche gratuite create da OpenStreetMap, per orologi Garmin e ciclocomputer Edge. Guarda come ognuna disegna lo stesso luogo, poi installa quella adatta alle tue uscite.
+OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL, Lucky Maps e OpenFietsMap sono mappe topografiche gratuite create da OpenStreetMap, per orologi Garmin e ciclocomputer Edge. Guarda come ognuna disegna lo stesso luogo, poi installa quella adatta alle tue uscite.
 
 Stile della mappa a sinistra Stile della mappa a destra
 
@@ -37,6 +37,14 @@ Le anteprime sono vicine, ma non identiche: l’orologio disegna la mappa da sé
 | Polonia
 | Pacchetto separato
 | Escursioni a piedi e in bici in Polonia
+| [Lucky Maps](https://terento.app/it/map-styles/#luckymaps)
+| Tutto il mondo
+| Pacchetto separato
+| Escursioni a piedi e in bici nel mondo
+| [OpenFietsMap](https://terento.app/it/map-styles/#openfietsmap)
+| Europa
+| Incluse
+| Bici con reti a nodi
 
 La mappa OpenTopoMap degli Alti Tatra
 
@@ -129,6 +137,40 @@ In un pacchetto separato.
 Licenza
 Dati © contributori di OpenStreetMap (ODbL). OSMapaPL dei volontari di OSMapa.
 
+La mappa Lucky Maps degli Alti Tatra
+
+## Lucky Maps
+
+Mappe per escursioni a piedi e in bici per regioni di tutto il mondo.
+
+Una mappa per escursioni a piedi e in bici che segna sentieri e percorsi in rosso, per regioni di tutti i continenti.
+
+Copertura
+Paesi e regioni di tutti i continenti. Gli Stati Uniti sono divisi per stato, con anche grandi regioni degli USA.
+Curve di livello
+In un pacchetto separato, per la maggior parte delle regioni.
+Aggiornamenti
+Nuove edizioni circa due volte l’anno.
+Licenza
+Dati © contributori di OpenStreetMap (ODbL). Lucky Maps © luckymaps.ch (CC BY-SA 4.0).
+
+La mappa OpenFietsMap degli Alti Tatra
+
+## OpenFietsMap
+
+Mappe per la bici per Paesi Bassi, Belgio e il resto d’Europa.
+
+Una mappa per la bici che mette in evidenza i percorsi ciclabili e le reti a nodi numerati.
+
+Copertura
+Paesi Bassi, Belgio e Lussemburgo, Germania, Alpi e il resto d’Europa in sette parti, più Islanda, Baleari e isole atlantiche.
+Curve di livello
+Incluse.
+Aggiornamenti
+Benelux e Germania più volte l’anno, il resto d’Europa una volta l’anno.
+Licenza
+Dati © contributori di OpenStreetMap (ODbL). Cartografia © Openfietsmap.nl (CC BY-NC-SA 3.0).
+
 ## Installa una mappa
 
 Terento è gratuito. Usa l’app su un Mac con Apple Silicon, oppure l’installer web in Chrome, Microsoft Edge, Opera o Brave.
@@ -153,7 +195,7 @@ No. La nuova mappa si aggiunge a quelle già presenti sul dispositivo. Le mappe 
 
 Le mappe mostrano le curve di livello?
 
-Freizeitkarte le include. OpenTopoMap le offre come aggiunta facoltativa e OSMapaPL in un pacchetto separato. Lo stile OpenTopoMap di BBBike non le ha.
+Freizeitkarte e OpenFietsMap le includono. OpenTopoMap le offre come aggiunta facoltativa, OSMapaPL e Lucky Maps in un pacchetto separato. Lo stile OpenTopoMap di BBBike non le ha.
 
 Come ne installo una?
 

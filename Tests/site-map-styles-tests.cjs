@@ -156,7 +156,7 @@ function testPages() {
     assert.ok(cards.length >= 4, `${locale}: home provider cards found`);
     // One section per free map (2026-11 redesign), each opening with the home card summary.
     const sections = [...source.matchAll(/<section class="map-styles-v2-map" id="([^"]+)" aria-labelledby="\1-title">([\s\S]*?)<\/section>/g)];
-    assert.deepEqual(sections.map((item) => item[1]), ["opentopomap", "freizeitkarte", "maprando", "bbbike", "osmapa"], `${locale}: one section per map`);
+    assert.deepEqual(sections.map((item) => item[1]), ["opentopomap", "freizeitkarte", "maprando", "bbbike", "osmapa", "luckymaps", "openfietsmap"], `${locale}: one section per map`);
     for (const [, id, body] of sections) {
       const name = decode(body.match(/<h2 id="[^"]+">([^<]+)<\/h2>/)[1].trim());
       const card = cards.find((item) => item.name === name);
@@ -165,7 +165,7 @@ function testPages() {
       assert.match(body, /<dl class="map-styles-v2-facts">/, `${locale}/${id}: facts list`);
       assert.ok(source.includes(`href="#${id}"`), `${locale}/${id}: picker or table links to the section`);
     }
-    assert.equal((source.match(/<tr>\s*<th scope="row">/g) || []).length, 5, `${locale}: comparison table has a row per map`);
+    assert.equal((source.match(/<tr>\s*<th scope="row">/g) || []).length, 7, `${locale}: comparison table has a row per map`);
     const faq = source.match(/<section class="faq section map-styles-v2-faq"[\s\S]*?<\/section>/);
     assert.ok(faq, `${locale}: FAQ section`);
     const questions = (faq[0].match(/<details/g) || []).length;

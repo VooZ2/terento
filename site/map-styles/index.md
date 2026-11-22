@@ -5,7 +5,7 @@ canonical: https://terento.app/map-styles/
 
 # Free maps for your Garmin
 
-OpenTopoMap, Freizeitkarte, MapRando, BBBike and OSMapaPL are free topographic maps made from OpenStreetMap, for Garmin watches and Edge bike computers. See how each one draws the same place, then install the one that fits your trips.
+OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL, Lucky Maps and OpenFietsMap are free topographic maps made from OpenStreetMap, for Garmin watches and Edge bike computers. See how each one draws the same place, then install the one that fits your trips.
 
 Left map style Right map style
 
@@ -37,6 +37,14 @@ Previews are close, not exact: your watch draws the map itself, so colours and d
 | Poland
 | Separate package
 | Hiking and cycling in Poland
+| [Lucky Maps](https://terento.app/map-styles/#luckymaps)
+| Worldwide
+| Separate package
+| Hiking and cycling worldwide
+| [OpenFietsMap](https://terento.app/map-styles/#openfietsmap)
+| Europe
+| Included
+| Cycling with node networks
 
 The OpenTopoMap map of the High Tatras
 
@@ -129,6 +137,40 @@ A separate package.
 Licence
 Map data © OpenStreetMap contributors (ODbL). OSMapaPL by OSMapa volunteers.
 
+The Lucky Maps map of the High Tatras
+
+## Lucky Maps
+
+Hiking and cycling maps for regions around the world.
+
+A hiking and cycling map that marks trails and routes in red, for regions on every continent.
+
+Covers
+Countries and regions on every continent. The United States are split into states, with larger US regions as well.
+Contour lines
+A separate package, offered for most regions.
+Updates
+New editions about twice a year.
+Licence
+Map data © OpenStreetMap contributors (ODbL). Lucky Maps © luckymaps.ch (CC BY-SA 4.0).
+
+The OpenFietsMap map of the High Tatras
+
+## OpenFietsMap
+
+Cycling maps for the Netherlands, Belgium and the rest of Europe.
+
+A cycling map that highlights cycle routes and the numbered cycle node networks.
+
+Covers
+The Netherlands, Belgium and Luxembourg, Germany, the Alps and the rest of Europe in seven parts, plus Iceland, the Balearic Islands and the Atlantic islands.
+Contour lines
+Included.
+Updates
+Benelux and Germany several times a year, the rest of Europe once a year.
+Licence
+Map data © OpenStreetMap contributors (ODbL). Cartography © Openfietsmap.nl (CC BY-NC-SA 3.0).
+
 ## Install a map
 
 Terento is free. Use the Mac app on a Mac with Apple Silicon, or the web installer in Chrome, Microsoft Edge, Opera or Brave.
@@ -153,7 +195,7 @@ No. The new map is added next to the maps already on your device. Your original 
 
 Do the maps show contour lines?
 
-Freizeitkarte includes them. OpenTopoMap offers them as an optional add-on, and OSMapaPL as a separate package. The BBBike OpenTopoMap look has none.
+Freizeitkarte and OpenFietsMap include them. OpenTopoMap offers them as an optional add-on, and OSMapaPL and Lucky Maps as a separate package. The BBBike OpenTopoMap look has none.
 
 How do I install one?
 

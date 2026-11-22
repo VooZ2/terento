@@ -200,7 +200,7 @@ for (const [locale, expected] of locales) {
     const card = providerSection.match(new RegExp(`<article class="provider-card[^"]*" data-provider-card="${id}" hidden>[\\s\\S]*?<\\/article>`))?.[0];
     assert.ok(card, `${locale}: ${name} stays hidden until catalog-v6 lists it as active`);
     assert.ok(card.includes(`<h3>${name}</h3>`));
-    assert.doesNotMatch(card, /<img /, `${locale}: ${name} has no thumbnail before its previews exist`);
+    assert.match(card, new RegExp(`<img src="/assets/home/maps-${id}\\.webp`), `${locale}: ${name} card shows its High Tatras thumbnail`);
     assert.doesNotMatch(card, /luckymaps\.ch/, `${locale}: no Lucky Maps link before the owner approves one`);
   }
   const osmapa = providerSection.match(/<article class="provider-card[^"]*" data-provider-card="osmapa" hidden>[\s\S]*?<\/article>/)?.[0];

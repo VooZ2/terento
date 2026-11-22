@@ -18,7 +18,7 @@ Softwarová licence neposkytuje práva k ochranné známce Terento. Upravené ve
 
 ## Licence map
 
-Mapy pocházejí od [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [Freizeitkarte](https://www.freizeitkarte-osm.de/), [OpenTopoMap](https://garmin.opentopomap.org/), [BBBike](https://garmin.bbbike.org) a [OSMapaPL](https://osmapa-garmin.las.org.pl/) a podléhají jejich licencím a [uvedení autorství OpenStreetMap](https://www.openstreetmap.org/copyright). Pro vlastní importované mapy nadále platí příslušné podmínky.
+Mapy pocházejí od [MapRando](https://ravenfeld.gitlab.io/open-garmin-map/), [Freizeitkarte](https://www.freizeitkarte-osm.de/), [OpenTopoMap](https://garmin.opentopomap.org/), [BBBike](https://garmin.bbbike.org), [OSMapaPL](https://osmapa-garmin.las.org.pl/), Lucky Maps a [OpenFietsMap](https://www.openfietsmap.nl/) a podléhají jejich licencím a [uvedení autorství OpenStreetMap](https://www.openstreetmap.org/copyright). Pro vlastní importované mapy nadále platí příslušné podmínky.
 
 Obrázky map na tomto webu, včetně displejů hodinek a Edge, ukazují tyto mapy. Mapová data © [přispěvatelé OpenStreetMap](https://www.openstreetmap.org/copyright).
 
@@ -38,4 +38,4 @@ Software může obsahovat chyby ovlivňující mapy, fungování zařízení neb
 
 Informace o zpracování dat, diagnostice a statistikách webu najdete v [oznámení o soukromí](/privacy/).
 
-Aktualizováno: 26. října 2026.
+Aktualizováno: 22. listopadu 2026.

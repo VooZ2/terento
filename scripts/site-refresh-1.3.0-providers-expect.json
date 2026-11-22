@@ -1,0 +1,110 @@
+{
+  "site/cs/map-styles/index.html": {
+    "description": "Porovnejte bezplatné topo mapy pro hodinky Garmin a cyklopočítače Edge: OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL a další vedle sebe na jednom místě.",
+    "h2": [
+      "Mapy v přehledu",
+      "OpenTopoMap",
+      "Freizeitkarte",
+      "MapRando",
+      "BBBike",
+      "OSMapaPL",
+      "Lucky Maps",
+      "OpenFietsMap",
+      "Nainstalujte mapu",
+      "Otázky k bezplatným mapám",
+      "Instalace",
+      "Nápověda",
+      "Projekt"
+    ]
+  },
+  "site/de/map-styles/index.html": {
+    "description": "Kostenlose Topo-Karten für Garmin-Uhren und Edge im Vergleich: OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL und weitere am selben Ort nebeneinander.",
+    "h2": [
+      "Die Karten im Überblick",
+      "OpenTopoMap",
+      "Freizeitkarte",
+      "MapRando",
+      "BBBike",
+      "OSMapaPL",
+      "Lucky Maps",
+      "OpenFietsMap",
+      "Eine Karte installieren",
+      "Fragen zu den kostenlosen Karten",
+      "Installieren",
+      "Hilfe",
+      "Projekt"
+    ]
+  },
+  "site/fr/map-styles/index.html": {
+    "description": "Comparez les cartes topo gratuites pour montres Garmin et Edge : OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL et d’autres, côte à côte au même endroit.",
+    "h2": [
+      "Les cartes en un coup d’œil",
+      "OpenTopoMap",
+      "Freizeitkarte",
+      "MapRando",
+      "BBBike",
+      "OSMapaPL",
+      "Lucky Maps",
+      "OpenFietsMap",
+      "Installer une carte",
+      "Questions sur les cartes gratuites",
+      "Installer",
+      "Aide",
+      "Projet"
+    ]
+  },
+  "site/it/map-styles/index.html": {
+    "description": "Confronta mappe topo gratuite per orologi Garmin ed Edge: OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL e altre fianco a fianco nello stesso luogo.",
+    "h2": [
+      "Le mappe in breve",
+      "OpenTopoMap",
+      "Freizeitkarte",
+      "MapRando",
+      "BBBike",
+      "OSMapaPL",
+      "Lucky Maps",
+      "OpenFietsMap",
+      "Installa una mappa",
+      "Domande sulle mappe gratuite",
+      "Installa",
+      "Aiuto",
+      "Progetto"
+    ]
+  },
+  "site/map-styles/index.html": {
+    "description": "Compare free topo maps for Garmin watches and Edge bike computers: OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL and more, side by side in one place.",
+    "h2": [
+      "The maps at a glance",
+      "OpenTopoMap",
+      "Freizeitkarte",
+      "MapRando",
+      "BBBike",
+      "OSMapaPL",
+      "Lucky Maps",
+      "OpenFietsMap",
+      "Install a map",
+      "Questions about the free maps",
+      "Install",
+      "Help",
+      "Project"
+    ]
+  },
+  "site/pl/map-styles/index.html": {
+    "description": "Porównaj darmowe mapy topo na zegarki Garmin i liczniki Edge: OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL i inne obok siebie w tym samym miejscu.",
+    "h2": [
+      "Mapy w skrócie",
+      "OpenTopoMap",
+      "Freizeitkarte",
+      "MapRando",
+      "BBBike",
+      "OSMapaPL",
+      "Lucky Maps",
+      "OpenFietsMap",
+      "Zainstaluj mapę",
+      "Pytania o darmowe mapy",
+      "Instalacja",
+      "Pomoc",
+      "Projekt"
+    ]
+  }
+}

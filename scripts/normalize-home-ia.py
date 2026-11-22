@@ -36,6 +36,8 @@ CARD_THUMBNAILS = {
     "bbbike-opentopo": "bbbike-opentopo",
     "bbbike-all": "bbbike-ontrail",
     "osmapa": "osmapa-podstawowa",
+    "openfietsmap": "openfietsmap",
+    "luckymaps": "luckymaps",
 }
 EDGE_IMAGE = ROOT / "site/assets/home/edge-front.webp"
 EMAIL_URL = "mailto:hello@terento.app?subject=Terento%20installation%20issue"
@@ -580,66 +582,66 @@ for _locale, (_summary, _benefits) in OSMAPA_CARD_COPY.items():
 # OpenFietsMap and Lucky Maps ship hidden like OSMapaPL; provider-list.js shows
 # each card once catalog-v6 lists that provider as active.
 OPENFIETSMAP_CARD_COPY = {
-    "en": ("For cycling in the Netherlands, Belgium and across Europe.", [
+    "en": ("Cycling maps for the Netherlands, Belgium and the rest of Europe.", [
         "Cycle routes and node networks clearly marked",
-        "Benelux in a full or light version, plus a hiking layer",
-        "Contour lines and relief shading included",
+        "Benelux as a full, light or hiking map",
+        "Contour lines built in, no extra package",
     ]),
-    "de": ("Zum Radfahren in den Niederlanden, in Belgien und in ganz Europa.", [
+    "de": ("Radkarten für die Niederlande, Belgien und das übrige Europa.", [
         "Radrouten und Knotenpunktnetze gut sichtbar",
-        "Benelux als volle oder leichte Karte, dazu eine Wanderebene",
-        "Mit Höhenlinien und Reliefschattierung",
+        "Benelux als volle, leichte oder Wanderkarte",
+        "Höhenlinien enthalten, kein Extra-Paket",
     ]),
-    "fr": ("Pour le vélo aux Pays-Bas, en Belgique et dans toute l’Europe.", [
+    "fr": ("Des cartes vélo pour les Pays-Bas, la Belgique et le reste de l’Europe.", [
         "Itinéraires cyclables et réseaux de points-nœuds bien visibles",
-        "Benelux en version complète ou légère, plus une couche randonnée",
-        "Courbes de niveau et ombrage du relief inclus",
+        "Benelux en carte complète, légère ou de randonnée",
+        "Courbes de niveau incluses, sans paquet en plus",
     ]),
-    "pl": ("Na rower w Holandii, Belgii i w całej Europie.", [
+    "pl": ("Mapy rowerowe dla Holandii, Belgii i reszty Europy.", [
         "Wyraźnie zaznaczone trasy rowerowe i sieci węzłów",
-        "Benelux w wersji pełnej lub lekkiej oraz warstwa szlaków pieszych",
-        "Z poziomicami i cieniowaniem rzeźby terenu",
+        "Benelux jako mapa pełna, lekka lub piesza",
+        "Poziomice w zestawie, bez dodatkowego pakietu",
     ]),
-    "cs": ("Na kolo v Nizozemsku, Belgii a po celé Evropě.", [
+    "cs": ("Cyklomapy pro Nizozemsko, Belgii a zbytek Evropy.", [
         "Výrazně vyznačené cyklotrasy a uzlové sítě",
-        "Benelux v plné nebo lehké verzi a k tomu vrstva pěších tras",
-        "S vrstevnicemi a stínováním reliéfu",
+        "Benelux jako plná, lehká nebo turistická mapa",
+        "Vrstevnice v mapě, bez dalšího balíčku",
     ]),
-    "it": ("Per andare in bici nei Paesi Bassi, in Belgio e in tutta Europa.", [
+    "it": ("Mappe per la bici per Paesi Bassi, Belgio e il resto d’Europa.", [
         "Percorsi ciclabili e reti a nodi ben visibili",
-        "Benelux in versione completa o leggera, più un livello escursionistico",
-        "Curve di livello e ombreggiatura del rilievo incluse",
+        "Benelux come mappa completa, leggera o escursionistica",
+        "Curve di livello incluse, senza pacchetti in più",
     ]),
 }
 LUCKYMAPS_CARD_COPY = {
-    "en": ("Freizeitkarte-style maps for hiking and cycling, for regions around the world.", [
-        "The Freizeitkarte look, also outside Europe",
-        "Regional maps, for example one for each US state",
+    "en": ("Hiking and cycling maps for regions around the world.", [
+        "Regions on every continent",
+        "One map per US state, or a whole US region",
         "Contour lines as a separate package",
     ]),
-    "de": ("Karten im Freizeitkarte-Stil zum Wandern und Radfahren, für Regionen auf der ganzen Welt.", [
-        "Der Freizeitkarte-Stil, auch außerhalb Europas",
-        "Regionalkarten, zum Beispiel eine für jeden US-Bundesstaat",
+    "de": ("Wander- und Radkarten für Regionen auf der ganzen Welt.", [
+        "Regionen auf allen Kontinenten",
+        "Eine Karte pro US-Bundesstaat oder eine ganze US-Region",
         "Höhenlinien als eigenes Paket",
     ]),
-    "fr": ("Des cartes au style Freizeitkarte pour la randonnée et le vélo, pour des régions du monde entier.", [
-        "Le style Freizeitkarte, aussi hors d’Europe",
-        "Cartes régionales, par exemple une par État américain",
+    "fr": ("Des cartes de randonnée et de vélo pour des régions du monde entier.", [
+        "Des régions sur tous les continents",
+        "Une carte par État américain, ou une grande région des USA",
         "Courbes de niveau dans un paquet séparé",
     ]),
-    "pl": ("Mapy w stylu Freizeitkarte na piesze i rowerowe wycieczki, dla regionów na całym świecie.", [
-        "Styl Freizeitkarte, także poza Europą",
-        "Mapy regionów, na przykład osobna dla każdego stanu USA",
+    "pl": ("Mapy piesze i rowerowe dla regionów na całym świecie.", [
+        "Regiony na wszystkich kontynentach",
+        "Osobna mapa dla każdego stanu USA lub całego regionu USA",
         "Poziomice jako osobny pakiet",
     ]),
-    "cs": ("Mapy ve stylu Freizeitkarte na pěší a cyklistické výlety, pro regiony po celém světě.", [
-        "Styl Freizeitkarte, i mimo Evropu",
-        "Regionální mapy, například jedna pro každý stát USA",
+    "cs": ("Turistické a cyklistické mapy pro regiony po celém světě.", [
+        "Regiony na všech kontinentech",
+        "Mapa pro každý stát USA nebo celý region USA",
         "Vrstevnice jako samostatný balíček",
     ]),
-    "it": ("Mappe in stile Freizeitkarte per escursioni a piedi e in bici, per regioni di tutto il mondo.", [
-        "Lo stile Freizeitkarte, anche fuori dall’Europa",
-        "Mappe regionali, per esempio una per ogni stato USA",
+    "it": ("Mappe per escursioni a piedi e in bici per regioni di tutto il mondo.", [
+        "Regioni in tutti i continenti",
+        "Una mappa per ogni stato USA, o un’intera regione USA",
         "Curve di livello in un pacchetto separato",
     ]),
 }
