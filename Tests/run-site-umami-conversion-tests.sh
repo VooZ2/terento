@@ -200,8 +200,9 @@ for path in home_files:
     assert html.count('data-umami-event="app-store-click"') == 2, f"{path}: expected two App Store badges on Home"
     assert html.count('data-umami-event="guide-link-click" data-umami-event-location="home-edge"') == 1, f"{path}: expected the Garmin Edge guide link"
     assert 'class="scope-section"' not in html, f"{path}: Beta scope section must be removed"
-    assert html.count('data-provider-card=') == 5, f"{path}: expected one card per provider"
-    assert html.count('class="provider-benefits"') == 5, f"{path}: expected one benefits list per map card"
+    # Seven provider cards; OpenFietsMap and Lucky Maps ship hidden until the catalog lists them ACTIVE.
+    assert html.count('data-provider-card=') == 7, f"{path}: expected one card per provider"
+    assert html.count('class="provider-benefits"') == 7, f"{path}: expected one benefits list per map card"
     assert html.count("<details>") == 8, f"{path}: expected eight FAQ answers"
     assert 'final-cta' not in html, f"{path}: the closing download block was removed (owner 2026-11-13)"
     assert "/assets/home/hero-opentopomap.webp" in html, f"{path}: expected the drawn watch hero map"

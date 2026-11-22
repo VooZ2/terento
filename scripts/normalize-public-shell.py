@@ -11,7 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SHELL_VERSION = "20261105-copy-command-v1"
-PROVIDER_SCRIPT_VERSION = "20261119-compare-card-v1"
+PROVIDER_SCRIPT_VERSION = "20261121-catalog-v6"
 STYLE_VERSION = "20261121-github-star-v1"
 IMAGE_VERSION = "20261122-app-screens-v4"
 LANGUAGE_VERSION = "20260926-static-shell-v1"

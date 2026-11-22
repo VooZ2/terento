@@ -436,7 +436,7 @@
       "path": "/map-styles/",
       "locale": "en",
       "title": "Free Garmin Maps: OpenTopoMap, Freizeitkarte and more",
-      "description": "Compare free topo maps for Garmin watches and Edge bike computers: OpenTopoMap, Freizeitkarte, MapRando, BBBike and OSMapaPL, side by side in one place.",
+      "description": "Compare free topo maps for Garmin watches and Edge bike computers: OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL and more, side by side in one place.",
       "alternates": true,
       "socialImage": "/assets/social/terento-map-styles-og.png",
       "socialImageAlt": "The High Tatras in five Garmin map styles side by side: OpenTopoMap, Freizeitkarte, MapRando, OSMapaPL and BBBike Ontrail"
@@ -446,7 +446,7 @@
       "path": "/de/map-styles/",
       "locale": "de",
       "title": "Kostenlose Garmin-Karten: OpenTopoMap, Freizeitkarte",
-      "description": "Kostenlose Topo-Karten für Garmin-Uhren und Edge im Vergleich: OpenTopoMap, Freizeitkarte, MapRando, BBBike und OSMapaPL am selben Ort nebeneinander.",
+      "description": "Kostenlose Topo-Karten für Garmin-Uhren und Edge im Vergleich: OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL und weitere am selben Ort nebeneinander.",
       "alternates": true,
       "socialImage": "/assets/social/terento-map-styles-og.png",
       "socialImageAlt": "Die Hohe Tatra in fünf Garmin-Kartenstilen nebeneinander: OpenTopoMap, Freizeitkarte, MapRando, OSMapaPL und BBBike Ontrail"
@@ -456,7 +456,7 @@
       "path": "/fr/map-styles/",
       "locale": "fr",
       "title": "Cartes Garmin gratuites : OpenTopoMap, Freizeitkarte",
-      "description": "Comparez les cartes topo gratuites pour montres Garmin et Edge : OpenTopoMap, Freizeitkarte, MapRando, BBBike et OSMapaPL, côte à côte au même endroit.",
+      "description": "Comparez les cartes topo gratuites pour montres Garmin et Edge : OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL et d’autres, côte à côte au même endroit.",
       "alternates": true,
       "socialImage": "/assets/social/terento-map-styles-og.png",
       "socialImageAlt": "Les Hautes Tatras dans cinq styles de cartes Garmin côte à côte : OpenTopoMap, Freizeitkarte, MapRando, OSMapaPL et BBBike Ontrail"
@@ -466,7 +466,7 @@
       "path": "/pl/map-styles/",
       "locale": "pl",
       "title": "Darmowe mapy Garmin: OpenTopoMap, Freizeitkarte i inne",
-      "description": "Porównaj darmowe mapy topo na zegarki Garmin i liczniki Edge: OpenTopoMap, Freizeitkarte, MapRando, BBBike i OSMapaPL obok siebie w tym samym miejscu.",
+      "description": "Porównaj darmowe mapy topo na zegarki Garmin i liczniki Edge: OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL i inne obok siebie w tym samym miejscu.",
       "alternates": true,
       "socialImage": "/assets/social/terento-map-styles-og.png",
       "socialImageAlt": "Tatry Wysokie w pięciu stylach map Garmin obok siebie: OpenTopoMap, Freizeitkarte, MapRando, OSMapaPL i BBBike Ontrail"
@@ -476,7 +476,7 @@
       "path": "/cs/map-styles/",
       "locale": "cs",
       "title": "Mapy Garmin zdarma: OpenTopoMap, Freizeitkarte a další",
-      "description": "Porovnejte bezplatné topo mapy pro hodinky Garmin a cyklopočítače Edge: OpenTopoMap, Freizeitkarte, MapRando, BBBike a OSMapaPL vedle sebe na jednom místě.",
+      "description": "Porovnejte bezplatné topo mapy pro hodinky Garmin a cyklopočítače Edge: OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL a další vedle sebe na jednom místě.",
       "alternates": true,
       "socialImage": "/assets/social/terento-map-styles-og.png",
       "socialImageAlt": "Vysoké Tatry v pěti stylech map Garmin vedle sebe: OpenTopoMap, Freizeitkarte, MapRando, OSMapaPL a BBBike Ontrail"
@@ -486,7 +486,7 @@
       "path": "/it/map-styles/",
       "locale": "it",
       "title": "Mappe Garmin gratuite: OpenTopoMap, Freizeitkarte e altre",
-      "description": "Confronta mappe topo gratuite per orologi Garmin ed Edge: OpenTopoMap, Freizeitkarte, MapRando, BBBike e OSMapaPL fianco a fianco nello stesso luogo.",
+      "description": "Confronta mappe topo gratuite per orologi Garmin ed Edge: OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL e altre fianco a fianco nello stesso luogo.",
       "alternates": true,
       "socialImage": "/assets/social/terento-map-styles-og.png",
       "socialImageAlt": "Gli Alti Tatra in cinque stili di mappa Garmin affiancati: OpenTopoMap, Freizeitkarte, MapRando, OSMapaPL e BBBike Ontrail"

@@ -5,7 +5,7 @@ canonical: https://terento.app/fr/map-styles/
 
 # Cartes gratuites pour votre Garmin
 
-OpenTopoMap, Freizeitkarte, MapRando, BBBike et OSMapaPL sont des cartes topographiques gratuites issues d’OpenStreetMap, pour les montres Garmin et les compteurs vélo Edge. Voyez comment chacune représente le même lieu, puis installez celle qui convient à vos sorties.
+OpenTopoMap, Freizeitkarte, MapRando, BBBike, OSMapaPL et OpenFietsMap sont des cartes topographiques gratuites issues d’OpenStreetMap, pour les montres Garmin et les compteurs vélo Edge. Voyez comment chacune représente le même lieu, puis installez celle qui convient à vos sorties.
 
 Style de la carte de gauche Style de la carte de droite
 
@@ -37,6 +37,10 @@ Les aperçus sont proches, mais pas exacts : votre montre dessine elle-même la 
 | Pologne
 | Paquet séparé
 | Randonnée et vélo en Pologne
+| [OpenFietsMap](https://terento.app/fr/map-styles/#openfietsmap)
+| Europe
+| Incluses
+| Vélo avec points-nœuds
 
 La carte OpenTopoMap des Hautes Tatras
 
@@ -129,6 +133,25 @@ Dans un paquet séparé.
 Licence
 Données © contributeurs OpenStreetMap (ODbL). OSMapaPL par les bénévoles d’OSMapa.
 
+La carte OpenFietsMap des Hautes Tatras
+
+## OpenFietsMap
+
+Pour le vélo aux Pays-Bas, en Belgique et dans toute l’Europe.
+
+Dans l’app Mac à partir de la version 1.3.0.
+
+Une carte vélo routable qui met en avant les itinéraires cyclables et les réseaux de points-nœuds numérotés, pas faite pour la navigation en voiture. Le Benelux existe aussi en version légère, avec une couche randonnée à part.
+
+Couverture
+Les Pays-Bas, la Belgique et le Luxembourg, l’Allemagne, les Alpes et le reste de l’Europe en sept parties, plus l’Islande, les Baléares et les îles de l’Atlantique.
+Courbes de niveau
+Incluses.
+Mises à jour
+Benelux et Allemagne plusieurs fois par an, le reste de l’Europe une fois par an.
+Licence
+Données © contributeurs OpenStreetMap (ODbL). Cartographie © Openfietsmap.nl (CC BY-NC-SA 3.0).
+
 ## Installer une carte
 
 Terento est gratuit. Utilisez l’app sur un Mac avec puce Apple, ou l’installateur web dans Chrome, Microsoft Edge, Opera ou Brave.
@@ -153,7 +176,7 @@ Non. La nouvelle carte s’ajoute à celles déjà présentes sur l’appareil. 
 
 Les cartes affichent-elles les courbes de niveau ?
 
-Freizeitkarte les inclut. OpenTopoMap les propose en option, et OSMapaPL dans un paquet séparé. Le style OpenTopoMap de BBBike n’en a pas.
+Freizeitkarte et OpenFietsMap les incluent. OpenTopoMap les propose en option, et OSMapaPL dans un paquet séparé. Le style OpenTopoMap de BBBike n’en a pas.
 
 Comment en installer une ?
 
