@@ -10,6 +10,7 @@ Python, Swift and JavaScript do not load JSON Schema validators.
 | `map-catalog.schema.json` | `GET /maps/catalog-v3.json` | same body versions; Freizeitkarte, OpenTopoMap, MapRando |
 | `map-catalog.schema.json` | `GET /maps/catalog-v4.json` | same body versions; adds BBBike and its two map types |
 | `map-catalog.schema.json` | `GET /maps/catalog-v5.json` | same body versions; adds OSMapaPL (`osmapa`), its four map types and `conflictGroup`; for 1.1.0 and later |
+| `map-catalog.schema.json` | `GET /maps/catalog-v6.json` | same body versions; adds Lucky Maps (`luckymaps`, raw IMG main map plus optional contours IMG); for the first app version with the Lucky Maps adapter |
 | `device-catalog.schema.json` | `GET /devices/catalog.json` | independent `catalogVersion: 2` |
 | `installation-policy.schema.json` | `GET /devices/installation-policy.json` | public-read `schemaVersion: 3`, capability-derived native write policy |
 | `compatibility-event.schema.json` | `POST /compatibility/events` request body | accepted versions 1–4; current emitter uses 4 |
@@ -99,7 +100,7 @@ are operator work, never statistics.
 
 ## Responses and client compatibility
 
-The current 1.2.2 client, like 1.2.1, 1.2.0 and 1.1.0, requests `/maps/catalog-v5.json`; 1.0.1, 1.0.0, rc.1, rc.2 and rc.3 request `/maps/catalog-v4.json`. The legacy route
+The 1.3.0 client requests `/maps/catalog-v6.json` (v5 plus Lucky Maps); the released 1.2.2 client, like 1.2.1, 1.2.0 and 1.1.0, requests `/maps/catalog-v5.json`; 1.0.1, 1.0.0, rc.1, rc.2 and rc.3 request `/maps/catalog-v4.json`. The legacy route
 retains Freizeitkarte and OpenTopoMap; v3 additionally exposes MapRando.
 Older clients (beta.18 and earlier) can reject a complete snapshot containing
 an unknown installable provider, so these projections must remain separate.

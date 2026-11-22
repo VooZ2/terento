@@ -189,7 +189,7 @@ def _build_provider_neutral_catalog(
             or not artifact_source_url
             or artifact_download_size is None
             or (int(artifact_download_size) <= 0 and not (
-                provider_id in {"bbbike", "osmapa"} and row.get("availability") == "UNAVAILABLE"
+                provider_id in {"bbbike", "osmapa", "luckymaps"} and row.get("availability") == "UNAVAILABLE"
                 and row.get("artifact_validation_status") == "UNAVAILABLE"))
         ):
             continue
@@ -242,6 +242,10 @@ def _build_provider_neutral_catalog(
                 },
                 "artifacts": [],
             }
+            if provider_id == "luckymaps":
+                # Lucky Maps releases are the IMG creation day.
+                daily = datetime.strptime(release, "%Y-%m-%d")
+                package["version"]["day"] = daily.day
             if provider_id in {"bbbike", "osmapa"}:
                 daily = datetime.strptime(release, "%Y-%m-%d")
                 package["version"]["day"] = daily.day
@@ -294,7 +298,7 @@ def _build_provider_neutral_catalog(
             # clients accept such a package only as one proof-free artifact
             # and otherwise reject the whole catalog.
             bbbike_unavailable_main = (
-                provider_id in {"bbbike", "osmapa"}
+                provider_id in {"bbbike", "osmapa", "luckymaps"}
                 and str(row.get("artifact_kind") or "") == "main"
                 and str(row.get("artifact_validation_status") or "") in ("UNAVAILABLE", "FAILED")
             )
@@ -372,6 +376,10 @@ def _contour_is_publishable(
 
     if str(row.get("artifact_kind") or "main").lower() != "contours":
         return True
+    if str(row.get("provider_id") or "") == "luckymaps":
+        # The OpenTopoMap contour rollout does not govern Lucky Maps, whose
+        # contour IMG is validated by its own collector.
+        return str(row.get("artifact_validation_status") or "").upper() == "VALIDATED"
     normalized_mode = str(contour_mode or "off").strip().lower()
     if normalized_mode == "public":
         return str(row.get("artifact_validation_status") or "").upper() == "VALIDATED"

@@ -3697,6 +3697,7 @@ class Database:
                 p.name AS provider_name,
                 p.adapter_id AS provider_adapter_id,
                 p.status AS provider_status,
+                p.first_activated_at AS provider_first_activated_at,
                 p.website AS provider_website,
                 COALESCE(p.license, p.license_information) AS provider_license_information,
                 p.attribution AS provider_attribution,
@@ -3792,8 +3793,8 @@ class Database:
         provider_query = """
             INSERT INTO map_provider (
                 id, name, adapter_id, status, website, license, license_information,
-                attribution, license_url, last_catalog_sync
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, now())
+                attribution, license_url, last_catalog_sync, first_activated_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, now(), now())
             ON CONFLICT (id) DO UPDATE SET
                 name = EXCLUDED.name,
                 adapter_id = EXCLUDED.adapter_id,
@@ -4093,8 +4094,10 @@ class Database:
                 """
                 INSERT INTO map_provider (
                     id, name, adapter_id, status, website,
-                    license, license_information, attribution, license_url
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    license, license_information, attribution, license_url,
+                    first_activated_at
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s,
+                    CASE WHEN %s = 'ACTIVE' THEN now() END)
                 ON CONFLICT (id) DO UPDATE SET
                     name = EXCLUDED.name,
                     adapter_id = EXCLUDED.adapter_id,
@@ -4127,6 +4130,7 @@ class Database:
                     definition.license,
                     definition.attribution,
                     definition.license_url,
+                    status or definition.default_status,
                 ),
             )
             connection.execute(
@@ -4345,7 +4349,7 @@ class Database:
                         (definition.id, artifact.source_url),
                     )
 
-            if definition.id in {"opentopomap", "maprando", "bbbike", "osmapa"}:
+            if definition.id in {"opentopomap", "maprando", "bbbike", "osmapa", "luckymaps"}:
                 # A complete provider snapshot retires only that provider's stale
                 # package/artifact metadata. It never touches map binaries or
                 # another provider's records.
@@ -4688,10 +4692,12 @@ class Database:
             old_status = str(current["status"] or "")
             row = connection.execute(
                 """
-                UPDATE map_provider SET status = %s, updated_at = now()
+                UPDATE map_provider SET status = %s, updated_at = now(),
+                    first_activated_at = COALESCE(first_activated_at,
+                        CASE WHEN %s = 'ACTIVE' THEN now() END)
                 WHERE id = %s RETURNING id
                 """,
-                (status, provider_id),
+                (status, status, provider_id),
             ).fetchone()
             if row is None:
                 return False
