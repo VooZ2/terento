@@ -555,6 +555,15 @@ existing row, requires an OSMapaPL `map_type` in `podstawowa`, `ogonki`,
 `light`, `warstwice` with a non-null geographical key, and adds `osmapa` to the
 compatibility provider constraint. Additive; no existing row changes.
 
+Migration097: registers Lucky Maps (`luckymaps`) as `PAUSED` without changing
+an existing row and adds `luckymaps` to the compatibility provider constraint.
+No package column or constraint changes: Lucky Maps has no map type.
+
+Migration098: registers OpenFietsMap (`openfietsmap`) as `PAUSED` without
+changing an existing row, requires an OpenFietsMap `map_type` in `ofm-full`,
+`ofm-light`, `ofm-hiking` with a non-null geographical key, and adds
+`openfietsmap` to the compatibility provider constraint. Additive.
+
 Migration088: widens `bbbike_map_type_check` to also allow `opentopo-latin1`
 (BBBike OpenTopoMap style). Additive; no existing row changes. Catalog v3/v4
 projections exclude that type (see `docs/api.md`).

@@ -66,7 +66,10 @@ class ProviderHealthTests(unittest.TestCase):
     def test_no_samples_and_bounded_iterator(self):
         result = check_provider(OPENTOPO_MAP, probe=Probe())
         self.assertEqual(result.download_status, "UNKNOWN")
+        self.assertEqual(result.status, "UNKNOWN")  # never HEALTHY without one download sample
         self.assertIn("no_samples", result.error_detail)
+        website_down = check_provider(OPENTOPO_MAP, probe=Probe({OPENTOPO_MAP.website: OSError("offline")}))
+        self.assertEqual(website_down.status, "DOWN")
         def urls():
             for i in range(8):
                 yield ROOT + str(i) + ".zip"

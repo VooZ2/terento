@@ -67,6 +67,9 @@ class DefaultProviderProbe:
             path = suffix.rsplit("/", 1)[0]
             map_type = suffix.rsplit(".osm.garmin-", 1)[-1].removesuffix(".zip")
             return inspect_bbbike(url, path, map_type)
+        if url.startswith("https://ligfietser.dev.openstreetmap.org/openfietsmap/"):
+            from .openfietsmap import inspect_openfietsmap, source_for_url
+            return inspect_openfietsmap(source_for_url(url))
         if url.startswith("https://osmapa-garmin.las.org.pl/products/"):
             from .osmapa import inspect_osmapa, source_url as osmapa_source
             coverage, style, _, _ = osmapa_source(url)
@@ -76,6 +79,12 @@ class DefaultProviderProbe:
         )
 
     def inspect_img(self, url: str):
+        if url.startswith("https://luckymaps.ch/assets/maps/"):
+            from .luckymaps import SourceRef, inspect_luckymaps, source_url as luckymaps_source
+            _, stem = luckymaps_source(url)
+            inspect_luckymaps(SourceRef(url, stem), "contours" if stem.endswith("-ct") else "main")
+            from .maprando import ImageMeasurement
+            return ImageMeasurement(0, identity_validated=True)
         from .maprando import inspect_maprando_img
         return inspect_maprando_img(url)
 
@@ -223,7 +232,7 @@ def check_provider(
             for values in details.values():
                 values.append("UNKNOWN")
             continue
-        raw_img = definition.id == "maprando" and urlparse(url).path.lower().endswith(".img")
+        raw_img = definition.id in {"maprando", "luckymaps"} and urlparse(url).path.lower().endswith(".img")
         if artifact.content_type and ("zip" in artifact.content_type.lower() or (raw_img and artifact.content_type.split(";", 1)[0].lower() in {"application/octet-stream", "application/x-garmin-img"})):
             sample["mime"] = "HEALTHY"
         else:
@@ -280,6 +289,10 @@ def check_provider(
         )
     if "DOWN" in availability_statuses:
         status = "DOWN"
+    elif not checked_downloads and not rate_limited:
+        # Without one download sample the check proves nothing about
+        # downloads: it must not read as HEALTHY (the activation gate trusts it).
+        status = "UNKNOWN"
     elif "DEGRADED" in availability_statuses or last_update_status == "DEGRADED":
         status = "DEGRADED"
     elif "UNKNOWN" in availability_statuses:

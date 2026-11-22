@@ -34,6 +34,9 @@ STYLES: tuple[PreviewStyle, ...] = (
     PreviewStyle("osmapa-podstawowa", "osmapa", "podstawowa", "OSMapaPL Podstawowa", listed_when_enabled=True),
     PreviewStyle("osmapa-ogonki", "osmapa", "ogonki", "OSMapaPL Ogonki", listed_when_enabled=True),
     PreviewStyle("osmapa-light", "osmapa", "light", "OSMapaPL Light", listed_when_enabled=True),
+    PreviewStyle("luckymaps", "luckymaps", None, "Lucky Maps", overlays=("contours",), listed_when_enabled=True),
+    # The full cycling edition; Benelux light and the hiking layer are not preview styles.
+    PreviewStyle("openfietsmap", "openfietsmap", "ofm-full", "OpenFietsMap", listed_when_enabled=True),
 )
 STYLE_BY_ID = {style.id: style for style in STYLES}
 

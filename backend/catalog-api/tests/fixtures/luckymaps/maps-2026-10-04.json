@@ -1,0 +1,1638 @@
+[
+    {
+        "name": "Europe",
+        "update": "October 2026",
+        "children": [
+            {
+                "name": "Albania",
+                "map": "albania.img",
+                "poly": "albania.poly",
+                "contour": "albania-ct.img"
+            },
+            {
+                "name": "Andorra",
+                "map": "andorra.img",
+                "poly": "andorra.poly",
+                "contour": "andorra-ct.img"
+            },
+            {
+                "name": "Austria",
+                "map": "austria.img",
+                "poly": "austria.poly",
+                "contour": "austria-ct.img"
+            },
+            {
+                "name": "Azores",
+                "map": "azores.img",
+                "poly": "azores.poly",
+                "contour": "azores-ct.img"
+            },
+            {
+                "name": "Belgium",
+                "map": "belgium.img",
+                "poly": "belgium.poly",
+                "contour": "belgium-ct.img"
+            },
+            {
+                "name": "Bosnia-Herzegovina",
+                "map": "bosnia-herzegovina.img",
+                "poly": "bosnia-herzegovina.poly",
+                "contour": "bosnia-herzegovina-ct.img"
+            },
+            {
+                "name": "Bulgaria",
+                "map": "bulgaria.img",
+                "poly": "bulgaria.poly",
+                "contour": "bulgaria-ct.img"
+            },
+            {
+                "name": "Croatia",
+                "map": "croatia.img",
+                "poly": "croatia.poly",
+                "contour": "croatia-ct.img"
+            },
+            {
+                "name": "Cyprus",
+                "map": "cyprus.img",
+                "poly": "cyprus.poly",
+                "contour": "cyprus-ct.img"
+            },
+            {
+                "name": "Czech-Republic",
+                "map": "czech-republic.img",
+                "poly": "czech-republic.poly",
+                "contour": "czech-republic-ct.img"
+            },
+            {
+                "name": "Denmark",
+                "map": "denmark.img",
+                "poly": "denmark.poly",
+                "contour": "denmark-ct.img"
+            },
+            {
+                "name": "Estonia",
+                "map": "estonia.img",
+                "poly": "estonia.poly",
+                "contour": "estonia-ct.img"
+            },
+            {
+                "name": "Faroe-Islands",
+                "map": "faroe-islands.img",
+                "poly": "faroe-islands.poly",
+                "contour": "faroe-islands-ct.img"
+            },
+            {
+                "name": "Finland",
+                "map": "finland.img",
+                "poly": "finland.poly",
+                "contour": "finland-ct.img"
+            },
+            {
+                "name": "France",
+                "map": "france.img",
+                "poly": "france.poly",
+                "contour": "france-ct.img"
+            },
+            {
+                "name": "Corsica",
+                "map": "fr-corse.img",
+                "poly": "fr-corse.poly",
+                "contour": "fr-corse-ct.img"
+            },
+            {
+                "name": "Georgia",
+                "map": "georgia.img",
+                "poly": "georgia.poly",
+                "contour": "georgia-ct.img"
+            },
+            {
+                "name": "Germany",
+                "map": "germany.img",
+                "poly": "germany.poly",
+                "contour": "germany-ct.img"
+            },
+            {
+                "name": "Great-Britain",
+                "map": "great-britain.img",
+                "poly": "great-britain.poly",
+                "contour": "great-britain-ct.img"
+            },
+            {
+                "name": "United Kingdom",
+                "map": "united-kingdom.img",
+                "poly": "united-kingdom.poly",
+                "contour": "united-kingdom-ct.img"
+            },
+            {
+                "name": "Greece",
+                "map": "greece.img",
+                "poly": "greece.poly",
+                "contour": "greece-ct.img"
+            },
+            {
+                "name": "Guernsey-Jersey",
+                "map": "guernsey-jersey.img",
+                "poly": "guernsey-jersey.poly",
+                "contour": "guernsey-jersey-ct.img"
+            },
+            {
+                "name": "Hungary",
+                "map": "hungary.img",
+                "poly": "hungary.poly",
+                "contour": "hungary-ct.img"
+            },
+            {
+                "name": "Iceland",
+                "map": "iceland.img",
+                "poly": "iceland.poly",
+                "contour": "iceland-ct.img"
+            },
+            {
+                "name": "Ireland-And-Northern-Ireland",
+                "map": "ireland-and-northern-ireland.img",
+                "poly": "ireland-and-northern-ireland.poly",
+                "contour": "ireland-and-northern-ireland-ct.img"
+            },
+            {
+                "name": "Isle-Of-Man",
+                "map": "isle-of-man.img",
+                "poly": "isle-of-man.poly",
+                "contour": "isle-of-man-ct.img"
+            },
+            {
+                "name": "Italy",
+                "map": "italy.img",
+                "poly": "italy.poly",
+                "contour": "italy-ct.img"
+            },
+            {
+                "name": "Kosovo",
+                "map": "kosovo.img",
+                "poly": "kosovo.poly",
+                "contour": "kosovo-ct.img"
+            },
+            {
+                "name": "Latvia",
+                "map": "latvia.img",
+                "poly": "latvia.poly",
+                "contour": "latvia-ct.img"
+            },
+            {
+                "name": "Liechtenstein",
+                "map": "liechtenstein.img",
+                "poly": "liechtenstein.poly",
+                "contour": "liechtenstein-ct.img"
+            },
+            {
+                "name": "Lithuania",
+                "map": "lithuania.img",
+                "poly": "lithuania.poly",
+                "contour": "lithuania-ct.img"
+            },
+            {
+                "name": "Luxembourg",
+                "map": "luxembourg.img",
+                "poly": "luxembourg.poly",
+                "contour": "luxembourg-ct.img"
+            },
+            {
+                "name": "Macedonia",
+                "map": "macedonia.img",
+                "poly": "macedonia.poly",
+                "contour": "macedonia-ct.img"
+            },
+            {
+                "name": "Malta",
+                "map": "malta.img",
+                "poly": "malta.poly",
+                "contour": "malta-ct.img"
+            },
+            {
+                "name": "Moldova",
+                "map": "moldova.img",
+                "poly": "moldova.poly",
+                "contour": "moldova-ct.img"
+            },
+            {
+                "name": "Monaco",
+                "map": "monaco.img",
+                "poly": "monaco.poly",
+                "contour": "monaco-ct.img"
+            },
+            {
+                "name": "Montenegro",
+                "map": "montenegro.img",
+                "poly": "montenegro.poly",
+                "contour": "montenegro-ct.img"
+            },
+            {
+                "name": "Netherlands",
+                "map": "netherlands.img",
+                "poly": "netherlands.poly",
+                "contour": "netherlands-ct.img"
+            },
+            {
+                "name": "Norway",
+                "map": "norway.img",
+                "poly": "norway.poly",
+                "contour": "norway-ct.img"
+            },
+            {
+                "name": "Poland",
+                "map": "poland.img",
+                "poly": "poland.poly",
+                "contour": "poland-ct.img"
+            },
+            {
+                "name": "Portugal",
+                "map": "portugal.img",
+                "poly": "portugal.poly",
+                "contour": "portugal-ct.img"
+            },
+            {
+                "name": "Romania",
+                "map": "romania.img",
+                "poly": "romania.poly",
+                "contour": "romania-ct.img"
+            },
+            {
+                "name": "Serbia",
+                "map": "serbia.img",
+                "poly": "serbia.poly",
+                "contour": "serbia-ct.img"
+            },
+            {
+                "name": "Slovakia",
+                "map": "slovakia.img",
+                "poly": "slovakia.poly",
+                "contour": "slovakia-ct.img"
+            },
+            {
+                "name": "Slovenia",
+                "map": "slovenia.img",
+                "poly": "slovenia.poly",
+                "contour": "slovenia-ct.img"
+            },
+            {
+                "name": "Spain",
+                "map": "spain.img",
+                "poly": "spain.poly",
+                "contour": "spain-ct.img"
+            },
+            {
+                "name": "Sweden",
+                "map": "sweden.img",
+                "poly": "sweden.poly",
+                "contour": "sweden-ct.img"
+            },
+            {
+                "name": "Switzerland",
+                "map": "switzerland.img",
+                "poly": "switzerland.poly",
+                "contour": "switzerland-ct.img"
+            },
+            {
+                "name": "Turkey",
+                "map": "turkey.img",
+                "poly": "turkey.poly",
+                "contour": "turkey-ct.img"
+            }
+        ]
+    },
+    {
+        "name": "Europe Special Regions",
+        "update": "October 2026",
+        "children": [
+            {
+                "name": "South Germany, Austria, Liechtenstein",
+                "map": "SouthDE_AT_FL.img",
+                "poly": "SouthDE_AT_FL.poly",
+                "contour": "SouthDE_AT_FL-ct.img"
+            },
+            {
+                "name": "Alps",
+                "map": "Alps.img",
+                "poly": "Alps.poly",
+                "contour": "Alps-ct.img"
+            }
+        ]
+    },
+    {
+        "name": "Africa",
+        "update": "October 2026",
+        "children": [
+            {
+                "name": "Algeria",
+                "map": "algeria.img",
+                "poly": "algeria.poly",
+                "contour": "algeria-ct.img"
+            },
+            {
+                "name": "Angola",
+                "map": "angola.img",
+                "poly": "angola.poly",
+                "contour": "angola-ct.img"
+            },
+            {
+                "name": "Benin",
+                "map": "benin.img",
+                "poly": "benin.poly",
+                "contour": "benin-ct.img"
+            },
+            {
+                "name": "Botswana",
+                "map": "botswana.img",
+                "poly": "botswana.poly",
+                "contour": "botswana-ct.img"
+            },
+            {
+                "name": "Burkina-Faso",
+                "map": "burkina-faso.img",
+                "poly": "burkina-faso.poly",
+                "contour": "burkina-faso-ct.img"
+            },
+            {
+                "name": "Burundi",
+                "map": "burundi.img",
+                "poly": "burundi.poly",
+                "contour": "burundi-ct.img"
+            },
+            {
+                "name": "Cameroon",
+                "map": "cameroon.img",
+                "poly": "cameroon.poly",
+                "contour": "cameroon-ct.img"
+            },
+            {
+                "name": "Canary-Islands",
+                "map": "canary-islands.img",
+                "poly": "canary-islands.poly",
+                "contour": "canary-islands-ct.img"
+            },
+            {
+                "name": "Cape-Verde",
+                "map": "cape-verde.img",
+                "poly": "cape-verde.poly",
+                "contour": "cape-verde-ct.img"
+            },
+            {
+                "name": "Central-African-Republic",
+                "map": "central-african-republic.img",
+                "poly": "central-african-republic.poly",
+                "contour": "central-african-republic-ct.img"
+            },
+            {
+                "name": "Chad",
+                "map": "chad.img",
+                "poly": "chad.poly",
+                "contour": "chad-ct.img"
+            },
+            {
+                "name": "Comores",
+                "map": "comores.img",
+                "poly": "comores.poly",
+                "contour": "comores-ct.img"
+            },
+            {
+                "name": "Congo-Brazzaville",
+                "map": "congo-brazzaville.img",
+                "poly": "congo-brazzaville.poly",
+                "contour": "congo-brazzaville-ct.img"
+            },
+            {
+                "name": "Congo-Democratic-Republic",
+                "map": "congo-democratic-republic.img",
+                "poly": "congo-democratic-republic.poly",
+                "contour": "congo-democratic-republic-ct.img"
+            },
+            {
+                "name": "Djibouti",
+                "map": "djibouti.img",
+                "poly": "djibouti.poly",
+                "contour": "djibouti-ct.img"
+            },
+            {
+                "name": "Egypt",
+                "map": "egypt.img",
+                "poly": "egypt.poly",
+                "contour": "egypt-ct.img"
+            },
+            {
+                "name": "Equatorial-Guinea",
+                "map": "equatorial-guinea.img",
+                "poly": "equatorial-guinea.poly",
+                "contour": "equatorial-guinea-ct.img"
+            },
+            {
+                "name": "Eritrea",
+                "map": "eritrea.img",
+                "poly": "eritrea.poly",
+                "contour": "eritrea-ct.img"
+            },
+            {
+                "name": "Ethiopia",
+                "map": "ethiopia.img",
+                "poly": "ethiopia.poly",
+                "contour": "ethiopia-ct.img"
+            },
+            {
+                "name": "Reunion",
+                "map": "fr-reunion.img",
+                "poly": "fr-reunion.poly",
+                "contour": "fr-reunion-ct.img"
+            },
+            {
+                "name": "Mayotte",
+                "map": "fr-mayotte.img",
+                "poly": "fr-mayotte.poly",
+                "contour": "fr-mayotte-ct.img"
+            },
+            {
+                "name": "Gabon",
+                "map": "gabon.img",
+                "poly": "gabon.poly",
+                "contour": "gabon-ct.img"
+            },
+            {
+                "name": "Ghana",
+                "map": "ghana.img",
+                "poly": "ghana.poly",
+                "contour": "ghana-ct.img"
+            },
+            {
+                "name": "Guinea",
+                "map": "guinea.img",
+                "poly": "guinea.poly",
+                "contour": "guinea-ct.img"
+            },
+            {
+                "name": "Guinea-Bissau",
+                "map": "guinea-bissau.img",
+                "poly": "guinea-bissau.poly",
+                "contour": "guinea-bissau-ct.img"
+            },
+            {
+                "name": "Ivory-Coast",
+                "map": "ivory-coast.img",
+                "poly": "ivory-coast.poly",
+                "contour": "ivory-coast-ct.img"
+            },
+            {
+                "name": "Kenya",
+                "map": "kenya.img",
+                "poly": "kenya.poly",
+                "contour": "kenya-ct.img"
+            },
+            {
+                "name": "Lesotho",
+                "map": "lesotho.img",
+                "poly": "lesotho.poly",
+                "contour": "lesotho-ct.img"
+            },
+            {
+                "name": "Liberia",
+                "map": "liberia.img",
+                "poly": "liberia.poly",
+                "contour": "liberia-ct.img"
+            },
+            {
+                "name": "Libya",
+                "map": "libya.img",
+                "poly": "libya.poly",
+                "contour": "libya-ct.img"
+            },
+            {
+                "name": "Madagascar",
+                "map": "madagascar.img",
+                "poly": "madagascar.poly",
+                "contour": "madagascar-ct.img"
+            },
+            {
+                "name": "Malawi",
+                "map": "malawi.img",
+                "poly": "malawi.poly",
+                "contour": "malawi-ct.img"
+            },
+            {
+                "name": "Mali",
+                "map": "mali.img",
+                "poly": "mali.poly",
+                "contour": "mali-ct.img"
+            },
+            {
+                "name": "Mauritania",
+                "map": "mauritania.img",
+                "poly": "mauritania.poly",
+                "contour": "mauritania-ct.img"
+            },
+            {
+                "name": "Mauritius",
+                "map": "mauritius.img",
+                "poly": "mauritius.poly",
+                "contour": "mauritius-ct.img"
+            },
+            {
+                "name": "Morocco",
+                "map": "morocco.img",
+                "poly": "morocco.poly",
+                "contour": "morocco-ct.img"
+            },
+            {
+                "name": "Mozambique",
+                "map": "mozambique.img",
+                "poly": "mozambique.poly",
+                "contour": "mozambique-ct.img"
+            },
+            {
+                "name": "Namibia",
+                "map": "namibia.img",
+                "poly": "namibia.poly",
+                "contour": "namibia-ct.img"
+            },
+            {
+                "name": "Niger",
+                "map": "niger.img",
+                "poly": "niger.poly",
+                "contour": "niger-ct.img"
+            },
+            {
+                "name": "Nigeria",
+                "map": "nigeria.img",
+                "poly": "nigeria.poly",
+                "contour": "nigeria-ct.img"
+            },
+            {
+                "name": "Rwanda",
+                "map": "rwanda.img",
+                "poly": "rwanda.poly",
+                "contour": "rwanda-ct.img"
+            },
+            {
+                "name": "SaintHelena-Tristan",
+                "map": "SaintHelena-Tristan.img",
+                "poly": "SaintHelena-Tristan.poly",
+                "contour": "SaintHelena-Tristan-ct.img"
+            },
+            {
+                "name": "Sao-Tome-And-Principe",
+                "map": "sao-tome-and-principe.img",
+                "poly": "sao-tome-and-principe.poly",
+                "contour": "sao-tome-and-principe-ct.img"
+            },
+            {
+                "name": "Senegal-And-Gambia",
+                "map": "senegal-and-gambia.img",
+                "poly": "senegal-and-gambia.poly",
+                "contour": "senegal-and-gambia-ct.img"
+            },
+            {
+                "name": "Seychelles",
+                "map": "seychelles.img",
+                "poly": "seychelles.poly",
+                "contour": "seychelles-ct.img"
+            },
+            {
+                "name": "Sierra-Leone",
+                "map": "sierra-leone.img",
+                "poly": "sierra-leone.poly",
+                "contour": "sierra-leone-ct.img"
+            },
+            {
+                "name": "Somalia",
+                "map": "somalia.img",
+                "poly": "somalia.poly",
+                "contour": "somalia-ct.img"
+            },
+            {
+                "name": "South-Africa",
+                "map": "south-africa.img",
+                "poly": "south-africa.poly",
+                "contour": "south-africa-ct.img"
+            },
+            {
+                "name": "South-Sudan",
+                "map": "south-sudan.img",
+                "poly": "south-sudan.poly",
+                "contour": "south-sudan-ct.img"
+            },
+            {
+                "name": "Sudan",
+                "map": "sudan.img",
+                "poly": "sudan.poly",
+                "contour": "sudan-ct.img"
+            },
+            {
+                "name": "Swaziland",
+                "map": "swaziland.img",
+                "poly": "swaziland.poly",
+                "contour": "swaziland-ct.img"
+            },
+            {
+                "name": "Tanzania",
+                "map": "tanzania.img",
+                "poly": "tanzania.poly",
+                "contour": "tanzania-ct.img"
+            },
+            {
+                "name": "Togo",
+                "map": "togo.img",
+                "poly": "togo.poly",
+                "contour": "togo-ct.img"
+            },
+            {
+                "name": "Tunisia",
+                "map": "tunisia.img",
+                "poly": "tunisia.poly",
+                "contour": "tunisia-ct.img"
+            },
+            {
+                "name": "Uganda",
+                "map": "uganda.img",
+                "poly": "uganda.poly",
+                "contour": "uganda-ct.img"
+            },
+            {
+                "name": "Zambia",
+                "map": "zambia.img",
+                "poly": "zambia.poly",
+                "contour": "zambia-ct.img"
+            },
+            {
+                "name": "Zimbabwe",
+                "map": "zimbabwe.img",
+                "poly": "zimbabwe.poly",
+                "contour": "zimbabwe-ct.img"
+            }
+        ]
+    },
+    {
+        "name": "Australia",
+        "update":"October 2026",
+        "children": [
+            {
+                "name": "Cook-Islands",
+                "map": "cook-islands.img",
+                "poly": "cook-islands.poly",
+                "contour": "cook-islands-ct.img"
+            },
+            {
+                "name": "Fiji",
+                "map": "fiji.img",
+                "poly": "fiji.poly",
+                "contour": "fiji-ct.img"
+            },
+            {
+                "name": "Ile-De-Clipperton",
+                "map": "ile-de-clipperton.img",
+                "poly": "ile-de-clipperton.poly",
+                "contour": "ile-de-clipperton-ct.img"
+            },
+            {
+                "name": "Kiribati",
+                "map": "kiribati.img",
+                "poly": "kiribati.poly",
+                "contour": "kiribati-ct.img"
+            },
+            {
+                "name": "Marshall-Islands",
+                "map": "marshall-islands.img",
+                "poly": "marshall-islands.poly",
+                "contour": "marshall-islands-ct.img"
+            },
+            {
+                "name": "Micronesia",
+                "map": "micronesia.img",
+                "poly": "micronesia.poly",
+                "contour": "micronesia-ct.img"
+            },
+            {
+                "name": "Nauru",
+                "map": "nauru.img",
+                "poly": "nauru.poly",
+                "contour": "nauru-ct.img"
+            },
+            {
+                "name": "New-Caledonia",
+                "map": "new-caledonia.img",
+                "poly": "new-caledonia.poly",
+                "contour": "new-caledonia-ct.img"
+            },
+            {
+                "name": "New-Zealand",
+                "map": "new-zealand.img",
+                "poly": "new-zealand.poly",
+                "contour": "new-zealand-ct.img"
+            },
+            {
+                "name": "Niue",
+                "map": "niue.img",
+                "poly": "niue.poly",
+                "contour": "niue-ct.img"
+            },
+            {
+                "name": "Palau",
+                "map": "palau.img",
+                "poly": "palau.poly",
+                "contour": "palau-ct.img"
+            },
+            {
+                "name": "Papua-New-Guinea",
+                "map": "papua-new-guinea.img",
+                "poly": "papua-new-guinea.poly",
+                "contour": "papua-new-guinea-ct.img"
+            },
+            {
+                "name": "Pitcairn-Islands",
+                "map": "pitcairn-islands.img",
+                "poly": "pitcairn-islands.poly",
+                "contour": "pitcairn-islands-ct.img"
+            },
+            {
+                "name": "Polynesie-Francaise",
+                "map": "polynesie-francaise.img",
+                "poly": "polynesie-francaise.poly",
+                "contour": "polynesie-francaise-ct.img"
+            },
+            {
+                "name": "Samoa",
+                "map": "samoa.img",
+                "poly": "samoa.poly",
+                "contour": "samoa-ct.img"
+            },
+            {
+                "name": "Solomon-Islands",
+                "map": "solomon-islands.img",
+                "poly": "solomon-islands.poly",
+                "contour": "solomon-islands-ct.img"
+            },
+            {
+                "name": "Tokelau",
+                "map": "tokelau.img",
+                "poly": "tokelau.poly",
+                "contour": "tokelau-ct.img"
+            },
+            {
+                "name": "Tonga",
+                "map": "tonga.img",
+                "poly": "tonga.poly",
+                "contour": "tonga-ct.img"
+            },
+            {
+                "name": "Tuvalu",
+                "map": "tuvalu.img",
+                "poly": "tuvalu.poly",
+                "contour": "tuvalu-ct.img"
+            },
+            {
+                "name": "Vanuatu",
+                "map": "vanuatu.img",
+                "poly": "vanuatu.poly",
+                "contour": "vanuatu-ct.img"
+            },
+            {
+                "name": "Wallis-Et-Futuna",
+                "map": "wallis-et-futuna.img",
+                "poly": "wallis-et-futuna.poly",
+                "contour": "wallis-et-futuna-ct.img"
+            },
+            {
+                "name": "American-Oceania",
+                "map": "american-oceania.img",
+                "poly": "american-oceania.poly",
+                "contour": "american-oceania-ct.img"
+            },
+            {
+                "name": "Australia",
+                "map": "australia.img",
+                "poly": "australia.poly",
+                "contour": "australia-ct.img"
+            }
+        ]
+    },
+    {
+        "update": "October 2026",
+        "name": "South America",
+        "children": [
+            {
+                "name": "Falkland Islands",
+                "map": "uk-falkland-islands.img",
+                "poly": "uk-falkland-islands.poly",
+                "contour": "uk-falkland-islands-ct.img"
+            },
+            {
+                "name": "Suriname",
+                "map": "suriname.img",
+                "poly": "suriname.poly",
+                "contour": "suriname-ct.img"
+            },
+            {
+                "name": "Uruguay",
+                "map": "uruguay.img",
+                "poly": "uruguay.poly",
+                "contour": "uruguay-ct.img"
+            },
+            {
+                "name": "Venezuela",
+                "map": "venezuela.img",
+                "poly": "venezuela.poly",
+                "contour": "venezuela-ct.img"
+            },
+            {
+                "name": "Argentina",
+                "map": "argentina.img",
+                "poly": "argentina.poly",
+                "contour": "argentina-ct.img"
+            },
+            {
+                "name": "Bolivia",
+                "map": "bolivia.img",
+                "poly": "bolivia.poly",
+                "contour": "bolivia-ct.img"
+            },
+            {
+                "name": "Brazil",
+                "map": "brazil.img",
+                "poly": "brazil.poly",
+                "contour": "brazil-ct.img"
+            },
+            {
+                "name": "French Guiana",
+                "map": "fr-guyane.img",
+                "poly": "fr-guyane.poly",
+                "contour": "fr-guyane-ct.img"
+            },
+            {
+                "name": "Chile",
+                "map": "chile.img",
+                "poly": "chile.poly",
+                "contour": "chile-ct.img"
+            },
+            {
+                "name": "Colombia",
+                "map": "colombia.img",
+                "poly": "colombia.poly",
+                "contour": "colombia-ct.img"
+            },
+            {
+                "name": "Ecuador",
+                "map": "ecuador.img",
+                "poly": "ecuador.poly",
+                "contour": "ecuador-ct.img"
+            },
+            {
+                "name": "Guyana",
+                "map": "guyana.img",
+                "poly": "guyana.poly",
+                "contour": "guyana-ct.img"
+            },
+            {
+                "name": "Paraguay",
+                "map": "paraguay.img",
+                "poly": "paraguay.poly",
+                "contour": "paraguay-ct.img"
+            },
+            {
+                "name": "Peru",
+                "map": "peru.img",
+                "poly": "peru.poly",
+                "contour": "peru-ct.img"
+            }
+        ]
+    },
+    {
+        "name": "Central America",
+        "update": "October 2026",
+        "children": [   
+            {
+                "name": "Central America and Caribbean",
+                "map": "central-america.img",
+                "poly": "central-america.poly",
+                "contour": "central-america-ct.img"
+            },
+            {
+                "name": "Costa-Rica",
+                "map": "costa-rica.img",
+                "poly": "costa-rica.poly",
+                "contour": "costa-rica-ct.img"
+            },
+            {
+                "name": "Cuba",
+                "map": "cuba.img",
+                "poly": "cuba.poly",
+                "contour": "cuba-ct.img"
+            },
+            {
+                "name": "El-Salvador",
+                "map": "el-salvador.img",
+                "poly": "el-salvador.poly",
+                "contour": "el-salvador-ct.img"
+            },
+            {
+                "name": "Guatemala",
+                "map": "guatemala.img",
+                "poly": "guatemala.poly",
+                "contour": "guatemala-ct.img"
+            },
+            {
+                "name": "Haiti-And-Domrep",
+                "map": "haiti-and-domrep.img",
+                "poly": "haiti-and-domrep.poly",
+                "contour": "haiti-and-domrep-ct.img"
+            },
+            {
+                "name": "Honduras",
+                "map": "honduras.img",
+                "poly": "honduras.poly",
+                "contour": "honduras-ct.img"
+            },
+            {
+                "name": "Jamaica",
+                "map": "jamaica.img",
+                "poly": "jamaica.poly",
+                "contour": "jamaica-ct.img"
+            },
+            {
+                "name": "Nicaragua",
+                "map": "nicaragua.img",
+                "poly": "nicaragua.poly",
+                "contour": "nicaragua-ct.img"
+            },
+            {
+                "name": "Panama",
+                "map": "panama.img",
+                "poly": "panama.poly",
+                "contour": "panama-ct.img"
+            },
+            {
+                "name": "Bahamas",
+                "map": "bahamas.img",
+                "poly": "bahamas.poly",
+                "contour": "bahamas-ct.img"
+            },
+            {
+                "name": "Belize",
+                "map": "belize.img",
+                "poly": "belize.poly",
+                "contour": "belize-ct.img"
+            },
+            {
+                "name": "Martinique",
+                "map": "fr-martinique.img",
+                "poly": "fr-martinique.poly",
+                "contour": "fr-martinique-ct.img"
+            }
+        ]
+    },
+    {
+        "name": "North America",
+        "update":"October 2026",
+        "children": [
+            {
+                "name": "Bermuda",
+                "map": "uk-bermuda.img",
+                "poly": "uk-bermuda.poly",
+                "contour": "uk-bermuda-ct.img"
+            },
+            {
+                "name": "USA Alabama",
+                "map": "us-alabama.img",
+                "poly": "us-alabama.poly",
+                "contour": "us-alabama-ct.img"
+            },
+            {
+                "name": "USA Alaska",
+                "map": "us-alaska.img",
+                "poly": "us-alaska.poly",
+                "contour": "us-alaska-ct.img"
+            },
+            {
+                "name": "USA Arizona",
+                "map": "us-arizona.img",
+                "poly": "us-arizona.poly",
+                "contour": "us-arizona-ct.img"
+            },
+            {
+                "name": "USA Arkansas",
+                "map": "us-arkansas.img",
+                "poly": "us-arkansas.poly",
+                "contour": "us-arkansas-ct.img"
+            },
+            {
+                "name": "USA California",
+                "map": "us-california.img",
+                "poly": "us-california.poly",
+                "contour": "us-california-ct.img"
+            },
+            {
+                "name": "USA Colorado",
+                "map": "us-colorado.img",
+                "poly": "us-colorado.poly",
+                "contour": "us-colorado-ct.img"
+            },
+            {
+                "name": "USA Connecticut",
+                "map": "us-connecticut.img",
+                "poly": "us-connecticut.poly",
+                "contour": "us-connecticut-ct.img"
+            },
+            {
+                "name": "USA Delaware",
+                "map": "us-delaware.img",
+                "poly": "us-delaware.poly",
+                "contour": "us-delaware-ct.img"
+            },
+            {
+                "name": "USA District-of-Columbia",
+                "map": "us-district-of-columbia.img",
+                "poly": "us-district-of-columbia.poly",
+                "contour": "us-district-of-columbia-ct.img"
+            },
+            {
+                "name": "USA Florida",
+                "map": "us-florida.img",
+                "poly": "us-florida.poly",
+                "contour": "us-florida-ct.img"
+            },
+            {
+                "name": "USA Georgia",
+                "map": "us-georgia.img",
+                "poly": "us-georgia.poly",
+                "contour": "us-georgia-ct.img"
+            },
+            {
+                "name": "USA Hawaii",
+                "map": "us-hawaii.img",
+                "poly": "us-hawaii.poly",
+                "contour": "us-hawaii-ct.img"
+            },
+            {
+                "name": "USA Idaho",
+                "map": "us-idaho.img",
+                "poly": "us-idaho.poly",
+                "contour": "us-idaho-ct.img"
+            },
+            {
+                "name": "USA Illinois",
+                "map": "us-illinois.img",
+                "poly": "us-illinois.poly",
+                "contour": "us-illinois-ct.img"
+            },
+            {
+                "name": "USA Indiana",
+                "map": "us-indiana.img",
+                "poly": "us-indiana.poly",
+                "contour": "us-indiana-ct.img"
+            },
+            {
+                "name": "USA Iowa",
+                "map": "us-iowa.img",
+                "poly": "us-iowa.poly",
+                "contour": "us-iowa-ct.img"
+            },
+            {
+                "name": "USA Kansas",
+                "map": "us-kansas.img",
+                "poly": "us-kansas.poly",
+                "contour": "us-kansas-ct.img"
+            },
+            {
+                "name": "USA Kentucky",
+                "map": "us-kentucky.img",
+                "poly": "us-kentucky.poly",
+                "contour": "us-kentucky-ct.img"
+            },
+            {
+                "name": "USA Louisiana",
+                "map": "us-louisiana.img",
+                "poly": "us-louisiana.poly",
+                "contour": "us-louisiana-ct.img"
+            },
+            {
+                "name": "USA Maine",
+                "map": "us-maine.img",
+                "poly": "us-maine.poly",
+                "contour": "us-maine-ct.img"
+            },
+            {
+                "name": "USA Maryland",
+                "map": "us-maryland.img",
+                "poly": "us-maryland.poly",
+                "contour": "us-maryland-ct.img"
+            },
+            {
+                "name": "USA Massachusetts",
+                "map": "us-massachusetts.img",
+                "poly": "us-massachusetts.poly",
+                "contour": "us-massachusetts-ct.img"
+            },
+            {
+                "name": "USA Michigan",
+                "map": "us-michigan.img",
+                "poly": "us-michigan.poly",
+                "contour": "us-michigan-ct.img"
+            },
+            {
+                "name": "USA Minnesota",
+                "map": "us-minnesota.img",
+                "poly": "us-minnesota.poly",
+                "contour": "us-minnesota-ct.img"
+            },
+            {
+                "name": "USA Mississippi",
+                "map": "us-mississippi.img",
+                "poly": "us-mississippi.poly",
+                "contour": "us-mississippi-ct.img"
+            },
+            {
+                "name": "USA Missouri",
+                "map": "us-missouri.img",
+                "poly": "us-missouri.poly",
+                "contour": "us-missouri-ct.img"
+            },
+            {
+                "name": "USA Montana",
+                "map": "us-montana.img",
+                "poly": "us-montana.poly",
+                "contour": "us-montana-ct.img"
+            },
+            {
+                "name": "USA Nebraska",
+                "map": "us-nebraska.img",
+                "poly": "us-nebraska.poly",
+                "contour": "us-nebraska-ct.img"
+            },
+            {
+                "name": "USA Nevada",
+                "map": "us-nevada.img",
+                "poly": "us-nevada.poly",
+                "contour": "us-nevada-ct.img"
+            },
+            {
+                "name": "USA New-Hampshire",
+                "map": "us-new-hampshire.img",
+                "poly": "us-new-hampshire.poly",
+                "contour": "us-new-hampshire-ct.img"
+            },
+            {
+                "name": "USA New-Jersey",
+                "map": "us-new-jersey.img",
+                "poly": "us-new-jersey.poly",
+                "contour": "us-new-jersey-ct.img"
+            },
+            {
+                "name": "USA New-Mexico",
+                "map": "us-new-mexico.img",
+                "poly": "us-new-mexico.poly",
+                "contour": "us-new-mexico-ct.img"
+            },
+            {
+                "name": "USA New-York",
+                "map": "us-new-york.img",
+                "poly": "us-new-york.poly",
+                "contour": "us-new-york-ct.img"
+            },
+            {
+                "name": "USA North-Carolina",
+                "map": "us-north-carolina.img",
+                "poly": "us-north-carolina.poly",
+                "contour": "us-north-carolina-ct.img"
+            },
+            {
+                "name": "USA North-Dakota",
+                "map": "us-north-dakota.img",
+                "poly": "us-north-dakota.poly",
+                "contour": "us-north-dakota-ct.img"
+            },
+            {
+                "name": "USA Ohio",
+                "map": "us-ohio.img",
+                "poly": "us-ohio.poly",
+                "contour": "us-ohio-ct.img"
+            },
+            {
+                "name": "USA Oklahoma",
+                "map": "us-oklahoma.img",
+                "poly": "us-oklahoma.poly",
+                "contour": "us-oklahoma-ct.img"
+            },
+            {
+                "name": "USA Oregon",
+                "map": "us-oregon.img",
+                "poly": "us-oregon.poly",
+                "contour": "us-oregon-ct.img"
+            },
+            {
+                "name": "USA Pennsylvania",
+                "map": "us-pennsylvania.img",
+                "poly": "us-pennsylvania.poly",
+                "contour": "us-pennsylvania-ct.img"
+            },
+            {
+                "name": "USA Puerto-Rico",
+                "map": "us-puerto-rico.img",
+                "poly": "us-puerto-rico.poly",
+                "contour": "us-puerto-rico-ct.img"
+            },
+            {
+                "name": "USA Rhode-Island",
+                "map": "us-rhode-island.img",
+                "poly": "us-rhode-island.poly",
+                "contour": "us-rhode-island-ct.img"
+            },
+            {
+                "name": "USA South-Carolina",
+                "map": "us-south-carolina.img",
+                "poly": "us-south-carolina.poly",
+                "contour": "us-south-carolina-ct.img"
+            },
+            {
+                "name": "USA South-Dakota",
+                "map": "us-south-dakota.img",
+                "poly": "us-south-dakota.poly",
+                "contour": "us-south-dakota-ct.img"
+            },
+            {
+                "name": "USA Tennessee",
+                "map": "us-tennessee.img",
+                "poly": "us-tennessee.poly",
+                "contour": "us-tennessee-ct.img"
+            },
+            {
+                "name": "USA Texas",
+                "map": "us-texas.img",
+                "poly": "us-texas.poly",
+                "contour": "us-texas-ct.img"
+            },
+            {
+                "name": "USA Us-Virgin-Islands",
+                "map": "us-us-virgin-islands.img",
+                "poly": "us-us-virgin-islands.poly",
+                "contour": "us-us-virgin-islands-ct.img"
+            },
+            {
+                "name": "USA Utah",
+                "map": "us-utah.img",
+                "poly": "us-utah.poly",
+                "contour": "us-utah-ct.img"
+            },
+            {
+                "name": "USA Vermont",
+                "map": "us-vermont.img",
+                "poly": "us-vermont.poly",
+                "contour": "us-vermont-ct.img"
+            },
+            {
+                "name": "USA Virginia",
+                "map": "us-virginia.img",
+                "poly": "us-virginia.poly",
+                "contour": "us-virginia-ct.img"
+            },
+            {
+                "name": "USA Washington",
+                "map": "us-washington.img",
+                "poly": "us-washington.poly",
+                "contour": "us-washington-ct.img"
+            },
+            {
+                "name": "USA West-Virginia",
+                "map": "us-west-virginia.img",
+                "poly": "us-west-virginia.poly",
+                "contour": "us-west-virginia-ct.img"
+            },
+            {
+                "name": "USA Wisconsin",
+                "map": "us-wisconsin.img",
+                "poly": "us-wisconsin.poly",
+                "contour": "us-wisconsin-ct.img"
+            },
+            {
+                "name": "USA Wyoming",
+                "map": "us-wyoming.img",
+                "poly": "us-wyoming.poly",
+                "contour": "us-wyoming-ct.img"
+            },
+            {
+                "name": "Canada Manitoba",
+                "map": "can-manitoba.img",
+                "poly": "can-manitoba.poly",
+                "contour": "can-manitoba-ct.img"
+            },
+            {
+                "name": "Canada New-Brunswick",
+                "map": "can-new-brunswick.img",
+                "poly": "can-new-brunswick.poly",
+                "contour": "can-new-brunswick-ct.img"
+            },
+            {
+                "name": "Canada Newfoundland-and-Labrador",
+                "map": "can-newfoundland-and-labrador.img",
+                "poly": "can-newfoundland-and-labrador.poly",
+                "contour": "can-newfoundland-and-labrador-ct.img"
+            },
+            {
+                "name": "Canada Northwest-Territories",
+                "map": "can-northwest-territories.img",
+                "poly": "can-northwest-territories.poly",
+                "contour": "can-northwest-territories-ct.img"
+            },
+            {
+                "name": "Canada Nova-Scotia",
+                "map": "can-nova-scotia.img",
+                "poly": "can-nova-scotia.poly",
+                "contour": "can-nova-scotia-ct.img"
+            },
+            {
+                "name": "Canada Nunavut",
+                "map": "can-nunavut.img",
+                "poly": "can-nunavut.poly",
+                "contour": "can-nunavut-ct.img"
+            },
+            {
+                "name": "Canada Ontario",
+                "map": "can-ontario.img",
+                "poly": "can-ontario.poly",
+                "contour": "can-ontario-ct.img"
+            },
+            {
+                "name": "Canada Prince-Edward-Island",
+                "map": "can-prince-edward-island.img",
+                "poly": "can-prince-edward-island.poly",
+                "contour": "can-prince-edward-island-ct.img"
+            },
+            {
+                "name": "Canada Quebec",
+                "map": "can-quebec.img",
+                "poly": "can-quebec.poly",
+                "contour": "can-quebec-ct.img"
+            },
+            {
+                "name": "Canada Saskatchewan",
+                "map": "can-saskatchewan.img",
+                "poly": "can-saskatchewan.poly",
+                "contour": "can-saskatchewan-ct.img"
+            },
+            {
+                "name": "Canada Yukon",
+                "map": "can-yukon.img",
+                "poly": "can-yukon.poly",
+                "contour": "can-yukon-ct.img"
+            },
+            {
+                "name": "Canada Alberta",
+                "map": "can-alberta.img",
+                "poly": "can-alberta.poly",
+                "contour": "can-alberta-ct.img"
+            },
+            {
+                "name": "Canada British-Columbia",
+                "map": "can-british-columbia.img",
+                "poly": "can-british-columbia.poly",
+                "contour": "can-british-columbia-ct.img"
+            },
+            {
+                "name": "Greenland",
+                "map": "greenland.img",
+                "poly": "greenland.poly",
+                "contour": "greenland-ct.img"
+            },
+            {
+                "name": "Mexico",
+                "map": "mexico.img",
+                "poly": "mexico.poly",
+                "contour": "mexico-ct.img"
+            }
+        ]
+    },
+    {
+        "name": "North America Special Regions",
+        "update": "October 2026",
+        "children": [
+            {
+                "name": "USA Midwest",
+                "map": "US-Midwest.img",
+                "poly": "US-Midwest.poly",
+                "contour": "US-Midwest-ct.img"
+            },
+            {
+                "name": "USA Northeast",
+                "map": "US-Northeast.img",
+                "poly": "US-Northeast.poly",
+                "contour": "US-Northeast-ct.img"
+            },
+            {
+                "name": "USA Pacific",
+                "map": "US-Pacific.img",
+                "poly": "US-Pacific.poly"
+            },
+            {
+                "name": "USA South",
+                "map": "US-South.img",
+                "poly": "US-South.poly",
+                "contour": "US-South-ct.img"
+            },
+            {
+                "name": "USA West",
+                "map": "US-West.img",
+                "poly": "US-West.poly"
+            }
+        ]
+    },
+    {
+        "name": "Asia",
+        "update": "October 2026",
+        "children": [
+            {
+                "name": "Azerbaijan",
+                "map": "azerbaijan.img",
+                "poly": "azerbaijan.poly",
+                "contour": "azerbaijan-ct.img"
+            },
+            {
+                "name": "Bangladesh",
+                "map": "bangladesh.img",
+                "poly": "bangladesh.poly",
+                "contour": "bangladesh-ct.img"
+            },
+            {
+                "name": "Bhutan",
+                "map": "bhutan.img",
+                "poly": "bhutan.poly",
+                "contour": "bhutan-ct.img"
+            },
+            {
+                "name": "Cambodia",
+                "map": "cambodia.img",
+                "poly": "cambodia.poly",
+                "contour": "cambodia-ct.img"
+            },
+            {
+                "name": "East-Timor",
+                "map": "east-timor.img",
+                "poly": "east-timor.poly",
+                "contour": "east-timor-ct.img"
+            },
+            {
+                "name": "Gcc-States",
+                "map": "gcc-states.img",
+                "poly": "gcc-states.poly",
+                "contour": "gcc-states-ct.img"
+            },
+            {
+                "name": "India",
+                "map": "india.img",
+                "poly": "india.poly",
+                "contour": "india-ct.img"
+            },
+            {
+                "name": "Indonesia",
+                "map": "indonesia.img",
+                "poly": "indonesia.poly",
+                "contour": "indonesia-ct.img"
+            },
+            {
+                "name": "Iraq",
+                "map": "iraq.img",
+                "poly": "iraq.poly",
+                "contour": "iraq-ct.img"
+            },
+            {
+                "name": "Japan",
+                "map": "japan.img",
+                "poly": "japan.poly",
+                "contour": "japan-ct.img"
+            },
+            {
+                "name": "Jordan",
+                "map": "jordan.img",
+                "poly": "jordan.poly",
+                "contour": "jordan-ct.img"
+            },
+            {
+                "name": "Kazakhstan",
+                "map": "kazakhstan.img",
+                "poly": "kazakhstan.poly",
+                "contour": "kazakhstan-ct.img"
+            },
+            {
+                "name": "Kyrgyzstan",
+                "map": "kyrgyzstan.img",
+                "poly": "kyrgyzstan.poly",
+                "contour": "kyrgyzstan-ct.img"
+            },
+            {
+                "name": "Laos",
+                "map": "laos.img",
+                "poly": "laos.poly",
+                "contour": "laos-ct.img"
+            },
+            {
+                "name": "Lebanon",
+                "map": "lebanon.img",
+                "poly": "lebanon.poly",
+                "contour": "lebanon-ct.img"
+            },
+            {
+                "name": "Malaysia-Singapore-Brunei",
+                "map": "malaysia-singapore-brunei.img",
+                "poly": "malaysia-singapore-brunei.poly",
+                "contour": "malaysia-singapore-brunei-ct.img"
+            },
+            {
+                "name": "Maldives",
+                "map": "maldives.img",
+                "poly": "maldives.poly",
+                "contour": "maldives-ct.img"
+            },
+            {
+                "name": "Mongolia",
+                "map": "mongolia.img",
+                "poly": "mongolia.poly",
+                "contour": "mongolia-ct.img"
+            },
+            {
+                "name": "Nepal",
+                "map": "nepal.img",
+                "poly": "nepal.poly",
+                "contour": "nepal-ct.img"
+            },
+            {
+                "name": "Pakistan",
+                "map": "pakistan.img",
+                "poly": "pakistan.poly",
+                "contour": "pakistan-ct.img"
+            },
+            {
+                "name": "Philippines",
+                "map": "philippines.img",
+                "poly": "philippines.poly",
+                "contour": "philippines-ct.img"
+            },
+            {
+                "name": "South-Korea",
+                "map": "south-korea.img",
+                "poly": "south-korea.poly",
+                "contour": "south-korea-ct.img"
+            },
+            {
+                "name": "Sri-Lanka",
+                "map": "sri-lanka.img",
+                "poly": "sri-lanka.poly",
+                "contour": "sri-lanka-ct.img"
+            },
+            {
+                "name": "Taiwan",
+                "map": "taiwan.img",
+                "poly": "taiwan.poly",
+                "contour": "taiwan-ct.img"
+            },
+            {
+                "name": "Tajikistan",
+                "map": "tajikistan.img",
+                "poly": "tajikistan.poly",
+                "contour": "tajikistan-ct.img"
+            },
+            {
+                "name": "Thailand",
+                "map": "thailand.img",
+                "poly": "thailand.poly",
+                "contour": "thailand-ct.img"
+            },
+            {
+                "name": "Turkmenistan",
+                "map": "turkmenistan.img",
+                "poly": "turkmenistan.poly",
+                "contour": "turkmenistan-ct.img"
+            },
+            {
+                "name": "Uzbekistan",
+                "map": "uzbekistan.img",
+                "poly": "uzbekistan.poly",
+                "contour": "uzbekistan-ct.img"
+            },
+            {
+                "name": "Vietnam",
+                "map": "vietnam.img",
+                "poly": "vietnam.poly",
+                "contour": "vietnam-ct.img"
+            },
+            {
+                "name": "Armenia",
+                "map": "armenia.img",
+                "poly": "armenia.poly",
+                "contour": "armenia-ct.img"
+            }
+        ]
+    },
+    {
+        "name": "Asia Special Regions",
+        "update": "October 2026",
+        "children": [
+            {
+                "name": "Southeast Asia",
+                "map": "South-East-Asia.img",
+                "poly": "South-East-Asia.poly",
+                "contour": "South-East-Asia-ct.img"
+            }
+        ]
+    }
+]

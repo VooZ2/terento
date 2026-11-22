@@ -1,5 +1,28 @@
 # App–API compatibility and release contract
 
+## 1.3.0 server-first acceptance (Lucky Maps)
+
+Not deployed yet. The 1.3.0 app requests `/maps/catalog-v6.json`, the closed
+projection of catalog-v5 plus Lucky Maps (`luckymaps`, migration 097). Deploy
+and verify this API before any build that requests catalog-v6; the release
+live-catalog gate (`Packaging/validate-live-map-catalog.sh`) fails until the
+route serves only providers the 1.3.0 client knows. Released clients through
+1.2.x keep `catalog-v5.json` and never see Lucky Maps. The provider is
+inserted `PAUSED` and, because it has never been `ACTIVE`, is left out of
+v6 entirely (a Debug build sees it with `?preview=luckymaps`), so 1.3.0 shows
+users nothing of it. Activating it is a separate owner decision made in Admin;
+it needs no app update. When 1.3.0 is
+published, add its tag to `contracts/released-catalog-clients.json` with
+`catalog-v6.json`.
+
+OpenFietsMap (`openfietsmap`, migration 098) joins the same catalog-v6
+projection, also inserted `PAUSED`: 15 GPS packages from the author's server,
+each proof binding the ZIP payload path, CRC-32, IMG title, build day and
+Garmin family ID. It has never been `ACTIVE`, so it is likewise left out of
+v6 (a Debug build sees it with `?preview=openfietsmap`) and activation is an
+Admin change with no app update. The live-catalog gate allows `openfietsmap`
+in v6 only.
+
 ## 1.2.3 server-first acceptance
 
 Not deployed yet. Deploy and verify this API before any client that sends it

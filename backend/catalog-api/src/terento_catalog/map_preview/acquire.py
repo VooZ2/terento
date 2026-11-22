@@ -39,6 +39,21 @@ ALLOWED_SOURCES: dict[str, tuple[set[str], re.Pattern[str]]] = {
         {"data.bbbike.org"},
         re.compile(r"/osm/garmin/region/[a-z0-9/_-]+\.osm\.garmin-(?:bbbike|ontrail|opentopo)-latin1\.zip"),
     ),
+    # Main IMG and its paired contour IMG (preview overlay); the author agreed
+    # to short-lived preview copies on 2026-11-18 despite robots.txt.
+    "luckymaps": (
+        {"luckymaps.ch"},
+        re.compile(r"/assets/maps/(?:[A-Za-z0-9][A-Za-z0-9._-]*/){0,3}[A-Za-z0-9][A-Za-z0-9_-]*\.img"),
+    ),
+    # GPS editions only (never the BaseCamp _pc/_gmap archives). Preview
+    # rendering stays off until the author has agreed to preview downloads.
+    "openfietsmap": (
+        {"ligfietser.dev.openstreetmap.org"},
+        re.compile(r"/openfietsmap/(?:benelux/full/OpenFietsMap\.zip|benelux/light/OpenFietsMap_light\.zip"
+                   r"|(?:germany/OFM_DE|Alps/OFM_Alps|Atlantic/OFM_Atlantic|Baleares/OFM_Baleares"
+                   r"|Iceland/OFM_Iceland)\([0-9]{2}-[0-9]{2}-20[0-9]{2}_gps\)\.zip"
+                   r"|EU_20[0-9]{2}/[0-9]{4}/GPS/OFM\(EU20[0-9]{2}_(?:GB|N|W|C|SW|SE|E)_GPS\)\.zip)"),
+    ),
     # Main styles only; WARSTWICE contour lines are not a preview style.
     "osmapa": (
         {"osmapa-garmin.las.org.pl"},

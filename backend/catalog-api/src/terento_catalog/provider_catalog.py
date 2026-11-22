@@ -157,8 +157,39 @@ OSMAPA = ProviderDefinition(
     default_status="PAUSED",
 )
 
+LUCKYMAPS = ProviderDefinition(
+    id="luckymaps", name="Lucky Maps", adapter_id="luckymaps",
+    website="https://luckymaps.ch/",
+    catalog_url="https://luckymaps.ch/assets/maps.json",
+    # Terms as published on luckymaps.ch (2026-11): the author agreed to direct
+    # downloads from his server on 2026-11-18; no separate licence was requested.
+    license=("Map data © OpenStreetMap contributors (ODbL); Lucky Maps © luckymaps.ch, Lukas M., "
+             "free for private use, CC BY-SA 4.0; based on Freizeitkarte (FZK project, CC BY 3.0); "
+             "contours © U.S. Geological Survey and viewfinderpanoramas.org."),
+    attribution="Map data © OpenStreetMap contributors; Lucky Maps © luckymaps.ch (CC BY-SA 4.0)",
+    license_url="https://luckymaps.ch/en/",
+    # Not offered until the author's final agreement and the hardware gate.
+    default_status="PAUSED",
+)
+
+OPENFIETSMAP = ProviderDefinition(
+    id="openfietsmap", name="OpenFietsMap", adapter_id="openfietsmap",
+    website="https://www.openfietsmap.nl/",
+    catalog_url="https://ligfietser.dev.openstreetmap.org/openfietsmap/",
+    # The source licence is CC BY-NC-SA 3.0 with "further distribution only
+    # with permission"; the author (Minko) gave Terento written permission on
+    # 2026-11-21. Terento stays free and never hosts or mirrors the files.
+    license=("Map data © OpenStreetMap contributors (ODbL); cartography © Openfietsmap.nl, "
+             "CC BY-NC-SA 3.0, listed with the author's permission; contour lines and DEM "
+             "© SRTM/NASA, U.S. Geological Survey and J. de Ferranti (viewfinderpanoramas.org)."),
+    attribution="Map data © OpenStreetMap contributors; cartography © Openfietsmap.nl (CC BY-NC-SA 3.0)",
+    license_url="https://creativecommons.org/licenses/by-nc-sa/3.0/",
+    # Not offered until the hardware activation gate passes.
+    default_status="PAUSED",
+)
+
 KNOWN_PROVIDER_DEFINITIONS: dict[str, ProviderDefinition] = {
-    item.id: item for item in (FREIZEITKARTE, OPENTOPO_MAP, MAPRANDO, BBBIKE, OSMAPA)
+    item.id: item for item in (FREIZEITKARTE, OPENTOPO_MAP, MAPRANDO, BBBIKE, OSMAPA, LUCKYMAPS, OPENFIETSMAP)
 }
 
 # Main package membership stays independent of optional contour availability.

@@ -178,6 +178,32 @@ REQUEST_SOCKET_TIMEOUT_SECONDS = 60
 RATE_LIMIT_SWEEP_INTERVAL = 1000
 
 
+# Providers a Debug build may name in `?preview=` to see while they have never
+# been ACTIVE. Only providers of the newest projection; anything else is ignored.
+CATALOG_PREVIEW_PROVIDERS = frozenset({"luckymaps", "openfietsmap"})
+
+
+def _always_listed_preview_styles() -> frozenset[str]:
+    from .map_preview.styles import STYLES
+
+    return frozenset(style.id for style in STYLES if not style.listed_when_enabled)
+
+
+_ALWAYS_LISTED_PREVIEW_STYLES = _always_listed_preview_styles()
+
+
+def _never_activated(row: dict[str, Any]) -> bool:
+    """True for a registered provider that has not been ACTIVE even once."""
+    if (row.get("provider_status") or "ACTIVE") == "ACTIVE":
+        return False
+    return "provider_first_activated_at" in row and row["provider_first_activated_at"] is None
+
+
+def _catalog_preview(query: str) -> frozenset[str]:
+    names = ",".join(parse_qs(query).get("preview", []))
+    return frozenset(name.strip().lower() for name in names.split(",")) & CATALOG_PREVIEW_PROVIDERS
+
+
 def _public_install_counts(row: dict[str, Any]) -> dict[str, Any]:
     """Public install counts: app and web results together, with each part
     (owner decision 2026-10-11). Evidence status and reconnect-verified
@@ -286,6 +312,9 @@ class CatalogService:
         self.asset_storage = asset_storage
         self.public_base_url = public_base_url
         self._preview_manifest_cache: tuple[float, bytes, int] | None = None
+        self._preview_listed_styles: tuple[bytes, frozenset[str]] | None = None
+        self._preview_manifest_lock = threading.Lock()
+        self._preview_manifest_failed_at: float | None = None
         self._preview_manifest_generation = 0
         # projection -> (monotonic time the entry stays valid until, canonical rows or None after a failure).
         self._public_rows_cache: dict[str, tuple[float, list[dict[str, Any]] | None]] = {}
@@ -383,8 +412,10 @@ class CatalogService:
         return {"schemaVersion": 1, "providers": providers}
 
     def catalog_response(self, *, include_maprando: bool = False, include_bbbike: bool = False,
-                         include_osmapa: bool = False,
-                         include_bbbike_opentopo: bool = False) -> tuple[bytes, str, datetime]:
+                         include_osmapa: bool = False, include_luckymaps: bool = False,
+                         include_openfietsmap: bool = False,
+                         include_bbbike_opentopo: bool = False,
+                         preview: frozenset[str] = frozenset()) -> tuple[bytes, str, datetime]:
         rows, updated_at = self.database.catalog_snapshot()
         # Every released projection is a closed provider set. A new DB provider
         # must never leak into a client that rejects unknown identities.
@@ -395,7 +426,15 @@ class CatalogService:
             allowed.add("bbbike")
         if include_osmapa:
             allowed.add("osmapa")
+        if include_luckymaps:
+            allowed.add("luckymaps")
+        if include_openfietsmap:
+            allowed.add("openfietsmap")
         rows = [row for row in rows if row["provider_id"] in allowed]
+        # A provider that has never been ACTIVE shows nothing to users: no
+        # filter entry and no unavailable rows. A Debug build asks for it by
+        # name (`?preview=`) to test it on a watch while it is still PAUSED.
+        rows = [row for row in rows if not _never_activated(row) or row["provider_id"] in preview]
         if not include_bbbike_opentopo:
             # Released v3/v4 clients know only the first two BBBike map types.
             from .bbbike import LEGACY_MAP_TYPES
@@ -428,6 +467,12 @@ class CatalogService:
     def catalog_v5_response(self) -> tuple[bytes, str, datetime]:
         return self.catalog_response(include_maprando=True, include_bbbike=True, include_osmapa=True,
                                      include_bbbike_opentopo=True)
+
+    def catalog_v6_response(self, preview: frozenset[str] = frozenset()) -> tuple[bytes, str, datetime]:
+        # v6 = v5 + Lucky Maps + OpenFietsMap; released clients (v5 and older) never see them.
+        return self.catalog_response(include_maprando=True, include_bbbike=True, include_osmapa=True,
+                                     include_luckymaps=True, include_openfietsmap=True,
+                                     include_bbbike_opentopo=True, preview=preview)
 
     def device_catalog_response(self) -> tuple[bytes, str, datetime]:
         rows, updated_at = self.database.device_catalog_snapshot()
@@ -587,6 +632,12 @@ class CatalogService:
         elif provider_id == "osmapa":
             from .osmapa import OSMapaProviderAdapter
             adapter = OSMapaProviderAdapter()
+        elif provider_id == "luckymaps":
+            from .luckymaps import LuckyMapsProviderAdapter
+            adapter = LuckyMapsProviderAdapter()
+        elif provider_id == "openfietsmap":
+            from .openfietsmap import OpenFietsMapProviderAdapter
+            adapter = OpenFietsMapProviderAdapter()
         elif provider_id == "maprando":
             from .maprando import MapRandoProviderAdapter
             adapter = MapRandoProviderAdapter()
@@ -1167,7 +1218,43 @@ class CatalogService:
 
     def preview_tile_response(self, request_path: str) -> tuple[bytes, str] | None:
         store = self.preview_store()
-        return None if store is None else store.tile(request_path)
+        if store is None:
+            return None
+        # Only styles the public manifest lists are served. A provider that is
+        # not ACTIVE (or has previews off) may have tiles on disk, drawn
+        # ahead of its launch, but they must not be reachable by URL.
+        from .map_preview.publish import TILE_PATH
+
+        match = TILE_PATH.fullmatch(request_path)
+        if match is None or match["style"] not in self.preview_listed_styles():
+            return None
+        return store.tile(request_path)
+
+    def preview_listed_styles(self) -> frozenset[str]:
+        """Style ids in the current public manifest (cached with the manifest).
+
+        Tiles must keep working while the database is slow or down: a failed
+        manifest build keeps the last known styles (or, before any build, the
+        styles that are always listed) and is retried at most every 10 s.
+        """
+        cached = self._preview_listed_styles
+        failed = self._preview_manifest_failed_at
+        if failed is not None and time.monotonic() - failed < 10:
+            return cached[1] if cached is not None else _ALWAYS_LISTED_PREVIEW_STYLES
+        try:
+            body = self.preview_manifest_response()
+        except Exception:
+            LOGGER.exception("preview manifest unavailable; tiles use the last known styles")
+            self._preview_manifest_failed_at = time.monotonic()
+            return cached[1] if cached is not None else _ALWAYS_LISTED_PREVIEW_STYLES
+        self._preview_manifest_failed_at = None
+        if cached is not None and cached[0] is body:
+            return cached[1]
+        styles = frozenset(
+            str(style.get("id")) for style in json.loads(body).get("styles", []) if isinstance(style, dict)
+        )
+        self._preview_listed_styles = (body, styles)
+        return styles
 
     def preview_manifest_response(self) -> bytes:
         """Public preview manifest, rebuilt from the database at most once a minute."""
@@ -1176,6 +1263,15 @@ class CatalogService:
         cached = self._preview_manifest_cache
         if cached is not None and cached[2] == generation and time.monotonic() - cached[0] < 60:
             return cached[1]
+        # One rebuild at a time: a burst of tile requests after expiry waits
+        # for it instead of each running the database queries.
+        with self._preview_manifest_lock:
+            cached = self._preview_manifest_cache
+            if cached is not None and cached[2] == generation and time.monotonic() - cached[0] < 60:
+                return cached[1]
+            return self._build_preview_manifest(generation)
+
+    def _build_preview_manifest(self, generation: int) -> bytes:
         from .map_preview.areas import load_areas
         from .map_preview.manifest import build_manifest
         from .map_preview.store import PreviewDatabase
@@ -1822,8 +1918,11 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             if request_path == "/health":
                 self._handle_health(send_body=send_body)
                 return
-            if request_path in {"/maps/catalog.json", "/maps/catalog-v3.json", "/maps/catalog-v4.json", "/maps/catalog-v5.json"}:
+            if request_path in {"/maps/catalog.json", "/maps/catalog-v3.json", "/maps/catalog-v4.json",
+                                "/maps/catalog-v5.json", "/maps/catalog-v6.json"}:
+                preview = _catalog_preview(urlsplit(self.path).query) if request_path == "/maps/catalog-v6.json" else frozenset()
                 self._handle_catalog(
+                    (lambda: service.catalog_v6_response(preview)) if request_path == "/maps/catalog-v6.json" else
                     service.catalog_v5_response if request_path == "/maps/catalog-v5.json" else
                     service.catalog_v4_response if request_path == "/maps/catalog-v4.json" else
                     service.catalog_v3_response if request_path == "/maps/catalog-v3.json" else service.catalog_response,

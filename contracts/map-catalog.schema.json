@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "map-catalog.schema.json",
   "title": "Public map catalog",
-  "description": "GET /maps/catalog.json (legacy providers) , /maps/catalog-v3.json (three providers), /maps/catalog-v4.json (four providers), and /maps/catalog-v5.json (adds OSMapaPL). All retain schemaVersion 2 and legacy aliases; unknown additive response fields are allowed.",
+  "description": "GET /maps/catalog.json (legacy providers) , /maps/catalog-v3.json (three providers), /maps/catalog-v4.json (four providers), /maps/catalog-v5.json (adds OSMapaPL) and /maps/catalog-v6.json (adds Lucky Maps and OpenFietsMap). All retain schemaVersion 2 and legacy aliases; unknown additive response fields are allowed.",
   "type": "object",
   "properties": {
     "schemaVersion": {
@@ -283,9 +283,12 @@
             "ogonki",
             "light",
             "warstwice",
+            "ofm-full",
+            "ofm-light",
+            "ofm-hiking",
             null
           ],
-          "description": "Independent BBBike or OSMapaPL map type; not a separate provider or contour component. OSMapaPL types and BBBike opentopo-latin1 are published only by catalog-v5."
+          "description": "Independent BBBike, OSMapaPL or OpenFietsMap map type; not a separate provider or contour component. OSMapaPL types and BBBike opentopo-latin1 are published only by catalog-v5 and later; OpenFietsMap ofm-* editions only by catalog-v6."
         },
         "conflictGroup": {
           "type": [
