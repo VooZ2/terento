@@ -1,6 +1,25 @@
 # Website application screenshots
 
-## November 20, 2026 refresh
+## November 22, 2026 (1.3.0) refresh
+
+The owner-supplied PNGs from Terento 1.3.0 replace the corresponding
+screenshot masters without pixel edits or resizing: installing-maps,
+install-maps, manage-maps, map-selected, maps-done, your-garmin and
+ready-to-install. Each master keeps the same format: 2358 × 1575 pixels with
+transparent rounded corners. Placements and file names are unchanged (see the
+September 12 table below). The selected and installed map in the Guide
+screenshots is now OpenTopoMap Iceland, so the repository README alt texts for
+map-selected and maps-done name OpenTopoMap instead of BBBike. The Install
+maps screenshot searches for Germany and lists OpenFietsMap, which is new in
+1.3.0.
+
+`scripts/optimize-app-images.mjs` regenerated only these seven masters. The
+image query version is now `20261122-app-screens-v4`, owned by
+`scripts/normalize-public-shell.py` and synchronized with the Guide, Home
+template and Download sources. `about.png`, `map-styles-compare.png`,
+`web-installer-connect.png` and social artwork are unchanged.
+
+## November 20, 2026 refresh (published, superseded)
 
 The seven owner-supplied PNGs from Terento 1.2.2 (49) replace the
 corresponding screenshot masters without pixel edits or resizing. The

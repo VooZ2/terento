@@ -29,7 +29,7 @@ Ukončete Garmin Express, pokud je otevřený. Odemkněte hodinky a připojte je
 
 [Mac nevidí hodinky Garmin](https://terento.app/cs/guides/troubleshooting/#connect-watch)
 
-[Terento zobrazuje připojené hodinky Garmin a stav rozpoznání](https://terento.app/assets/app/optimized/your-garmin-1600.webp?v=20261120-app-screens-v3)
+[Terento zobrazuje připojené hodinky Garmin a stav rozpoznání](https://terento.app/assets/app/optimized/your-garmin-1600.webp?v=20261122-app-screens-v4)
 Terento před instalací rozpozná připojené hodinky Garmin.
 
 3. Vyberte mapu
@@ -44,14 +44,14 @@ Vyberte poskytovatele a oblast z katalogu.
 
 Přidejte kompatibilní mapu .img z Macu.
 
-[Terento zobrazuje poskytovatele, oblasti map třetích stran a dostupné místo v Garminu](https://terento.app/assets/app/optimized/map-selected-1600.webp?v=20261120-app-screens-v3)
+[Terento zobrazuje poskytovatele, oblasti map třetích stran a dostupné místo v Garminu](https://terento.app/assets/app/optimized/map-selected-1600.webp?v=20261122-app-screens-v4)
 Vyberte mapu z katalogu nebo přidejte vlastní kompatibilní soubor.
 
 4. Instalujte
 
 Spusťte instalaci a nechte hodinky připojené, dokud Terento neoznámí, že je mapa připravená. Potom hodinky odpojte.
 
-[Terento zobrazuje dokončenou instalaci mapy do hodinek Garmin](https://terento.app/assets/app/optimized/maps-done-1600.webp?v=20261120-app-screens-v3)
+[Terento zobrazuje dokončenou instalaci mapy do hodinek Garmin](https://terento.app/assets/app/optimized/maps-done-1600.webp?v=20261122-app-screens-v4)
 Nechte hodinky připojené do dokončení přenosu a kontroly.
 
 ## Zobrazení mapy v hodinkách

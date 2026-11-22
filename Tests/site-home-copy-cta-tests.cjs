@@ -121,7 +121,7 @@ for (const [locale, expected] of locales) {
   const page = pageFor(locale);
   assert.match(page, /<link rel="stylesheet" href="\/styles\.css\?v=20261121-github-star-v1">/, `${locale}: Home stylesheet cache bust`);
   assert.match(page, /<script defer src="\/home-features\.js\?v=20261105-home-map-switch-v4"><\/script>/, `${locale}: Home feature script cache bust`);
-  assert.match(page, /installing-maps-1600\.png\?v=20261120-app-screens-v3/, `${locale}: installation screenshot cache bust`);
+  assert.match(page, /installing-maps-1600\.png\?v=20261122-app-screens-v4/, `${locale}: installation screenshot cache bust`);
   const heroDevice = page.match(/<figure class="home-device" data-map-switch>[\s\S]*?<\/figure>/)?.[0];
   assert.ok(heroDevice, `${locale}: hero shows the drawn watch with a real map`);
   assert.match(heroDevice, /<img class="home-watch-map" data-map-image src="\/assets\/home\/hero-opentopomap\.webp\?v=[^"]+" width="520" height="520" alt="[^"]+" fetchpriority="high"/);
@@ -160,7 +160,7 @@ for (const [locale, expected] of locales) {
   assert.match(experience, /width="2358" height="1575"/);
   for (const url of experience.match(/\/assets\/app\/optimized\/[^"\s,]+/g) || []) {
     assert.ok(url.startsWith("/assets/app/optimized/install-maps-"));
-    assert.ok(url.endsWith("?v=20261120-app-screens-v3"), `${locale}: screenshot cache version`);
+    assert.ok(url.endsWith("?v=20261122-app-screens-v4"), `${locale}: screenshot cache version`);
   }
   const edge = page.match(/<section class="block home-edge" id="edge" aria-labelledby="edge-title">[\s\S]*?<\/section>/)?.[0];
   assert.ok(edge, `${locale}: Garmin Edge section`);

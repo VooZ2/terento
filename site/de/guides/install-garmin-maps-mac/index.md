@@ -29,7 +29,7 @@ Beende Garmin Express, falls es geöffnet ist. Entsperre die Uhr und verbinde si
 
 [Garmin-Uhr wird am Mac nicht erkannt](https://terento.app/de/guides/troubleshooting/#connect-watch)
 
-[Terento zeigt eine verbundene Garmin-Uhr und den Gerätestatus](https://terento.app/assets/app/optimized/your-garmin-1600.webp?v=20261120-app-screens-v3)
+[Terento zeigt eine verbundene Garmin-Uhr und den Gerätestatus](https://terento.app/assets/app/optimized/your-garmin-1600.webp?v=20261122-app-screens-v4)
 Terento erkennt die verbundene Garmin-Uhr vor der Installation.
 
 3. Karte wählen
@@ -44,14 +44,14 @@ Wähle einen Anbieter und eine Region aus dem Katalog.
 
 Füge eine kompatible .img-Karte von deinem Mac hinzu.
 
-[Terento zeigt Drittanbieter-Kartenanbieter, Regionen und verfügbaren Garmin-Speicher](https://terento.app/assets/app/optimized/map-selected-1600.webp?v=20261120-app-screens-v3)
+[Terento zeigt Drittanbieter-Kartenanbieter, Regionen und verfügbaren Garmin-Speicher](https://terento.app/assets/app/optimized/map-selected-1600.webp?v=20261122-app-screens-v4)
 Wähle eine Karte aus dem Katalog oder füge deine eigene kompatible Datei hinzu.
 
 4. Installieren
 
 Starte die Installation und lass die Uhr verbunden, bis Terento meldet, dass die Karte bereit ist. Trenne die Uhr danach.
 
-[Terento zeigt eine abgeschlossene Karteninstallation auf einer Garmin-Uhr](https://terento.app/assets/app/optimized/maps-done-1600.webp?v=20261120-app-screens-v3)
+[Terento zeigt eine abgeschlossene Karteninstallation auf einer Garmin-Uhr](https://terento.app/assets/app/optimized/maps-done-1600.webp?v=20261122-app-screens-v4)
 Lass die Uhr verbunden, bis Übertragung und Prüfung abgeschlossen sind.
 
 ## Die Karte auf der Uhr anzeigen

@@ -29,7 +29,7 @@ Quittez Garmin Express s’il est ouvert. Déverrouillez la montre et connectez-
 
 [Montre Garmin non détectée sur Mac](https://terento.app/fr/guides/troubleshooting/#connect-watch)
 
-[Terento affiche une montre Garmin connectée et son état de détection](https://terento.app/assets/app/optimized/your-garmin-1600.webp?v=20261120-app-screens-v3)
+[Terento affiche une montre Garmin connectée et son état de détection](https://terento.app/assets/app/optimized/your-garmin-1600.webp?v=20261122-app-screens-v4)
 Terento reconnaît la montre Garmin connectée avant l’installation.
 
 3. Choisir une carte
@@ -44,14 +44,14 @@ Choisissez un fournisseur et une région dans le catalogue.
 
 Ajoutez une carte .img compatible depuis votre Mac.
 
-[Terento affiche les fournisseurs, les régions de cartes tierces et l’espace Garmin disponible](https://terento.app/assets/app/optimized/map-selected-1600.webp?v=20261120-app-screens-v3)
+[Terento affiche les fournisseurs, les régions de cartes tierces et l’espace Garmin disponible](https://terento.app/assets/app/optimized/map-selected-1600.webp?v=20261122-app-screens-v4)
 Choisissez une carte dans le catalogue ou ajoutez votre propre fichier compatible.
 
 4. Installer
 
 Lancez l’installation et gardez la montre connectée jusqu’à ce que Terento indique que la carte est prête. Déconnectez ensuite la montre.
 
-[Terento affiche une installation de carte terminée sur une montre Garmin](https://terento.app/assets/app/optimized/maps-done-1600.webp?v=20261120-app-screens-v3)
+[Terento affiche une installation de carte terminée sur une montre Garmin](https://terento.app/assets/app/optimized/maps-done-1600.webp?v=20261122-app-screens-v4)
 Gardez la montre connectée jusqu’à la fin du transfert et de la vérification.
 
 ## Afficher la carte sur votre montre

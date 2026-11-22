@@ -31,14 +31,14 @@ Beende Garmin Express, falls es geöffnet ist. Verbinde den Edge über ein USB-D
 
 Wähle einen Anbieter und eine Region aus dem Katalog oder füge eine eigene kompatible .img-Kartendatei von deinem Mac hinzu. [Vergleiche die Kartenstile](https://terento.app/de/map-styles/), um zu sehen, wie jede Karte Straßen und Wege darstellt.
 
-[Terento zeigt Drittanbieter-Kartenanbieter, Regionen und verfügbaren Garmin-Speicher](https://terento.app/assets/app/optimized/map-selected-1600.webp?v=20261120-app-screens-v3)
+[Terento zeigt Drittanbieter-Kartenanbieter, Regionen und verfügbaren Garmin-Speicher](https://terento.app/assets/app/optimized/map-selected-1600.webp?v=20261122-app-screens-v4)
 Wähle eine Karte aus dem Katalog oder füge deine eigene kompatible Datei hinzu.
 
 4. Installieren
 
 Starte die Installation und lass den Edge verbunden, bis Terento meldet, dass die Installation abgeschlossen ist. Trenne den Edge danach.
 
-[Terento zeigt eine abgeschlossene Karteninstallation](https://terento.app/assets/app/optimized/maps-done-1600.webp?v=20261120-app-screens-v3)
+[Terento zeigt eine abgeschlossene Karteninstallation](https://terento.app/assets/app/optimized/maps-done-1600.webp?v=20261122-app-screens-v4)
 Lass den Edge verbunden, bis Terento meldet, dass die Karte bereit ist.
 
 ## Die Karte auf dem Edge anzeigen

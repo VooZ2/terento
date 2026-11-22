@@ -31,14 +31,14 @@ Zamknij Garmin Express, jeśli jest otwarty. Podłącz Edge bezpośrednio do Mac
 
 Wybierz dostawcę i region z katalogu albo dodaj z Maca własny zgodny plik mapy .img. [Porównaj style map](https://terento.app/pl/map-styles/), aby zobaczyć, jak każda mapa pokazuje drogi i szlaki.
 
-[Terento pokazuje dostawców, regiony map innych firm i dostępne miejsce na Garminie](https://terento.app/assets/app/optimized/map-selected-1600.webp?v=20261120-app-screens-v3)
+[Terento pokazuje dostawców, regiony map innych firm i dostępne miejsce na Garminie](https://terento.app/assets/app/optimized/map-selected-1600.webp?v=20261122-app-screens-v4)
 Wybierz mapę z katalogu albo dodaj własny zgodny plik.
 
 4. Zainstaluj
 
 Rozpocznij instalację i nie odłączaj Edge, dopóki Terento nie poinformuje, że instalacja się zakończyła. Potem odłącz Edge.
 
-[Terento pokazuje ukończoną instalację mapy](https://terento.app/assets/app/optimized/maps-done-1600.webp?v=20261120-app-screens-v3)
+[Terento pokazuje ukończoną instalację mapy](https://terento.app/assets/app/optimized/maps-done-1600.webp?v=20261122-app-screens-v4)
 Nie odłączaj Edge, dopóki Terento nie poinformuje, że mapa jest gotowa.
 
 ## Wyświetl mapę na Edge
