@@ -913,10 +913,11 @@ struct GarminMapsSummary: Equatable, Sendable {
             .joined(separator: " · ")
     }
 
-    /// The "N maps" line above the Manage list: every visible row, lifecycle
-    /// rows and the Garmin row alike, after the same search and provider filter.
-    static func manageListCount(lifecycleItemCount: Int, visibleGarminSummary: GarminMapsSummary?) -> Int {
-        lifecycleItemCount + (visibleGarminSummary == nil ? 0 : 1)
+    /// The "N maps" line above the Manage list counts the maps Terento can
+    /// manage; the Garmin maps row is not one of them (owner decision
+    /// 2026-11-22), whatever search and filters leave visible.
+    static func manageListCount(lifecycleItemCount: Int) -> Int {
+        lifecycleItemCount
     }
 
     /// Manage search matches the row's visible words. A provider filter hides

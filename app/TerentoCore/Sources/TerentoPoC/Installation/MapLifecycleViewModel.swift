@@ -143,14 +143,13 @@ final class MapLifecycleViewModel: ObservableObject {
     /// a completed installation. Failed and interrupted updates never set it.
     @Published private(set) var lastSuccessfulUpdate: SuccessfulMapUpdate?
 
-    /// "<Map> removed." for a few seconds after a removal is confirmed; the
+    /// "<Map> · <provider or style> removed." for a few seconds after a removal is confirmed; the
     /// row itself leaves the list on the refresh.
     @Published private(set) var removalNotice: String?
     private var removalNoticeTask: Task<Void, Never>?
     static let removalNoticeSeconds: UInt64 = 4
 
-    private func showRemovalNotice(_ title: String) {
-        let notice = "\(title) removed."
+    private func showRemovalNotice(_ notice: String) {
         removalNotice = notice
         removalNoticeTask?.cancel()
         removalNoticeTask = Task { [weak self] in
@@ -824,7 +823,7 @@ final class MapLifecycleViewModel: ObservableObject {
                     progress: nil,
                     message: "The map was removed and verified."
                 )
-                showRemovalNotice(context.item.title)
+                showRemovalNotice(context.item.removalNotice)
                 mapEngine.refreshCurrentDeviceMaps()
             } else {
                 setOperation(

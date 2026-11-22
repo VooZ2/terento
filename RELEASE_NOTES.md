@@ -21,7 +21,7 @@ This release keeps a large downloaded map ready when the device can't be reached
 - When the device can no longer be seen before anything is written, the message says "Terento can no longer see your device" and tells you what to check.
 - Reports about stopped installations say more precisely which check stopped them.
 - Cancel while a map downloads now takes you back to Install maps with your selection kept, instead of showing "Installation stopped".
-- Freizeitkarte maps show the same version in Install maps, Manage maps and the Remove dialog. Install maps showed the provider's release number (for example "3/2026") as a month.
+- Freizeitkarte maps show the same version in Install maps, Manage maps and the Remove dialog.
 - Sizes while a map is checked on your device use the same units as the rest of the app.
 
 # Terento v1.2.2 (build 49)

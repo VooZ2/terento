@@ -755,6 +755,10 @@ private func testQARowPresentation() throws {
     let custom = MapLifecycleItem(id: "c", title: "My map", sourceKind: .custom, provider: nil, region: nil,
         version: nil, rawVersion: nil, sizeBytes: 100, installedMaps: [installedMap()], classification: .externalRecognized)
     try require(custom.manageRowMetadata == custom.manageMetadataLabel, "a custom map row names no provider")
+    try require(lifecycleItem().removalNotice == "Freizeitkarte Germany · Freizeitkarte removed."
+        && openTopo.removalNotice == "Lithuania · BBBike (OpenTopoMap) removed."
+        && custom.removalNotice == "My map removed.",
+        "the removed notice names the map and its style as the row does")
 
     // D21: the Remove dialog names the map and gives one plain body line.
     let removeMeta = MapLifecycleConfirmationCopy.metadata(item: openTopo, provider: "BBBike")

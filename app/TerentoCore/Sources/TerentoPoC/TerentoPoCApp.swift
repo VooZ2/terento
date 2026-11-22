@@ -115,7 +115,7 @@ struct TerentoPoCApp: App {
                         build: TerentoTelemetryMetadata.build))
                 }
                 #if TERENTO_APP_STORE
-                Button("Rate on App Store…") {
+                Button("Rate on App Store") {
                     openExternalURL(TerentoAppLinks.appStoreReview)
                 }
                 #endif
@@ -128,7 +128,7 @@ struct TerentoPoCApp: App {
                     openWindow(id: "support-report")
                 }
                 #endif
-                Button("Star on GitHub…") {
+                Button("Star on GitHub") {
                     openExternalURL(TerentoAppLinks.repository)
                 }
             }

@@ -25,7 +25,7 @@ struct Stage3GenericLifecycleTests {
         testVersionlessContourLifecycleMatch()
         testGarminImagesAreListedReadOnlyAndNeverRead()
         testGarminMapsSummaryRow()
-        testManageListCountIncludesGarminRow()
+        testManageListCountLeavesOutGarminRow()
         print("PASS: 18 Stage 3 generic lifecycle tests")
     }
 
@@ -110,17 +110,14 @@ struct Stage3GenericLifecycleTests {
                "a provider filter hides the Garmin maps row")
     }
 
-    private static func testManageListCountIncludesGarminRow() {
+    private static func testManageListCountLeavesOutGarminRow() {
         let maps = ["gmapbmap.img", "gmapdem.img", "D1234567A.img"].map {
             GarminSystemMap(path: "/GARMIN/" + $0, filename: $0, sizeBytes: 1)
         }
-        func count(_ lifecycleRows: Int, _ query: String, _ provider: String = "") -> Int {
-            GarminMapsSummary.manageListCount(lifecycleItemCount: lifecycleRows,
-                visibleGarminSummary: GarminMapsSummary.visible(maps, query: query, providerID: provider))
-        }
-        expect(count(2, "") == 3 && count(0, "garmin") == 1 && count(0, "lithuania") == 0
-                && count(2, "", "openTopoMap") == 2,
-               "the Manage map count includes the one Garmin row when search and filters leave it visible")
+        expect(GarminMapsSummary.visible(maps, query: "") != nil
+               && GarminMapsSummary.manageListCount(lifecycleItemCount: 2) == 2
+               && GarminMapsSummary.manageListCount(lifecycleItemCount: 0) == 0,
+               "the Manage map count leaves out the Garmin maps row even while it is shown")
     }
 
     private static func testVersionlessContourLifecycleMatch() {

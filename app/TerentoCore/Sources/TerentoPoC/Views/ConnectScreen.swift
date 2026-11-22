@@ -46,7 +46,6 @@ struct ConnectScreen: View {
     @State private var selectedInstallationPlan: InstallationPlan?
     @State private var importedMapsExpanded = false
     @State private var externalMapsExpanded = false
-    @State private var garminMapsExpanded = false
     @State private var expandedProviderMapGroups: Set<String> = []
     @State private var customMapImportExpanded = false
     @State private var customMapImportDidContinue = false
@@ -664,7 +663,6 @@ struct ConnectScreen: View {
         if section == .manageMaps {
             importedMapsExpanded = false
             externalMapsExpanded = false
-            garminMapsExpanded = false
             expandedProviderMapGroups.formUnion(mapEngine.availableMapProviders.map(\.id))
         }
 
@@ -1282,7 +1280,6 @@ struct ConnectScreen: View {
             expandedProviderMapGroups.formUnion(inventory.providerGroups.map(\.id))
             importedMapsExpanded = true
             externalMapsExpanded = true
-            garminMapsExpanded = true
         }
     }
 
@@ -1338,8 +1335,7 @@ struct ConnectScreen: View {
             }
             HStack {
                 let count = GarminMapsSummary.manageListCount(
-                    lifecycleItemCount: filteredManagedInventory?.allItems.count ?? 0,
-                    visibleGarminSummary: visibleGarminSummary
+                    lifecycleItemCount: filteredManagedInventory?.allItems.count ?? 0
                 )
                 Text("\(count) \(count == 1 ? "map" : "maps")")
                     .foregroundStyle(TerentoColors.secondaryText)
@@ -1424,7 +1420,7 @@ struct ConnectScreen: View {
                 // they never scroll visibly under the count line.
                 .clipped()
                 .padding(.top, 8)
-                // VoiceOver hears "<Map> removed." even when focus is elsewhere.
+                // VoiceOver hears "<Map> · <style> removed." even when focus is elsewhere.
                 .onChange(of: lifecycleViewModel.removalNotice) { notice in
                     guard let notice else { return }
                     if let itemID = removingManagedMapID,
@@ -1563,14 +1559,10 @@ struct ConnectScreen: View {
                 }
 
                 if let garminSummary = visibleGarminSummary {
-                    // Read-only: one summary row, no buttons, no context menu, no selection.
-                    TerentoMapSection(
-                        title: "Garmin maps",
-                        count: 1,
-                        isExpanded: $garminMapsExpanded
-                    ) {
-                        GarminMapsSummaryRow(summary: garminSummary)
-                    }
+                    // Read-only: one summary row at the bottom without a group
+                    // header (the row already says "Garmin maps"). It takes no
+                    // actions and is not counted in "N maps".
+                    GarminMapsSummaryRow(summary: garminSummary)
                     .padding(
                         .top,
                         hasProviderMaps || !importedMaps.isEmpty || !externalMaps.isEmpty
@@ -6183,6 +6175,23 @@ struct MapSelectionStorageSummary: View {
             + (statusText.isEmpty ? "" : ". \(statusText)")
     }
 
+    /// The Install maps footer line, one line at the default window size
+    /// (owner decision 2026-11-22): "14.77 GB free · 0 maps selected", and
+    /// with a selection "1 map · 4.07 MB selected · 14.77 GB free after
+    /// installation". The provider is already on the selected rows.
+    fileprivate var footerLine: String {
+        let count = plan.selectedItems.count
+        guard count > 0 else {
+            return "\(formatBytes(plan.storagePlan.currentFreeSpace)) free · 0 maps selected"
+        }
+        let countLabel = "\(count) \(count == 1 ? "map" : "maps")"
+        if plan.storagePlan.hasUnresolvedInstallSize {
+            return "\(countLabel) selected · Size calculated before installation"
+        }
+        return "\(countLabel) · \(formatBytes(plan.storagePlan.selectedMapBytes)) selected · "
+            + "\(formatBytes(plan.storagePlan.projectedFreeSpace)) free after installation"
+    }
+
     fileprivate var selectedMapSummary: String {
         let count = plan.selectedItems.count
         let countLabel = "\(count) \(count == 1 ? "map" : "maps")"
@@ -6246,13 +6255,7 @@ struct MapSelectionStorageLine: View {
         MapSelectionStorageSummary(plan: plan, totalCapacity: totalCapacity, formatBytes: formatBytes)
     }
 
-    private var lineText: String {
-        var parts = ["\(formatBytes(plan.storagePlan.currentFreeSpace)) free", summary.selectedMapSummary]
-        if !plan.selectedItems.isEmpty {
-            parts.append(summary.afterInstallationSummary)
-        }
-        return parts.joined(separator: " · ")
-    }
+    private var lineText: String { summary.footerLine }
 
     var body: some View {
         let summary = summary

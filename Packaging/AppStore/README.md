@@ -39,8 +39,9 @@ are not shared (declined or not chosen yet): it sends only that failure's
 report after the person reviews it and presses Send, and changes no sharing
 choice. Diagnostics and the Help menu still offer only the GitHub report.
 Help also has `Send Feedback…` (a mail draft with only the app version and
-build), `Rate on App Store…`, which opens the existing review link, and
-`Star on GitHub…`, which opens the repository.
+build), `Rate on App Store`, which opens the existing review link, and
+`Star on GitHub`, which opens the repository. Links that open a page have no
+ellipsis; About names each link the same way (with ↗).
 
 ### Opt-in diagnostics (stage 3)
 

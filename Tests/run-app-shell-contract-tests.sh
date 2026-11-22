@@ -64,7 +64,7 @@ if grep -Fq 'Button("About Terento")' <<<"$help_commands"; then
     exit 1
 fi
 
-for label in 'Terento Website' 'Documentation' 'Report an Issue' 'Star on GitHub…'; do
+for label in 'Terento Website' 'Documentation' 'Report an Issue' 'Star on GitHub'; do
     rg -Fq "Button(\"$label\")" "$app_source"
 done
 for url in 'https://terento.app' 'https://github.com/VooZ2/terento#readme' 'https://github.com/VooZ2/terento/issues' 'https://github.com/VooZ2/terento'; do

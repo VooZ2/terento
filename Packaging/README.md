@@ -142,8 +142,8 @@ The Xcode asset catalog contains the 1x/2x macOS renditions from 16 pt through
 SwiftUI app shell. Help lists Terento Website, Troubleshooting, Documentation;
 then `Send Feedback…` (a mail draft to `hello@terento.app`, subject "Terento
 feedback", body only "Terento <version> (<build>)") and, in App Store builds,
-`Rate on App Store…` (`TerentoAppLinks.appStoreReview`); then Report an
-Issue, `Send Report to Terento…` (GitHub build only) and `Star on GitHub…`
+`Rate on App Store` (`TerentoAppLinks.appStoreReview`); then Report an
+Issue, `Send Report to Terento…` (GitHub build only) and `Star on GitHub`
 (`TerentoAppLinks.repository`). User documentation is available in the public
 [installation guide](https://terento.app/guides/install-garmin-maps-mac/).
 

@@ -267,8 +267,10 @@ and, only when the map is blocked or has a warning, the message on its own line
 in the colour of the row's status icon. A BBBike style has one name everywhere:
 "BBBike (OpenTopoMap)", and every Manage row starts with its provider or style
 ("Freizeitkarte · 2026-09 · 4 MB"). Install maps opens and closes the import
-panel with "Import map file" next to Refresh (selected look while open), and Storage ("14.77 GB free · 0 maps selected", then the
-free space after installation) shares the footer row with Continue.
+panel with "Import map file" next to Refresh (selected look while open), and
+Storage ("14.77 GB free · 0 maps selected"; with a selection "1 map · 4.07 MB
+selected · 14.77 GB free after installation") shares the footer row with
+Continue.
 
 ## Safety and verification
 

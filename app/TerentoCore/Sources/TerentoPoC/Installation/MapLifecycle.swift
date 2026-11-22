@@ -95,12 +95,21 @@ struct MapLifecycleItem: Identifiable, Equatable, Sendable {
     /// provider or map style named as Install maps names it ("BBBike
     /// (OpenTopoMap) · 2026-11 · 120 MB", "Freizeitkarte · 2026-09 · 4 MB"),
     /// so the same map has one name in every place. Custom maps have none.
+    /// "Andorra · Freizeitkarte removed.": the map named as its row names it,
+    /// so another Andorra map that stays is not mistaken for it.
+    var removalNotice: String {
+        [title, manageProviderTitle].compactMap { $0 }.filter { !$0.isEmpty }
+            .joined(separator: " · ") + " removed."
+    }
+
     var manageRowMetadata: String {
         guard isInstalled, let title = manageProviderTitle else { return manageMetadataLabel }
         return [title, manageMetadataLabel].filter { !$0.isEmpty }.joined(separator: " · ")
     }
 
-    private var manageProviderTitle: String? {
+    /// The provider or style as the row and the provider filter name it
+    /// ("Freizeitkarte", "BBBike (Ontrail)"); nil for a custom map.
+    var manageProviderTitle: String? {
         guard sourceKind == .provider,
               let provider = provider?.trimmingCharacters(in: .whitespacesAndNewlines),
               !provider.isEmpty else { return nil }

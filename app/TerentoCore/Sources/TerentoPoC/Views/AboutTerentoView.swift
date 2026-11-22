@@ -127,11 +127,11 @@ struct AboutTerentoView: View {
 
     @ViewBuilder
     private var supportLinks: some View {
-        supportLink("GitHub repository ↗", destination: TerentoAppLinks.repository)
-        supportLink("Report an issue ↗", destination: TerentoAppLinks.issues)
-        supportLink("Website ↗", destination: TerentoAppLinks.websiteFromApp)
+        supportLink("Star on GitHub ↗", destination: TerentoAppLinks.repository)
+        supportLink("Report an Issue ↗", destination: TerentoAppLinks.issues)
+        supportLink("Terento Website ↗", destination: TerentoAppLinks.websiteFromApp)
         #if TERENTO_APP_STORE
-        supportLink("Rate Terento on the App Store ↗", destination: TerentoAppLinks.appStoreReview)
+        supportLink("Rate on App Store ↗", destination: TerentoAppLinks.appStoreReview)
         #else
         supportLink("Donate ↗", destination: TerentoAppLinks.donate)
         #endif

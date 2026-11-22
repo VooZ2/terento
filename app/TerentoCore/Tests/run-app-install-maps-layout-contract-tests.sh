@@ -96,7 +96,10 @@ assert 'selected ? TerentoColors.interactive' in button and 'TerentoGeneratedTok
 footer = maps.split('} footer: {', 1)[1]
 assert footer.index('MapSelectionStorageLine(') < footer.index('PrimaryButton(title: "Continue")'), 'Storage is not on the Continue row'
 line = block('struct MapSelectionStorageLine: View {', '/// One look for the Install and Manage search field')
-assert ') free"' in line and 'summary.selectedMapSummary' in line and 'summary.afterInstallationSummary' in line, 'Storage line copy changed'
+assert 'private var lineText: String { summary.footerLine }' in line, 'Storage line copy changed'
+footer_line = block('fileprivate var footerLine: String {', 'fileprivate var selectedMapSummary: String {')
+assert ') free · 0 maps selected"' in footer_line and ') selected · "' in footer_line and ') free after installation"' in footer_line, 'Storage line is not "1 map · 4.07 MB selected · 14.77 GB free after installation"'
+assert 'appendSelectedProvider' not in footer_line, 'the Storage line repeats the provider of the selected rows'
 device = block('struct DeviceCard: View {', 'extension DeviceAuthorizationPresentation.Tone')
 assert 'if let authorization, authorization.tone != .success {' in device, '"Ready for maps" badge is shown in the ready state'
 assert 'static let manageProgressWidth: CGFloat = 236' in source, 'Manage progress is too narrow for "Checking map contents before removal"'
