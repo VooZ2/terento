@@ -40,41 +40,16 @@ same override is used by the web, native, backend, and release checks.
 
 ## Full release validation
 
-The next candidate is **1.3.0 / build 50** on the `stable` channel (see
-[versioning](../VERSIONING.md)), built from the `release-1.3.0` branch. 1.2.3
-was never released; its changes ship in 1.3.0. It carries the changes of
-#760: downloads kept for Try again for 6 hours and across a disconnect before
-any write, the "Terento can no longer see your device" message, the inventory
-rule and side in the failure context, the reconnect-wait funnel outcome and
-connection facts in a Help-menu `CONNECTION` support report; and of #765: a
-read-only "Garmin maps" section in Manage maps (merged after #760, before this
-candidate); of #766: one "Garmin maps" row, the App Store sharing question
-copy, the rating request after Map installed is shown, and the Help menu
-(Send Feedback, Rate on App Store, Star on GitHub); and of #770: bundled brand
-fonts, one type scale, map rows and the Install maps layout. It adds the
-`inventoryRule`/`inventorySide` fields and the `RECONNECT_WAIT` funnel stage
-(migration 096), so the API from #760 must be deployed and verified before the
-candidate is published; it still reads `catalog-v5.json`. Public metadata
-continues to identify 1.2.2 until signed, notarized artifacts exist, and the
-draft release-note section stays marked as a draft until then. The AppStore
-configuration carries the same 1.3.0 / 50 identity; the App Store build is
-prepared separately from the same tag.
-
-The published release is **1.2.2 / build 49** on the `stable` channel (see
+The published release is **1.3.0 / build 50** on the `stable` channel (see
 [versioning](../VERSIONING.md)), from GitHub-verified source
-`b612cf5c8e49c96b1ee2d1076a8a496449186bcc` (main after PR #747, tag
-`v1.2.2-build49`), published 2026-11-20. Installed 1.2.1 and earlier builds
-are offered it by the in-app update check. Its ZIP and DMG passed the full
-release suite, Apple notarization, stapling, Gatekeeper and launch validation;
-the build ran in a fresh worktree at that commit. It still reads
-`catalog-v5.json`. It carries the app changes of #735, #744 and #745: one
-repeat of the post-write sampled read-back after a sample read failure (-9),
-the turn-on step on the Done page, whole names for maps from unrecognized
-providers, page-based waiting and offers instead of popups, and the brand
-radii, button sizes and progress bar. It adds no route, telemetry field or
-migration. The DEFERRED real-watch Update gate for Freizeitkarte and
-OpenTopoMap stays recorded in `contracts/release-hardware-gates.json`. The
-AppStore configuration carries the same 1.2.2 / 49 identity; the App Store
+`9ab9f22f9ce7c3f65c6edcc8313e28ad98c85f94` (main after PR #782, tag
+`v1.3.0-build50`), published 2026-11-22. 1.2.3 was never released; its changes
+ship in 1.3.0. Installed 1.2.2 and earlier builds are offered it by the in-app
+update check. It is the first client that reads `catalog-v6.json` and adds
+OpenFietsMap. It carries the changes of #759, #760, #763, #765, #766 and #770
+(downloads kept for Try again, connection support report, Garmin maps row,
+Help menu, bundled brand fonts and one type scale) and the 1.3.0 QA fixes.
+The AppStore configuration carries the same 1.3.0 / 50 identity; the App Store
 build is prepared separately from the same tag.
 
 The current published build is identified by `site/updates/macos-arm64.json`

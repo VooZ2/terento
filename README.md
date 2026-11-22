@@ -164,9 +164,9 @@ devices, and automotive devices are outside the current public scope.
 
 ## Download and release status
 
-The latest public release is **1.2.2 (build 49)**: the Done page shows how to
-turn the new map on, the screens are clearer, and the check after writing a map
-is repeated once after a read error. Download the notarized macOS app below; no additional software is
+The latest public release is **1.3.0 (build 50)**: a new map source,
+OpenFietsMap, cycling maps for the Netherlands, Belgium and the rest of Europe,
+and a polished design with Terento's own fonts. Download the notarized macOS app below; no additional software is
 required.
 
 **[Download Terento](https://terento.app/download/?utm_source=github&utm_medium=referral&utm_campaign=repository&utm_content=readme_download)**
