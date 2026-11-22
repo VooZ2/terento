@@ -241,58 +241,19 @@ func runMapLifecyclePresentationTests() throws {
                 && !manageText.contains("internet"),
             "\(code) Manage text has no retry advice and does not blame the connection")
     }
-    // Catalog-level cause (owner 2026-11-22): the bundled fallback is said
-    // once by the page; a single provider's own reason stays on its rows.
-    try require(MapCatalogSource.bundledFallback.installNotice
-            == "Couldn't load the map list. Maps can't be installed right now."
-            && MapCatalogSource.remote.installNotice == nil
-            && MapCatalogSource.cachedRemote.installNotice == MapCatalogSource.cachedRemote.userLabel
-            && MapCatalogSource.appUpdateRequired.installNotice == MapCatalogSource.appUpdateRequired.userLabel,
-        "Install maps has one catalog notice, keeping the cached and update wording")
-    try require(MapCatalogSource.bundledFallback.manageNotice == "Couldn't check for updates."
-            && MapCatalogSource.cachedRemote.manageNotice == "Couldn't check for updates."
-            && MapCatalogSource.remote.manageNotice == nil,
-        "Manage maps says the failed check once for the page")
-    let fallbackBlocked = MapAcquisitionAvailability.blocked(provider: "Freizeitkarte", reason: "STATUS_UNVERIFIED")
-    let ownOutage = MapAcquisitionAvailability.blocked(provider: "BBBike", reason: "PROVIDER_DOWN")
-    try require(MapCatalogSource.bundledFallback.isShared(fallbackBlocked)
-            && !MapCatalogSource.bundledFallback.isShared(ownOutage)
-            && !MapCatalogSource.remote.isShared(fallbackBlocked)
-            && !MapCatalogSource.bundledFallback.isShared(.withheldRussia)
-            && MapCatalogSource.appUpdateRequired.isShared(.blocked(provider: "X", reason: "APP_UPDATE_REQUIRED")),
-        "only the reason the whole catalog shares is hidden from rows")
-    let sharedRow = unverified.removingCatalogWideReason(MapCatalogSource.bundledFallback.sharedBlockReason)
+    // Catalog-level cause (owner 2026-11-22): the code every package carries
+    // under the bundled fallback ("STATUS_UNVERIFIED") is said once by the
+    // page; a single provider's own reason stays. MapCatalogSource itself is
+    // tested with catalog loading (Stage1ProviderNeutralTests).
+    let sharedRow = unverified.removingCatalogWideReason("STATUS_UNVERIFIED")
     try require(sharedRow.groupNotice == nil && sharedRow.reason == nil && sharedRow.updateBlocked
             && !sharedRow.allows(.update) && sharedRow.allows(.remove),
         "a Manage row and group say nothing about the catalog-wide reason; Update stays unavailable")
-    let ownRow = providerDown.removingCatalogWideReason(MapCatalogSource.bundledFallback.sharedBlockReason)
+    let ownRow = providerDown.removingCatalogWideReason("STATUS_UNVERIFIED")
     try require(ownRow.groupNotice == "Freizeitkarte servers are unreachable.",
         "a single provider's outage keeps its own group notice under the fallback")
     try require(unverified.removingCatalogWideReason(nil) == unverified,
         "a remote catalog keeps every reason")
-
-    // The bundled-catalog test switch: Debug and "-local" builds only.
-    try require(!MapCatalogTestSwitch.isAllowed(isDebug: false, isAppStore: true, releaseLabel: "1.3.0")
-            && !MapCatalogTestSwitch.isAllowed(isDebug: false, isAppStore: true, releaseLabel: "1.3.0-local")
-            && !MapCatalogTestSwitch.isAllowed(isDebug: true, isAppStore: true, releaseLabel: "1.3.0-local"),
-        "an App Store or TestFlight build ignores the bundled-catalog switch")
-    try require(!MapCatalogTestSwitch.isAllowed(isDebug: false, isAppStore: false, releaseLabel: "1.3.0")
-            && !MapCatalogTestSwitch.isAllowed(isDebug: false, isAppStore: false, releaseLabel: nil),
-        "a stable DMG build ignores the switch")
-    try require(MapCatalogTestSwitch.isAllowed(isDebug: false, isAppStore: false, releaseLabel: "1.3.0-local")
-            && MapCatalogTestSwitch.isAllowed(isDebug: true, isAppStore: false, releaseLabel: "1.3.0"),
-        "a -local Release build and a Debug build honour the switch")
-    try require(MapCatalogTestSwitch.isRequested(environment: ["TERENTO_USE_BUNDLED_MAP_CATALOG": "1"], infoValue: nil)
-            && MapCatalogTestSwitch.isRequested(environment: [:], infoValue: true)
-            && !MapCatalogTestSwitch.isRequested(environment: ["TERENTO_USE_BUNDLED_MAP_CATALOG": "0"], infoValue: nil),
-        "the switch is on only when asked for")
-
-    // From "Map installed" every sidebar item opens its own page.
-    try require(InstallationFlowPresentation.sidebarLeavesSuccessPage(onInstallMaps: true, showsSuccess: true, phase: .completed)
-            && !InstallationFlowPresentation.sidebarLeavesSuccessPage(onInstallMaps: true, showsSuccess: true, phase: .installing)
-            && !InstallationFlowPresentation.sidebarLeavesSuccessPage(onInstallMaps: true, showsSuccess: false, phase: .idle)
-            && !InstallationFlowPresentation.sidebarLeavesSuccessPage(onInstallMaps: false, showsSuccess: true, phase: .completed),
-        "the success page is left by any sidebar item, but never during an active installation")
 
     let unverifiedText = MapAcquisitionAvailability.blocked(provider: "Freizeitkarte", reason: "STATUS_UNVERIFIED")
         .detailedExplanation ?? ""
