@@ -174,7 +174,10 @@ enum {
     TERENTO_MTP_MAP_UNSUPPORTED_DEVICE = -23,
     TERENTO_MTP_MAP_IDENTITY_MISMATCH = -24,
     TERENTO_MTP_MUTATION_REFUSED = -25,
-    TERENTO_MTP_MAP_CONTENT_MISMATCH = -26
+    TERENTO_MTP_MAP_CONTENT_MISMATCH = -26,
+    /* Read-only snapshot, inventory or header read: a USB transfer timed out
+     * (the watch stopped answering). The session ended without CloseSession. */
+    TERENTO_MTP_READ_STALLED = -27
 };
 
 /* Read-only USB presence probe. Zero proves absence only after complete enumeration;

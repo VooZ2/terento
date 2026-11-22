@@ -7,7 +7,7 @@ struct Stage7NavigationTests {
         let destinations = TerentoSection.allCases.map(\.rawValue)
 
         expect(
-            destinations == ["Device", "Install maps", "Manage maps"],
+            destinations == ["Your Garmin", "Install maps", "Manage maps"],
             "sidebar exposes only the three direct product destinations; About belongs to the app menu"
         )
         expect(
@@ -53,6 +53,12 @@ struct Stage7NavigationTests {
                     == TerentoPageLayout.sectionHeaderMinHeight
                 && TerentoPageLayout.sectionHeaderItemSpacing == 8,
             "Install and Manage share section-header geometry"
+        )
+        expect(
+            TerentoPageLayout.sectionHeaderTitleInset
+                == TerentoPageLayout.sectionHeaderChevronWidth + TerentoPageLayout.sectionHeaderItemSpacing
+                && TerentoPageLayout.sectionHeaderTitleInset == 22,
+            "content aligned with a section title starts at the title's leading x"
         )
         expect(
             TerentoPageLayout.footerMinHeight == 50

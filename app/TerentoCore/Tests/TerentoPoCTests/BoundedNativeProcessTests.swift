@@ -108,6 +108,13 @@ struct BoundedNativeProcessTests {
             precondition(FinishingTrace.safeLine(line) == line)
         }
         precondition(FinishingTrace.safeLine("FINISH_TRACE swift event=global_inventory_observation boundary=/GARMIN/x before=1") == nil)
+        // Read-back chunk timing (count, bytes, total, slowest) is kept as numbers only.
+        for line in ["FINISH_TRACE native t=2.5 pid=12 event=region_timing region=3 chunks=64 bytes=4194240 total_ms=2480 slowest_ms=61 slowest_offset=21823235 local_ms=12 mbps=1.69",
+                     "FINISH_TRACE native t=2.6 pid=12 event=read_timing chunks=433 bytes=28347867 total_ms=211790 slowest_ms=702 slowest_offset=34192318 local_ms=95 mbps=0.13"] {
+            precondition(FinishingTrace.safeLine(line) == line)
+        }
+        precondition(FinishingTrace.safeLine("FINISH_TRACE native event=read_timing chunks=1 slowest_offset=/GARMIN/x") == nil)
+        precondition(FinishingTrace.safeLine("FINISH_TRACE native event=region_timing region=PRIVATE chunks=1") == nil)
         let sourceFailure = "FINISH_TRACE swift event=source_validation validation=sourceFormatMismatch"
         precondition(FinishingTrace.safeLine(sourceFailure) == sourceFailure)
         for unsafe in [native + " path=/Users/private/map.img", native + " serial=1234",

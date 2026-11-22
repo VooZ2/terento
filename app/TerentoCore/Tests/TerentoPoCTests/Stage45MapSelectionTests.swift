@@ -993,6 +993,13 @@ struct Stage45MapSelectionTests {
     }
 
     private static func testInstallationFlowPresentation() {
+        // From "Map installed" every sidebar item opens its own page, never
+        // during an active installation (owner 2026-11-22).
+        expect(InstallationFlowPresentation.sidebarLeavesSuccessPage(onInstallMaps: true, showsSuccess: true, phase: .completed)
+                && !InstallationFlowPresentation.sidebarLeavesSuccessPage(onInstallMaps: true, showsSuccess: true, phase: .installing)
+                && !InstallationFlowPresentation.sidebarLeavesSuccessPage(onInstallMaps: true, showsSuccess: false, phase: .idle)
+                && !InstallationFlowPresentation.sidebarLeavesSuccessPage(onInstallMaps: false, showsSuccess: true, phase: .completed),
+            "the success page is left by any sidebar item, but never during an active installation")
         expect(
             !InstallationFlowPresentation.hasStarted(.idle)
                 && InstallationFlowPresentation.isActive(.downloading)

@@ -48,6 +48,7 @@
     "app/TerentoCore/Tests/run-app-first-map-guidance-tests.sh",
     "app/TerentoCore/Tests/run-app-support-report-tests.sh",
     "Tests/run-app-store-config-contract-tests.sh",
+    "app/TerentoCore/Tests/run-app-typography-tests.sh",
     "app/TerentoCore/Tests/run-app-dialog-standard-contract-tests.sh"
   ],
   "native": [
@@ -85,6 +86,8 @@
     "app/TerentoCore/Tests/run-native-bbbike-tests.sh",
     "app/TerentoCore/Tests/run-native-bbbike-archive-safety-tests.sh",
     "app/TerentoCore/Tests/run-native-osmapa-tests.sh",
+    "app/TerentoCore/Tests/run-native-luckymaps-tests.sh",
+    "app/TerentoCore/Tests/run-native-openfietsmap-tests.sh",
     "app/TerentoCore/Tests/run-native-device-binding-profile-tests.sh",
     "app/TerentoCore/Tests/run-native-protected-map-inventory-tests.sh",
     "app/TerentoCore/Tests/run-native-mutation-ledger-tests.sh",

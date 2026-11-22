@@ -115,6 +115,23 @@ Legacy Homebrew harnesses keep the upstream call. This reduces transaction
 count but is not a proven fix for the observed post-upload `02ff` failure; a
 real Update hardware run remains the gate.
 
+## Read transfer timeout
+
+libmtp gives every Garmin `DEVICE_FLAG_LONG_TIMEOUT`: each bulk transfer may
+wait 60 seconds. `patch-read-transfer-timeout.py` runs last and exports
+`LIBMTP_Terento_Set_Transfer_Timeout`, which only shortens the timeout of one
+open session, and `LIBMTP_Terento_Take_Transfer_Timed_Out`, which reports (and
+clears) whether a bulk data or response transfer of this process timed out. The
+bridge uses them only in read-only sessions (detection snapshot, inventory, map
+headers), after OpenSession, with 20 seconds: libmtp's own timeout for devices
+without the long-timeout flag. A timed-out read then releases the USB
+interface without CloseSession (`LIBMTP_Terento_Abort_Device`). Opening a
+session, writes, deletes and the sampled read-back keep libmtp's timeout. USB
+requests, retries and resets are unchanged. The cache revision suffix is
+`read-timeout-v1`. Synthetic patch checks (`ReadTransferTimeoutPatchTests.py`)
+and the offline prefix-session fixture cover the patch and the bridge; a
+real-watch read remains the gate.
+
 ## SDK availability and startup gate
 
 The macOS build forces `ac_cv_func_pipe2=no`, selecting upstream libusb's

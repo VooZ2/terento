@@ -25,17 +25,26 @@ struct MapInventoryResult: Sendable, Equatable {
     }
 }
 
+/// Acquisition state and download progress reach the engine as separate main
+/// actor jobs, so they can arrive after Cancel or another stop has already
+/// reset the engine. Each relay belongs to one acquisition run and drops what
+/// arrives once that run was stopped: the cancelled download's own `.failed`
+/// must not turn a cancelled install into "Installation stopped".
 private final class MapEngineAcquisitionRelay: @unchecked Sendable {
     weak var engine: MapEngine?
+    let generation: Int
 
-    init(engine: MapEngine) {
+    init(engine: MapEngine, generation: Int) {
         self.engine = engine
+        self.generation = generation
     }
 
     func send(_ state: MapAcquisitionState) {
         let engine = self.engine
+        let generation = self.generation
         Task { @MainActor in
-            engine?.receiveAcquisitionState(state)
+            guard let engine, engine.acquisitionRunGeneration == generation else { return }
+            engine.receiveAcquisitionState(state)
         }
     }
 }
@@ -85,8 +94,11 @@ private final class MapEnginePhaseProgressRelay: @unchecked Sendable {
 private final class MapEngineDownloadProgressRelay: @unchecked Sendable {
     private let relay: MainActorProgressRelay<MapDownloadProgress>
 
-    init(engine: MapEngine) {
-        relay = MainActorProgressRelay { [weak engine] in engine?.receiveDownloadProgress($0) }
+    init(engine: MapEngine, generation: Int) {
+        relay = MainActorProgressRelay { [weak engine] in
+            guard let engine, engine.acquisitionRunGeneration == generation else { return }
+            engine.receiveDownloadProgress($0)
+        }
     }
 
     func send(_ progress: MapDownloadProgress) {
@@ -417,6 +429,15 @@ final class MapEngine: ObservableObject {
 
     var hasActiveTaskForTesting: Bool { activeTask != nil }
 
+    /// Sends acquisition state and download progress the way the running
+    /// download relays them, for the acquisition run active now.
+    func acquisitionRelaysForTesting() -> (state: (MapAcquisitionState) -> Void,
+                                           progress: (MapDownloadProgress) -> Void) {
+        let stateRelay = MapEngineAcquisitionRelay(engine: self, generation: acquisitionRunGeneration)
+        let progressRelay = MapEngineDownloadProgressRelay(engine: self, generation: acquisitionRunGeneration)
+        return ({ stateRelay.send($0) }, { progressRelay.send($0) })
+    }
+
     /// Stops the current work the way an unrelated action would, without
     /// changing the page state itself.
     func cancelActiveTaskForTesting() {
@@ -462,6 +483,7 @@ final class MapEngine: ObservableObject {
         discardCustomMapImport(removeWorkspace: false)
         state = .idle
         result = nil
+        deviceMapsMayHaveChanged = false
         selectedPreflight = nil
         validatedArtifacts = [:]
         validatedArtifactSets = [:]
@@ -603,12 +625,24 @@ final class MapEngine: ObservableObject {
                     defer { operationGate.endLifecycle(lease) }
 
                     // Bounded worker reads: a stalled watch ends this scan with
-                    // a recovery message instead of holding the gate forever.
+                    // a recovery message instead of holding the gate forever,
+                    // after one repeat in a new session. Each step is logged.
+                    let scanStarted = ProcessInfo.processInfo.systemUptime
+                    MapReadLog.record("step=scan_begin" + (expectedObjectCount.map { " baseline=\($0)" } ?? ""))
                     let lifecycleReader = BoundedMapScanReader(
                         operationGate: operationGate,
                         lifecycleLease: lease,
-                        expectedObjectCount: expectedObjectCount
+                        expectedObjectCount: expectedObjectCount,
+                        worker: MapReadLog.helper(.scan),
+                        onRepeat: { MapReadLog.record("step=scan_repeat") }
                     )
+                    var scanSucceeded = false
+                    defer {
+                        let outcome = scanSucceeded ? "ok"
+                            : lifecycleReader.stoppedRespondingError.map(MapReadLog.outcome) ?? "failed"
+                        MapReadLog.record("step=scan_end outcome=\(outcome) elapsed=\(MapReadLog.elapsed(since: scanStarted))"
+                            + (lifecycleReader.observedObjectCount.map { " objects=\($0)" } ?? ""))
+                    }
 
                     // Automatic ownership requires one physical namespace across
                     // both observations. Missing live identity or a changed watch
@@ -632,6 +666,7 @@ final class MapEngine: ObservableObject {
                     // Header reads are best-effort inside the scanner; a stalled
                     // watch must not turn into a silently incomplete map list.
                     if let stalled = lifecycleReader.stoppedRespondingError { throw stalled }
+                    scanSucceeded = true
                     return MapInventoryScanOutput(
                         inventory: inventory,
                         ownershipManifestDeviceKeys: manifestKeys,
@@ -653,6 +688,7 @@ final class MapEngine: ObservableObject {
                 self?.ownershipManifestDeviceKeys = scanOutput.ownershipManifestDeviceKeys
                 self?.preferredOwnershipManifestDeviceKey = scanOutput.preferredOwnershipManifestDeviceKey
                 self?.result = scanOutput.inventory
+                self?.deviceMapsMayHaveChanged = false
                 TerentoDiagnosticLog.recordMapInventoryScan(
                     scanOutput.inventory,
                     trigger: preservingInstallationResult
@@ -870,6 +906,7 @@ final class MapEngine: ObservableObject {
     private func cancelActiveTaskAndCleanupWorkspaces(
         downloadTerminal: MapStatisticsEventType = .downloadInterrupted
     ) {
+        acquisitionRunGeneration &+= 1
         finishAcquisition(downloadTerminal)
         let task = activeTask
         task?.cancel()
@@ -1317,6 +1354,25 @@ final class MapEngine: ObservableObject {
             comparisons: comparisons + original.comparisons.filter { $0.catalogMap.sourceKind == .custom })
     }
 
+    /// True from the moment an install, update or removal may write to the
+    /// watch until the next completed map read.
+    private var deviceMapsMayHaveChanged = false
+
+    /// The last map read still describes the watch, so opening Install maps
+    /// shows it instead of reading the watch again: it finished for this
+    /// connection (a disconnect or a new read clears it) and nothing was
+    /// written since. Refresh always reads again.
+    func hasFreshInventory(for identity: DeviceIdentity?) -> Bool {
+        guard state == .scanned, result != nil, !isBusy, !operationGate.isBusy,
+              !deviceMapsMayHaveChanged, let identity else { return false }
+        return currentIdentity == identity
+    }
+
+    /// Called before a Manage maps update or removal starts.
+    func noteDeviceMapsMayChange() {
+        deviceMapsMayHaveChanged = true
+    }
+
     /// Refreshes the device inventory after a completed lifecycle operation.
     func refreshCurrentDeviceMaps() {
         guard let identity = currentIdentity,
@@ -1345,6 +1401,10 @@ final class MapEngine: ObservableObject {
     /// or the no-write preflight runs. The install step itself is never
     /// cancellable here: once `installSelectedMaps` owns the device, it runs
     /// to its own verified or failed end.
+    /// Advanced each time the active work is stopped; relays of a stopped
+    /// acquisition run no longer change the engine (MapEngineAcquisitionRelay).
+    private(set) var acquisitionRunGeneration = 0
+
     var canCancelInstallationPreparation: Bool {
         state == .acquiringArtifact || state == .preparingInstallation
     }
@@ -1884,9 +1944,11 @@ final class MapEngine: ObservableObject {
         let customAcquirer = CustomMapSourceAcquirer()
         let customCandidate = customMapImportCandidate
         let authorizationClient = installationAuthorizationClient
-        let stateRelay = MapEngineAcquisitionRelay(engine: self)
-        let progressRelay = MapEngineDownloadProgressRelay(engine: self)
         activeTask?.cancel()
+        // A new run: whatever an earlier run still relays is dropped.
+        acquisitionRunGeneration &+= 1
+        let stateRelay = MapEngineAcquisitionRelay(engine: self, generation: acquisitionRunGeneration)
+        let progressRelay = MapEngineDownloadProgressRelay(engine: self, generation: acquisitionRunGeneration)
         let diagnostics = operationDiagnostics
         let inFlightOwner = UUID()
         validatedArtifactSetsInFlight = [:]
@@ -2292,6 +2354,7 @@ final class MapEngine: ObservableObject {
             return
         }
 
+        deviceMapsMayHaveChanged = true
         state = .installing
         installationBatchResults = []
         installationPhase = .preparing

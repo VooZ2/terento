@@ -52,7 +52,7 @@ with no `operationId` or `operation`: title `Connecting the device`, stage
 These are existing fields, so the API needs no change. Without any connection
 facts it is the minimal report.
 
-The Mac App Store build (from 1.2.3) offers "Send report to Terento" only in
+The Mac App Store build (from 1.3.0) offers "Send report to Terento" only in
 the installation failure dialog, and only while compatibility results are not
 shared (declined, or no choice yet): it sends that one failure's report, and
 the send changes no sharing choice. Its Diagnostics window and Help menu keep

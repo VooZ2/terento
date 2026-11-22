@@ -33,14 +33,14 @@ struct AboutTerentoView: View {
 
                     VStack(alignment: .leading, spacing: 5) {
                         Text("Terento")
-                            .font(.terentoHeading(size: 30, weight: .semibold))
+                            .font(.terento(.deviceName))
                             .foregroundStyle(TerentoColors.graphite)
                         Text("Install maps on Garmin devices, simply.")
-                            .font(.terentoUI(size: 13, weight: .medium))
+                            .font(.terento(.meta))
                             .foregroundStyle(TerentoColors.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
                         Text(TerentoAppMetadata.displayVersion)
-                            .font(.terentoUI(size: 13, weight: .regular))
+                            .font(.terento(.meta, weight: .regular))
                             .foregroundStyle(TerentoColors.secondaryText)
                     }
                 }
@@ -82,17 +82,17 @@ struct AboutTerentoView: View {
                                     Text(provider.name)
                                 }
                                 if let attribution = provider.attribution {
-                                    Text(attribution).font(.terentoUI(size: 12, weight: .regular))
+                                    Text(attribution).font(.terento(.caption, weight: .regular))
                                 }
                                 if let information = provider.licenseInformation {
-                                    Text(information).font(.terentoUI(size: 12, weight: .regular))
+                                    Text(information).font(.terento(.caption, weight: .regular))
                                 }
                             }
                         }
                     }
                     .padding(.top, 8)
                 }
-                .font(.terentoUI(size: 13, weight: .medium))
+                .font(.terento(.meta))
                 .foregroundStyle(TerentoColors.secondaryText)
 
                 section(title: "Privacy") {
@@ -100,12 +100,12 @@ struct AboutTerentoView: View {
                     // App Store builds share diagnostics only after an opt-in and
                     // compile out the update check.
                     Text("Terento sends privacy-minimized diagnostics only if you choose to share them, to help improve the app and its services. Device state, maps, manifests, Unit IDs, serial numbers, and local paths stay on this Mac.")
-                        .font(.terentoUI(size: 13, weight: .regular))
+                        .font(.terento(.meta, weight: .regular))
                     #else
                     Text("Terento sends privacy-minimized diagnostics by default to help improve the app and its services. Device state, maps, manifests, Unit IDs, serial numbers, and local paths stay on this Mac.")
-                        .font(.terentoUI(size: 13, weight: .regular))
+                        .font(.terento(.meta, weight: .regular))
                     Text("Terento may contact terento.app when the app starts to check whether a newer version is available. This request is not used for analytics or user tracking.")
-                        .font(.terentoUI(size: 13, weight: .regular))
+                        .font(.terento(.meta, weight: .regular))
                     #endif
                     HStack(spacing: 18) {
                         supportLink("Privacy ↗", destination: TerentoAppLinks.privacyFromApp)
@@ -127,11 +127,11 @@ struct AboutTerentoView: View {
 
     @ViewBuilder
     private var supportLinks: some View {
-        supportLink("GitHub repository ↗", destination: TerentoAppLinks.repository)
-        supportLink("Report an issue ↗", destination: TerentoAppLinks.issues)
-        supportLink("Website ↗", destination: TerentoAppLinks.websiteFromApp)
+        supportLink("Star on GitHub ↗", destination: TerentoAppLinks.repository)
+        supportLink("Report an Issue ↗", destination: TerentoAppLinks.issues)
+        supportLink("Terento Website ↗", destination: TerentoAppLinks.websiteFromApp)
         #if TERENTO_APP_STORE
-        supportLink("Rate Terento on the App Store ↗", destination: TerentoAppLinks.appStoreReview)
+        supportLink("Rate on App Store ↗", destination: TerentoAppLinks.appStoreReview)
         #else
         supportLink("Donate ↗", destination: TerentoAppLinks.donate)
         #endif
@@ -143,7 +143,7 @@ struct AboutTerentoView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
-                .font(.terentoUI(size: 18, weight: .semibold))
+                .font(.terento(.rowTitle))
                 .foregroundStyle(TerentoColors.graphite)
             content()
         }
@@ -173,7 +173,7 @@ struct AboutTerentoView: View {
 
     private func status(_ message: String, icon: String) -> some View {
         Label(message, systemImage: icon)
-            .font(.terentoUI(size: 13, weight: .regular))
+            .font(.terento(.meta, weight: .regular))
             .foregroundStyle(TerentoColors.secondaryText)
             .fixedSize(horizontal: false, vertical: true)
     }
@@ -188,7 +188,7 @@ struct AboutTerentoView: View {
 
     private func supportLink(_ title: String, destination: URL) -> some View {
         Link(title, destination: destination)
-            .font(.terentoUI(size: 13, weight: .medium))
+            .font(.terento(.meta))
             .foregroundStyle(TerentoColors.interactive)
     }
 }
@@ -201,7 +201,7 @@ private struct AboutSecondaryButton: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.terentoUI(size: 15, weight: .semibold))
+                .font(.terento(.meta, weight: .semibold))
                 .foregroundStyle(isEnabled ? TerentoColors.graphite : TerentoColors.secondaryText)
                 .padding(.horizontal, 16)
                 .frame(height: 44)
@@ -230,7 +230,7 @@ private struct AboutPrimaryButton: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.terentoUI(size: 15, weight: .semibold))
+                .font(.terento(.meta, weight: .semibold))
                 .foregroundStyle(isEnabled ? .white : TerentoColors.secondaryText)
                 .padding(.horizontal, 16)
                 .frame(height: 44)

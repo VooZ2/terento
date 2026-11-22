@@ -85,7 +85,7 @@ enum AppStoreConsentNotice {
     /// The 1.2.x question: Share or Not now, and Not now was recorded as a
     /// refusal.
     static let firstQuestionVersion = 100
-    /// From 1.2.3: Share, Not now or Don't share. Not now records nothing and
+    /// From 1.3.0: Share, Not now or Don't share. Not now records nothing and
     /// Don't share is final.
     static let currentVersion = 101
 

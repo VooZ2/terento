@@ -76,7 +76,27 @@ if ! grep -Fq 'mapEngine.beginInstallation(plan: plan, operationId: operationID)
     exit 1
 fi
 
-if ! grep -Fq 'let shouldRefreshMapInventory = section == .manageMaps' "$connect_screen" \
+# From "Map installed" every sidebar item opens its own page (owner 2026-11-22).
+python3 - "$connect_screen" "$project_root/Sources/TerentoPoC/MapCatalog/MapSelectionPresentation.swift" <<'PYSUCCESS'
+import sys
+screen, presentation = (open(p).read() for p in sys.argv[1:3])
+nav = screen[screen.index("private func navigate(to section: TerentoSection) {"):screen.index("private func updatePresenceMonitoring")]
+assert "InstallationFlowPresentation.sidebarLeavesSuccessPage(" in nav, "navigation does not know the success page"
+assert "guard selectedSection != section || leavesSuccessPage else" in nav, "Install maps on the success page does nothing"
+assert nav.index("if leavesSuccessPage {") < nav.index("selectedSection = section"), "the success page is not left before the new page opens"
+assert "localInstallStep = .choose" in nav[nav.index("if leavesSuccessPage {"):], "Install maps does not open a new selection"
+assert "let shouldRefreshMapInventory = leavesSuccessPage" in nav, "leaving the success page does not read the watch again"
+back = screen[screen.index("private func returnToDeviceAfterSuccess() {"):]
+back = back[:back.index("\n    }\n")]
+assert "navigate(to: .device)" in back, "Back to device and the sidebar take different paths"
+rule = presentation[presentation.index("static func sidebarLeavesSuccessPage("):presentation.index("static func isActive(")]
+assert "onInstallMaps && showsSuccess && !isActive(phase)" in rule
+print("PASS: every sidebar item leaves the Map installed page")
+PYSUCCESS
+
+# Opening Install maps or Manage maps reuses a fresh read of the same watch.
+if ! grep -Fq '|| ((section == .manageMaps' "$connect_screen" \
+    || ! grep -Fq '&& !mapEngine.hasFreshInventory(for: identity)' "$connect_screen" \
     || ! grep -Fq 'refreshMapInventory()' "$connect_screen"; then
     print -u2 "FAIL: map navigation does not refresh the device-backed inventory"
     exit 1
@@ -93,7 +113,7 @@ if ! grep -Fq 'ManageActionButton' "$connect_screen" \
     || grep -Fq 'ManageAdvancedActionTrigger' "$connect_screen" \
     || grep -Fq 'Image(systemName: "ellipsis")' "$connect_screen" \
     || ! grep -Fq 'ManageActionGroup' "$connect_screen" \
-    || ! grep -Fq '.buttonStyle(.borderless)' "$connect_screen" \
+    || ! grep -Fq '.buttonStyle(TerentoKeyIndependentButtonStyle())' "$connect_screen" \
     || ! grep -Fq '@FocusState' "$connect_screen" \
     || ! grep -Fq '.onHover' "$connect_screen" \
     || ! grep -Fq 'action == .update ? 72 : 68' "$connect_screen" \
@@ -103,6 +123,24 @@ if ! grep -Fq 'ManageActionButton' "$connect_screen" \
     print -u2 "FAIL: Manage map actions or real-progress presentation is incomplete"
     exit 1
 fi
+
+# QA 1.3.0-local: Remove and Refresh keep AA contrast in an inactive window.
+python3 - "$connect_screen" <<'PYKEY'
+import re, sys
+text = open(sys.argv[1], encoding="utf-8").read()
+style = text[text.index("private struct TerentoKeyIndependentButtonStyle: ButtonStyle"):]
+style = style[:style.index("\n}\n")]
+assert "configuration.label" in style and ".opacity(configuration.isPressed" in style, "key-independent style draws the label as coloured"
+action = text[text.index("private struct ManageActionButton: View"):]
+action = action[:action.index("\n}\n")]
+assert ".buttonStyle(TerentoKeyIndependentButtonStyle())" in action, "Remove/Update use the key-independent style"
+refreshes = [m.start() for m in re.finditer(r'Label\("Refresh", systemImage: "arrow.clockwise"\)', text)]
+assert len(refreshes) == 2, "two Refresh buttons"
+for start in refreshes:
+    block = text[start:start + 500]
+    assert ".buttonStyle(TerentoKeyIndependentButtonStyle())" in block and ".buttonStyle(.plain)" not in block, "Refresh keeps its colour when the window is not key"
+print("PASS: Remove and Refresh are drawn without inactive-window fading")
+PYKEY
 
 if ! grep -Fq 'TerentoPageShell' "$connect_screen" \
     || ! grep -Fq 'TerentoPageFooter' "$connect_screen" \

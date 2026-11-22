@@ -17,6 +17,7 @@ struct InstallationRetryTests {
     @MainActor static func main() async throws {
         try testRetainedArtifactCache()
         await testCancelBeforeWrite()
+        testFreshInventoryIsReused()
         await testDownloadStopStatistics()
         await testMapReadSurvivesCustomMapClose()
         try testBoundedCheckBeforeRemoval()
@@ -95,6 +96,58 @@ struct InstallationRetryTests {
         check(engine.state == .scanned && engine.installationPhase == .idle && engine.acquisitionState == .idle
               && !engine.hasActiveTaskForTesting && !engine.canCancelInstallationPreparation,
               "Cancel stops the download task and returns to the review state")
+
+        // QA 1.3.0-local: the cancelled download's own `.failed` (and late
+        // progress) reached the engine after Cancel and opened "Installation
+        // stopped". What a stopped run relays afterwards changes nothing.
+        engine.beginPreparationForTesting()
+        let stopped = engine.acquisitionRelaysForTesting()
+        engine.cancelInstallationPreparation()
+        stopped.progress(MapDownloadProgress(bytesDownloaded: 10, totalBytes: 100, bytesPerSecond: 1))
+        stopped.state(.downloading)
+        stopped.state(.failed)
+        for _ in 0..<20 { await Task.yield() }
+        try? await Task.sleep(for: .milliseconds(300))
+        check(engine.state == .scanned && engine.installationPhase == .idle && engine.acquisitionState == .idle
+              && engine.installationErrorMessage == nil && engine.acquisitionErrorMessage == nil
+              && engine.evidenceFailure == nil && engine.installationResult == nil
+              && engine.acquisitionProgress == nil && !engine.canRetryFailedInstallation,
+              "Cancel during a download ends with the selection to review: no failure state, no report")
+
+        engine.beginPreparationForTesting()
+        let running = engine.acquisitionRelaysForTesting()
+        running.state(.validatingDownload)
+        for _ in 0..<20 { await Task.yield() }
+        check(engine.installationPhase == .preparing, "a running download still reports its progress")
+        engine.cancelInstallationPreparation()
+    }
+
+    /// QA 1.3.0-local: Install maps read the watch again every time it
+    /// opened. The last read is reused while it is fresh: same connection,
+    /// nothing written since. A write, a disconnect or a new read ends it.
+    @MainActor static func testFreshInventoryIsReused() {
+        let identity = DeviceIdentity(manufacturer: "Garmin", model: "fenix 8 - 47mm", family: "fenix", variant: "47mm",
+            usbVendorId: 0x091e, usbProductId: 0x51b8, firmware: "2244", storageCapacity: 32_000_000_000,
+            freeSpace: 20_000_000_000, localHardwareIdentifier: "PRIVATE-UNIT-SERIAL",
+            garminModelDescription: "fenix 8 - 47mm", garminModelPartNumber: "006-B4536-00")
+        let other = DeviceIdentity(manufacturer: "Garmin", model: "fenix 8 - 47mm", family: "fenix", variant: "47mm",
+            usbVendorId: 0x091e, usbProductId: 0x51b8, firmware: "2244", storageCapacity: 32_000_000_000,
+            freeSpace: 20_000_000_000, localHardwareIdentifier: "OTHER-UNIT-SERIAL",
+            garminModelDescription: "fenix 8 - 47mm", garminModelPartNumber: "006-B4536-00")
+        let engine = MapEngine(operationGate: MTPOperationGate(),
+            installationAuthorizationClient: InstallationAuthorizationClient(dataLoader: { _ in throw URLError(.cancelled) }))
+        check(!engine.hasFreshInventory(for: identity), "nothing to reuse before the first read")
+        engine.setDiagnosticTestIdentity(identity, files: [])
+        check(engine.hasFreshInventory(for: identity), "a finished read of this watch is reused")
+        check(!engine.hasFreshInventory(for: other) && !engine.hasFreshInventory(for: nil),
+              "another watch reads again")
+        engine.noteDeviceMapsMayChange()
+        check(!engine.hasFreshInventory(for: identity), "after an update or removal starts, the watch is read again")
+        engine.resetForDisconnectedDevice()
+        engine.setDiagnosticTestIdentity(identity, files: [])
+        check(engine.hasFreshInventory(for: identity), "a new connection's read is fresh again")
+        engine.resetForDisconnectedDevice()
+        check(!engine.hasFreshInventory(for: identity), "a disconnect ends the reuse")
     }
 
     private final class RecordingStatisticsUploader: MapStatisticsEventUploading, @unchecked Sendable {
@@ -368,7 +421,7 @@ struct InstallationRetryTests {
         engine.purgeRetainedArtifacts()
     }
 
-    /// 1.2.3: a device that disappears after a long download but before any
+    /// 1.3.0: a device that disappears after a long download but before any
     /// write (waiting for confirmation, or the pre-write check) no longer
     /// costs the download.
     @MainActor static func testDisconnectBeforeWriteKeepsDownloads() async throws {

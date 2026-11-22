@@ -148,7 +148,9 @@ extension FinishingTrace {
     static func freezeFailure() {
         lock.lock(); defer { lock.unlock() }
         let significant = entries.filter {
+            // Per-region timing stays in finishing.log; the report keeps the total.
             !$0.contains("event=read_checkpoint") && !$0.contains("event=region_begin")
+                && !$0.contains("event=region_timing")
         }
         let first = significant.firstIndex { line in
             line.contains("event=read_failed") || line.contains("event=compare_failed") ||
@@ -171,7 +173,7 @@ extension FinishingTrace {
         var seen = Set<String>()
         var reportLines = selected.filter { seen.insert($0).inserted }.map { line in
             line.split(separator: " ").filter { token in
-                !["pid=", "child=", "trace=", "t="].contains { token.hasPrefix($0) }
+                !["pid=", "child=", "trace=", "t=", "wall="].contains { token.hasPrefix($0) }
             }.joined(separator: " ")
         }
         // Drop middle context before either the first failure or final cleanup;
@@ -208,16 +210,38 @@ extension FinishingTrace {
         "session_close_begin", "session_close_end", "native_cleanup_begin", "native_cleanup_end",
         "read_chunk_limit", "abort_close_begin", "abort_close_returned", "target_begin", "target_end", "read_failed", "read_error_code", "read_ptp_response", "retry_close_begin",
         "retry_close_returned", "compare_failed", "verify_result", "final_close_begin",
-        "final_close_returned", "read_checkpoint", "target_matches", "target_size", "final_inventory", "installation_failure", "cleanup_result",
+        "final_close_returned", "read_checkpoint", "region_timing", "read_timing", "target_matches", "target_size", "final_inventory", "installation_failure", "cleanup_result",
         "prewrite_inventory_duplicates", "postwrite_inventory_duplicates",
         "prewrite_inventory_metrics", "postwrite_inventory_metrics", "update_inventory_metrics", "inventory_scope",
-        "removal_check", "update_current_check", "update_new_check", "global_inventory_observation"
+        "removal_check", "update_current_check", "update_new_check", "global_inventory_observation",
+        "removal_step", "map_read_step", "device_xml_begin", "device_xml_end", "read_stalled"
     ]
+    /// Remove steps (`removal_step`), logged with their wall-clock time.
+    static let removalSteps: Set<String> = [
+        "remove_begin", "remove_result", "check_begin", "check_end", "check_helper_begin", "check_helper_end",
+        "delete_begin", "delete_end", "confirm_begin", "confirm_attempt_begin", "confirm_attempt_end",
+        "confirm_helper_begin", "confirm_helper_end", "confirm_end"
+    ]
+    static let removalOutcomes: Set<String> = ["ok", "failed", "absent", "still_present", "read_failed", "timed_out"]
+    /// Connect and Manage maps read steps (`map_read_step`), with wall-clock time.
+    static let mapReadSteps: Set<String> = {
+        var steps: Set<String> = ["scan_begin", "scan_end", "scan_repeat", "connect_repeat"]
+        for purpose in ["connect", "scan"] {
+            for part in ["snapshot", "inventory", "headers"] {
+                steps.insert("\(purpose)_\(part)_begin")
+                steps.insert("\(purpose)_\(part)_end")
+            }
+        }
+        return steps
+    }()
+    /// A read whose watch stopped answering (a USB transfer timed out).
+    static let mapReadOutcomes: Set<String> = ["ok", "failed", "timed_out", "stalled"]
     private static let numericKeys: Set<String> = [
         "t", "pid", "child", "timeout", "attempt", "delay", "status", "reason", "offset", "rc",
         "detail", "last_verified_end", "verified_bytes", "elapsed", "matches", "expected_size", "actual_size", "folder", "zero_id", "filename_match", "succeeded",
         "duplicates", "objects", "baseline", "duration_ms", "bytes", "regions", "declined",
-        "before", "after", "removedOrChanged", "addedOrChanged"
+        "before", "after", "removedOrChanged", "addedOrChanged", "wall", "limit", "components", "files",
+        "region", "chunks", "total_ms", "slowest_ms", "slowest_offset", "local_ms", "mbps"
     ]
     static func safeLine(_ line: String) -> String? {
         guard line.utf8.count < 1024 else { return nil }
@@ -250,6 +274,16 @@ extension FinishingTrace {
                 guard ["none", "no_root", "ambiguous_root", "scoped_failed"].contains(value) else { return nil }
             }
             else if key == "trace" { guard UUID(uuidString: value) != nil else { return nil } }
+            else if key == "step" {
+                guard removalSteps.contains(value) || mapReadSteps.contains(value) else { return nil }
+            }
+            else if key == "outcome" {
+                guard removalOutcomes.contains(value) || mapReadOutcomes.contains(value) else { return nil }
+            }
+            else if key == "result" {
+                guard value.hasPrefix("DELETE_"), value.count <= 64,
+                      value.utf8.allSatisfy({ (65...90).contains($0) || $0 == 95 }) else { return nil }
+            }
             else if key == "error" {
                 guard ["other", "deviceDisconnected", "operationFailed", "remoteFileMissing",
                        "objectIdentityMismatch", "targetAlreadyExists", "unsupportedDevice", "liveIdentityMismatch"].contains(value) else { return nil }

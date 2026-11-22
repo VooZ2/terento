@@ -194,6 +194,14 @@ extension InstallationFailureContext {
         nativeCodeNamespace == .terentoSnapshot && nativeResultCode == -5
     }
 
+    /// `TERENTO_MTP_READ_STALLED` (-27) from a read-only snapshot, inventory
+    /// or header read: one USB transfer timed out, so the watch stopped
+    /// answering. The helper ended the session without CloseSession.
+    var isReadStalled: Bool {
+        nativeResultCode == -27 && [.terentoSnapshot, .terentoInventory, .terentoFilePrefix]
+            .contains(nativeCodeNamespace)
+    }
+
     /// `terento_mtp_read_snapshot_diagnostic` -2 or -3: no Garmin with file
     /// transfer is visible on USB any more (unplugged, USB dropped, or the
     /// watch left file transfer), for example after a long download.

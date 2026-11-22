@@ -56,6 +56,7 @@ struct AppUpdateTests {
         try await testDeferredUpdateCanOfferNewerBuild()
         try await testPromptWaitsForSafeIdle()
         try testTrustedURLsAreRestricted()
+        testFeedbackMailCarriesOnlyVersionAndBuild()
         testDonationLineFromThirdInstallOncePerVersion()
         testDonationLineCountsUpdatesWithoutShowingAfterThem()
         testAppStoreFirstSuccessAsksAboutSharing()
@@ -67,7 +68,7 @@ struct AppUpdateTests {
         testAppStoreCountCarriesOverFromInstallCount()
         testAppStoreOldRefusalAsksAgainNewRefusalIsFinal()
         testAppStoreConsentMigrationKeepsOptInAndDirectDownloadRefusal()
-        print("PASS: 31 app update tests")
+        print("PASS: 32 app update tests")
     }
 
     private static func testSameVersionIsUpToDate() throws {
@@ -579,6 +580,8 @@ struct AppUpdateTests {
         let (defaults, suite) = testDefaults("appstore-first")
         defer { defaults.removePersistentDomain(forName: suite) }
         expect(AppStoreReviewPolicy.firstRequestAfterInstalls == 2, "the rating request starts at the second success")
+        expect(AppStoreReviewPolicy.requestDelay == .seconds(1),
+               "the rating request waits until the success page is on screen")
         expect(appStoreSuccess(defaults, undecided: true) == .sharingQuestion,
                "the first success asks about sharing")
         print("PASS: App Store first success asks about sharing")
@@ -657,11 +660,11 @@ struct AppUpdateTests {
         print("PASS: App Store count carries over from 1.2.x")
     }
 
-    /// A 1.2.x refusal (notice 100) may have been the old Not now, so 1.2.3
+    /// A 1.2.x refusal (notice 100) may have been the old Not now, so 1.3.0
     /// asks once more; Don't share under the current notice is final.
     private static func testAppStoreOldRefusalAsksAgainNewRefusalIsFinal() {
         expect(AppStoreConsentNotice.currentVersion == 101 && AppStoreConsentNotice.firstQuestionVersion == 100,
-               "1.2.3 raises the App Store notice from 100 to 101")
+               "1.3.0 raises the App Store notice from 100 to 101")
         let old = AppStoreConsentNotice.migration(noticeVersion: 100, declined: true)
         expect(old == .undecided, "a 1.2.x refusal becomes undecided at start-up")
         let (oldDefaults, oldSuite) = testDefaults("appstore-old-declined")
@@ -696,6 +699,22 @@ struct AppUpdateTests {
         print("PASS: App Store consent migration keeps opt-ins and copied refusals")
     }
 
+    private static func testFeedbackMailCarriesOnlyVersionAndBuild() {
+        let url = TerentoAppLinks.feedbackMail(version: "1.2.3", build: "50")
+        expect(url.absoluteString == "mailto:hello@terento.app?subject=Terento%20feedback&body=Terento%201.2.3%20%2850%29",
+               "Send Feedback opens a mail draft to hello@terento.app with only the version and build")
+        let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        expect(components?.scheme == "mailto" && components?.path == "hello@terento.app"
+                && components?.queryItems == [URLQueryItem(name: "subject", value: "Terento feedback"),
+                                              URLQueryItem(name: "body", value: "Terento 1.2.3 (50)")],
+               "the feedback draft has exactly a subject and a version body")
+        let odd = TerentoAppLinks.feedbackMail(version: "1.2.3 beta&x=1", build: "50#local")
+        let oddItems = URLComponents(url: odd, resolvingAgainstBaseURL: false)?.queryItems
+        expect(oddItems?.count == 2 && oddItems?.last?.value == "Terento 1.2.3 beta&x=1 (50#local)",
+               "the version is encoded and cannot add fields to the draft")
+        print("PASS: feedback mail draft carries only the version and build")
+    }
+
     private static func expect(_ condition: Bool, _ message: String) {
         guard condition else { fail(message) }
     }
@@ -705,3 +724,4 @@ struct AppUpdateTests {
         exit(1)
     }
 }
+
