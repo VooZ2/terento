@@ -246,11 +246,16 @@ It:
 
 1. archives `AppStore` with automatic signing (`-allowProvisioningUpdates`
    creates the certificates and the Mac App Store profile). The archive
-   embeds the production migration manifest;
+   embeds the production migration manifest. The script stops before any
+   export when the archived app's `TerentoReleaseLabel` (read from its
+   Info.plist, never from the environment) is empty, `development` or
+   contains `-local`: every `-local` build honours the bundled-catalog
+   switch, `TERENTO_DEBUG_UNPAUSE_PROVIDERS` and `?preview=`;
 2. exports a Mac App Store `.pkg` (`method` `app-store-connect`, `destination`
    `export`);
 3. checks the exported package, because the export re-signs nested code:
    - bundle ID, embedded profile, production migration manifest;
+   - the same public release label as the archive;
    - valid app signature and a signed package;
    - app entitlements equal to the file plus only the profile's
      application and team identifiers;

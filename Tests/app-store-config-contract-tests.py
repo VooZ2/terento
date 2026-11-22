@@ -317,6 +317,75 @@ class AppStoreConfigurationContract(unittest.TestCase):
         self.assertLess(embed.index('!= "YES" ]; then\n    exit 0'), embed.index('"Add :ITSAppUsesNonExemptEncryption'))
         self.assertNotIn("ITSAppUsesNonExemptEncryption", (ROOT / "app" / "Terento" / "Info.plist").read_text(encoding="utf-8"))
 
+    def test_testflight_script_refuses_a_local_release_label(self) -> None:
+        # Owner 2026-11-22: a -local, "development" or empty label never reaches
+        # App Store Connect. The label comes from the archived app, never from
+        # the environment, and is checked before the first export and upload.
+        script = (APP_STORE_DIR / "archive-for-testflight.sh").read_text(encoding="utf-8")
+        self.assertNotIn("TERENTO_RELEASE_LABEL", script)
+        read_archive = script.index(
+            "archived_label=\"$(/usr/libexec/PlistBuddy -c 'Print :TerentoReleaseLabel' \"$archived_app/Contents/Info.plist\"")
+        self.assertGreater(read_archive, script.index('archived_app="$archive/Products/Applications/Terento.app"'))
+        refuse_archive = script.index('refuse_unpublishable_label "$archived_label"')
+        self.assertLess(read_archive, refuse_archive)
+        self.assertLess(refuse_archive, script.index("-exportArchive"))
+        checks = script.index('/usr/sbin/pkgutil --expand-full "$pkg" "$check"')
+        refuse_package = script.index('refuse_unpublishable_label "$package_label"')
+        self.assertLess(checks, refuse_package)
+        self.assertLess(refuse_package, script.index('-exportOptionsPlist "$upload_options"'))
+        self.assertIn('[ "$package_label" = "$archived_label" ] || die', script)
+        # The rule itself, run with real labels.
+        start = script.index("die() {")
+        die = script[start:script.index("}\n", start) + 2]
+        start = script.index("refuse_unpublishable_label() {")
+        refuse = script[start:script.index("\n}\n", start) + 3]
+        for label, allowed in (("", False), ("development", False), ("1.3.0-local", False),
+                               ("1.3.0-local.2", False), ("1.3.0", True), ("1.3.1", True)):
+            result = subprocess.run(["sh", "-c", f'{die}{refuse}refuse_unpublishable_label "$1"', "sh", label],
+                                    capture_output=True, text=True, check=False)
+            self.assertEqual(result.returncode == 0, allowed, (label, result.stderr))
+            if not allowed:
+                self.assertIn("Only a public label", result.stderr, label)
+
+    def test_release_label_guard_covers_the_app_store_configuration(self) -> None:
+        # Owner 2026-11-22: the Xcode build phase applies the Release rule to
+        # every AppStore build that can reach App Store Connect: an archive
+        # (ACTION=install) or a build signed with a real identity. Only the
+        # ad-hoc signed local test build keeps its -local label.
+        guard = ROOT / "Packaging" / "verify-release-label.sh"
+        project = PROJECT.read_text(encoding="utf-8")
+        self.assertIn('\\"${SRCROOT}/Packaging/verify-release-label.sh\\"', project)
+        # The guard runs for every configuration of the app target, AppStore included.
+        self.assertIn("/* Verify public release label */ = {", project)
+        self.assertNotIn("CONFIGURATION\" = \"AppStore\" ]; then\n    exit 0", guard.read_text(encoding="utf-8"))
+
+        def run(configuration: str, label: str, action: str = "build", identity: str = "-") -> int:
+            env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "CONFIGURATION": configuration,
+                   "TERENTO_RELEASE_LABEL": label, "ACTION": action, "CODE_SIGN_IDENTITY": identity}
+            return subprocess.run(["sh", str(guard)], env=env, capture_output=True, check=False).returncode
+
+        for label in ("", "development", "1.3.0-local", "1.3.0-local.2"):
+            self.assertNotEqual(run("AppStore", label, action="install", identity="Apple Development"), 0, label)
+            self.assertNotEqual(run("AppStore", label, action="install"), 0, label)
+            self.assertNotEqual(run("AppStore", label, identity="Apple Development"), 0, label)
+            self.assertNotEqual(run("AppStore", label, identity="Apple Distribution"), 0, label)
+            self.assertNotEqual(run("Release", label), 0, label)
+        for label in ("", "development"):
+            self.assertNotEqual(run("AppStore", label), 0, label)
+        # The ad-hoc local test build (build-local-sandbox-test.sh) stays possible.
+        self.assertEqual(run("AppStore", "1.3.0-local"), 0)
+        local_test = (APP_STORE_DIR / "build-local-sandbox-test.sh").read_text(encoding="utf-8")
+        self.assertIn("CODE_SIGN_IDENTITY=- \\\n", local_test)
+        self.assertIn('TERENTO_RELEASE_LABEL="$marketing_version-local"', local_test)
+        for configuration in ("AppStore", "Release"):
+            self.assertEqual(run(configuration, "1.3.0", action="install", identity="Apple Development"), 0)
+            self.assertEqual(run(configuration, "1.3.0"), 0)
+        self.assertEqual(run("Debug", "1.3.0-local"), 0)
+        self.assertNotEqual(run("Debug", "1.3.0"), 0)
+        # The archive overrides the ad-hoc identity, so the guard sees a real one.
+        archive = (APP_STORE_DIR / "archive-for-testflight.sh").read_text(encoding="utf-8")
+        self.assertIn('CODE_SIGN_IDENTITY="Apple Development"', archive)
+
     def test_ci_scan_covers_all_bundle_code(self) -> None:
         verify = (APP_STORE_DIR / "verify-app-store-build.sh").read_text(encoding="utf-8")
         # Debug builds keep app code in Terento.debug.dylib and the libraries

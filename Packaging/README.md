@@ -79,7 +79,14 @@ build is prepared separately from the same tag.
 
 The current published build is identified by `site/updates/macos-arm64.json`
 and `RELEASE_NOTES.md`. Packaging a new artifact does not publish it. Public
-labels never use `-local`; local device-test candidates do.
+labels never use `-local`; local device-test candidates do. The Xcode build
+phase `Packaging/verify-release-label.sh` refuses an empty, `development` or
+`-local` label in Release, and in AppStore for every build that can reach App
+Store Connect (an archive, or one signed with a real identity); only the
+ad-hoc signed AppStore test build (`CODE_SIGN_IDENTITY=-`, for example
+`Packaging/AppStore/build-local-sandbox-test.sh`) keeps its `-local` label.
+`Packaging/AppStore/archive-for-testflight.sh` checks the archived app's
+label again before it exports or uploads anything.
 
 For a same-label replacement, the next numbered beta or release candidate,
 `Packaging/release-candidate.json` records only the reviewed marketing version,
