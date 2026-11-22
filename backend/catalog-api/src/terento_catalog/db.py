@@ -4541,12 +4541,18 @@ class Database:
         with self.connection() as connection:
             return list(connection.execute("""
                 SELECT p.id FROM map_provider p
-                LEFT JOIN LATERAL (SELECT checked_at FROM provider_health_check
+                LEFT JOIN LATERAL (SELECT checked_at, artifact_count FROM provider_health_check
                     WHERE provider_id=p.id ORDER BY checked_at DESC,id DESC LIMIT 1) h ON TRUE
                 WHERE p.status='ACTIVE' AND (%s::text IS NULL OR p.id=%s)
                   AND (p.health_retry_not_before IS NULL OR p.health_retry_not_before <= now())
                   AND (h.checked_at IS NULL OR h.checked_at +
-                       p.health_check_interval_hours * interval '1 hour' <= now())
+                       p.health_check_interval_hours * interval '1 hour' <= now()
+                       -- A check that had no download to sample is superseded by
+                       -- the first successful collection after it.
+                       OR (h.artifact_count = 0 AND EXISTS (
+                           SELECT 1 FROM catalog_collection_run r
+                           WHERE r.provider_id = p.id AND r.status = 'SUCCEEDED'
+                             AND r.package_count > 0 AND r.finished_at > h.checked_at)))
                 ORDER BY h.checked_at NULLS FIRST, p.id
             """, (provider_id, provider_id)).fetchall())
 

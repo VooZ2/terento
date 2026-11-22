@@ -1003,7 +1003,11 @@ all maps; website failure alone does not. Up to eight original source URLs are
 sampled. All transport/5xx failures mean DOWN; mixed outcomes or missing maps
 mean DEGRADED. A missing/unknown observation or one older than its interval plus
 10 minutes means STATUS_STALE; a known outage remains blocked until checked
-again. HTTP 429 stops further probes and persists a cooldown.
+again. HTTP 429 stops further probes and persists a cooldown. A check that had
+no download to sample (for example, run before the provider's first catalog
+collection) has overall status UNKNOWN, so it never satisfies the activation
+gate, and the first successful collection with packages after it makes the
+provider due again on the next scheduler minute instead of after its interval.
 
 Catalog responses use `Cache-Control: no-store` and return a fresh body even
 for conditional requests because eligibility can change with elapsed time.

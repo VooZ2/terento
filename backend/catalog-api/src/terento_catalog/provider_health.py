@@ -289,6 +289,10 @@ def check_provider(
         )
     if "DOWN" in availability_statuses:
         status = "DOWN"
+    elif not checked_downloads and not rate_limited:
+        # Without one download sample the check proves nothing about
+        # downloads: it must not read as HEALTHY (the activation gate trusts it).
+        status = "UNKNOWN"
     elif "DEGRADED" in availability_statuses or last_update_status == "DEGRADED":
         status = "DEGRADED"
     elif "UNKNOWN" in availability_statuses:
