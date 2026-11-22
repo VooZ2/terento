@@ -113,7 +113,7 @@ for (const [locale, contract] of Object.entries(locales)) {
   assert.ok(release, `${locale} release line`);
   assert.ok(release.includes(`<a class="text-link" href="${manifest.releaseNotesURL}" rel="noopener noreferrer">`), `${locale} "What's new" opens the GitHub release page`);
   assert.match(manifest.releaseNotesURL, /^https:\/\/github\.com\/VooZ2\/terento\/releases\/tag\//);
-  if (locale === "en") assert.equal(release.replace(/<[^>]+>/g, ""), "Latest version v1.2.2, November 20, 2026. What’s new Star on GitHub");
+  if (locale === "en") assert.equal(release.replace(/<[^>]+>/g, ""), "Latest version v1.3.0, November 22, 2026. What’s new Star on GitHub");
   assert.ok(release.includes(`<span class="download-release-links"><a class="text-link" href="${manifest.releaseNotesURL}"`), `${locale} "What's new" and "Star on GitHub" wrap together`);
   assert.ok(release.endsWith(`</a> <a class="text-link" href="https://github.com/VooZ2/terento" target="_blank" rel="noopener" data-umami-event="github-star-click" data-umami-event-location="download-version">${copy.star}</a></span></p>`), `${locale} "Star on GitHub" follows "What's new"`);
   const links = [...main.matchAll(/<a class="text-link( download-info-link)?" href="([^"]+)" data-umami-event="([^"]+)" data-umami-event-location="([^"]+)">/g)].map((m) => [m[2], m[3], m[4], Boolean(m[1])]);
