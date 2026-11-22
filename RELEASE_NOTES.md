@@ -3,27 +3,20 @@
 
 Terento 1.3.0 is an update to Terento 1.2.2, the free, open-source app for installing community maps on map-capable Garmin smartwatches and Edge bike computers from Apple Silicon Macs running macOS 13 or later. Compatibility is still evaluated model by model.
 
-This release adds a new map source, OpenFietsMap, keeps a large downloaded map ready when the device can't be reached, so you don't download it again, gives the app a cleaner, more consistent look, and makes reports about connection problems more useful. Installed 1.2.2 and earlier builds are offered it by the in-app update check. The Mac App Store version is updated separately.
+Installed 1.2.2 and earlier builds are offered it by the in-app update check. The Mac App Store version is updated separately.
 
 ## WHAT'S NEW?
 
-- New map source: OpenFietsMap (cycling maps for Benelux and Europe). The app downloads its maps directly from OpenFietsMap.
-- A cleaner look: the app now uses Terento's own fonts and one consistent text size scale, and map rows show the map name, then the provider, version and "Already installed" on one line.
-- Install maps shows more maps at once: free space and the number of selected maps sit on one line next to Continue, and "Import map file" is a button next to Refresh that opens and closes the import panel.
-- Manage maps shows the maps Garmin installed on your device as one line, "Garmin maps", with how many files there are and their size. Terento never changes them.
-- The Help menu has Send Feedback (opens an email with only the app version) and Star on GitHub.
-- Send report from the Help menu: when you choose "Connecting the device" and no failure was saved, the report also includes what Terento saw the last time it tried to connect, for example that the device was busy and Garmin Express was running. The window shows everything that will be sent.
+- New map source: OpenFietsMap, cycling maps for the Netherlands, Belgium and the rest of Europe.
+- A polished design: Terento's own fonts and one consistent look throughout the app.
+- Import map file is now a button next to Refresh.
 
 ## WHAT'S FIXED?
 
-- A downloaded map is kept for Try again for 6 hours instead of 30 minutes, so a large map that took an hour or more to download is not downloaded again. Quitting Terento still removes it.
-- If the device is unplugged or disappears after the download but before anything is written, the downloaded maps are kept for Try again.
-- If your Mac doesn't have enough space for a new download, Terento first removes kept downloads of other maps.
-- When the device can no longer be seen before anything is written, the message says "Terento can no longer see your device" and tells you what to check.
-- Reports about stopped installations say more precisely which check stopped them.
-- Cancel while a map downloads now takes you back to Install maps with your selection kept, instead of showing "Installation stopped".
-- Freizeitkarte maps show the same version in Install maps, Manage maps and the Remove dialog.
-- Sizes while a map is checked on your device use the same units as the rest of the app.
+- A downloaded map is kept for 6 hours, so Try again doesn't download it again.
+- Cancel during a download keeps your selection.
+- Manage maps rows no longer jump while a map is removed.
+- When maps can't be downloaded, the message is shown once instead of under every map.
 
 # Terento v1.2.2 (build 49)
 
