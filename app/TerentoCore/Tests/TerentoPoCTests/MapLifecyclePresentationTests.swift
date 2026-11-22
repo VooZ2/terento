@@ -182,9 +182,23 @@ func runMapLifecyclePresentationTests() throws {
         acquisitionAvailability: .blocked(provider: "Freizeitkarte", reason: "PROVIDER_DOWN")
     )
     try require(providerDown.allows(.remove) && !providerDown.allows(.update) && providerDown.updateBlocked,
-        "provider outage keeps Remove and exposes a disabled Update")
+        "provider outage keeps Remove and does not offer Update")
     try require(providerDown.reason == "Freizeitkarte map servers are currently unreachable. Try again later.",
         "provider outage names the provider and tells the user to try later")
+    let providerDownCurrent = resolver.resolve(
+        item: managed, comparison: comparison(status: .upToDate),
+        hasIntegrityRecord: true, hasValidatedUpdateProfile: true,
+        acquisitionAvailability: .blocked(provider: "Freizeitkarte", reason: "PROVIDER_PAUSED")
+    )
+    let currentAvailable = resolver.resolve(
+        item: managed, comparison: comparison(status: .upToDate),
+        hasIntegrityRecord: true, hasValidatedUpdateProfile: true,
+        acquisitionAvailability: .available
+    )
+    try require([providerDown, providerDownCurrent, currentAvailable].allSatisfy {
+            !ManageMapRowActionPresentation.primaryActions(for: $0).contains(.update) && $0.allows(.remove)
+        },
+        "Update is offered only when an update exists and downloads work")
     try require(!providerDown.availabilityCheckFailed,
         "a confirmed provider outage keeps its own row message")
 

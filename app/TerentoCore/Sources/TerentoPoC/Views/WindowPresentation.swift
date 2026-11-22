@@ -17,6 +17,9 @@ enum TerentoPageLayout: Sendable {
     static let sectionHeaderChevronWidth: CGFloat = 14
     static let sectionHeaderChevronHeight: CGFloat = sectionHeaderMinHeight
     static let sectionHeaderItemSpacing: CGFloat = 8
+    /// Leading x of a section title (after the chevron); content that lines
+    /// up with the title uses this inset.
+    static let sectionHeaderTitleInset: CGFloat = sectionHeaderChevronWidth + sectionHeaderItemSpacing
     static let footerMinHeight: CGFloat = 50
     static let footerBottomPadding: CGFloat = 42
 }

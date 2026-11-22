@@ -55,6 +55,12 @@ struct Stage7NavigationTests {
             "Install and Manage share section-header geometry"
         )
         expect(
+            TerentoPageLayout.sectionHeaderTitleInset
+                == TerentoPageLayout.sectionHeaderChevronWidth + TerentoPageLayout.sectionHeaderItemSpacing
+                && TerentoPageLayout.sectionHeaderTitleInset == 22,
+            "content aligned with a section title starts at the title's leading x"
+        )
+        expect(
             TerentoPageLayout.footerMinHeight == 50
                 && TerentoPageLayout.footerBottomPadding == 42,
             "all Back and primary actions share footer geometry"

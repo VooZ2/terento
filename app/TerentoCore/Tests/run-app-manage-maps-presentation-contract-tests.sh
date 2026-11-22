@@ -49,7 +49,7 @@ require_text 'static func productionMenuActions' "$presentation" "production men
 require_text 'return []' "$presentation" "production overflow menu is not empty"
 require_text '.frame(width: 152, alignment: .trailing)' "$connect_screen" "row actions do not use a stable right-side column"
 require_text 'action == .update ? 72 : 68' "$connect_screen" "Update and Remove widths are not stable"
-require_text 'return action == .update ? .white : TerentoColors.graphite' "$connect_screen" "Update does not use a white primary label"
+require_text 'return action == .update ? .white : TerentoColors.error' "$connect_screen" "Update must use a white label and Remove Error Rust text"
 require_text 'return TerentoColors.interactive' "$connect_screen" "Update does not use the Terento primary fill"
 
 require_text '.accessibilityLabel("\(title) \(mapTitle)")' "$connect_screen" "visible actions lack map-specific accessibility labels"
@@ -134,3 +134,26 @@ for banned in ("connection", "internet"):
     assert banned not in block.lower(), f"availability texts must not mention '{banned}'"
 print("PASS: failed availability check is said once per provider group and does not blame the connection")
 PYAVAIL
+
+# Update appears only when usable; Remove is Error Rust text with an Error
+# Rust tint; the failed-check notice starts where the provider name starts.
+python3 - "$connect_screen" "$project_root/Sources/TerentoPoC/Views/WindowPresentation.swift" <<'PYROW'
+import sys
+screen, layout = (open(p).read() for p in sys.argv[1:3])
+group = screen[screen.index("private struct ManageActionGroup"):screen.index("private struct TerentoKeyIndependentButtonStyle")]
+assert "updateBlocked" not in group and "isEnabled: false" not in group, "Manage rows must never draw a disabled Update"
+assert "updateBlocked: availability.updateBlocked" not in screen, "the row must not pass a blocked Update to the action group"
+button = screen[screen.index("private struct ManageActionButton"):screen.index("private struct ManageOperationProgress")]
+background = button[button.index("private var backgroundColor"):button.index("private var foregroundColor")]
+assert "sky" not in background, "Remove hover and focus must not use Sky"
+assert "TerentoColors.error.opacity(0.14)" in background and "TerentoColors.error.opacity(0.08)" in background, \
+    "Remove hover and focus must use a light Error Rust tint"
+assert "return TerentoGeneratedTokens.Light.textDisabled" in button, "disabled Remove keeps the disabled text token"
+assert "static let sectionHeaderTitleInset: CGFloat = sectionHeaderChevronWidth + sectionHeaderItemSpacing" in layout, \
+    "the header title inset must come from the header geometry"
+groups = screen[screen.index("private func managedMapGroups"):screen.index('title: "Imported maps"')]
+notice = groups[groups.index("availabilityCheckFailedNotice"):groups.index("ForEach(group.items)")]
+assert ".padding(.leading, TerentoPageLayout.sectionHeaderTitleInset)" in notice and ".padding(.horizontal" not in notice, \
+    "the failed-check notice must start at the provider name, not at the chevron"
+print("PASS: usable-only Update, Error Rust Remove, notice aligned with the provider name")
+PYROW

@@ -1514,7 +1514,8 @@ struct ConnectScreen: View {
                             Text(MapLifecycleActionAvailability.availabilityCheckFailedNotice)
                                 .font(.terento(.meta, weight: .semibold))
                                 .foregroundStyle(TerentoColors.warning)
-                                .padding(.horizontal, 4)
+                                // Starts where the provider name starts in the header.
+                                .padding(.leading, TerentoPageLayout.sectionHeaderTitleInset)
                                 .padding(.bottom, 4)
                         }
                         ForEach(group.items) { item in
@@ -4796,7 +4797,6 @@ private struct ManageMapRow: View {
                 ManageActionGroup(
                     mapTitle: providerLabel.isEmpty ? item.title : "\(item.title), \(providerLabel)",
                     primaryActions: primaryActions,
-                    updateBlocked: availability.updateBlocked,
                     isEnabled: !isLifecycleBusy,
                     onAction: perform
                 )
@@ -4854,16 +4854,14 @@ private struct GarminMapsSummaryRow: View {
 
 private struct ManageActionGroup: View {
     let mapTitle: String
+    /// Only usable actions: the resolver adds Update only when an update
+    /// exists and downloads work, so a disabled Update is never drawn.
     let primaryActions: [MapLifecycleAction]
-    var updateBlocked: Bool = false
     let isEnabled: Bool
     let onAction: (MapLifecycleAction) -> Void
 
     var body: some View {
         HStack(spacing: 9) {
-            if updateBlocked {
-                ManageActionButton(action: .update, mapTitle: mapTitle, isEnabled: false, onAction: onAction)
-            }
             ForEach(primaryActions.filter { $0 == .update }, id: \.rawValue) { action in
                 ManageActionButton(
                     action: action,
@@ -4977,11 +4975,13 @@ private struct ManageActionButton: View {
             }
             return TerentoColors.interactive
         }
+        // Remove: Error Rust text, no fill, a light Error Rust tint on
+        // hover and focus.
         if isFocused {
-            return TerentoColors.sky.opacity(0.20)
+            return TerentoColors.error.opacity(0.14)
         }
         if isHovered {
-            return TerentoColors.sky.opacity(0.12)
+            return TerentoColors.error.opacity(0.08)
         }
         return Color.clear
     }
@@ -4991,7 +4991,7 @@ private struct ManageActionButton: View {
         guard isInteractive else {
             return TerentoGeneratedTokens.Light.textDisabled
         }
-        return action == .update ? .white : TerentoColors.graphite
+        return action == .update ? .white : TerentoColors.error
     }
 
     private var focusColor: Color {
