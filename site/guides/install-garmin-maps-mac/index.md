@@ -29,7 +29,7 @@ Quit Garmin Express if it’s open. Unlock the watch and connect it to your Mac 
 
 [Garmin watch not showing up on Mac](https://terento.app/guides/troubleshooting/#connect-watch)
 
-[Terento showing a connected Garmin watch and device detection status](https://terento.app/assets/app/optimized/your-garmin-1600.webp?v=20261120-app-screens-v3)
+[Terento showing a connected Garmin watch and device detection status](https://terento.app/assets/app/optimized/your-garmin-1600.webp?v=20261122-app-screens-v4)
 Terento recognizes the connected Garmin watch before installation.
 
 3. Choose a map
@@ -44,14 +44,14 @@ Choose a provider and a region from the catalog.
 
 Add a compatible .img map from your Mac.
 
-[Terento showing third-party map providers, regions and available Garmin storage](https://terento.app/assets/app/optimized/map-selected-1600.webp?v=20261120-app-screens-v3)
+[Terento showing third-party map providers, regions and available Garmin storage](https://terento.app/assets/app/optimized/map-selected-1600.webp?v=20261122-app-screens-v4)
 Choose a map from the catalog or add your own compatible file.
 
 4. Install
 
 Start the installation and keep the watch connected until Terento says the map is ready. Then disconnect the watch.
 
-[Terento showing a completed map installation on a Garmin watch](https://terento.app/assets/app/optimized/maps-done-1600.webp?v=20261120-app-screens-v3)
+[Terento showing a completed map installation on a Garmin watch](https://terento.app/assets/app/optimized/maps-done-1600.webp?v=20261122-app-screens-v4)
 Keep the watch connected until transfer and verification are complete.
 
 ## Show the map on your watch
