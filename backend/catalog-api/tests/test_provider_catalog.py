@@ -493,7 +493,8 @@ class ProviderCatalogTests(unittest.TestCase):
         self.assertEqual(no_date.last_update_status, "UNKNOWN")
 
         source_only = check_provider(OPENTOPO_MAP, probe=Probe())
-        self.assertEqual(source_only.status, "HEALTHY")
+        # No download sampled: the check proves nothing about downloads.
+        self.assertEqual(source_only.status, "UNKNOWN")
         self.assertEqual(source_only.download_status, "UNKNOWN")
 
         class FailedDownloadProbe(Probe):

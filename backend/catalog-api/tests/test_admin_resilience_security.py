@@ -269,6 +269,64 @@ class AdminPostgresHardeningTests(PGliteTestCase):
         self.sql("UPDATE map_provider SET status = 'PAUSED', preview_enabled = false WHERE id = %s", (OPENTOPO_MAP.id,))
         self.assertNotIn(OPENTOPO_MAP.id, previews.render_providers())
 
+    def test_collected_provider_is_sampled_and_rechecked_after_a_check_without_samples(self):
+        # 2026-11-22: OpenFietsMap was checked 4 s before its first collection.
+        # The check had nothing to sample, read as HEALTHY, passed the
+        # activation gate and kept every download STATUS_STALE for an hour.
+        from types import SimpleNamespace
+        from terento_catalog.luckymaps import LuckyMapsProviderAdapter
+        from terento_catalog.openfietsmap import OpenFietsMapProviderAdapter
+        from terento_catalog.provider_catalog import LUCKYMAPS, OPENFIETSMAP
+        from terento_catalog.provider_health import check_provider
+        from terento_catalog.provider_monitoring import provider_block_reason
+        import test_luckymaps
+        import test_openfietsmap
+        from test_provider_health import Probe
+
+        class ImgProbe(Probe):
+            def inspect_img(self, url):
+                self.calls.append("img:" + url)
+                return SimpleNamespace(identity_validated=True)
+
+        for definition, adapter in (
+            (OPENFIETSMAP, OpenFietsMapProviderAdapter(fetcher=test_openfietsmap.MemoryFetcher())),
+            (LUCKYMAPS, LuckyMapsProviderAdapter(fetcher=test_luckymaps.MemoryFetcher())),
+        ):
+            with self.subTest(definition.id):
+                db, pid = self.db, definition.id
+                db.ensure_provider_definition(definition)
+
+                def check():
+                    urls = [str(row["source_url"]) for row in db.provider_download_urls(pid)]
+                    result = check_provider(definition, download_urls=urls, probe=ImgProbe())
+                    db.record_provider_health(result)
+                    return result
+
+                early = check()
+                self.assertEqual((early.artifact_count, early.download_status, early.status), (0, "UNKNOWN", "UNKNOWN"))
+                self.sql("UPDATE provider_health_check SET checked_at = now() - interval '10 minutes' WHERE provider_id = %s", (pid,))
+                self.sql("UPDATE map_provider SET status = 'ACTIVE' WHERE id = %s", (pid,))
+                self.assertEqual(db.due_provider_health_checks(pid), [])
+
+                snapshot = adapter.collect()
+                run_id = db.begin_catalog_collection(pid)
+                db.upsert_provider_snapshot(snapshot, run_id=run_id)
+                db.finish_catalog_collection(run_id, status="SUCCEEDED", package_count=len(snapshot.packages),
+                                             artifact_count=sum(len(p.artifacts) for p in snapshot.packages))
+                self.sql("UPDATE catalog_collection_run SET finished_at = now() - interval '5 minutes' WHERE id = %s", (run_id,))
+                # The collection supersedes the empty check before the hourly interval.
+                self.assertEqual([row["id"] for row in db.due_provider_health_checks(pid)], [pid])
+
+                mains = {a.source_url for p in snapshot.packages for a in p.artifacts if a.kind == "main" and a.required}
+                samples = [str(row["source_url"]) for row in db.provider_download_urls(pid)]
+                self.assertEqual(len(samples), min(8, len(mains)))
+                self.assertTrue(set(samples) <= mains)
+                result = check()
+                self.assertEqual((result.artifact_count, result.download_status, result.status),
+                                 (len(samples), "HEALTHY", "HEALTHY"))
+                self.assertEqual(db.due_provider_health_checks(pid), [])
+                self.assertIsNone(provider_block_reason("ACTIVE", result.download_status, datetime.now(timezone.utc)))
+
     def test_manual_health_check_audit_is_written_with_its_observation(self):
         from dataclasses import replace
         from terento_catalog.provider_health import check_provider
