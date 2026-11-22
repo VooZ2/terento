@@ -490,6 +490,13 @@ enum MapAcquisitionAvailability: Equatable, Hashable, Sendable {
     case withheldCrimea
     case blocked(provider: String, reason: String)
 
+    /// The availability check itself failed (provider or Terento API), so
+    /// nothing is known about the map; rows show only the short status.
+    var isUnverified: Bool {
+        if case .blocked(_, let reason) = self { return reason == "STATUS_UNVERIFIED" }
+        return false
+    }
+
     var shortStatus: String? {
         switch self {
         case .available:
@@ -512,7 +519,7 @@ enum MapAcquisitionAvailability: Equatable, Hashable, Sendable {
             case "PROVIDER_DOWN": return "\(provider) map servers are currently unreachable. Try again later."
             case "PROVIDER_RATE_LIMITED": return "\(provider) is limiting downloads. Try again later."
             case "PROVIDER_PAUSED": return "\(provider) downloads are temporarily paused. Try again later."
-            case "STATUS_UNVERIFIED": return "Could not check current download availability for \(provider). Check your connection and try again."
+            case "STATUS_UNVERIFIED": return "Could not check current download availability for \(provider). Try again later."
             case "APP_UPDATE_REQUIRED": return "This Terento version can't download maps from the current catalog. Update Terento, then try again."
             case "STATUS_STALE": return "\(provider) server status needs to be checked. Try again later."
             case "ADMIN_DISABLED": return "Downloads for this \(provider) map are temporarily disabled. Try again later."

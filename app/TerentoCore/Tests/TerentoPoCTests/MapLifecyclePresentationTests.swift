@@ -185,6 +185,22 @@ func runMapLifecyclePresentationTests() throws {
         "provider outage keeps Remove and exposes a disabled Update")
     try require(providerDown.reason == "Freizeitkarte map servers are currently unreachable. Try again later.",
         "provider outage names the provider and tells the user to try later")
+    try require(!providerDown.availabilityCheckFailed,
+        "a confirmed provider outage keeps its own row message")
+
+    let unverified = resolver.resolve(
+        item: managed, comparison: comparison(status: .upToDate),
+        hasIntegrityRecord: true, hasValidatedUpdateProfile: true,
+        acquisitionAvailability: .blocked(provider: "Freizeitkarte", reason: "STATUS_UNVERIFIED")
+    )
+    try require(unverified.availabilityCheckFailed && unverified.updateBlocked && unverified.allows(.remove),
+        "a failed availability check is marked for the one group-level notice and keeps Remove")
+    try require(MapLifecycleActionAvailability.availabilityCheckFailedNotice == "Couldn't check for updates.",
+        "the group-level notice uses the owner's wording")
+    let unverifiedText = MapAcquisitionAvailability.blocked(provider: "Freizeitkarte", reason: "STATUS_UNVERIFIED")
+        .detailedExplanation ?? ""
+    try require(!unverifiedText.lowercased().contains("connection") && !unverifiedText.lowercased().contains("internet"),
+        "a failed availability check never blames the user's connection")
 
     let withheldUpdate = resolver.resolve(
         item: managed,

@@ -1510,6 +1510,13 @@ struct ConnectScreen: View {
                         count: group.items.count,
                         isExpanded: providerGroupExpansionBinding(for: group.id)
                     ) {
+                        if group.items.contains(where: { managedAvailability(for: $0).availabilityCheckFailed }) {
+                            Text(MapLifecycleActionAvailability.availabilityCheckFailedNotice)
+                                .font(.terento(.meta, weight: .semibold))
+                                .foregroundStyle(TerentoColors.warning)
+                                .padding(.horizontal, 4)
+                                .padding(.bottom, 4)
+                        }
                         ForEach(group.items) { item in
                             managedMapRow(item, provider: group.title)
                         }
@@ -1729,15 +1736,19 @@ struct ConnectScreen: View {
         return lifecycleViewModel.availability(for: lifecycleItem).allows(.update)
     }
 
+    private func managedAvailability(for item: MapLifecycleItem) -> MapLifecycleActionAvailability {
+        isReadingDeviceMaps
+            ? keptManagedAvailability[item.id] ?? lifecycleViewModel.availability(for: item)
+            : lifecycleViewModel.availability(for: item)
+    }
+
     @ViewBuilder
     private func managedMapRow(_ item: MapLifecycleItem, provider: String? = nil) -> some View {
         ManageMapRow(
             item: item,
             providerLabel: item.sourceKind == .custom ? "" : MapProviderDisplay.title(providerID: item.provider ?? "",
                 regionID: item.region, fallback: provider ?? item.provider ?? ""),
-            availability: isReadingDeviceMaps
-                ? keptManagedAvailability[item.id] ?? lifecycleViewModel.availability(for: item)
-                : lifecycleViewModel.availability(for: item),
+            availability: managedAvailability(for: item),
             operation: lifecycleViewModel.operation(for: item.id),
             timeRemaining: lifecycleViewModel.timeRemaining(for: item.id),
             isLifecycleBusy: mapManagementActionsBusy,
@@ -4798,7 +4809,9 @@ private struct ManageMapRow: View {
         if let operation, case .failed = operation.phase {
             return TerentoMapRowStatus(text: operation.message, color: TerentoColors.error)
         }
-        guard availability.updateBlocked, let reason = availability.reason, !reason.isEmpty else { return nil }
+        // A failed availability check is said once under the provider header.
+        guard availability.updateBlocked, !availability.availabilityCheckFailed,
+              let reason = availability.reason, !reason.isEmpty else { return nil }
         return TerentoMapRowStatus(text: reason)
     }
 
@@ -5737,7 +5750,9 @@ struct MapSelectionRow: View {
                 title: item.title,
                 detail: detail,
                 status: rowStatus.map { TerentoMapRowStatus(text: $0) },
-                note: item.acquisitionAvailability.detailedExplanation,
+                // A failed availability check keeps only the short status.
+                note: item.acquisitionAvailability.isUnverified
+                    ? nil : item.acquisitionAvailability.detailedExplanation,
                 contentSpacing: 9,
                 rowVerticalPadding: 6,
                 showsDivider: !showsOptionalControl,

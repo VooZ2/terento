@@ -108,3 +108,29 @@ assert "ForEach" not in section, "the Garmin section must show one summary row, 
 assert "Text(" not in section, "the Garmin section must not add a caption"
 print("PASS: Garmin maps are one read-only row at the bottom, without a group header")
 PYTEST
+
+# A failed availability check: one short notice under the provider header,
+# no per-row message, and no text that blames the user's connection.
+map_models="$project_root/Sources/TerentoPoC/MapCatalog/MapModels.swift"
+python3 - "$connect_screen" "$presentation" "$map_models" <<'PYAVAIL'
+import re, sys
+screen, presentation, models = (open(p).read() for p in sys.argv[1:4])
+assert 'static let availabilityCheckFailedNotice = "Couldn\'t check for updates."' in presentation, \
+    "the group-level availability notice must use the owner's wording"
+assert "availabilityCheckFailed: acquisitionAvailability.isUnverified" in presentation, \
+    "only a failed availability check may use the group-level notice"
+groups = screen[screen.index("private func managedMapGroups"):screen.index('title: "Imported maps"')]
+assert groups.count("availabilityCheckFailedNotice") == 1, "the notice must appear once per provider group"
+assert groups.index("availabilityCheckFailedNotice") < groups.index("ForEach(group.items)"), \
+    "the notice must sit under the provider header, before the rows"
+status = screen[screen.index("private var manageStatus: TerentoMapRowStatus?"):]
+status = status[:status.index("\n    }\n")]
+assert "!availability.availabilityCheckFailed" in status, "rows must not repeat the failed-check message"
+row = screen[screen.index("TerentoMapRow(\n                title: item.title,"):]
+row = row[:row.index("contentSpacing: 9")]
+assert "isUnverified\n                    ? nil" in row, "Install maps rows must keep only the short status when the check failed"
+block = models[models.index("var detailedExplanation: String?"):models.index("enum MapAcquisitionPolicyError")]
+for banned in ("connection", "internet"):
+    assert banned not in block.lower(), f"availability texts must not mention '{banned}'"
+print("PASS: failed availability check is said once per provider group and does not blame the connection")
+PYAVAIL

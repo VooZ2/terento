@@ -18,6 +18,12 @@ struct MapLifecycleActionAvailability: Equatable, Sendable {
     /// Set when the catalog has a newer release but Update is not offered,
     /// so the row can say why instead of showing only Remove.
     var updateNotice: String? = nil
+    /// The provider's availability check failed. Manage maps then says so
+    /// once under the provider group header instead of on every row.
+    var availabilityCheckFailed: Bool = false
+
+    /// Shown once under a provider group whose availability check failed.
+    static let availabilityCheckFailedNotice = "Couldn't check for updates."
 
     func allows(_ action: MapLifecycleAction) -> Bool {
         actions.contains(action)
@@ -197,7 +203,8 @@ struct MapLifecyclePresentationResolver: Sendable {
             updateNotice: comparison?.status == .updateAvailable
                 && acquisitionAvailability == .available
                 && !actions.contains(.update)
-                ? "Newer release available. \(Self.noProfileUpdateReason)" : nil
+                ? "Newer release available. \(Self.noProfileUpdateReason)" : nil,
+            availabilityCheckFailed: acquisitionAvailability.isUnverified
         )
     }
 
