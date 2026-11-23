@@ -51,6 +51,29 @@ class AppStoreStoragePostgresTests(PGliteTestCase):
         self.assertEqual(self.db.app_store_download_total(), 5)  # Detailed is never added to the totals
         self.assertEqual(self.db.app_store_first_day(), date(2026, 11, 18))
 
+    def test_updates_are_stored_apart_and_an_older_parse_is_read_again(self):
+        update = ("2026-11-18", "updates", "App Store search", "", "LT", "Desktop")
+        self.assertEqual(self.store("d-1", "2026-11-19", _rows("2026-11-18", 4, 1)), 1)  # read by parser 1
+        self.assertEqual(self.db.app_store_processed_instance_ids(asc_stats.PARSE_VERSIONS), set())
+        self.assertEqual(self.db.app_store_processed_instance_ids(), {"d-1"})
+        rows = {**_rows("2026-11-18", 4, 1), update: 7}
+        self.assertEqual(self.db.store_app_store_instance(instance_id="d-1", kind="downloads", level="standard",
+                                                          processing_date=date(2026, 11, 19), rows=rows,
+                                                          parse_version=2), 1)
+        self.assertIsNone(self.db.store_app_store_instance(instance_id="d-1", kind="downloads", level="standard",
+                                                           processing_date=date(2026, 11, 19), rows=rows,
+                                                           parse_version=2))
+        self.assertEqual(self.db.app_store_processed_instance_ids(asc_stats.PARSE_VERSIONS), {"d-1"})
+        self.assertEqual(self.db.app_store_update_days(date(2026, 11, 1), date(2026, 11, 30)), {date(2026, 11, 18): 7})
+        self.assertEqual(self.db.app_store_download_total(), 5)  # an update is never a download
+        self.assertEqual(self.sql("SELECT DISTINCT metric FROM app_store_daily_metric ORDER BY metric"),
+                         [{"metric": "first_time_downloads"}, {"metric": "redownloads"}])
+        # A newer instance restates the day: its updates replace the old ones.
+        self.store("d-2", "2026-11-20", {**_rows("2026-11-18", 4), update: 2})
+        self.assertEqual(self.db.app_store_update_days(date(2026, 11, 18), date(2026, 11, 18)), {date(2026, 11, 18): 2})
+        with self.assertRaises(ValueError):  # Detailed keeps no updates
+            self.store("c-1", "2026-11-19", {update: 1}, level="detailed")
+
     def test_a_metric_from_another_report_is_refused(self):
         with self.assertRaises(ValueError):
             self.store("x-1", "2026-11-19", {("2026-11-18", "impressions", "", "", "", ""): 1})
@@ -76,6 +99,8 @@ class AppStoreStoragePostgresTests(PGliteTestCase):
         self.assertEqual(snapshot["state"], "ok")
         self.assertEqual(snapshot["data"]["totals"]["first_time_downloads"], 4)
         self.assertEqual(snapshot["data"]["totals"]["product_page_views"], 20)
+        self.assertEqual(snapshot["data"]["totals"]["impressions"], 20)  # page views count as impressions
+        self.assertEqual(snapshot["data"]["totals"]["updates"], 0)
         store = asc_stats.dashboard_downloads(self.db, date(2026, 11, 1), date(2026, 11, 30))
         self.assertEqual(store["days"], {"2026-11-18": 5})
         self.assertEqual(store["total"], 5)

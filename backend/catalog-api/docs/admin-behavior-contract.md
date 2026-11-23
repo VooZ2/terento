@@ -501,10 +501,11 @@ change is coloured by meaning, never by direction alone: green
 same, without a previous value or uncomparable; the arrow and sign always stay.
 Fewer is better for Bounce rate, Errors and Issues; more is better for every
 other change. Blocks 1 and 2 are the page's headline, like the Dashboard and
-Web installer: untitled KPI cards (named only for screen readers), side by
-side from 1600 px with one even tile width, stacked below; a stale or
-unavailable headline block keeps its title for its marks (owner request
-2026-11-14). Blocks, in order:
+Web installer: untitled KPI cards (named only for screen readers), Visitors
+above Downloads at every width (owner 2026-11-23: side by side, the page's
+1440 px gave each of the eight tiles too little room and labels and changes
+wrapped); a stale or unavailable headline block keeps its title for its marks
+(owner request 2026-11-14). Blocks, in order:
 
 1. `Visitors`: Visitors, Visits, Views, Bounce rate, Visit duration (average
    per visit, the same type size as the other values), each with its change.
@@ -609,10 +610,12 @@ unavailable headline block keeps its title for its marks (owner request
    Google Search, with its own period picker in its heading (Last 7 days,
    Last 30 days, All time; Last 30 days on every page load; the shared Admin
    period never changes it). The period is the last reported days (Apple is
-   about 1–2 days late). KPI cards Impressions, Product page views,
-   First-time downloads and Conversion (first-time downloads ÷ product page
-   views, change in percentage points), each against as many days just before
-   the period (`vs previous N days`); one line chart on Apple's report dates
+   about 1–2 days late). KPI cards Impressions (as App Store Connect shows
+   them: the report's impressions plus product page views), Product page
+   views, First-time downloads and Conversion (first-time downloads ÷ product
+   page views, change in percentage points), each against as many days just
+   before the period (`vs previous N days`), and under them one grey line
+   `Redownloads N · Updates N` for the period (owner 2026-11-23); one line chart on Apple's report dates
    with Product page views (Interactive Primary) and First-time downloads
    (Lichen dark), each named in its colour, every day focusable with its date
    and values (weekly for All time); under it one grey line `App Store Connect

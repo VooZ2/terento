@@ -85,10 +85,14 @@ added to or reconciled with Umami visitors or any app or web installer count.
 App Store Connect (Apple's Analytics Reports for app `6828556832`, Admin Web
 visits block `App Store` and the Dashboard App downloads App Store series;
 owner request 2026-11-20) is another separate, read-only population owned by
-Apple: App Store impressions, product page views, first-time downloads and
-redownloads per Apple report date, source type, campaign token, territory and
-device, as daily totals with no person, device or account identifier, about
-1–2 days late. Apple's Standard reports give every total; campaigns come
+Apple: App Store impressions, product page views, first-time downloads,
+redownloads and updates per Apple report date, source type, campaign token,
+territory and device, as daily totals with no person, device or account
+identifier, about 1–2 days late. Impressions are counted as App Store Connect
+shows them: the report's Impression events plus product page views (Apple's
+Impression event leaves page views out). Updates are Download Type `Manual
+update` plus `Auto-update` from the Standard report, never added to downloads;
+restores are not counted (owner 2026-11-23). Apple's Standard reports give every total; campaigns come
 only from Apple's Detailed reports, which leave out small rows and add noise,
 so a campaign's numbers are lower than and never added to the totals. Its
 Conversion is first-time downloads divided by product page views. It is never
