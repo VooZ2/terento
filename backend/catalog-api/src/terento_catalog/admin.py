@@ -6932,6 +6932,9 @@ def _identity_review_form(
     conflict_next = ("Choose the model this code names." if code_conflict
                      else "Use the explicit manual assignment action if this is the intended correction.")
     manual_hidden = code_conflict or not selection_conflict
+    # Confirm is the primary action only while the selected model has no
+    # conflict; on a conflict the normal path is refused, so it is secondary.
+    confirm_class = " class='secondary-button'" if selection_conflict or code_conflict else ""
     allowed_ids, rejected_ids = code_scope
     code_attributes = (
         (f" data-identity-code-models='{html.escape(' '.join(sorted(allowed_ids)), quote=True)}'" if allowed_ids is not None else "")
@@ -6965,7 +6968,7 @@ def _identity_review_form(
         </div>
         {f"<p class='identity-conflict-warning' data-identity-conflict role='alert'>{html.escape(conflict_detail)} {conflict_next}</p>" if conflict_detail else ""}
         <label class='identity-manual-reason' data-manual-reason{' hidden' if manual_hidden else ''}>Reason<input type='text' name='identity_note' maxlength='500' autocomplete='off'></label>
-        <div class='identity-review-actions'><button type='button' class='secondary-button' data-identity-edit{' hidden' if edit_hidden else ''}>{edit_label}</button><button type='submit' name='identity_action' value='ASSIGN' data-identity-confirm>Confirm</button><button type='submit' name='identity_action' value='MANUAL_ASSIGN' class='secondary-button' data-manual-confirm{' hidden' if manual_hidden else ''}>Confirm manual assignment</button></div>
+        <div class='identity-review-actions'><button type='button' class='secondary-button' data-identity-edit{' hidden' if edit_hidden else ''}>{edit_label}</button><button type='submit' name='identity_action' value='ASSIGN'{confirm_class} data-identity-confirm>Confirm</button><button type='submit' name='identity_action' value='MANUAL_ASSIGN' class='secondary-button' data-manual-confirm{' hidden' if manual_hidden else ''}>Confirm manual assignment</button></div>
         <p class='admin-action-status' data-identity-status role='status' aria-live='polite'></p>
       </form>"""
 
@@ -9518,6 +9521,7 @@ def _diagnostics_script() -> str:
             const codeConflict = error?.identityCode === 'identity_code_conflict';
             if (manualAllowed || codeConflict) {
               form.querySelectorAll('[data-manual-confirm], [data-manual-reason]').forEach((control) => { control.hidden = !manualAllowed; });
+              form.querySelector('[data-identity-confirm]')?.classList.add('secondary-button');
             }
             if (error?.identityCode === 'identity_manual_reason_required') {
               form.querySelector('[data-manual-reason] input')?.focus();
@@ -9609,6 +9613,7 @@ def _diagnostics_script() -> str:
         const clearStaleSelectionState = () => {
           form.querySelector('[data-identity-conflict]')?.setAttribute('hidden', '');
           form.querySelectorAll('[data-manual-confirm], [data-manual-reason]').forEach((control) => control.setAttribute('hidden', ''));
+          confirm?.classList.remove('secondary-button');
         };
         const sync = () => {
           const hasSelection = Boolean(canonical?.value);

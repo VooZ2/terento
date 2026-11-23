@@ -193,12 +193,16 @@ class CodeProtectionPostgresTests(PGliteTestCase):
                                      return_to="/admin", id_suffix="x")
         self.assertIn(f"data-identity-code-models='{SEVEN_PRO}'", form)
         self.assertIn(f"data-identity-code-rejected='{SEVEN_PRO_NO_WIFI}'", form)
+        # No conflict: Confirm is the primary action.
+        self.assertIn("value='ASSIGN' data-identity-confirm>Confirm</button>", form)
         # A preselected code conflict hides the manual action.
         conflicted = {**result, "canonical_device_model_id": SEVEN_PRO_NO_WIFI}
         form = _identity_review_form("legacy:e1", [conflicted], csrf_token="t", identity_devices=devices,
                                      return_to="/admin", id_suffix="y")
         self.assertIn("Choose the model this code names.", form)
         self.assertRegex(form, r"value='MANUAL_ASSIGN' class='secondary-button' data-manual-confirm hidden")
+        # Owner 2026-11-23: on a conflict Confirm is refused, so it is no primary button.
+        self.assertIn("value='ASSIGN' class='secondary-button' data-identity-confirm>Confirm</button>", form)
 
     # C -----------------------------------------------------------------
     def test_contradicted_assignments_are_counted_until_corrected(self):

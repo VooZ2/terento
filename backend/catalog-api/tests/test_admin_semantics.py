@@ -2160,9 +2160,15 @@ assert.equal(restore(new URLSearchParams(), {getItem: () => {throw Error('blocke
         self.assertIn("USB mapping", body)
         self.assertIn("fēnix 7 · 47 mm, MIP", body)
         self.assertIn("Use the explicit manual assignment action", body)
+        # A reported conflict makes Confirm secondary; the manual path stays separate.
+        self.assertIn("value='ASSIGN' class='secondary-button' data-identity-confirm>Confirm</button>", body)
+        self.assertIn("value='MANUAL_ASSIGN' class='secondary-button' data-manual-confirm>", body)
         script = _diagnostics_script()
         self.assertIn("identityConflictMessage", script)
         self.assertIn("clearStaleSelectionState", script)
+        # The browser applies the same rule after a refused Confirm and clears it on a new choice.
+        self.assertIn("form.querySelector('[data-identity-confirm]')?.classList.add('secondary-button')", script)
+        self.assertIn("confirm?.classList.remove('secondary-button')", script)
 
     def test_identity_confirm_without_reason_uses_action_specific_audit_text(self):
         selected = {"id": "garmin-fenix-8-47", "model": "fēnix 8", "variant": "47 mm",
