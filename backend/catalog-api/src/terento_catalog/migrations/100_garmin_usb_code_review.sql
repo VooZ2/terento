@@ -1,42 +1,91 @@
--- Garmin USB code review, 2026-11-23 (owner: "taisyk laikrodzio priskyrima";
--- check every USB code the same way). Data only: no report, assignment,
--- permission or statistic is changed here; identity assessment reads the
--- reviewed links on its next pass and the scheduler re-assesses undecided
--- results as usual. Identity grants no write authority
--- (contracts/INSTALLATION_AUTHORIZATION.md).
+-- Garmin USB code review, 2026-11-23 (owner: "taisyk laikrodzio priskyrima",
+-- then "patikrinti ir kitu modeliu tokias pat problemas"). Data only: no
+-- report, assignment, permission or statistic is changed here; identity
+-- assessment reads the reviewed links on its next pass. Identity grants no
+-- write authority (contracts/INSTALLATION_AUTHORIZATION.md).
 --
--- Rule used for every decision: a Garmin watch's USB product ID is 0x4000 plus
--- its Garmin device type number (091e:51b8 = 0x4000 + 4536 = 006-B4536-00).
--- Production reports confirm it (fēnix 7 Pro 006-B4375-00 with 091e:5117,
--- fēnix 8 51 mm Solar 006-B4533-00 with 091e:51b5, fēnix 8 47 mm AMOLED and
--- quatix 8 47 mm AMOLED 006-B4536-00 with 091e:51b8), and so does every
--- single-model libmtp name. A code therefore names the catalog models Garmin's
--- device list names for that device type, and no others.
---
--- 091e:51b8 = 006-B4536-00, which Garmin's device list names "fēnix 8 AMOLED
--- (47mm/51mm)" and "quatix 8 AMOLED (47mm/51mm)" (links APPROVED in migration
--- 086). quatix 8 47 mm AMOLED reported it on 2026-11-22 ("quatix 8 - 47mm",
--- 006-B4536-00) and, without its link, waited in Identity review; the PENDING
--- 43 mm and 51 mm links also kept the code's review incomplete. fēnix 8 43 mm
--- AMOLED is device type 006-B4534-00 (USB 091e:51b6), so its 51b8 link is
--- rejected. quatix 8 51 mm AMOLED shares the device type: without its link a
--- completely reviewed code would make every quatix 8 51 mm a code conflict.
+-- Evidence: a read-only production audit on 2026-11-23 (554 app reports with
+-- codes, 41 Garmin device types). Every Garmin XML device type was reported
+-- with exactly one USB code (006-B4536-00 always with 091e:51b8, 81 reports;
+-- 006-B4534-00 always with 091e:51b6), while one USB code may carry several
+-- device types of one hardware platform (091e:4f43: fēnix 7X 006-B3907-00 and
+-- 006-B3910-00, Enduro 2 006-B4341-00). So:
+--   APPROVED: a catalog model whose APPROVED device type link was reported
+--     with this USB code, and only with it.
+--   REJECTED: an undecided link of a model whose approved device type was
+--     reported with a different USB code.
+--   Anything else stays undecided: a device type never reported proves
+--     nothing (fēnix 7 Pro / 7X Pro Solar without Wi-Fi, epix Pro 42 mm).
+--   Left out: tactix 8 51 mm (091e:52a8), whose Solar Elite device type link
+--     is still undecided; fēnix 7X Pro (091e:5118), whose Solar without Wi-Fi
+--     edition was never reported and whose web installer results resolve by
+--     the learned code today; quatix 7 on 091e:4f67 (its Sapphire device type
+--     006-B3943-00 was never reported by a quatix 7; that code names epix
+--     (Gen 2) only, so web "epix" results keep resolving by it).
+-- Example: quatix 8 47 mm AMOLED (006-B4536-00) reported 091e:51b8 on
+-- 2026-11-22 and waited in Identity review, because its USB link was missing
+-- and the fēnix 8 43/51 mm AMOLED links were PENDING; fēnix 8 43 mm reports
+-- 091e:51b6, 51 mm reports 51b8.
 --
 -- Only undecided links change; an administrator's decision always stays.
--- Missing APPROVED links are added first for catalog models this database has.
+-- Missing links are added first, for catalog models this database has.
 CREATE TEMP TABLE usb_code_review_seed (facts jsonb) ON COMMIT DROP;
 INSERT INTO usb_code_review_seed (facts) VALUES
-('{"decision":"APPROVED","kind":"USB","value":"091e:51b8","device_model_id":"garmin-fenix-8-47-amoled","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reviewed-2026-11-23","source_names":["fēnix® 8 AMOLED (47mm/51mm)"],"reason":"Migration 100: USB 091e:51b8 is Garmin device type 006-B4536-00, fēnix 8 AMOLED (47mm/51mm)."}'::jsonb),
-('{"decision":"APPROVED","kind":"USB","value":"091e:51b8","device_model_id":"garmin-fenix-8-51-amoled","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reviewed-2026-11-23","source_names":["fēnix® 8 AMOLED (47mm/51mm)"],"reason":"Migration 100: USB 091e:51b8 is Garmin device type 006-B4536-00, fēnix 8 AMOLED (47mm/51mm)."}'::jsonb),
-('{"decision":"APPROVED","kind":"USB","value":"091e:51b8","device_model_id":"garmin-quatix-8-47-amoled","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reviewed-2026-11-23","source_names":["quatix® 8 AMOLED (47mm/51mm)"],"reason":"Migration 100: USB 091e:51b8 is Garmin device type 006-B4536-00, quatix 8 AMOLED (47mm/51mm); quatix 8 47 mm reported it on 2026-11-22."}'::jsonb),
-('{"decision":"APPROVED","kind":"USB","value":"091e:51b8","device_model_id":"garmin-quatix-8-51-amoled","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reviewed-2026-11-23","source_names":["quatix® 8 AMOLED (47mm/51mm)"],"reason":"Migration 100: USB 091e:51b8 is Garmin device type 006-B4536-00, quatix 8 AMOLED (47mm/51mm)."}'::jsonb),
-('{"decision":"REJECTED","kind":"USB","value":"091e:51b8","device_model_id":"garmin-fenix-8-43-amoled","reason":"Migration 100: fēnix 8 43 mm AMOLED is Garmin device type 006-B4534-00 (USB 091e:51b6); 091e:51b8 is 006-B4536-00 (47 mm/51 mm)."}'::jsonb);
+('{"decision":"APPROVED","kind":"USB","value":"091e:4f42","device_model_id":"garmin-fenix-7-47","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["fenix 7","fenix 7 Sapphire Solar","fenix 7 Solar","quatix 7"],"reason":"Migration 100: this model''s Garmin device type 006-B3906-00, 006-B3909-00 is reported only with USB 091e:4f42 (14 app reports)."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:4f42","device_model_id":"garmin-quatix-7","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["fenix 7","fenix 7 Sapphire Solar","fenix 7 Solar","quatix 7"],"reason":"Migration 100: this model''s Garmin device type 006-B3906-00, 006-B3909-00 is reported only with USB 091e:4f42 (14 app reports)."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:4fb8","device_model_id":"garmin-forerunner-955","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["Forerunner 955","Forerunner 955 Solar"],"reason":"Migration 100: this model''s Garmin device type 006-B4024-00 is reported only with USB 091e:4fb8 (21 app reports)."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:4fb8","device_model_id":"garmin-forerunner-955-dual-power","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["Forerunner 955","Forerunner 955 Solar"],"reason":"Migration 100: this model''s Garmin device type 006-B4024-00 is reported only with USB 091e:4fb8 (21 app reports)."}'::jsonb),
+('{"decision":"REJECTED","kind":"USB","value":"091e:50d8","device_model_id":"garmin-epix-pro-gen-2-47","reason":"Migration 100: this model''s Garmin device type 006-B4313-00 is reported with USB 091e:50d9 (7 app reports), not 091e:50d8."}'::jsonb),
+('{"decision":"REJECTED","kind":"USB","value":"091e:50d8","device_model_id":"garmin-epix-pro-gen-2-51","reason":"Migration 100: this model''s Garmin device type 006-B4314-00 is reported with USB 091e:50da (21 app reports), not 091e:50d8."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:50d9","device_model_id":"garmin-epix-pro-gen-2-47","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["EPIX PRO - 47mm"],"reason":"Migration 100: this model''s Garmin device type 006-B4313-00 is reported only with USB 091e:50d9 (7 app reports)."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:50d9","device_model_id":"garmin-quatix-7-pro","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["EPIX PRO - 47mm"],"reason":"Migration 100: this model''s Garmin device type 006-B4313-00 is reported only with USB 091e:50d9 (7 app reports)."}'::jsonb),
+('{"decision":"REJECTED","kind":"USB","value":"091e:50d9","device_model_id":"garmin-epix-pro-gen-2-51","reason":"Migration 100: this model''s Garmin device type 006-B4314-00 is reported with USB 091e:50da (21 app reports), not 091e:50d9."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:5117","device_model_id":"garmin-fenix-7-pro","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["fenix 7 Pro Sapphire Solar","fenix 7 Pro Solar"],"reason":"Migration 100: this model''s Garmin device type 006-B4375-00 is reported only with USB 091e:5117 (13 app reports)."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:51b4","device_model_id":"garmin-fenix-8-47-solar","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["fenix 8 - 47mm, Solar"],"reason":"Migration 100: this model''s Garmin device type 006-B4532-00 is reported only with USB 091e:51b4 (29 app reports)."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:51b4","device_model_id":"garmin-fenix-8-dual-power-47","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["fenix 8 - 47mm, Solar"],"reason":"Migration 100: this model''s Garmin device type 006-B4532-00 is reported only with USB 091e:51b4 (29 app reports)."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:51b5","device_model_id":"garmin-fenix-8-51-solar","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["fenix 8 - 51mm, Solar"],"reason":"Migration 100: this model''s Garmin device type 006-B4533-00 is reported only with USB 091e:51b5 (2 app reports)."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:51b5","device_model_id":"garmin-fenix-8-dual-power-51","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["fenix 8 - 51mm, Solar"],"reason":"Migration 100: this model''s Garmin device type 006-B4533-00 is reported only with USB 091e:51b5 (2 app reports)."}'::jsonb),
+('{"decision":"REJECTED","kind":"USB","value":"091e:51b5","device_model_id":"garmin-fenix-8-47-solar","reason":"Migration 100: this model''s Garmin device type 006-B4532-00 is reported with USB 091e:51b4 (29 app reports), not 091e:51b5."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:51b6","device_model_id":"garmin-fenix-8-43-amoled","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["fenix 8 - 43mm, AMOLED"],"reason":"Migration 100: this model''s Garmin device type 006-B4534-00 is reported only with USB 091e:51b6 (8 app reports)."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:51b8","device_model_id":"garmin-fenix-8-51-amoled","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["fenix 8 - 47mm, AMOLED","fenix 8 - 51mm, AMOLED","quatix 8 - 47mm, AMOLED"],"reason":"Migration 100: this model''s Garmin device type 006-B4536-00 is reported only with USB 091e:51b8 (81 app reports)."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:51b8","device_model_id":"garmin-quatix-8-47-amoled","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["fenix 8 - 47mm, AMOLED","fenix 8 - 51mm, AMOLED","quatix 8 - 47mm, AMOLED"],"reason":"Migration 100: this model''s Garmin device type 006-B4536-00 is reported only with USB 091e:51b8 (81 app reports)."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:51b8","device_model_id":"garmin-quatix-8-51-amoled","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["fenix 8 - 47mm, AMOLED","fenix 8 - 51mm, AMOLED","quatix 8 - 47mm, AMOLED"],"reason":"Migration 100: this model''s Garmin device type 006-B4536-00 is reported only with USB 091e:51b8 (81 app reports)."}'::jsonb),
+('{"decision":"REJECTED","kind":"USB","value":"091e:51b8","device_model_id":"garmin-fenix-8-43-amoled","reason":"Migration 100: this model''s Garmin device type 006-B4534-00 is reported with USB 091e:51b6 (8 app reports), not 091e:51b8."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:51df","device_model_id":"garmin-enduro-3","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["Enduro 3"],"reason":"Migration 100: this model''s Garmin device type 006-B4575-00 is reported only with USB 091e:51df (6 app reports)."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:5217","device_model_id":"garmin-fenix-8-pro-47-amoled","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["fenix 8 Pro - 47mm","fenix 8 Pro - 51mm"],"reason":"Migration 100: this model''s Garmin device type 006-B4631-00 is reported only with USB 091e:5217 (22 app reports)."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:5217","device_model_id":"garmin-fenix-8-pro-51-amoled","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["fenix 8 Pro - 47mm","fenix 8 Pro - 51mm"],"reason":"Migration 100: this model''s Garmin device type 006-B4631-00 is reported only with USB 091e:5217 (22 app reports)."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:5217","device_model_id":"garmin-fenix-8-pro-51-microled","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["fenix 8 Pro - 47mm","fenix 8 Pro - 51mm"],"reason":"Migration 100: this model''s Garmin device type 006-B4631-00 is reported only with USB 091e:5217 (22 app reports)."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:5217","device_model_id":"garmin-quatix-8-pro-47-amoled","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["fenix 8 Pro - 47mm","fenix 8 Pro - 51mm"],"reason":"Migration 100: this model''s Garmin device type 006-B4631-00 is reported only with USB 091e:5217 (22 app reports)."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:5217","device_model_id":"garmin-quatix-8-pro-51-amoled","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["fenix 8 Pro - 47mm","fenix 8 Pro - 51mm"],"reason":"Migration 100: this model''s Garmin device type 006-B4631-00 is reported only with USB 091e:5217 (22 app reports)."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:523a","device_model_id":"garmin-fenix-e-47-amoled","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["fenix E"],"reason":"Migration 100: this model''s Garmin device type 006-B4666-00 is reported only with USB 091e:523a (1 app reports)."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:5358","device_model_id":"garmin-fenix-9-pro-43","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["fenix 9 Pro - 43mm"],"reason":"Migration 100: this model''s Garmin device type 006-B4952-00 is reported only with USB 091e:5358 (1 app reports)."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:5358","device_model_id":"garmin-fenix-9-pro-43-inreach","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["fenix 9 Pro - 43mm"],"reason":"Migration 100: this model''s Garmin device type 006-B4952-00 is reported only with USB 091e:5358 (1 app reports)."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:5359","device_model_id":"garmin-fenix-9-pro-47","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["fenix 9 Pro - 47mm","fenix 9 Pro - inReach, 47mm"],"reason":"Migration 100: this model''s Garmin device type 006-B4953-00 is reported only with USB 091e:5359 (22 app reports)."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:5359","device_model_id":"garmin-fenix-9-pro-47-inreach","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["fenix 9 Pro - 47mm","fenix 9 Pro - inReach, 47mm"],"reason":"Migration 100: this model''s Garmin device type 006-B4953-00 is reported only with USB 091e:5359 (22 app reports)."}'::jsonb),
+('{"decision":"REJECTED","kind":"USB","value":"091e:5359","device_model_id":"garmin-fenix-9-pro-43","reason":"Migration 100: this model''s Garmin device type 006-B4952-00 is reported with USB 091e:5358 (1 app reports), not 091e:5359."}'::jsonb),
+('{"decision":"REJECTED","kind":"USB","value":"091e:5359","device_model_id":"garmin-fenix-9-pro-43-inreach","reason":"Migration 100: this model''s Garmin device type 006-B4952-00 is reported with USB 091e:5358 (1 app reports), not 091e:5359."}'::jsonb),
+('{"decision":"REJECTED","kind":"USB","value":"091e:5359","device_model_id":"garmin-fenix-9-pro-47-solar","reason":"Migration 100: this model''s Garmin device type 006-B4955-00 is reported with USB 091e:535b (4 app reports), not 091e:5359."}'::jsonb),
+('{"decision":"REJECTED","kind":"USB","value":"091e:5359","device_model_id":"garmin-fenix-9-pro-47-solar-inreach","reason":"Migration 100: this model''s Garmin device type 006-B4955-00 is reported with USB 091e:535b (4 app reports), not 091e:5359."}'::jsonb),
+('{"decision":"REJECTED","kind":"USB","value":"091e:5359","device_model_id":"garmin-fenix-9-pro-51","reason":"Migration 100: this model''s Garmin device type 006-B4954-00 is reported with USB 091e:535a (46 app reports), not 091e:5359."}'::jsonb),
+('{"decision":"REJECTED","kind":"USB","value":"091e:5359","device_model_id":"garmin-fenix-9-pro-51-inreach","reason":"Migration 100: this model''s Garmin device type 006-B4954-00 is reported with USB 091e:535a (46 app reports), not 091e:5359."}'::jsonb),
+('{"decision":"REJECTED","kind":"USB","value":"091e:5359","device_model_id":"garmin-fenix-9-pro-51-solar","reason":"Migration 100: this model''s Garmin device type 006-B4956-00 is reported with USB 091e:535c (5 app reports), not 091e:5359."}'::jsonb),
+('{"decision":"REJECTED","kind":"USB","value":"091e:5359","device_model_id":"garmin-fenix-9-pro-51-solar-inreach","reason":"Migration 100: this model''s Garmin device type 006-B4956-00 is reported with USB 091e:535c (5 app reports), not 091e:5359."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:535a","device_model_id":"garmin-fenix-9-pro-51","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["fenix 9 Pro - 51mm","fenix 9 Pro - inReach, 51mm"],"reason":"Migration 100: this model''s Garmin device type 006-B4954-00 is reported only with USB 091e:535a (46 app reports)."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:535a","device_model_id":"garmin-fenix-9-pro-51-inreach","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["fenix 9 Pro - 51mm","fenix 9 Pro - inReach, 51mm"],"reason":"Migration 100: this model''s Garmin device type 006-B4954-00 is reported only with USB 091e:535a (46 app reports)."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:535b","device_model_id":"garmin-fenix-9-pro-47-solar","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["fenix 9 Pro - Solar, 47mm","fenix 9 Pro - inReach, Solar, 47mm"],"reason":"Migration 100: this model''s Garmin device type 006-B4955-00 is reported only with USB 091e:535b (4 app reports)."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:535b","device_model_id":"garmin-fenix-9-pro-47-solar-inreach","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["fenix 9 Pro - Solar, 47mm","fenix 9 Pro - inReach, Solar, 47mm"],"reason":"Migration 100: this model''s Garmin device type 006-B4955-00 is reported only with USB 091e:535b (4 app reports)."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:535c","device_model_id":"garmin-fenix-9-pro-51-solar","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["fenix 9 Pro - Solar, 51mm","fenix 9 Pro - inReach, Solar, 51mm"],"reason":"Migration 100: this model''s Garmin device type 006-B4956-00 is reported only with USB 091e:535c (5 app reports)."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:535c","device_model_id":"garmin-fenix-9-pro-51-solar-inreach","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["fenix 9 Pro - Solar, 51mm","fenix 9 Pro - inReach, Solar, 51mm"],"reason":"Migration 100: this model''s Garmin device type 006-B4956-00 is reported only with USB 091e:535c (5 app reports)."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:540d","device_model_id":"garmin-fenix-9-43","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["fenix 9 - 43mm"],"reason":"Migration 100: this model''s Garmin device type 006-B5133-00 is reported only with USB 091e:540d (2 app reports)."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:540e","device_model_id":"garmin-fenix-9-47","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["fenix 9 - 47mm"],"reason":"Migration 100: this model''s Garmin device type 006-B5134-00 is reported only with USB 091e:540e (4 app reports)."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:540e","device_model_id":"garmin-fenix-9-51","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["fenix 9 - 47mm"],"reason":"Migration 100: this model''s Garmin device type 006-B5134-00 is reported only with USB 091e:540e (4 app reports)."}'::jsonb),
+('{"decision":"APPROVED","kind":"USB","value":"091e:5431","device_model_id":"garmin-enduro-4","source_url":"https://apps.garmin.com/api/appsLibraryExternalServices/api/asw/deviceTypes","source_version":"reports-2026-11-23","source_names":["Enduro 4"],"reason":"Migration 100: this model''s Garmin device type 006-B5169-00 is reported only with USB 091e:5431 (4 app reports)."}'::jsonb);
 
 INSERT INTO device_identity_mapping (kind, value, device_model_id, source_url, source_version, source_names)
 SELECT s.facts->>'kind', s.facts->>'value', d.id, s.facts->>'source_url', s.facts->>'source_version', s.facts->'source_names'
 FROM usb_code_review_seed s
 JOIN device_model d ON d.id = s.facts->>'device_model_id'
-WHERE s.facts->>'decision' = 'APPROVED'
+WHERE s.facts->>'decision' IN ('APPROVED', 'PENDING')
   AND NOT EXISTS (
       SELECT 1 FROM device_identity_mapping m
       WHERE m.kind = s.facts->>'kind' AND m.value = s.facts->>'value' AND m.device_model_id = d.id);
@@ -45,7 +94,7 @@ WITH reviewed AS (
     UPDATE device_identity_mapping m
     SET status = s.facts->>'decision', review_reason = s.facts->>'reason', reviewed_by = NULL, reviewed_at = now()
     FROM usb_code_review_seed s
-    WHERE m.status = 'PENDING'
+    WHERE m.status = 'PENDING' AND s.facts->>'decision' <> 'PENDING'
       AND m.kind = s.facts->>'kind' AND m.value = s.facts->>'value'
       AND m.device_model_id = s.facts->>'device_model_id'
     RETURNING m.id, m.status, m.review_reason)
