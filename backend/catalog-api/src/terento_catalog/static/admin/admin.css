@@ -1270,10 +1270,9 @@ main.first-run-page>.web-installer-grid,main.web-visits-page>.web-installer-grid
 /* Web visits: two ranking lists, change colours by meaning, logos, Vitals limits, skeleton. */
 main.web-visits-page>.web-visits-lists{grid-template-columns:repeat(2,minmax(0,1fr))}
 @media(max-width:900px){main.web-visits-page>.web-visits-lists{grid-template-columns:minmax(0,1fr)}}
-/* Headline: Visitors and Downloads side by side, one even tile width across both; stacked below 1600 px. */
-main.web-visits-page>.web-visits-headline{grid-template-columns:minmax(0,5fr) minmax(0,3fr)}
+/* Headline: Visitors above Downloads at every width. The page is at most 1440 px wide, so eight tiles side by side (about 157 px each) wrapped their labels and changes (owner 2026-11-23). */
+main.web-visits-page>.web-visits-headline{grid-template-columns:minmax(0,1fr)}
 #web-visits-visitors>.admin-metric-row{grid-template-columns:repeat(5,minmax(0,1fr))}#web-visits-downloads>.admin-metric-row{grid-template-columns:repeat(3,minmax(0,1fr))}
-@media(max-width:1599px){main.web-visits-page>.web-visits-headline{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:900px){#web-visits-visitors>.admin-metric-row{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .funnel-delta[data-trend='better']{color:var(--success-text)}.funnel-delta[data-trend='worse']{color:var(--error-text)}.funnel-delta:is([data-trend='same'],[data-trend='neutral']){color:var(--secondary)}
 .web-visits-limit{display:block;margin-top:2px;color:var(--secondary)}

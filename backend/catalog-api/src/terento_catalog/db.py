@@ -912,41 +912,60 @@ class Database:
 
     # --- App Store statistics (asc_stats.py; Apple's own population) --------
 
-    def app_store_processed_instance_ids(self) -> set[str]:
+    def app_store_processed_instance_ids(self, versions: dict[tuple[str, str], int] | None = None) -> set[str]:
+        """Instances already read by the current parser of their report
+        (``versions``: (kind, level) -> parse version, 1 when not named); an
+        instance read by an older parser is left out, so it is read again."""
+        versions = versions or {}
         with self.connection() as connection:
-            rows = connection.execute("SELECT instance_id FROM app_store_report_instance").fetchall()
-        return {row["instance_id"] for row in rows}
+            rows = connection.execute(
+                "SELECT instance_id, report_kind, report_level, parse_version FROM app_store_report_instance"
+            ).fetchall()
+        return {row["instance_id"] for row in rows
+                if int(row["parse_version"]) >= versions.get((row["report_kind"], row["report_level"]), 1)}
 
     def store_app_store_instance(
         self, *, instance_id: str, kind: str, level: str, processing_date: Any,
-        rows: dict[tuple[str, str, str, str, str, str], int],
+        rows: dict[tuple[str, str, str, str, str, str], int], parse_version: int = 1,
     ) -> int | None:
         """Store one processed report instance in one transaction.
 
         Each day in it replaces that day of the same report when this
         processing date is the same or newer than the stored one; an older
         instance leaves newer days alone. Returns the days replaced, or None
-        when the instance was already processed (nothing changes)."""
+        when the instance was already processed by this parse version or a
+        newer one (nothing changes); an instance read by an older parser is
+        stored again. ``updates`` rows (App Store Downloads Standard only)
+        go to app_store_daily_update, every other metric to
+        app_store_daily_metric."""
         metrics = {"engagement": ["impressions", "product_page_views"],
                    "downloads": ["first_time_downloads", "redownloads"]}[kind]
         if level not in ("standard", "detailed"):
             raise ValueError("unknown report level")
+        keeps_updates = kind == "downloads" and level == "standard"
         with self.connection() as connection:
             connection.execute("SELECT pg_advisory_xact_lock(734820197)")
             inserted = connection.execute(
                 """
-                INSERT INTO app_store_report_instance (instance_id, report_kind, report_level, processing_date, row_count)
-                VALUES (%s, %s, %s, %s, %s)
-                ON CONFLICT (instance_id) DO NOTHING
+                INSERT INTO app_store_report_instance
+                    (instance_id, report_kind, report_level, processing_date, row_count, parse_version)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                ON CONFLICT (instance_id) DO UPDATE SET
+                    row_count = EXCLUDED.row_count,
+                    parse_version = EXCLUDED.parse_version,
+                    processed_at = now()
+                WHERE app_store_report_instance.parse_version < EXCLUDED.parse_version
+                  AND app_store_report_instance.report_kind = EXCLUDED.report_kind
+                  AND app_store_report_instance.report_level = EXCLUDED.report_level
                 RETURNING instance_id
                 """,
-                (instance_id, kind, level, processing_date, len(rows)),
+                (instance_id, kind, level, processing_date, len(rows), int(parse_version)),
             ).fetchone()
             if inserted is None:
                 return None
             by_day: dict[str, list[tuple[tuple[str, str, str, str, str, str], int]]] = {}
             for key, count in rows.items():
-                if key[1] not in metrics:
+                if key[1] not in metrics and not (keeps_updates and key[1] == "updates"):
                     raise ValueError("metric does not belong to this report")
                 by_day.setdefault(key[0], []).append((key, count))
             replaced = 0
@@ -969,7 +988,18 @@ class Database:
                     "DELETE FROM app_store_daily_metric WHERE day = %s AND report_level = %s AND metric = ANY(%s)",
                     (day, level, metrics),
                 )
+                if keeps_updates:
+                    connection.execute("DELETE FROM app_store_daily_update WHERE day = %s", (day,))
                 for (_, metric, source_type, campaign, territory, device), count in by_day[day]:
+                    if metric == "updates":
+                        connection.execute(
+                            """
+                            INSERT INTO app_store_daily_update (day, source_type, territory, device, count)
+                            VALUES (%s, %s, %s, %s, %s)
+                            """,
+                            (day, source_type, territory, device, int(count)),
+                        )
+                        continue
                     connection.execute(
                         """
                         INSERT INTO app_store_daily_metric
@@ -1052,6 +1082,21 @@ class Database:
                 FROM app_store_daily_metric
                 WHERE report_level = 'standard' AND metric IN ('first_time_downloads', 'redownloads')
                   AND day BETWEEN %s AND %s
+                GROUP BY day
+                ORDER BY day
+                """,
+                (first, last),
+            ).fetchall()
+        return {row["day"]: int(row["count"]) for row in rows}
+
+    def app_store_update_days(self, first: Any, last: Any) -> dict[Any, int]:
+        """Updates (Manual update plus Auto-update, Standard) per day."""
+        with self.connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT day, sum(count)::bigint AS count
+                FROM app_store_daily_update
+                WHERE day BETWEEN %s AND %s
                 GROUP BY day
                 ORDER BY day
                 """,

@@ -483,9 +483,11 @@ Apple request is involved. The answer is `schemaVersion: 1`, `configured`,
 `period`, `state` (`not_set_up`, `waiting`, `ok`, `stale`, `unavailable`),
 `startDate`/`endDate`/`previousStartDate` (Apple's report dates),
 `updatedAt` (last good read of Apple), `lastAttemptAt`, `data` (`totals` and
-`previousTotals` with `impressions`, `product_page_views`,
-`first_time_downloads`, `redownloads` and `conversion` (first-time downloads
-÷ product page views), `days`, `sources`, `campaigns` (groups Facebook `fb-*`,
+`previousTotals` with `impressions` (as App Store Connect shows them: the
+report's impressions plus product page views), `product_page_views`,
+`first_time_downloads`, `redownloads`, `updates` and `conversion` (first-time
+downloads ÷ product page views), `days` and `sources` (the same impressions
+rule; no updates), `campaigns` (groups Facebook `fb-*`,
 Reddit `rd-*`, Site `site-*`, Other, each with its campaigns), `dayCount`;
 `null` without data) and `html` (the rendered block with its period picker).
 The period ends on the last day Apple has reported for both reports (one day
@@ -514,8 +516,12 @@ column name (unknown columns are ignored) and stored as daily aggregates in
 `app_store_daily_metric` (migration 095): impressions and product page views
 (Event `Impression` and `Page view` on Page Type `Product page`), first-time
 downloads and redownloads (Download Type `First-time download` and
-`Redownload`; updates and restores are not counted), by day, source type,
-campaign, territory and device. A newer processing date replaces a day of the
+`Redownload`), by day, source type, campaign, territory and device. Updates
+(Download Type `Manual update` plus `Auto-update`, Standard only) go to
+`app_store_daily_update` (migration 101) and are never added to downloads;
+restores are not counted. An instance read by an older parser
+(`app_store_report_instance.parse_version` below the current one) is read
+again while Apple still lists it. A newer processing date replaces a day of the
 same report (Apple: never merge one date across instances); an older one
 leaves it. Rows hold no person, device or account identifier. A failure logs
 only `ASC <reason>` (an HTTP status or a fixed reason), never the key, token,

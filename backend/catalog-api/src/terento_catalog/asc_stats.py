@@ -5,7 +5,9 @@ downloads card adds App Store downloads beside the GitHub counters
 (docs/admin-behavior-contract.md). They are Apple's own population: App Store
 impressions, product page views and downloads as Apple reports them, never
 app, web installer, Umami or Search Console statistics, and they are not
-reconciled with any of them (contracts/STATISTICS_CONTRACT.md).
+reconciled with any of them (contracts/STATISTICS_CONTRACT.md). Impressions
+are shown as App Store Connect shows them: the report's impressions plus
+product page views (the report's Impression event leaves page views out).
 
 How it works (Apple: Analytics Reports API, "Downloading Analytics Reports"):
 
@@ -16,14 +18,18 @@ How it works (Apple: Analytics Reports API, "Downloading Analytics Reports"):
 * The scheduler reads, about once an hour, the daily instances of four
   reports: App Store Discovery and Engagement and App Store Downloads, each
   Standard and Detailed. Every instance is a set of gzip tab-separated
-  segments. Standard rows give the totals, sources and the Dashboard numbers;
+  segments. Standard rows give the totals, sources, updates (Manual update
+  plus Auto-update, kept apart from downloads) and the Dashboard numbers;
   Detailed rows (noised, rows under 5 users omitted) give only the campaign
   numbers, because only Detailed reports have the Campaign column.
 * Rows become daily aggregates in the catalog database. A newer processing
   date replaces a day (Apple: "Instances from a more recent processingDate
   overwrite instances with an earlier processingDate ... Don't merge records
   for a Date across two report instances"), and processed instance IDs are
-  kept, so a second run never doubles a count. Admin reads only that table.
+  kept, so a second run never doubles a count. An instance read by an older
+  parser (``PARSE_VERSIONS``) is read again while Apple still lists it, so
+  days stored before a parser change gain the new numbers. Admin reads only
+  the stored rows.
 
 The private key stays on the server: it is read from the environment (the
 key itself or the path of a file holding it), a token is signed for at most
@@ -89,6 +95,17 @@ KIND_METRICS = {
 }
 METRICS = tuple(metric for metrics in KIND_METRICS.values() for metric in metrics)
 LEVELS = ("standard", "detailed")
+# App Store Downloads Standard also gives updates, stored apart from the
+# downloads (an update is not a download).
+UPDATE_METRIC = "updates"
+UPDATE_TYPES = ("manual update", "auto-update")
+# Parser version per (kind, level), 1 when not named. 2: Downloads Standard
+# keeps updates (2026-11-23); instances read by version 1 are read again.
+PARSE_VERSIONS = {("downloads", "standard"): 2}
+
+
+def parse_version(kind: str, level: str) -> int:
+    return PARSE_VERSIONS.get((kind, level), 1)
 
 # Apple's Source Type values (report values are not case sensitive).
 SOURCE_TYPES = {
@@ -444,7 +461,9 @@ def parse_report(raw: bytes, kind: str, level: str, app_id: str) -> Rows:
     """Daily aggregates of one report file. Columns are found by name (Apple
     may move them); an unknown column is ignored, a missing one stops the
     instance. Only the counted rows are kept: Standard has no campaign;
-    Detailed rows without a campaign are left out."""
+    Detailed rows without a campaign are left out. Downloads Standard also
+    keeps updates (Manual update plus Auto-update) as ``updates``; restores
+    are never counted."""
     text = _gunzip(raw).decode("utf-8-sig", errors="replace")
     first = text.split("\n", 1)[0]
     reader = csv.reader(io.StringIO(text), delimiter="\t" if "\t" in first or "," not in first else ",")
@@ -486,6 +505,8 @@ def parse_report(raw: bytes, kind: str, level: str, app_id: str) -> Rows:
         else:
             download = value(row, "download type").strip().lower()
             metric = {"first-time download": "first_time_downloads", "redownload": "redownloads"}.get(download)
+            if metric is None and download in UPDATE_TYPES and level == "standard":
+                metric = UPDATE_METRIC
             if metric is None:
                 continue
         campaign = campaign_token(value(row, "campaign")) if level == "detailed" else ""
@@ -562,7 +583,7 @@ class AscSync:
             state = request_state(requests)
             summary["request"] = state
             usable = [item for item in requests if not item["stopped"] or item["accessType"] == "ONE_TIME_SNAPSHOT"]
-            done = self.database.app_store_processed_instance_ids()
+            done = self.database.app_store_processed_instance_ids(PARSE_VERSIONS)
             todo: list[tuple[date, str, str, str]] = []
             for request in usable:
                 for report_id, kind, level in self._reports(request["id"]):
@@ -573,7 +594,8 @@ class AscSync:
             for processing, instance_id, kind, level in todo[:self._max_instances]:
                 rows = self._rows(instance_id, kind, level)
                 stored = self.database.store_app_store_instance(
-                    instance_id=instance_id, kind=kind, level=level, processing_date=processing, rows=rows)
+                    instance_id=instance_id, kind=kind, level=level, processing_date=processing, rows=rows,
+                    parse_version=parse_version(kind, level))
                 if stored is not None:
                     summary["instances"] += 1
                     summary["days"] += stored
@@ -619,6 +641,13 @@ def _empty_totals() -> dict[str, int]:
 
 def _conversion(downloads: int, views: int) -> float | None:
     return downloads / views if views else None
+
+
+def _as_shown(values: dict[str, int]) -> dict[str, int]:
+    """Impressions as App Store Connect shows them: the report's Impression
+    events plus product page views (Apple: "Page views are not included in
+    these counts")."""
+    return {**values, "impressions": values["impressions"] + values["product_page_views"]}
 
 
 def admin_snapshot(database: Any, period: str, *, configured: bool) -> dict[str, Any]:
@@ -667,16 +696,22 @@ def admin_snapshot(database: Any, period: str, *, configured: bool) -> dict[str,
         now_totals[metric] += count
         by_day.setdefault(day.isoformat(), _empty_totals())[metric] += count
         sources.setdefault(row["source_type"] or "Unavailable", _empty_totals())[metric] += count
+    updates = database.app_store_update_days(previous or start, end)
+    now_updates = sum(count for day, count in updates.items() if day >= start)
+    before_updates = sum(count for day, count in updates.items() if day < start)
     campaigns: dict[str, dict[str, int]] = {}
     for row in detailed:
         if row["campaign"]:
             campaigns.setdefault(row["campaign"], _empty_totals())[row["metric"]] += int(row["count"])
     data = {
-        "totals": {**now_totals, "conversion": _conversion(now_totals["first_time_downloads"], now_totals["product_page_views"])},
+        "totals": {**_as_shown(now_totals), "updates": now_updates,
+                   "conversion": _conversion(now_totals["first_time_downloads"], now_totals["product_page_views"])},
         "previousTotals": None if previous is None else {
-            **before_totals, "conversion": _conversion(before_totals["first_time_downloads"], before_totals["product_page_views"])},
-        "days": [{"date": day, **values} for day, values in sorted(by_day.items())],
-        "sources": [{"source": name, **values, "conversion": _conversion(values["first_time_downloads"], values["product_page_views"])}
+            **_as_shown(before_totals), "updates": before_updates,
+            "conversion": _conversion(before_totals["first_time_downloads"], before_totals["product_page_views"])},
+        "days": [{"date": day, **_as_shown(values)} for day, values in sorted(by_day.items())],
+        "sources": [{"source": name, **_as_shown(values),
+                     "conversion": _conversion(values["first_time_downloads"], values["product_page_views"])}
                     for name, values in sources.items()],
         "campaigns": campaign_groups(campaigns),
         "dayCount": (end - start).days + 1,

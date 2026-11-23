@@ -912,3 +912,21 @@ Migration070 to accept the stage `RECONNECT_WAIT` with the outcomes `SHOWN`,
 1.2.2). No column, index or stored value changes; every row the previous
 revision writes stays valid, so it keeps working during the migration and after
 a rollback. Meaning: `contracts/APP_FUNNEL_CONTRACT.md`.
+
+### Migration101: App Store updates
+
+Additive only (`asc_stats.py`; statistics contract, App Store Connect).
+
+- `app_store_daily_update`: App Store updates (Apple's App Store Downloads
+  Standard report, Download Type `Manual update` plus `Auto-update`) per
+  Apple report date, primary key `(day, source_type, territory, device)`,
+  `count > 0`. A separate table, not a new `metric` value in
+  `app_store_daily_metric`, because the previous revision sums every metric
+  value it finds there. No person, device or account identifier.
+- `app_store_report_instance.parse_version` (`SMALLINT NOT NULL DEFAULT 1`):
+  which parser read the instance. The current parser of App Store Downloads
+  Standard is 2 (keeps updates); an instance read by version 1 is read again
+  while Apple still lists it (daily instances stay about 35 days), so the days
+  stored before this migration gain their updates. The previous revision never
+  writes the column, so instances it reads after a rollback are read again by
+  this revision.

@@ -1271,6 +1271,13 @@ def _asc_kpis(now: dict[str, Any], before: dict[str, Any] | None, period: str, d
     ], label="App Store")
 
 
+def _asc_more(now: dict[str, Any]) -> str:
+    """One line under the totals: redownloads and updates for the period."""
+    text = (f"Redownloads {_gsc_number(now.get('redownloads'), 'count')}"
+            f" · Updates {_gsc_number(now.get('updates'), 'count')}")
+    return f"<p class='overview-chart-note' id='web-visits-asc-more'>{text}</p>"
+
+
 def _asc_buckets(data: dict[str, Any], start: str, end: str, weekly: bool) -> list[dict[str, Any]]:
     """One point per reported day (per week for All time); a reported day
     without rows is 0."""
@@ -1361,7 +1368,8 @@ def app_store_blocks(snapshot: dict[str, Any] | None) -> str:
         _status_pill("unknown", "App Store unavailable") + "<span class='admin-metric-secondary'>"
         + (f"Last result {_timestamp_markup(updated)}" if updated else "Last result —") + "</span>")
     data = snapshot["data"]
-    kpis = _asc_kpi_panel(_asc_kpis(data["totals"], data.get("previousTotals"), period, int(data.get("dayCount") or 0)))
+    kpis = _asc_kpi_panel(_asc_kpis(data["totals"], data.get("previousTotals"), period, int(data.get("dayCount") or 0))
+                          + _asc_more(data["totals"]))
     trend = _asc_card("trend", "Trend", _asc_trend(data, snapshot), css="overview-chart-panel")
     lists = ("<div class='web-installer-grid web-visits-asc-lists'>"
              + _asc_card("sources", "Sources", _asc_sources(data.get("sources") or []))

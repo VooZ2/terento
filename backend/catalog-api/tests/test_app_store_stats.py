@@ -159,18 +159,26 @@ class FakeAscDatabase:
 
     def __init__(self):
         self.metrics: dict[tuple, int] = {}  # (day, level, metric, source, campaign, territory, device) -> count
+        self.updates: dict[tuple, int] = {}  # (day, source, territory, device) -> count
         self.owner: dict[tuple, date] = {}   # (kind, level, day) -> processing date
         self.instances: dict[str, tuple[str, str, date]] = {}
+        self.versions: dict[str, int] = {}
         self.sync: dict | None = None
 
-    def app_store_processed_instance_ids(self):
-        return set(self.instances)
+    def app_store_processed_instance_ids(self, versions=None):
+        versions = versions or {}
+        return {instance for instance, (kind, level, _) in self.instances.items()
+                if self.versions[instance] >= versions.get((kind, level), 1)}
 
-    def store_app_store_instance(self, *, instance_id, kind, level, processing_date, rows):
-        if instance_id in self.instances:
+    def store_app_store_instance(self, *, instance_id, kind, level, processing_date, rows, parse_version=1):
+        if instance_id in self.instances and self.versions[instance_id] >= parse_version:
             return None
         self.instances[instance_id] = (kind, level, processing_date)
+        self.versions[instance_id] = parse_version
         metrics = asc_stats.KIND_METRICS[kind]
+        keeps_updates = (kind, level) == ("downloads", "standard")
+        if any(key[1] not in metrics and not (keeps_updates and key[1] == "updates") for key in rows):
+            raise ValueError("metric does not belong to this report")
         replaced = 0
         for day in sorted({key[0] for key in rows}):
             owner = self.owner.get((kind, level, day))
@@ -179,11 +187,26 @@ class FakeAscDatabase:
             self.owner[(kind, level, day)] = processing_date
             for key in [key for key in self.metrics if key[0] == day and key[1] == level and key[2] in metrics]:
                 del self.metrics[key]
-            for (row_day, metric, *rest), count in rows.items():
-                if row_day == day:
-                    self.metrics[(day, level, metric, *rest)] = count
+            if keeps_updates:
+                for key in [key for key in self.updates if key[0] == day]:
+                    del self.updates[key]
+            for (row_day, metric, source, campaign, territory, device), count in rows.items():
+                if row_day != day:
+                    continue
+                if metric == "updates":
+                    self.updates[(day, source, territory, device)] = count
+                else:
+                    self.metrics[(day, level, metric, source, campaign, territory, device)] = count
             replaced += 1
         return replaced
+
+    def app_store_update_days(self, first, last):
+        out: dict[date, int] = {}
+        for (day, *_), count in self.updates.items():
+            when = date.fromisoformat(day)
+            if first <= when <= last:
+                out[when] = out.get(when, 0) + count
+        return out
 
     def record_app_store_sync(self, *, attempted_at, succeeded, error, request_state):
         before = self.sync or {}
@@ -247,13 +270,15 @@ def seeded(apple: FakeApple) -> None:
         ("i-d1", "2026-11-18", [_tsv(DOWNLOAD_HEADER, [
             download("2026-11-16", "First-time Download", "App Store search", 6),
             download("2026-11-16", "Redownload", "App Store search", 2),
-            download("2026-11-16", "Manual update", "App Store search", 9),  # not a download here
+            download("2026-11-16", "Manual update", "App Store search", 9),  # an update, never a download
+            download("2026-11-16", "Restore", "App Store search", 5),  # never counted
             download("2026-11-17", "First-time Download", "Web referrer", 3),
         ])]),
         ("i-d2", "2026-11-19", [_tsv(DOWNLOAD_HEADER, [
             download("2026-11-17", "First-time Download", "Web referrer", 4),
             download("2026-11-18", "First-time Download", "Web referrer", 2),
             download("2026-11-18", "Redownload", "Web referrer", 1),
+            download("2026-11-18", "Auto-update", "App Store browse", 4),
         ])]),
     ]
     apple.instances["r-dl-det"] = [
@@ -262,6 +287,7 @@ def seeded(apple: FakeApple) -> None:
             download("2026-11-17", "First-time Download", "Web referrer", 5) + ["rd-fenix", "", ""],
             download("2026-11-18", "First-time Download", "Web referrer", 2) + ["site-home", "", ""],
             download("2026-11-18", "First-time Download", "Web referrer", 7) + ["", "", ""],  # no campaign
+            download("2026-11-18", "Manual update", "Web referrer", 6) + ["fb-lt", "", ""],  # Detailed: no updates
         ])]),
     ]
     apple.instances["r-eng-det"] = [
@@ -389,6 +415,18 @@ class ReportFileTests(unittest.TestCase):
         self.assertEqual(list(rows.values()), [3])
         self.assertEqual(next(iter(rows))[3], "fb-lt")
 
+    def test_updates_are_kept_apart_in_standard_only_and_restores_never(self):
+        rows = [download("2026-11-17", "Manual update", "App Store search", 3),
+                download("2026-11-17", "auto-update", "App Store search", 2),
+                download("2026-11-17", "Restore", "App Store search", 8),
+                download("2026-11-17", "First-time Download", "App Store search", 1)]
+        standard = parse_report(_tsv(DOWNLOAD_HEADER, rows), "downloads", "standard", APP)
+        self.assertEqual(standard, {("2026-11-17", "updates", "App Store search", "", "LT", "Desktop"): 5,
+                                    ("2026-11-17", "first_time_downloads", "App Store search", "", "LT", "Desktop"): 1})
+        detailed = parse_report(_tsv(DETAILED_DOWNLOAD_HEADER, [row + ["fb-lt", "", ""] for row in rows]),
+                                "downloads", "detailed", APP)
+        self.assertEqual({key[1] for key in detailed}, {"first_time_downloads"})
+
     def test_a_file_that_is_not_gzip_or_too_large_is_refused(self):
         with self.assertRaises(AscError):
             parse_report(b"\x1f\x8bnot really gzip", "downloads", "standard", APP)
@@ -425,6 +463,20 @@ class SyncTests(unittest.TestCase):
         self.assertIsNone(self.db.store_app_store_instance(instance_id="i-d2", kind="downloads", level="standard",
                                                            processing_date=date(2026, 11, 19), rows={}))
 
+    def test_instances_read_by_an_older_parser_are_read_again_once(self):
+        self.run_sync()
+        before = dict(self.db.metrics)
+        # As stored before updates were kept: Downloads Standard read by parser 1.
+        for instance, (kind, level, _) in self.db.instances.items():
+            if (kind, level) == ("downloads", "standard"):
+                self.db.versions[instance] = 1
+        self.db.updates.clear()
+        again = self.run_sync()
+        self.assertEqual(again["instances"], 2)  # i-d1 and i-d2 only
+        self.assertEqual(self.db.metrics, before)  # downloads are replaced, never doubled
+        self.assertEqual(sum(self.db.updates.values()), 9 + 4)
+        self.assertEqual(self.run_sync()["instances"], 0)
+
     def test_a_newer_processing_date_replaces_a_day_and_an_older_one_does_not(self):
         self.run_sync()
         standard = admin_snapshot(self.db, "all", configured=True)["data"]
@@ -442,10 +494,13 @@ class SyncTests(unittest.TestCase):
         snapshot = admin_snapshot(self.db, "7d", configured=True)
         self.assertEqual((snapshot["state"], snapshot["startDate"], snapshot["endDate"]), ("ok", "2026-11-12", "2026-11-18"))
         totals = snapshot["data"]["totals"]
+        # Impressions as App Store Connect shows them: report impressions plus page views.
         self.assertEqual((totals["impressions"], totals["product_page_views"], totals["first_time_downloads"],
-                          totals["redownloads"]), (140, 20 + 10 + 12 + 4, 6 + 4 + 2, 2 + 1))
+                          totals["redownloads"], totals["updates"]), (140 + 46, 20 + 10 + 12 + 4, 6 + 4 + 2, 2 + 1, 9 + 4))
         self.assertAlmostEqual(totals["conversion"], 12 / 46)
         self.assertEqual(snapshot["data"]["previousTotals"]["first_time_downloads"], 0)
+        self.assertEqual(snapshot["data"]["previousTotals"]["updates"], 0)
+        self.assertEqual(snapshot["data"]["days"][0]["impressions"], 100 + 30)
         sources = {row["source"]: row for row in snapshot["data"]["sources"]}
         self.assertEqual(sources["Web referrer"]["product_page_views"], 26)
         self.assertEqual(sources["App Store search"]["first_time_downloads"], 6)
@@ -586,6 +641,7 @@ class BlockTests(unittest.TestCase):
                       "Apple shows a campaign only after a day and at least 5 downloads; small sources may be hidden."):
             self.assertIn(label, text if not label.startswith("http") else markup)
         self.assertIn("vs previous 30 days", text)
+        self.assertIn("Redownloads 3 · Updates 13", text)
         self.assertIn("target='_blank'", markup)
         self.assertIn("id='asc-period'", markup)
         self.assertNotIn("unavailable", text.lower())
