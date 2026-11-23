@@ -1179,7 +1179,11 @@ summary facts.
 
 Device identity is an operator-assisted exact-catalog selection: Selected model
 is shown as a label with a bold value, and Edit, Confirm and (only on conflict)
-Confirm manual assignment share one action row. When a model is already
+Confirm manual assignment share one action row. Confirm is the primary button
+only while the selected model has no reported or code conflict; with a conflict,
+shown on the page or returned by a refused Confirm, it is a secondary button
+like Confirm manual assignment, and choosing another model makes it primary
+again. When a model is already
 selected the search picker stays hidden until Edit. Initial candidate
 buttons are immediately usable by pointer and keyboard without
 typing into the search field. When a dialog would list the whole catalog, the
