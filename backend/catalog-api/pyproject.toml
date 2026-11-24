@@ -13,7 +13,7 @@ dependencies = [
   "google-auth[urllib3]==2.62.2",
   "urllib3==2.8.0",
   # ES256 tokens for Admin App Store statistics (App Store Connect API, server side only).
-  "cryptography==50.0.1",
+  "cryptography==50.0.2",
 ]
 
 [project.optional-dependencies]
