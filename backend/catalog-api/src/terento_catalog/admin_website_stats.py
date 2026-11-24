@@ -755,8 +755,9 @@ def _loading_blocks() -> str:
 
 def _website_stats_script() -> str:
     """Reads the blocks for the shown period and puts them in place of the
-    loading ones; a failed read shows Unavailable. Country codes get their
-    English names from the browser."""
+    loading ones (the server's last result first, then the fresh one when it
+    was still reading Umami); a failed read shows Unavailable. Country codes
+    get their English names from the browser."""
     return r"""(() => {
       let request = 0;
       const regionNames = (() => {
@@ -769,29 +770,41 @@ def _website_stats_script() -> str:
         if (!main || !form || !failed || main.dataset.websiteStatsLoaded === 'true') return;
         main.dataset.websiteStatsLoaded = 'true';
         const number = ++request;
-        const url = new URL('/admin/api/umami', window.location.origin);
-        url.searchParams.set('period', document.querySelector('#overview-period')?.value || '7d');
-        url.searchParams.set('timeZone', form.dataset.timeZone || 'UTC');
+        // The last result first (it answers at once when the server has one),
+        // then the fresh one when the server is still reading Umami.
+        const ask = async (last) => {
+          const url = new URL('/admin/api/umami', window.location.origin);
+          url.searchParams.set('period', document.querySelector('#overview-period')?.value || '7d');
+          url.searchParams.set('timeZone', form.dataset.timeZone || 'UTC');
+          if (last) url.searchParams.set('last', '1');
+          try {
+            const response = await fetch(url, {credentials: 'same-origin', headers: {'Accept': 'application/json'}});
+            return response.ok ? await response.json() : null;
+          } catch (error) { return null; }
+        };
+        const show = (markup) => {
+          const next = document.createElement('template');
+          next.innerHTML = typeof markup === 'string' ? markup : failed.innerHTML;
+          next.content.querySelectorAll('[data-region-name]').forEach((node) => {
+            let name = null;
+            try { name = regionNames?.of(node.dataset.regionName); } catch (error) { name = null; }
+            if (name) node.textContent = name;
+          });
+          main.querySelectorAll(':scope > [data-website-stats-block]').forEach((node) => node.remove());
+          [...next.content.children].forEach((node) => node.setAttribute('data-website-stats-block', ''));
+          failed.before(next.content);
+          window.TerentoAdminTime?.render();
+          main.querySelectorAll('[data-visits-map]').forEach((box) => (observer ? observer.observe(box) : drawMap(box)));
+        };
         main.setAttribute('aria-busy', 'true');
-        let markup = null;
-        try {
-          const response = await fetch(url, {credentials: 'same-origin', headers: {'Accept': 'application/json'}});
-          if (response.ok) markup = (await response.json()).html;
-        } catch (error) { markup = null; }
+        const first = await ask(true);
         if (number !== request || !main.isConnected) return;
-        const next = document.createElement('template');
-        next.innerHTML = typeof markup === 'string' ? markup : failed.innerHTML;
-        next.content.querySelectorAll('[data-region-name]').forEach((node) => {
-          let name = null;
-          try { name = regionNames?.of(node.dataset.regionName); } catch (error) { name = null; }
-          if (name) node.textContent = name;
-        });
-        main.querySelectorAll(':scope > [data-website-stats-block]').forEach((node) => node.remove());
-        [...next.content.children].forEach((node) => node.setAttribute('data-website-stats-block', ''));
-        failed.before(next.content);
+        show(first?.html);
         main.removeAttribute('aria-busy');
-        window.TerentoAdminTime?.render();
-        main.querySelectorAll('[data-visits-map]').forEach((box) => (observer ? observer.observe(box) : drawMap(box)));
+        if (!first?.refreshing) return;
+        const fresh = await ask(false);
+        if (number !== request || !main.isConnected || typeof fresh?.html !== 'string') return;
+        show(fresh.html);
       };
       // Events: a group's Show all / Show fewer (Navigation & links: Show / Hide).
       document.addEventListener('click', (event) => {

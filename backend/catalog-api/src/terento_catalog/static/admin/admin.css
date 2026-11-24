@@ -1280,6 +1280,10 @@ main.web-visits-page>.web-visits-headline{grid-template-columns:minmax(0,1fr)}
 .web-visits-direct td{color:var(--secondary);font-weight:500}
 @media(max-width:700px){main.web-visits-page #web-visits-vitals>.admin-metric-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .web-visits-skeleton{display:grid;gap:10px;padding:4px 0 8px}.web-visits-skeleton span{display:block;height:14px;border-radius:var(--radius-control);background:var(--surface-muted)}.web-visits-skeleton span:nth-child(1){width:60%}.web-visits-skeleton span:nth-child(2){width:85%}.web-visits-skeleton span:nth-child(3){width:40%}
+/* Loading bars pulse so a block that waits for its data does not look finished; still under reduced motion. */
+.web-visits-skeleton span{animation:web-visits-skeleton-pulse 1.4s ease-in-out infinite}.web-visits-skeleton span:nth-child(2){animation-delay:.15s}.web-visits-skeleton span:nth-child(3){animation-delay:.3s}
+@keyframes web-visits-skeleton-pulse{50%{opacity:.45}}
+@media(prefers-reduced-motion:reduce){.web-visits-skeleton span{animation:none}}
 /* Web visits, Google Search (Search Console): its own heading under Umami, the same cards; two stacked line charts share one date axis. */
 .web-visits-gsc{display:grid;gap:var(--admin-card-gap);margin-top:calc(var(--admin-card-gap) * 1.5)}.web-visits-gsc>*,.web-visits-gsc>.web-installer-grid>*{margin:0}
 .web-visits-gsc-heading{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}.web-visits-gsc-period{margin:0;padding:6px}.web-visits-gsc-heading h2{margin:0 auto 0 0;font-size:clamp(22px,2.2vw,28px);line-height:1.15}

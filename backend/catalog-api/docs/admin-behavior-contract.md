@@ -628,8 +628,13 @@ wrapped); a stale or unavailable headline block keeps its title for its marks
    only after a day and at least 5 downloads; small sources may be hidden.`;
    a last line with the update time and `Open App Store Connect` (new tab).
 
-The page renders at once with every block as a grey skeleton and fills them
-from `/admin/api/umami`; the Umami key stays on the server. A block Umami could
+The page renders at once with every block as a grey skeleton (its bars pulse;
+still under reduced motion) and fills them from `/admin/api/umami`; the Umami
+key stays on the server. It asks for the last result first (`last=1`): a
+result older than 15 minutes but younger than a day (Today: of the same local
+day) shows at once with its own `Updated` time, and the page puts the fresh
+result in its place when the server's one background read of Umami ends
+(owner 2026-11-24: the page waited for every Umami read). A block Umami could
 not answer shows `Statistics unavailable.`, or its last result with a
 `Statistics unavailable` pill and `Last result <time>`; a block Umami answers
 with 400 or 404 is left out; the other blocks stay. Without Umami settings the

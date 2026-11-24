@@ -714,15 +714,17 @@ class CatalogService:
             **summarize_web_installer(events, jobs),
         }
 
-    def website_stats(self, period: str, time_zone: str) -> dict[str, Any]:
+    def website_stats(self, period: str, time_zone: str, *, last: bool = False) -> dict[str, Any]:
         """Website stats (Umami) for the Admin page: the blocks as data and as
-        rendered markup. Never raises; the Umami key is not in the result."""
+        rendered markup. With ``last`` a cached result up to a day old answers
+        at once while a background read refreshes it (``refreshing``). Never
+        raises; the Umami key is not in the result."""
         period = period if period in ADMIN_PERIODS else "7d"
         stats = self.umami_stats
         snapshot = None
         if stats is not None:
             try:
-                snapshot = stats.snapshot(period, time_zone)
+                snapshot = stats.snapshot(period, time_zone, background=last)
             except Exception:
                 LOGGER.exception("website stats failed")
         blocks = None if snapshot is None else {
@@ -737,6 +739,7 @@ class CatalogService:
             "startAt": None if snapshot is None else snapshot["startAt"],
             "endAt": None if snapshot is None else snapshot["endAt"],
             "blocks": blocks,
+            "refreshing": bool(snapshot and snapshot.get("refreshing")),
             "html": website_stats_blocks(snapshot, dashboard_url=stats.settings.dashboard_url if stats else None),
         }
 
@@ -2115,7 +2118,8 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
                 period = self._admin_period(query, "7d")
                 time_zone = query.get("timeZone", [self._cookie_value("terento_admin_tz") or "UTC"])[-1]
-                self._send_json(HTTPStatus.OK, service.website_stats(period, _admin_time_zone(time_zone)),
+                last = query.get("last", [""])[-1] == "1"
+                self._send_json(HTTPStatus.OK, service.website_stats(period, _admin_time_zone(time_zone), last=last),
                                 send_body=send_body, cache_control="no-store", noindex=True)
                 return
             if request_path in {"/admin/api/gsc", "/admin/api/gsc/"}:
