@@ -19,6 +19,7 @@ from terento_catalog.admin_website_stats import website_stats_blocks, website_st
 from terento_catalog.http_api import CatalogService, make_handler
 from terento_catalog.umami_stats import (
     CACHE_SECONDS,
+    LAST_RESULT_SECONDS,
     UmamiRequestError,
     UmamiSettings,
     UmamiStats,
@@ -265,6 +266,102 @@ class SnapshotTests(unittest.TestCase):
         self.assertEqual(snapshot["blocks"]["referrers"]["state"], "unavailable")
         with self.assertRaises(UmamiRequestError):
             umami_stats.parse_errors(["not", "a", "page"])
+
+
+class GatedUmami(FakeUmami):
+    """FakeUmami whose answers wait until ``gate`` opens (when closed)."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.gate = threading.Event()
+        self.gate.set()
+
+    def __call__(self, settings, path, params):
+        self.gate.wait(5)
+        return super().__call__(settings, path, params)
+
+
+def _wait_for(condition, seconds=3.0):
+    deadline = time.monotonic() + seconds
+    while not condition():
+        if time.monotonic() > deadline:
+            raise AssertionError("condition not reached")
+        time.sleep(0.01)
+
+
+class LastResultTests(unittest.TestCase):
+    """The page asks for the last result first: shown at once, refreshed by one background read."""
+
+    def setUp(self):
+        self.fake = GatedUmami()
+        self.client, _, self.clock = stats(self.fake)
+        self.blocks = len(umami_stats.BLOCKS)
+
+    def test_an_older_result_answers_at_once_and_one_background_read_refreshes_it(self):
+        first = self.client.snapshot("7d", "UTC", now=NOW)
+        self.assertFalse(first["refreshing"])
+        self.clock.now += CACHE_SECONDS + 60
+        self.fake.gate.clear()  # Umami is slow now
+        started = time.monotonic()
+        shown = self.client.snapshot("7d", "UTC", now=NOW, background=True)
+        self.assertLess(time.monotonic() - started, 1)
+        self.assertTrue(shown["refreshing"])
+        self.assertEqual(shown["blocks"]["visitors"], first["blocks"]["visitors"])  # with its own fetchedAt
+        self.fake.gate.set()
+        _wait_for(lambda: len(self.fake.calls) == 2 * self.blocks and not self.client._reading)
+        fresh = self.client.snapshot("7d", "UTC", now=NOW, background=True)
+        self.assertFalse(fresh["refreshing"])
+        self.assertEqual(fresh["blocks"]["visitors"]["fetchedAt"], self.clock.now)
+        self.assertEqual(len(self.fake.calls), 2 * self.blocks)
+
+    def test_the_fresh_request_waits_for_the_background_read_instead_of_asking_again(self):
+        self.client.snapshot("7d", "UTC", now=NOW)
+        self.clock.now += CACHE_SECONDS + 60
+        self.fake.gate.clear()
+        self.assertTrue(self.client.snapshot("7d", "UTC", now=NOW, background=True)["refreshing"])
+        _wait_for(lambda: self.client._reading)
+        threading.Timer(0.2, self.fake.gate.set).start()
+        fresh = self.client.snapshot("7d", "UTC", now=NOW)
+        self.assertFalse(fresh["refreshing"])
+        self.assertEqual(fresh["blocks"]["visitors"]["fetchedAt"], self.clock.now)
+        self.assertEqual(len(self.fake.calls), 2 * self.blocks)  # one read, not two
+
+    def test_without_a_usable_result_the_page_waits_for_umami(self):
+        cases = (("nothing cached", None, "7d"), ("older than a day", LAST_RESULT_SECONDS + 1, "7d"),
+                 ("Today of yesterday", CACHE_SECONDS + 60, "today"))
+        for label, age, period in cases:
+            with self.subTest(label):
+                client, fake, clock = stats()
+                moment = NOW.replace(hour=23, minute=55) if period == "today" else NOW
+                if age is not None:
+                    client.snapshot(period, "UTC", now=moment)
+                    clock.now += age
+                    moment = moment + (datetime.fromtimestamp(clock.now, timezone.utc) - NOW)
+                snapshot = client.snapshot(period, "UTC", now=moment, background=True)
+                self.assertFalse(snapshot["refreshing"])
+                self.assertEqual(snapshot["blocks"]["visitors"]["fetchedAt"], clock.now)
+
+    def test_a_hidden_block_does_not_make_the_page_wait(self):
+        self.fake.fail["/performance/stats"] = UmamiRequestError("HTTP 404", 404)
+        self.client.snapshot("7d", "UTC", now=NOW)
+        self.clock.now += CACHE_SECONDS + 60
+        self.fake.gate.clear()
+        shown = self.client.snapshot("7d", "UTC", now=NOW, background=True)
+        self.assertTrue(shown["refreshing"])
+        self.assertEqual(shown["blocks"]["vitals"]["state"], "hidden")
+        self.fake.gate.set()
+
+    def test_a_failed_background_read_keeps_the_last_result(self):
+        first = self.client.snapshot("7d", "UTC", now=NOW)
+        self.clock.now += CACHE_SECONDS + 60
+        self.fake.fail["/stats"] = UmamiRequestError("HTTP 503", 503)
+        with self.assertLogs(umami_stats.LOGGER, level="WARNING"):
+            self.client.snapshot("7d", "UTC", now=NOW, background=True)
+            _wait_for(lambda: len(self.fake.calls) == 2 * self.blocks and not self.client._reading)
+        with self.assertLogs(umami_stats.LOGGER, level="WARNING"):
+            again = self.client.snapshot("7d", "UTC", now=NOW)
+        self.assertEqual(again["blocks"]["visitors"]["state"], "stale")
+        self.assertEqual(again["blocks"]["visitors"]["data"], first["blocks"]["visitors"]["data"])
 
 
 class ReferrerSourceTests(unittest.TestCase):
@@ -768,6 +865,17 @@ class RouteTests(unittest.TestCase):
         self.assertNotIn(fx.SECRET_KEY, body)
         self.assertNotIn("Bearer", body)
 
+    def test_last_asks_for_the_last_result(self):
+        _, body = self.get("/admin/api/umami?period=7d&last=1")
+        self.assertFalse(json.loads(body)["refreshing"])  # nothing cached: it waited for Umami
+        self.service.umami_stats._clock = lambda: time.time() + CACHE_SECONDS + 60
+        _, body = self.get("/admin/api/umami?period=7d&last=1")
+        payload = json.loads(body)
+        self.assertTrue(payload["refreshing"])
+        self.assertEqual(payload["blocks"]["visitors"]["state"], "ok")
+        _, body = self.get("/admin/api/umami?period=7d")
+        self.assertFalse(json.loads(body)["refreshing"])
+
     def test_unknown_period_and_time_zone_fall_back(self):
         _, body = self.get("/admin/api/umami?period=1y&timeZone=../../etc/passwd")
         payload = json.loads(body)
@@ -844,6 +952,14 @@ class PageTests(unittest.TestCase):
         self.assertIn("terento_admin_period=", body)  # the shared period script remembers the choice
         self.assertIn("<option value='7d' selected>", body)
         self.assertIn("<template id='website-stats-failed'>", body)
+        # The last result first, then the fresh one while the server still reads Umami.
+        self.assertIn("url.searchParams.set('last', '1')", body)
+        self.assertIn("if (!first?.refreshing) return;", body)
+
+    def test_loading_bars_pulse_except_with_reduced_motion(self):
+        from terento_catalog.admin import ADMIN_STYLES
+        self.assertIn(".web-visits-skeleton span{animation:web-visits-skeleton-pulse", ADMIN_STYLES)
+        self.assertIn("@media(prefers-reduced-motion:reduce){.web-visits-skeleton span{animation:none}}", ADMIN_STYLES)
 
 
 if __name__ == "__main__":

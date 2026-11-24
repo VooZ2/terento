@@ -10,7 +10,8 @@ the ``Authorization`` header to the configured Umami origin, never logged,
 never followed through a redirect and never put in a response. Requests run in
 parallel with a 10 second limit; each block's result is cached for 15 minutes
 per (block, period, time zone), and the last good result stays available when
-Umami fails later.
+Umami fails later. The Admin page asks for the last result first (up to a day
+old) and gets the fresh one from a single background read right after.
 """
 
 from __future__ import annotations
@@ -23,7 +24,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
-from concurrent.futures import ThreadPoolExecutor, wait
+from concurrent.futures import Future, ThreadPoolExecutor, wait
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
@@ -35,6 +36,9 @@ LOGGER = logging.getLogger(__name__)
 
 REQUEST_TIMEOUT_SECONDS = 10
 CACHE_SECONDS = 15 * 60
+# With ``background`` a result up to this old shows at once while a fresh one
+# is read (owner 2026-11-24: the page waited for every Umami read).
+LAST_RESULT_SECONDS = 24 * 60 * 60
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 DOWNLOAD_EVENT = "download-click"
 USER_AGENT = "Terento-Admin/1.0 (+https://terento.app)"
@@ -359,6 +363,12 @@ def parse_errors(raw: Any) -> dict[str, Any]:
 Fetch = Callable[[UmamiSettings, str, dict[str, Any]], Any]
 
 
+def _cached_block(cached: tuple[float, Any, int, str]) -> dict[str, Any]:
+    if cached[3] == "hidden":
+        return {"state": "hidden", "fetchedAt": None, "data": None}
+    return {"state": "ok", "fetchedAt": cached[0], "data": cached[1]}
+
+
 class UmamiStats:
     """Website stats per Admin period, cached per block."""
 
@@ -368,8 +378,10 @@ class UmamiStats:
         self._fetch = fetch
         self._clock = clock
         self._deadline = deadline_seconds
-        # (block, period, time zone) -> (fetched at, parsed data)
-        self._cache: dict[tuple[str, str, str], tuple[float, Any]] = {}
+        # (block, period, time zone) -> (fetched at, parsed data, startAt, ok | hidden)
+        self._cache: dict[tuple[str, str, str], tuple[float, Any, int, str]] = {}
+        # (period, time zone) -> (blocks, their result) of the read running now
+        self._reading: dict[tuple[str, str], tuple[set[str], Future]] = {}
         self._lock = threading.Lock()
         # Health: the latest read of Umami, from a probe or a page block.
         self._last_success: float | None = None
@@ -411,10 +423,17 @@ class UmamiStats:
                                                        "propertyName": "area"}, parse_event_values),
         }
 
-    def snapshot(self, period: str, time_zone: str, now: datetime | None = None) -> dict[str, Any]:
+    def snapshot(self, period: str, time_zone: str, now: datetime | None = None, *,
+                 background: bool = False) -> dict[str, Any]:
         """Every block as {state, fetchedAt, data}: ``ok``, ``stale`` (Umami
         failed; the last good result), ``unavailable`` (failed, nothing
-        cached) or ``hidden`` (Umami answered 400 or 404)."""
+        cached) or ``hidden`` (Umami answered 400 or 404).
+
+        With ``background``, blocks older than 15 minutes but younger than a
+        day (Today: of the same local day) come from the cache at once with
+        their own ``fetchedAt``, one read refreshes them in the background and
+        ``refreshing`` is true; without a usable result the call waits for
+        Umami as it does without ``background``."""
         period = period if period in ADMIN_PERIODS else "7d"
         now = now or datetime.fromtimestamp(self._clock(), timezone.utc)
         start, end = period_window(period, now, time_zone)
@@ -424,24 +443,83 @@ class UmamiStats:
         missing = []
         with self._lock:
             for name in BLOCKS:
-                cached = self._cache.get((name, period, time_zone))
-                if cached and moment - cached[0] < CACHE_SECONDS:
-                    blocks[name] = {"state": "ok", "fetchedAt": cached[0], "data": cached[1]}
+                cached = self._usable(name, period, time_zone, start, moment, CACHE_SECONDS)
+                if cached:
+                    blocks[name] = _cached_block(cached)
                 else:
                     missing.append(name)
-        if missing:
-            executor = ThreadPoolExecutor(max_workers=len(missing), thread_name_prefix="umami")
-            futures = {name: executor.submit(self._fetch, self.settings, requests[name][0], requests[name][1]) for name in missing}
-            wait(futures.values(), timeout=self._deadline)
-            executor.shutdown(wait=False, cancel_futures=True)
-            for name, future in futures.items():
-                blocks[name] = self._result(name, period, time_zone, future, requests[name][2])
+            last = {name: self._usable(name, period, time_zone, start, moment, LAST_RESULT_SECONDS) for name in missing}
+        refreshing = bool(missing) and background and all(last.values())
+        if refreshing:
+            blocks.update({name: _cached_block(last[name]) for name in missing})
+            threading.Thread(target=self._refresh, args=(period, time_zone, start, missing, requests),
+                             name="umami-refresh", daemon=True).start()
+        elif missing:
+            blocks.update(self._shared_read(period, time_zone, start, missing, requests))
         return {"period": period, "timeZone": time_zone, "startAt": start, "endAt": end,
                 # Umami's comparison: the same length just before startAt.
                 "previousStartAt": start - (end - start),
-                "blocks": {name: blocks[name] for name in BLOCKS}}
+                "blocks": {name: blocks[name] for name in BLOCKS}, "refreshing": refreshing}
 
-    def _result(self, name: str, period: str, time_zone: str, future: Any, parse: Callable[[Any], Any]) -> dict[str, Any]:
+    def _usable(self, name: str, period: str, time_zone: str, start: int, moment: float,
+                limit: float) -> tuple[float, Any, int, str] | None:
+        """The cached block when younger than ``limit``; Today's only for the
+        same local day. Call with the lock held."""
+        cached = self._cache.get((name, period, time_zone))
+        if not cached or moment - cached[0] >= limit or (period == "today" and cached[2] != start):
+            return None
+        return cached
+
+    def _refresh(self, *args: Any) -> None:
+        try:
+            self._shared_read(*args)
+        except Exception:  # noqa: BLE001 - a background read never stops the API
+            LOGGER.exception("Website stats background read failed")
+
+    def _shared_read(self, period: str, time_zone: str, start: int, names: list[str],
+                     requests: dict[str, tuple[str, dict[str, Any], Callable[[Any], Any]]]) -> dict[str, dict[str, Any]]:
+        """Reads ``names`` once per (period, time zone): a call that comes
+        while such a read runs waits for its result instead of asking Umami
+        again."""
+        key = (period, time_zone)
+        with self._lock:
+            running = self._reading.get(key)
+            if running is None or not set(names) <= running[0]:
+                running = None
+                future: Future = Future()
+                self._reading[key] = (set(names), future)
+        if running is not None:
+            try:
+                result = running[1].result(timeout=self._deadline + 1)
+                return {name: result[name] for name in names}
+            except Exception:  # noqa: BLE001 - that read failed or is late: read again
+                return self._read(period, time_zone, start, names, requests)
+        try:
+            blocks = self._read(period, time_zone, start, names, requests)
+            future.set_result(blocks)
+            return blocks
+        except BaseException as error:
+            future.set_exception(error)
+            raise
+        finally:
+            with self._lock:
+                if self._reading.get(key, (None, None))[1] is future:
+                    del self._reading[key]
+
+    def _read(self, period: str, time_zone: str, start: int, names: list[str],
+              requests: dict[str, tuple[str, dict[str, Any], Callable[[Any], Any]]]) -> dict[str, dict[str, Any]]:
+        began = time.monotonic()
+        executor = ThreadPoolExecutor(max_workers=len(names), thread_name_prefix="umami")
+        futures = {name: executor.submit(self._fetch, self.settings, requests[name][0], requests[name][1]) for name in names}
+        wait(futures.values(), timeout=self._deadline)
+        executor.shutdown(wait=False, cancel_futures=True)
+        blocks = {name: self._result(name, period, time_zone, start, future, requests[name][2])
+                  for name, future in futures.items()}
+        LOGGER.info("Website stats read %d blocks for %s in %.1f s", len(names), period, time.monotonic() - began)
+        return blocks
+
+    def _result(self, name: str, period: str, time_zone: str, start: int, future: Any,
+                parse: Callable[[Any], Any]) -> dict[str, Any]:
         try:
             if not future.done():
                 raise UmamiRequestError("timeout")
@@ -449,6 +527,8 @@ class UmamiStats:
         except UmamiRequestError as error:
             if error.status in (400, 404):
                 LOGGER.info("Website stats %s hidden: Umami HTTP %s", name, error.status)
+                with self._lock:
+                    self._cache[(name, period, time_zone)] = (self._clock(), None, start, "hidden")
                 return {"state": "hidden", "fetchedAt": None, "data": None}
             reason, status = error.reason, error.status
         except Exception as error:  # never let one block break the page
@@ -456,13 +536,15 @@ class UmamiStats:
         else:
             fetched = self._clock()
             with self._lock:
-                self._cache[(name, period, time_zone)] = (fetched, data)
+                self._cache[(name, period, time_zone)] = (fetched, data, start, "ok")
                 self._last_success = fetched
             return {"state": "ok", "fetchedAt": fetched, "data": data}
         LOGGER.warning("Website stats %s unavailable: %s", name, reason)
         with self._lock:
             self._last_failure = (self._clock(), reason, status)
             cached = self._cache.get((name, period, time_zone))
+        if cached and cached[3] == "hidden":
+            return {"state": "hidden", "fetchedAt": None, "data": None}
         if cached:
             return {"state": "stale", "fetchedAt": cached[0], "data": cached[1]}
         return {"state": "unavailable", "fetchedAt": None, "data": None}

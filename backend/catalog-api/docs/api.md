@@ -424,7 +424,14 @@ the previous period of the same length, `/metrics?type=event&limit=50` for the
 period and the previous period, `/events/series?unit=day|hour&timezone=<Admin
 zone>` and `/events/stats?event=` for each funnel step. The map's shapes are
 `GET /admin/map-assets/visits-map.<hash>.svg` (Admin session, immutable). Each block result is cached for 15
-minutes per (block, period, time zone). States: `ok`; `stale` (Umami failed,
+minutes per (block, period, time zone); a 400 or 404 answer is cached as
+`hidden` the same way. With `last=1` (the page's first read) blocks older than
+15 minutes but younger than a day (Today: of the same local day) answer at
+once from the cache with their own `fetchedAt`, one background read refreshes
+them and `refreshing` is `true`; a request without `last` that comes during
+that read waits for it instead of asking Umami again. Without a usable result
+`last=1` waits like a plain request; `refreshing` is otherwise `false`.
+States: `ok`; `stale` (Umami failed,
 the last good result and its `fetchedAt`); `unavailable` (failed with nothing
 cached); `hidden` (Umami answered 400 or 404). Redirects are refused, so the
 key never goes to another address. Logs name the block and a reason (`HTTP
