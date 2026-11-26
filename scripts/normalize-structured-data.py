@@ -31,6 +31,15 @@ SOFTWARE_ID = f"{BASE_URL}/#software"
 # with the shell's image cache version (normalize-public-shell.py keeps it current).
 IMAGE_VERSION = re.search(r'^IMAGE_VERSION = "([^"]+)"', (ROOT / "scripts" / "normalize-public-shell.py").read_text(encoding="utf-8"), re.M).group(1)
 SCREENSHOT_URL = f"{BASE_URL}/assets/app/optimized/installing-maps-1600.png?v={IMAGE_VERSION}"
+# The page's preferred preview image for search engines: the same picture as
+# og:image (site/metadata.json), set on the page's main entity.
+_SITE_CONFIG = json.loads((ROOT / "site" / "metadata.json").read_text(encoding="utf-8"))
+PREVIEW_IMAGE = {
+    "@type": "ImageObject",
+    "url": f"{BASE_URL}{_SITE_CONFIG['socialImage']}",
+    "width": _SITE_CONFIG["socialImageWidth"],
+    "height": _SITE_CONFIG["socialImageHeight"],
+}
 JSON_LD_RE = re.compile(
     r"(?P<indent>[ \t]*)<script\b[^>]*type=[\"']application/ld\+json[\"'][^>]*>"
     r"(?P<body>[\s\S]*?)</script>",
@@ -130,6 +139,8 @@ def application(
         "@id": SOFTWARE_ID,
         "name": "Terento",
         "url": url,
+        "mainEntityOfPage": url,
+        "image": PREVIEW_IMAGE,
         # The direct download and the store listing are the same application.
         "sameAs": [APP_STORE_URL],
         "applicationCategory": source_application["applicationCategory"],
@@ -159,6 +170,8 @@ def application(
             "@id",
             "name",
             "url",
+            "mainEntityOfPage",
+            "image",
             "sameAs",
             "applicationCategory",
             "operatingSystem",

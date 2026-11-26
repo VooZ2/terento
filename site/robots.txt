@@ -11,5 +11,19 @@ Disallow: /preview
 Disallow: /lab
 Disallow: /test/
 
+# Google Images only: the Home watch and Edge drawings have an empty, transparent
+# screen (the map is a separate picture), so they make a poor search preview.
+# A crawler follows only its most specific group, so the exclusions above repeat here.
+User-agent: Googlebot-Image
+Disallow: /admin
+Disallow: /internal
+Disallow: /api/
+Disallow: /diagnostics
+Disallow: /preview
+Disallow: /lab
+Disallow: /test/
+Disallow: /assets/home/watch-front
+Disallow: /assets/home/edge-front
+
 Agentmap: https://terento.app/.well-known/ard.json
 Sitemap: https://terento.app/sitemap.xml

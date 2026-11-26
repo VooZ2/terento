@@ -20,6 +20,15 @@ const downloadFile = (locale) => path.join(root, "site", locale === "en" ? "down
 const guideFile = (locale) => path.join(root, "site", locale === "en" ? "guides/install-garmin-maps-mac" : path.join(locale, "guides/install-garmin-maps-mac"), "index.html");
 
 const release = JSON.parse(fs.readFileSync(path.join(root, "site", "updates", "macos-arm64.json"), "utf8"));
+const siteMetadata = JSON.parse(fs.readFileSync(path.join(root, "site", "metadata.json"), "utf8"));
+// The preferred search preview is the og:image picture, on the page's main entity.
+const previewImage = {
+  "@type": "ImageObject",
+  url: `${baseUrl}${siteMetadata.socialImage}`,
+  width: siteMetadata.socialImageWidth,
+  height: siteMetadata.socialImageHeight,
+};
+assert(fs.existsSync(path.join(root, "site", siteMetadata.socialImage)), "the default social image is published");
 const guideContentReviewed = fs.readFileSync(path.join(__dirname, "..", "scripts", "build-guide-pages.py"), "utf8").match(/^GUIDE_CONTENT_REVIEWED = "([^"]+)"/m)[1];
 
 function readJsonLd(file) {
@@ -71,6 +80,8 @@ function assertApplication(app, locale, url, file) {
   assert.equal(app["@id"], softwareId, `${file}: canonical application ID`);
   assert.equal(app.name, "Terento", `${file}: application name`);
   assert.equal(app.url, url, `${file}: application URL`);
+  assert.equal(app.mainEntityOfPage, url, `${file}: the application is the page's main entity`);
+  assert.deepEqual(app.image, previewImage, `${file}: preferred preview image matches og:image`);
   assert.equal(app.applicationCategory, "UtilitiesApplication", `${file}: application category`);
   assert(app.operatingSystem, `${file}: operating system`);
   assert(app.softwareRequirements, `${file}: software requirements`);

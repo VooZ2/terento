@@ -10,12 +10,12 @@ const metadata = JSON.parse(fs.readFileSync(path.join(root, "site", "metadata.js
 const read = (relative) => fs.readFileSync(path.join(root, relative), "utf8");
 const localePrefix = (locale) => locale === "en" ? "" : `${locale}/`;
 const altByLocale = {
-  en: "Terento showing a connected Garmin smartwatch on macOS",
-  de: "Terento zeigt eine verbundene Garmin-Smartwatch unter macOS",
-  fr: "Terento affiche une montre Garmin connectée sur macOS",
-  pl: "Terento pokazuje podłączony zegarek Garmin w systemie macOS",
-  cs: "Terento zobrazuje připojené hodinky Garmin v systému macOS",
-  it: "Terento mostra uno smartwatch Garmin collegato su macOS",
+  en: "Terento on macOS with a map selected, next to a Garmin watch showing an OpenTopoMap map",
+  de: "Terento unter macOS mit einer ausgewählten Karte, daneben eine Garmin-Uhr mit einer OpenTopoMap-Karte",
+  fr: "Terento sur macOS avec une carte sélectionnée, à côté d’une montre Garmin affichant une carte OpenTopoMap",
+  pl: "Terento w systemie macOS z wybraną mapą i zegarek Garmin z mapą OpenTopoMap",
+  cs: "Terento v systému macOS s vybranou mapou a hodinky Garmin s mapou OpenTopoMap",
+  it: "Terento su macOS con una mappa selezionata, accanto a uno smartwatch Garmin con una mappa OpenTopoMap",
 };
 
 for (const page of metadata.pages) {
