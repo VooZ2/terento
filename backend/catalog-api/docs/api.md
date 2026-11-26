@@ -1544,9 +1544,9 @@ the token itself. With a `page` parameter the same route returns one Admin
 page as text instead ([below](#admin-page-text-get-internalattentionpageadmin)). Without a configured digest, or with any other token, the
 route answers `401 {"error":"unauthorized"}`. At most 12 requests per client
 per minute are counted before authorization (`429` above that). The token
-grants no Admin login, form or CSRF token and exactly one write, Resolve of one
-installation diagnostic
-([below](#resolve-one-installation-diagnostic-post-internalattention)); it is
+grants no Admin login, form or CSRF token and only the diagnostic review writes
+([below](#resolve-or-reopen-one-diagnostic-post-internalattention)): Resolve
+one installation or update diagnostic, or Reopen one the agent resolved; it is
 independent of the Admin login, `OPERATIONS_INGEST_SECRET` and
 `WEB_INSTALLER_INGEST_SECRET`. Rotating or removing the digest and redeploying
 revokes it.
@@ -1600,15 +1600,18 @@ is unavailable.
 The response is `Cache-Control: no-store` and `noindex`. It contains no
 serial number, Unit ID, account, local path, raw log, manifest, map content,
 client IP or Admin user data. Reading it changes no diagnostic, report,
-statistic or audit state. Linking, handling, Reopen, Archive and every other
-action stay authenticated Admin actions.
+statistic or audit state. Linking, handling, Archive, Reopen of a resolution
+the agent did not make and every other action stay authenticated Admin
+actions.
 
-### Resolve one installation diagnostic: `POST /internal/attention`
+### Resolve or reopen one diagnostic: `POST /internal/attention`
 
-Owner decision 2026-11-20: the agent may close an installation problem it has
-diagnosed as not a Terento issue, so the owner does not have to click Resolve.
-The same token and route accept one JSON body (`Content-Type:
-application/json`, no query string) with exactly these fields:
+Owner decisions 2026-11-20 (installation Resolve) and 2026-11-26 (update
+Resolve and Reopen of the agent's own resolution): the agent may close an
+installation or update problem it has diagnosed, and undo its own mistake, so
+the owner does not have to click in Admin. The same token and route accept one
+JSON body (`Content-Type: application/json`, no query string) with exactly the
+fields of one of four actions:
 
 ```json
 {"action": "resolve_installation_diagnostic",
@@ -1617,27 +1620,50 @@ application/json`, no query string) with exactly these fields:
  "note": "Watch was not visible after a long download (-2); nothing was written."}
 ```
 
-- `diagnosticId` is one exact `result:<lowercase operation UUID>:<index>` key
-  from `installationProblems.items[].diagnosticIds`. An operation UUID, `web:`,
-  `legacy:` or any other key is refused, so one call never resolves a batch.
-- `reason` is `NOT_TERENTO_ISSUE`, `DUPLICATE`, `HISTORICAL_SUPERSEDED` or
-  `FIXED` (the Admin reasons without `IDENTITY_CORRECTED` and `OTHER`).
+| `action` | `diagnosticId` | Fields |
+| --- | --- | --- |
+| `resolve_installation_diagnostic` | one `result:<lowercase operation UUID>:<index>` key from `installationProblems.items[].diagnosticIds` | `action`, `diagnosticId`, `reason`, `note` |
+| `reopen_installation_diagnostic` | the same key | `action`, `diagnosticId`, `note` |
+| `resolve_update_diagnostic` | one lowercase update diagnostic UUID from `updateProblems.items[].diagnosticId` | `action`, `diagnosticId`, `reason`, `note` |
+| `reopen_update_diagnostic` | the same UUID | `action`, `diagnosticId`, `note` |
+
+- An installation operation UUID, `web:`, `legacy:`, an uppercase or braced
+  UUID, or a key of the other kind is refused, so one call never changes a
+  batch.
+- `reason` (Resolve only) is `NOT_TERENTO_ISSUE`, `DUPLICATE`,
+  `HISTORICAL_SUPERSEDED` or `FIXED` (the Admin reasons without
+  `IDENTITY_CORRECTED` and `OTHER`).
 - `note` is required, 1 to 486 characters after trimming, and is stored as
   `Claude agent: <note>` (Admin's 500-character note limit).
 
-It runs the same lifecycle change as Admin Resolve: the result becomes
-`RESOLVED` with that reason and note, one lifecycle audit row is written, the
-installation result, statistics and evidence stay unchanged, and an already
-resolved result stays as it is. The audit row and `resolved_by` carry no Admin
-user; the note prefix names the agent, and Admin shows such a result as
-resolved `by Claude agent`. Reopen stays an Admin action, which is
-also the undo. Answers: `200 {"status":"resolved","diagnosticId":…}`, `400
-invalid_action` (any other field, value or shape), `401 unauthorized`, `404
-diagnostic_not_found`, `413`/`415` for a body of the wrong size or type, `429
-rate_limited` (10 per client per minute, counted before authorization, own
-budget) and `503 action_unavailable`. All answers are `no-store` and
-`noindex`. Update diagnostics, support reports and identity reviews have no
-agent write.
+Resolve runs the same lifecycle change as Admin Resolve: the result becomes
+`RESOLVED` with that reason and note, one lifecycle audit row is written
+(installation: `compatibility_diagnostic_lifecycle_audit`; update:
+`map_update_diagnostic_audit` and `admin_audit_log`), the installation or
+update result, statistics and evidence stay unchanged, and an already resolved
+diagnostic stays as it is. The audit rows and `resolved_by` carry no Admin
+user; the note prefix names the agent. Admin shows such an installation result
+as resolved `by Claude agent` and an update diagnostic with its `Claude
+agent:` resolution note.
+
+Reopen runs the same change as Admin Reopen, but only for the agent's own
+resolution: when the diagnostic (for an installation key, every resolved row in
+its scope) is resolved with no Admin user and a note starting `Claude agent: `,
+it returns to Needs attention; a resolution by the owner, by GitHub issue sync
+or with any other note answers `409 not_agent_resolution` and changes nothing.
+An already active diagnostic stays as it is. The reopen note is kept in the
+audit (installation lifecycle audit `resolution_note`; update `admin_audit_log`
+`details.note`). Admin Reopen of any resolution stays an owner action.
+
+Answers: `200 {"status":"resolved"|"reopened","diagnosticId":…}`, `400
+invalid_action` (any other action, field, value or shape), `401
+unauthorized`, `404 diagnostic_not_found`, `409 not_agent_resolution`,
+`413`/`415` for a body of the wrong size or type, `429 rate_limited` (10 per
+client per minute for all four actions together, counted before
+authorization, own budget) and `503 action_unavailable`. All answers are
+`no-store` and `noindex`. Link issue, workflow, Archive, Handle, support
+reports, identity, policy, catalog and provider changes have no agent write,
+and nothing is deleted.
 
 ### Admin page text: `GET /internal/attention?page=/admin/...`
 

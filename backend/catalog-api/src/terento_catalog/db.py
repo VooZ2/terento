@@ -2765,8 +2765,14 @@ class Database:
     def review_update_diagnostic(self, diagnostic_id: str, *, action: str,
                                  admin_user_id: int | None, linked_github_issue: str | None = None,
                                  workflow_status: str | None = None, resolution_reason: str | None = None,
-                                 resolution_note: str | None = None) -> bool:
-        """Change exactly one report's review state; evidence remains immutable."""
+                                 resolution_note: str | None = None,
+                                 reopen_only_note_prefix: str | None = None) -> bool:
+        """Change exactly one report's review state; evidence remains immutable.
+
+        With ``reopen_only_note_prefix`` a reopen is refused (``PermissionError``)
+        unless the resolution has no Admin user and its note starts with that
+        prefix: the operator agent may undo only its own resolution.
+        """
         identifier = str(UUID(diagnostic_id))
         if action not in {'issue','workflow','resolve','reopen'}:
             raise ValueError('invalid_update_action')
@@ -2791,6 +2797,11 @@ class Database:
             # never rewrite its workflow, resolution facts or resolver.
             if (action, row['diagnostic_status']) in {('reopen','ACTIVE'),('resolve','RESOLVED')}:
                 return True
+            if action == 'reopen' and reopen_only_note_prefix is not None and (
+                row.get('resolved_by') is not None
+                or not str(row.get('resolution_note') or '').startswith(reopen_only_note_prefix)
+            ):
+                raise PermissionError('not_agent_resolution')
             previous = {key:row.get(key) for key in ('diagnostic_status','diagnostic_workflow_status','linked_github_issue','resolution_code','resolution_note')}
             next_state = dict(previous)
             if action == 'issue':
@@ -2821,8 +2832,12 @@ class Database:
                 admin_user_id if action == 'resolve' else row.get('resolved_by'),identifier))
             connection.execute("""INSERT INTO map_update_diagnostic_audit(event_id,action,previous_state,next_state,changed_by)
                 VALUES(%s,%s,%s::jsonb,%s::jsonb,%s)""", (identifier,action,json.dumps(previous),json.dumps(next_state),admin_user_id))
+            details = {'previous':previous,'next':next_state}
+            if action == 'reopen' and note:
+                # A reopen clears the resolution note on the row; the reason stays in the audit.
+                details['note'] = note
             self._insert_admin_audit(connection,admin_user_id=admin_user_id,action='update_diagnostic.'+action,
-                                     target=identifier,details={'previous':previous,'next':next_state})
+                                     target=identifier,details=details)
             return True
 
     def update_diagnostic_lifecycle(
@@ -2834,11 +2849,15 @@ class Database:
         resolution_reason: str | None = None,
         resolution_note: str | None = None,
         linked_github_issue: str | None = None,
+        reopen_only_note_prefix: str | None = None,
     ) -> int:
         """Resolve or reopen all map-result rows belonging to one install.
 
         Evidence rows are never deleted. Lifecycle fields and the audit trail
         are admin-only workflow metadata and cannot authorize device writes.
+        With ``reopen_only_note_prefix`` a reopen is refused (``PermissionError``,
+        nothing changed) when any resolved row has an Admin user or a note
+        without that prefix: the operator agent may undo only its own resolution.
         """
         allowed_statuses = {"ACTIVE", "RESOLVED"}
         allowed_reasons = {
@@ -2865,7 +2884,7 @@ class Database:
             rows = connection.execute(
                 f"""
                 SELECT event_id, diagnostic_status, diagnostic_workflow_status,
-                       linked_github_issue
+                       linked_github_issue, resolved_by, resolution_note
                 FROM compatibility_evidence_event
                 WHERE {scope_sql}
                 ORDER BY event_id
@@ -2873,6 +2892,15 @@ class Database:
                 """,
                 scope_parameters,
             ).fetchall()
+            if status == "ACTIVE" and reopen_only_note_prefix is not None and any(
+                str(row["diagnostic_status"]) == "RESOLVED"
+                and (
+                    row.get("resolved_by") is not None
+                    or not str(row.get("resolution_note") or "").startswith(reopen_only_note_prefix)
+                )
+                for row in rows
+            ):
+                raise PermissionError("not_agent_resolution")
             for row in rows:
                 previous = str(row["diagnostic_status"])
                 if previous == status:

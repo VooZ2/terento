@@ -163,10 +163,19 @@ ATTENTION_RATE_LIMIT = 12
 ATTENTION_PAGE_RATE_LIMIT = 60
 # Same-host Admin redirects an agent page read follows (old links, period resets).
 ATTENTION_PAGE_REDIRECTS = 3
-# The agent's one write (POST /internal/attention): Resolve of one installation
-# diagnostic. Owner decision 2026-11-20; Reopen stays in Admin.
+# The agent's writes (POST /internal/attention): Resolve one installation or
+# update diagnostic, or Reopen one the agent itself resolved. Owner decisions
+# 2026-11-20 (installation Resolve) and 2026-11-26 (update Resolve, own Reopen).
 ATTENTION_ACTION_RATE_LIMIT = 10
-ATTENTION_ACTION_FIELDS = frozenset({"action", "diagnosticId", "reason", "note"})
+ATTENTION_INSTALLATION_DIAGNOSTIC = r"result:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:(0|[1-9][0-9]{0,3})"
+ATTENTION_UPDATE_DIAGNOSTIC = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+# action -> (diagnosticId pattern, exact field set)
+ATTENTION_ACTIONS = {
+    "resolve_installation_diagnostic": (ATTENTION_INSTALLATION_DIAGNOSTIC, frozenset({"action", "diagnosticId", "reason", "note"})),
+    "reopen_installation_diagnostic": (ATTENTION_INSTALLATION_DIAGNOSTIC, frozenset({"action", "diagnosticId", "note"})),
+    "resolve_update_diagnostic": (ATTENTION_UPDATE_DIAGNOSTIC, frozenset({"action", "diagnosticId", "reason", "note"})),
+    "reopen_update_diagnostic": (ATTENTION_UPDATE_DIAGNOSTIC, frozenset({"action", "diagnosticId", "note"})),
+}
 ATTENTION_ACTION_REASONS = frozenset({"NOT_TERENTO_ISSUE", "DUPLICATE", "HISTORICAL_SUPERSEDED", "FIXED"})
 ATTENTION_ACTION_NOTE_PREFIX = "Claude agent: "
 ATTENTION_ACTION_NOTE_MAX = 500 - len(ATTENTION_ACTION_NOTE_PREFIX)
@@ -1383,6 +1392,7 @@ class CatalogService:
         resolution_reason: str | None = None,
         resolution_note: str | None = None,
         linked_github_issue: str | None = None,
+        reopen_only_note_prefix: str | None = None,
     ) -> int:
         return self.database.update_diagnostic_lifecycle(
             operation_key,
@@ -1391,7 +1401,11 @@ class CatalogService:
             resolution_reason=resolution_reason,
             resolution_note=resolution_note,
             linked_github_issue=linked_github_issue,
+            reopen_only_note_prefix=reopen_only_note_prefix,
         )
+
+    def review_update_diagnostic(self, diagnostic_id: str, **kwargs: Any) -> bool:
+        return self.database.review_update_diagnostic(diagnostic_id, **kwargs)
 
     def update_diagnostic_issue(
         self,
@@ -1766,11 +1780,12 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             self._send_json(HTTPStatus.OK, attention_report(service), send_body=send_body, cache_control="no-store", noindex=True)
 
         def _handle_attention_action(self) -> None:
-            """Resolve one installation diagnostic for the operator agent.
+            """Resolve or Reopen one installation or update diagnostic for the operator agent.
 
-            The only agent write: one exact result (``result:<operation>:<index>``),
-            a closed reason list and a required note. Evidence and statistics stay
-            unchanged; the audit row has no Admin user and the note names the agent.
+            One exact diagnostic per call, a closed reason list for Resolve and a
+            required note. Reopen undoes only the agent's own resolution. Evidence
+            and statistics stay unchanged; the audit has no Admin user and the
+            note names the agent.
             """
             reply = lambda status, body: self._send_json(status, body, send_body=True, cache_control="no-store", noindex=True)
             client = (f"attention-action:{self._client_ip()}", ATTENTION_ACTION_RATE_LIMIT, RATE_LIMIT_WINDOW_SECONDS)
@@ -1783,27 +1798,46 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
             document = self._read_json()
             if document is None:
                 return
+            action = document.get("action")
+            spec = ATTENTION_ACTIONS.get(action) if isinstance(action, str) else None
             diagnostic_id = document.get("diagnosticId")
             note = document.get("note")
+            resolve = isinstance(action, str) and action.startswith("resolve_")
             if (
-                set(document) != ATTENTION_ACTION_FIELDS
-                or document.get("action") != "resolve_installation_diagnostic"
-                or not isinstance(document.get("reason"), str)
-                or document.get("reason") not in ATTENTION_ACTION_REASONS
+                spec is None
+                or set(document) != spec[1]
+                or (resolve and (
+                    not isinstance(document.get("reason"), str)
+                    or document.get("reason") not in ATTENTION_ACTION_REASONS
+                ))
                 or not isinstance(diagnostic_id, str)
-                or not re.fullmatch(r"result:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:(0|[1-9][0-9]{0,3})", diagnostic_id)
+                or not re.fullmatch(spec[0], diagnostic_id)
                 or not isinstance(note, str)
                 or not 1 <= len(note.strip()) <= ATTENTION_ACTION_NOTE_MAX
             ):
                 return reply(HTTPStatus.BAD_REQUEST, {"error": "invalid_action"})
+            marked_note = ATTENTION_ACTION_NOTE_PREFIX + note.strip()
             try:
-                changed = service.update_diagnostic_lifecycle(
-                    diagnostic_id,
-                    new_status="RESOLVED",
-                    admin_user_id=None,
-                    resolution_reason=document["reason"],
-                    resolution_note=ATTENTION_ACTION_NOTE_PREFIX + note.strip(),
-                )
+                if action.endswith("_installation_diagnostic"):
+                    changed = service.update_diagnostic_lifecycle(
+                        diagnostic_id,
+                        new_status="RESOLVED" if resolve else "ACTIVE",
+                        admin_user_id=None,
+                        resolution_reason=document["reason"] if resolve else None,
+                        resolution_note=marked_note,
+                        reopen_only_note_prefix=None if resolve else ATTENTION_ACTION_NOTE_PREFIX,
+                    )
+                else:
+                    changed = service.review_update_diagnostic(
+                        diagnostic_id,
+                        action="resolve" if resolve else "reopen",
+                        admin_user_id=None,
+                        resolution_reason=document["reason"] if resolve else None,
+                        resolution_note=marked_note,
+                        reopen_only_note_prefix=None if resolve else ATTENTION_ACTION_NOTE_PREFIX,
+                    )
+            except PermissionError:
+                return reply(HTTPStatus.CONFLICT, {"error": "not_agent_resolution"})
             except ValueError:
                 return reply(HTTPStatus.BAD_REQUEST, {"error": "invalid_action"})
             except Exception:
@@ -1811,8 +1845,8 @@ def make_handler(service: CatalogService) -> type[BaseHTTPRequestHandler]:
                 return reply(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "action_unavailable"})
             if not changed:
                 return reply(HTTPStatus.NOT_FOUND, {"error": "diagnostic_not_found"})
-            LOGGER.info("attention action served action=resolve_installation_diagnostic")
-            reply(HTTPStatus.OK, {"status": "resolved", "diagnosticId": diagnostic_id})
+            LOGGER.info("attention action served action=%s", action)
+            reply(HTTPStatus.OK, {"status": "resolved" if resolve else "reopened", "diagnosticId": diagnostic_id})
 
         def _handle_attention_page(self, raw_page: str, *, send_body: bool) -> None:
             """One Admin GET page, rendered for the read-only agent and returned as text."""
