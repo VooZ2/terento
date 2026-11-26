@@ -67,6 +67,17 @@ class DiscoverabilityTests(unittest.TestCase):
             for path in ('/admin', '/admin/login', '/admin?next=/', '/internal/operations',
                          '/api/private', '/diagnostics/', '/preview/', '/lab/', '/test/'):
                 self.assertFalse(robots.can_fetch(agent, BASE + path), (agent, path))
+        # Google Images skips only the device drawings with an empty screen; the
+        # page renderer and the social preview stay crawlable.
+        drawings = ('/assets/home/watch-front.webp', '/assets/home/watch-front-680.webp',
+                    '/assets/home/edge-front.webp')
+        for path in drawings:
+            self.assertFalse(robots.can_fetch('Googlebot-Image', BASE + path), path)
+            self.assertTrue(robots.can_fetch('Googlebot', BASE + path), path)
+        for path in (CONFIG['socialImage'], '/assets/home/hero-opentopomap.webp', *self.pages):
+            self.assertTrue(robots.can_fetch('Googlebot-Image', BASE + path), path)
+        for path in ('/admin', '/internal/operations', '/api/private', '/diagnostics/', '/preview/', '/lab/', '/test/'):
+            self.assertFalse(robots.can_fetch('Googlebot-Image', BASE + path), path)
 
     def test_security_txt_points_to_private_reporting(self):
         # RFC 9116: Contact and Expires are required; renew Expires before it passes.

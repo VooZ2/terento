@@ -20,19 +20,19 @@ ABOUT_SLUG = "about/"
 SHELL_VERSION = "20260905-in-page-language-v1"
 STYLE_VERSION = "20261121-github-star-v1"
 UMAMI_SCRIPT_VERSION = "20261114-umami-monitoring"
-SOCIAL_IMAGE = "/assets/social/terento-og.png"
+SOCIAL_IMAGE = "/assets/social/terento-app-og.png"
 EMAIL_ADDRESS = "hello@terento.app"
 EMAIL_ADDRESS_HTML = EMAIL_ADDRESS.replace("@", "&#64;")
 EMAIL_HREF = f"mailto:{EMAIL_ADDRESS_HTML}"
 LOCALES = ("en", "de", "fr", "pl", "cs", "it")
 META_LOCALES = {"en": "en_US", "de": "de_DE", "fr": "fr_FR", "pl": "pl_PL", "cs": "cs_CZ", "it": "it_IT"}
 SOCIAL_IMAGE_ALTS = {
-    "en": "Terento showing a connected Garmin smartwatch on macOS",
-    "de": "Terento zeigt eine verbundene Garmin-Smartwatch unter macOS",
-    "fr": "Terento affiche une montre Garmin connectée sur macOS",
-    "pl": "Terento pokazuje podłączony zegarek Garmin w systemie macOS",
-    "cs": "Terento zobrazuje připojené hodinky Garmin v systému macOS",
-    "it": "Terento mostra uno smartwatch Garmin collegato su macOS",
+    "en": "Terento on macOS with a map selected, next to a Garmin watch showing an OpenTopoMap map",
+    "de": "Terento unter macOS mit einer ausgewählten Karte, daneben eine Garmin-Uhr mit einer OpenTopoMap-Karte",
+    "fr": "Terento sur macOS avec une carte sélectionnée, à côté d’une montre Garmin affichant une carte OpenTopoMap",
+    "pl": "Terento w systemie macOS z wybraną mapą i zegarek Garmin z mapą OpenTopoMap",
+    "cs": "Terento v systému macOS s vybranou mapou a hodinky Garmin s mapou OpenTopoMap",
+    "it": "Terento su macOS con una mappa selezionata, accanto a uno smartwatch Garmin con una mappa OpenTopoMap",
 }
 
 
