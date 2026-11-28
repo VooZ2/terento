@@ -433,6 +433,9 @@ struct MapSelectionPlanner: Sendable {
         } else if let osmapaReason = OSMapaProviderAdapter.selectionConflictReason(selectedItems.map(\.package)) {
             status = .blocked
             reason = osmapaReason
+        } else if let tmzReason = TMZProviderAdapter.selectionConflictReason(selectedItems.map(\.package)) {
+            status = .blocked
+            reason = tmzReason
         } else if hasInvalidOptionalSelection {
             status = .blocked
             reason = "One selected map component is no longer available. Refresh the catalog and try again."

@@ -243,7 +243,16 @@ one `gmapsupp.img` beside readme files; before extraction the Mac checks the
 archive's central directory (reviewed payload path, CRC-32 and size, only
 reviewed side files, no second IMG), then the whole IMG's size, CRC-32,
 header title, build day and MDR family ID. Its titles name the map, so an
-OpenFietsMap file on a watch is recognized from its header. OpenTopoMap
+OpenFietsMap file on a watch is recognized from its header. T-MZ
+(`https://tmz.skr.jp/data/gmap.html`) publishes Japan OSM cycling maps (with
+and without contour lines, ODbL 1.0) as ZIP archives containing `gmapsupp.img`,
+`gmapsupp_search.img`, and `osmmap_license.txt`. When the remote catalog does
+not list `tmz`, the app resolves the latest release directly from `tmz.skr.jp`
+using two bounded 64 KiB ranged reads per archive, validates the ZIP central
+directory and extracted `gmapsupp.img` (size, CRC-32, header title, build day,
+MDR family ID 42, and `00000TMZ.TYP`), recovers automatically from dropped or
+truncated downloads and transient 429/5xx responses via `Range`/`If-Range`, and
+enforces mutual exclusion between the two Japan variants. OpenTopoMap
 and Lucky Maps contours are optional source-validated components, not a
 Debug-only feature.
 Compatible local IMG imports have no automatic provider update path.

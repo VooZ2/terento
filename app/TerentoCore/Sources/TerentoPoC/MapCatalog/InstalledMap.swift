@@ -128,6 +128,7 @@ struct GarminIMGMetadataParser: Sendable {
         if let metadata = mapRandoMetadata(bytes) { return metadata }
         if let metadata = OSMapaIMGMetadata.metadata(bytes) { return metadata }
         if let metadata = OpenFietsMapIMGMetadata.metadata(bytes) { return metadata }
+        if let metadata = TMZIMGMetadata.metadata(bytes) { return metadata }
         if let metadata = BBBikeIMGMetadata.standaloneMetadata(bytes) { return metadata }
 
         let description = text(bytes, offset: 0x49, length: 20)
@@ -1114,6 +1115,74 @@ enum OpenFietsMapIMGMetadata {
             name: "OpenFietsMap \(title)", provider: "OpenFietsMap", region: key.uppercased(),
             family: "OpenFietsMap", rawVersion: version.description, version: version,
             identifier: title, productId: nil, familyId: OSMapaIMGMetadata.mdrFamilyIDs(bytes).first
+        )
+    }
+}
+
+/// T-MZ Japan OSM headers name the map `"Japan OSM"` (with contours) or
+/// `OSM Japan` (without contours), carry the build date at 0x39, use MDR
+/// family ID 42 (`00000042.MDR`), and ship a `00000TMZ.TYP` style table.
+enum TMZIMGMetadata {
+    static let typRecordName = Array("00000TMZ".utf8)
+    static let typRecordType = Array("TYP".utf8)
+
+    static func title(_ bytes: [UInt8]) -> String? {
+        guard OSMapaIMGMetadata.isGarminIMG(bytes) else { return nil }
+        func trimmed(_ field: ArraySlice<UInt8>) -> [UInt8] {
+            var value = Array(field)
+            while let last = value.last, last == 0x20 || last == 0 { value.removeLast() }
+            return value
+        }
+        let first = trimmed(bytes[0x49..<0x5D])
+        let continuation = trimmed(bytes[0x65..<0x83])
+        let rawTitle: [UInt8]
+        if first.count == 20 {
+            rawTitle = first + continuation
+        } else {
+            guard continuation.isEmpty else { return nil }
+            rawTitle = first
+        }
+        guard let text = String(bytes: rawTitle, encoding: .ascii),
+              TMZVariant.allCases.contains(where: { $0.imgTitle == text }) else { return nil }
+        return text
+    }
+
+    static func variant(title: String, familyIDs: Set<UInt16>) -> TMZVariant? {
+        guard familyIDs == [TMZProviderAdapter.familyID] else { return nil }
+        return TMZVariant.allCases.first { $0.imgTitle == title }
+    }
+
+    /// Scans FAT records from 0x400 in 512-byte steps for `00000TMZ.TYP`.
+    /// Note that `00000TMZ.TYP` sits around offset 0x1000–0x1800, so callers
+    /// verifying it should pass at least 8 KiB (live probe and full-file checks).
+    static func hasTMZTYP(_ bytes: [UInt8]) -> Bool {
+        var offset = 0x400
+        while offset + 12 <= bytes.count {
+            if bytes[offset] == 1,
+               Array(bytes[(offset + 1)..<(offset + 9)]) == typRecordName,
+               Array(bytes[(offset + 9)..<(offset + 12)]) == typRecordType {
+                return true
+            }
+            offset += 0x200
+        }
+        return false
+    }
+
+    static func hasTMZTYP(inFileAt fileURL: URL) -> Bool {
+        guard let handle = try? FileHandle(forReadingFrom: fileURL) else { return false }
+        defer { try? handle.close() }
+        guard let data = try? handle.read(upToCount: 16 * 1024) else { return false }
+        return hasTMZTYP([UInt8](data))
+    }
+
+    static func metadata(_ bytes: [UInt8]) -> GarminIMGMetadata? {
+        guard let title = title(bytes),
+              let version = OSMapaIMGMetadata.version(bytes), version.day != nil,
+              let variant = variant(title: title, familyIDs: OSMapaIMGMetadata.mdrFamilyIDs(bytes)) else { return nil }
+        return GarminIMGMetadata(
+            name: "T-MZ \(variant.displayName)", provider: "T-MZ", region: variant.key.uppercased(),
+            family: "T-MZ", rawVersion: version.description, version: version,
+            identifier: variant.key, productId: nil, familyId: TMZProviderAdapter.familyID
         )
     }
 }

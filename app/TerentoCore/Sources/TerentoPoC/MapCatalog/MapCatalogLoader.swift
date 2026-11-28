@@ -1,3 +1,5 @@
+import Compression
+import CryptoKit
 import Foundation
 
 enum MapCatalogSource: String, Sendable, Equatable {
@@ -285,17 +287,26 @@ struct MapCatalogLoader: Sendable {
     let endpoint: URL?
     let contourRolloutPolicy: MapContourRolloutPolicy
     private let dataLoader: @Sendable (URLRequest) async throws -> (Data, URLResponse)
+    private let tmzCatalogLoader: (@Sendable () async -> MapCatalog?)?
 
     init(
         endpoint: URL? = MapCatalogLoader.defaultEndpoint,
         contourRolloutPolicy: MapContourRolloutPolicy = .localDebugRC,
-        dataLoader: @escaping @Sendable (URLRequest) async throws -> (Data, URLResponse) = { request in
-            try await URLSession.shared.data(for: request)
-        }
+        dataLoader: (@Sendable (URLRequest) async throws -> (Data, URLResponse))? = nil,
+        tmzCatalogLoader: (@Sendable () async -> MapCatalog?)? = nil
     ) {
         self.endpoint = endpoint
         self.contourRolloutPolicy = contourRolloutPolicy
-        self.dataLoader = dataLoader
+        self.dataLoader = dataLoader ?? { request in
+            try await URLSession.shared.data(for: request)
+        }
+        if let tmzCatalogLoader {
+            self.tmzCatalogLoader = tmzCatalogLoader
+        } else if dataLoader == nil && !MapCatalogTestSwitch.usesBundledCatalog {
+            self.tmzCatalogLoader = { await TMZLiveCatalogResolver().loadCatalog() }
+        } else {
+            self.tmzCatalogLoader = nil
+        }
     }
 
     /// Metadata is fetched from the future catalog service first. The local
@@ -332,9 +343,13 @@ struct MapCatalogLoader: Sendable {
         // app. Keep the remote catalog authoritative for records it knows
         // and add only missing bundled records so a provider rollout does
         // not make the app silently lose an enabled provider.
-        let catalog = contourRolloutPolicy.applying(
-            to: remote.catalog.mergingSupplemental(bundledCatalog)
-        )
+        var merged = remote.catalog.mergingSupplemental(bundledCatalog)
+        if !merged.providers.contains(where: { MapIdentity.normalizeProvider($0.id) == "tmz" }),
+           let tmzCatalogLoader,
+           let liveTMZ = await tmzCatalogLoader() {
+            merged = merged.mergingSupplemental(liveTMZ)
+        }
+        let catalog = contourRolloutPolicy.applying(to: merged)
         await LatestRemoteMapCatalog.shared.save(catalog, for: endpoint)
         return MapCatalogLoadResult(catalog: catalog, source: .remote,
                                     droppedPackageCount: remote.droppedPackageCount)
@@ -378,6 +393,7 @@ struct MapCatalogLoader: Sendable {
     /// must be compatible; unrelated incompatible packages do not block it.
     func validateCurrentAvailability(package: MapPackage) async throws {
         guard package.sourceKind == .provider else { return }
+        let isTMZ = MapIdentity.normalizeProvider(package.providerId) == "tmz"
         let remote: MapCatalogRemoteLoad
         do {
             remote = try await loadAcceptedRemote()
@@ -386,11 +402,19 @@ struct MapCatalogLoader: Sendable {
                 provider: MapProviderDisplay.downloadName(package.providerId), reason: "APP_UPDATE_REQUIRED"))
         } catch {
             if Task.isCancelled || error is CancellationError { throw CancellationError() }
+            if isTMZ, let tmzCatalogLoader {
+                try await validateLiveTMZAvailability(package: package, loader: tmzCatalogLoader)
+                return
+            }
             throw MapAcquisitionError.acquisitionWithheld(.blocked(
                 provider: MapProviderDisplay.downloadName(package.providerId), reason: "STATUS_UNVERIFIED"))
         }
         let catalog = contourRolloutPolicy.applying(to: remote.catalog)
         guard let current = catalog.packages.first(where: { $0.id == package.id }) else {
+            if isTMZ, !remote.droppedPackageIDs.contains(package.id), let tmzCatalogLoader {
+                try await validateLiveTMZAvailability(package: package, loader: tmzCatalogLoader)
+                return
+            }
             if remote.droppedPackageIDs.contains(package.id) {
                 throw MapAcquisitionError.acquisitionWithheld(.blocked(
                     provider: MapProviderDisplay.downloadName(package.providerId), reason: "APP_UPDATE_REQUIRED"))
@@ -400,6 +424,33 @@ struct MapCatalogLoader: Sendable {
         guard !current.requiredMainArtifactUnavailable else {
             throw MapAcquisitionError.acquisitionWithheld(.blocked(
                 provider: MapProviderDisplay.downloadName(current.providerId), reason: "PACKAGE_UNAVAILABLE"))
+        }
+        let availability = MapPackageAcquisitionPolicyResolver().availability(for: current)
+        guard availability == .available else {
+            throw MapAcquisitionError.acquisitionWithheld(availability)
+        }
+    }
+
+    private func validateLiveTMZAvailability(
+        package: MapPackage,
+        loader: @Sendable () async -> MapCatalog?
+    ) async throws {
+        guard let liveCatalog = await loader() else {
+            throw MapAcquisitionError.acquisitionWithheld(.blocked(
+                provider: MapProviderDisplay.downloadName(package.providerId), reason: "STATUS_UNVERIFIED"))
+        }
+        guard let current = liveCatalog.packages.first(where: { $0.id == package.id }) else {
+            throw MapAcquisitionError.invalidPackage("This map is no longer available. Refresh the catalog.")
+        }
+        guard MapCatalogClientCompatibilityValidator().isPackageCompatible(current),
+              !current.requiredMainArtifactUnavailable else {
+            throw MapAcquisitionError.acquisitionWithheld(.blocked(
+                provider: MapProviderDisplay.downloadName(current.providerId), reason: "PACKAGE_UNAVAILABLE"))
+        }
+        if let expectedProof = package.mainArtifact?.tmzSourceProof,
+           let liveProof = current.mainArtifact?.tmzSourceProof,
+           expectedProof != liveProof {
+            throw MapAcquisitionError.providerSourceUpdated(providerId: "tmz")
         }
         let availability = MapPackageAcquisitionPolicyResolver().availability(for: current)
         guard availability == .available else {
@@ -581,6 +632,12 @@ struct MapCatalogClientCompatibilityValidator: Sendable {
                 && package.mainArtifact?.carriesSourceProof == false
                 && package.mainArtifact?.sourceURL.flatMap(OpenFietsMapProviderAdapter.reviewedSource)?.key == package.providerRegionId
         }
+        if MapIdentity.normalizeProvider(package.providerId) == "tmz",
+           package.mainArtifact?.validationState == .unavailable {
+            return TMZProviderAdapter.validIdentity(package) && package.artifacts.count == 1
+                && package.mainArtifact?.carriesSourceProof == false
+                && package.mainArtifact?.sourceURL.flatMap(TMZProviderAdapter.reviewedSource)?.variant.key == package.providerRegionId
+        }
         let providerID = MapIdentity.normalizeProvider(package.providerId)
         guard let adapter = providerRegistry.adapter(for: providerID),
               let sourcePolicy = sourcePolicyRegistry.policy(for: providerID),
@@ -605,10 +662,10 @@ struct MapCatalogClientCompatibilityValidator: Sendable {
         )
     }
 
-    /// Two BBBike, OSMapaPL, Lucky Maps or OpenFietsMap packages claiming one
-    /// IMG identity are ambiguous; neither can be installed safely.
+    /// Two BBBike, OSMapaPL, Lucky Maps, OpenFietsMap or T-MZ packages claiming
+    /// one IMG identity are ambiguous; neither can be installed safely.
     private func duplicateBBBikeIdentityPackageIDs(_ packages: [MapPackage]) -> Set<String> {
-        let bbbike = packages.filter { ["bbbike", "osmapa", "luckymaps", "openfietsmap"].contains(MapIdentity.normalizeProvider($0.providerId)) }
+        let bbbike = packages.filter { ["bbbike", "osmapa", "luckymaps", "openfietsmap", "tmz"].contains(MapIdentity.normalizeProvider($0.providerId)) }
         let grouped = Dictionary(grouping: bbbike.compactMap { package in
             package.identity.map { ($0, package.id) }
         }, by: \.0)
@@ -1025,4 +1082,537 @@ private struct MapDocument: Decodable {
     let capabilities: [String]?
     let releaseMetadata: MapReleaseMetadata?
     let artifacts: MapArtifactList?
+}
+
+/// Discovers the latest T-MZ Japan OSM cycling maps directly from
+/// `https://tmz.skr.jp/data/gmap.html` and measures each ZIP with two bounded
+/// 64 KiB HTTP Range GETs (central directory + IMG header) without downloading
+/// the full archive. Transient network and 5xx/429 responses are retried.
+struct TMZLiveCatalogResolver: Sendable {
+    static let maximumIndexBytes = 1024 * 1024
+    static let probeBytes: UInt64 = 65_536
+    static let imgInspectBytes = 8 * 1024
+    static let defaultRetryDelays: [TimeInterval] = [1, 2]
+
+    private let indexURL: URL
+    private let dataLoader: @Sendable (URLRequest) async throws -> (Data, URLResponse)
+    private let retryDelays: [TimeInterval]
+    private let sleep: @Sendable (TimeInterval) async throws -> Void
+
+    init(
+        indexURL: URL = TMZProviderAdapter.indexURL,
+        dataLoader: (@Sendable (URLRequest) async throws -> (Data, URLResponse))? = nil,
+        retryDelays: [TimeInterval] = TMZLiveCatalogResolver.defaultRetryDelays,
+        sleep: @escaping @Sendable (TimeInterval) async throws -> Void = { seconds in
+            try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+        }
+    ) {
+        self.indexURL = indexURL
+        self.dataLoader = dataLoader ?? Self.noRedirectDataLoader
+        self.retryDelays = retryDelays
+        self.sleep = sleep
+    }
+
+    /// Resolves the latest T-MZ packages into a `MapCatalog`, or returns `nil`
+    /// if the source cannot be reached or validated right now.
+    func loadCatalog(now: Date = Date()) async -> MapCatalog? {
+        try? await loadCatalogThrowing(now: now)
+    }
+
+    func loadCatalogThrowing(now: Date = Date()) async throws -> MapCatalog {
+        let html = try await fetchIndex()
+        guard let latest = Self.discoverLatestSources(inHTML: html, baseURL: indexURL),
+              !latest.isEmpty else {
+            throw MapCatalogError.invalidMetadata("No reviewed T-MZ links found in index HTML")
+        }
+
+        var packages: [MapPackage] = []
+        var regions: [MapRegion] = []
+        var lastError: Error?
+        for variant in TMZVariant.allCases {
+            guard let source = latest[variant] else { continue }
+            do {
+                let package = try await probePackage(for: source)
+                packages.append(package)
+                regions.append(MapRegion(
+                    id: package.regionId,
+                    name: package.name,
+                    country: "Japan",
+                    providerId: "tmz"
+                ))
+            } catch {
+                lastError = error
+            }
+        }
+        guard !packages.isEmpty else {
+            throw lastError ?? MapCatalogError.remoteUnavailable
+        }
+
+        let provider = MapProvider(
+            id: "tmz",
+            name: "T-MZ",
+            website: TMZProviderAdapter.websiteURL,
+            attribution: "Map data © OpenStreetMap contributors; Garmin Japan map by T-MZ",
+            licenseURL: TMZProviderAdapter.licenseURL,
+            licenseInformation: "Map data © OpenStreetMap contributors (ODbL 1.0); Garmin Japan map compiled by T-MZ.",
+            lifecycleStatus: .active,
+            health: .healthy,
+            lastCheckedAt: now,
+            lastSuccessfulCatalogSync: now
+        )
+        return MapCatalog(
+            catalogVersion: 1,
+            updatedAt: now,
+            providers: [provider],
+            regions: regions,
+            packages: packages
+        )
+    }
+
+    /// Parses the T-MZ HTML download table, stripping HTML comments, and returns
+    /// the newest valid release for each variant (with and without contours).
+    static func discoverLatestSources(inHTML html: String, baseURL: URL = TMZProviderAdapter.indexURL) -> [TMZVariant: TMZSource]? {
+        let withoutComments = html.replacingOccurrences(
+            of: #"<!--[\s\S]*?-->"#,
+            with: "",
+            options: .regularExpression
+        )
+        guard let regex = try? NSRegularExpression(
+            pattern: #"href\s*=\s*["']([^"']*gmapsupp_[0-9]{6}(?:cntr)?\.zip)["']"#,
+            options: [.caseInsensitive]
+        ) else { return nil }
+
+        var newest: [TMZVariant: TMZSource] = [:]
+        let matches = regex.matches(
+            in: withoutComments,
+            range: NSRange(withoutComments.startIndex..., in: withoutComments)
+        )
+        for match in matches {
+            guard let hrefRange = Range(match.range(at: 1), in: withoutComments) else { continue }
+            let href = String(withoutComments[hrefRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+            guard let resolved = URL(string: href, relativeTo: baseURL)?.absoluteURL,
+                  let source = TMZProviderAdapter.reviewedSource(resolved) else { continue }
+            if let existing = newest[source.variant] {
+                if existing.publishedDate < source.publishedDate {
+                    newest[source.variant] = source
+                }
+            } else {
+                newest[source.variant] = source
+            }
+        }
+        return newest.isEmpty ? nil : newest
+    }
+
+    static func decodeHTML(_ data: Data) -> String? {
+        if let decoded = String(data: data, encoding: .shiftJIS) { return decoded }
+        let cp932 = String.Encoding(
+            rawValue: CFStringConvertEncodingToNSStringEncoding(
+                CFStringEncoding(CFStringEncodings.dosJapanese.rawValue)
+            )
+        )
+        if let decoded = String(data: data, encoding: cp932) { return decoded }
+        if let decoded = String(data: data, encoding: .utf8) { return decoded }
+        return String(data: data, encoding: .isoLatin1)
+    }
+
+    private func fetchIndex() async throws -> String {
+        var request = URLRequest(url: indexURL)
+        request.httpMethod = "GET"
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.timeoutInterval = 15
+        request.setValue("Terento/1.3 (+https://terento.app)", forHTTPHeaderField: "User-Agent")
+
+        let (data, http) = try await fetchWithRetry(request: request)
+        guard http.statusCode == 200,
+              http.url == indexURL,
+              !data.isEmpty,
+              data.count <= Self.maximumIndexBytes,
+              let html = Self.decodeHTML(data) else {
+            throw MapCatalogError.remoteUnavailable
+        }
+        return html
+    }
+
+    private func probePackage(for source: TMZSource) async throws -> MapPackage {
+        // 1. Fetch ZIP tail (last 64 KiB) to inspect EOCD and central directory.
+        let tail = try await fetchRange(url: source.url, rangeHeader: "bytes=-\(Self.probeBytes)")
+        let total = tail.total
+        guard total >= 22,
+              tail.start == (total > Self.probeBytes ? total - Self.probeBytes : 0),
+              tail.end == total - 1 else {
+            throw MapCatalogError.invalidMetadata("T-MZ tail Content-Range mismatch")
+        }
+
+        let central = try Self.parseCentralDirectory(tailBytes: tail.bytes, tailStart: tail.start, totalSize: total)
+
+        // 2. Fetch ZIP head at `gmapsupp.img`'s local header and inflate first 8 KiB.
+        let headEnd = min(total - 1, central.localOffset + Self.probeBytes - 1)
+        let head = try await fetchRange(url: source.url, rangeHeader: "bytes=\(central.localOffset)-\(headEnd)")
+        guard head.total == total,
+              head.etag == tail.etag,
+              head.start == central.localOffset,
+              head.end == headEnd else {
+            throw MapCatalogError.invalidMetadata("T-MZ head Content-Range or ETag mismatch")
+        }
+
+        let imgPrefix = try Self.extractIMGHeader(headBytes: head.bytes, entry: central)
+        guard let title = TMZIMGMetadata.title(imgPrefix),
+              title == source.variant.imgTitle,
+              let buildVersion = OSMapaIMGMetadata.version(imgPrefix),
+              buildVersion.day != nil,
+              TMZProviderAdapter.releaseMatches(buildVersion, source: source),
+              OSMapaIMGMetadata.mdrFamilyIDs(imgPrefix) == [TMZProviderAdapter.familyID],
+              TMZIMGMetadata.hasTMZTYP(imgPrefix) else {
+            throw MapCatalogError.invalidMetadata("T-MZ IMG header verification failed")
+        }
+
+        let crcHex = String(format: "%08x", central.crc32)
+        let generatedAt = "\(buildVersion.description)T00:00:00Z"
+        let revisionInput = [
+            "tmz", source.variant.key, source.url.absoluteString,
+            tail.etag, tail.lastModified, String(total), String(central.unpackedSize),
+            crcHex, buildVersion.description, title
+        ].joined(separator: "|")
+        let revision = SHA256.hash(data: Data(revisionInput.utf8))
+            .map { String(format: "%02x", $0) }
+            .joined()
+
+        let proof = TMZSourceProof(
+            sourceURL: source.url,
+            etag: tail.etag,
+            lastModified: tail.lastModified,
+            downloadSizeBytes: total,
+            installSizeBytes: central.unpackedSize,
+            payloadPath: "gmapsupp.img",
+            crc32: crcHex,
+            sourceIdentity: "tmz:\(source.variant.key)",
+            variant: source.variant.key,
+            mapType: source.variant.mapType,
+            familyId: TMZProviderAdapter.familyID,
+            imgTitle: title,
+            publishedDate: source.publishedDate.description,
+            generatedAt: generatedAt,
+            headerIdentityValidated: true,
+            revision: revision
+        )
+
+        let packageID = "tmz-\(source.variant.key)"
+        let canonicalRegion = source.variant.key.uppercased()
+        let releaseMetadata = MapReleaseMetadata(
+            releaseId: buildVersion.description,
+            versionLabel: buildVersion.description,
+            generatedAt: generatedAt,
+            sourceUpdatedAt: source.publishedDate.description
+        )
+        let artifact = MapArtifact(
+            id: "\(packageID)-main",
+            source: .provider,
+            kind: .main,
+            required: true,
+            providerId: "tmz",
+            providerRegionId: source.variant.key,
+            canonicalRegionId: canonicalRegion,
+            version: buildVersion,
+            releaseMetadata: releaseMetadata,
+            sourceURL: source.url,
+            sizeBytes: central.unpackedSize,
+            downloadSizeBytes: total,
+            checksum: nil,
+            validationState: .validated,
+            tmzSourceProof: proof
+        )
+        let package = MapPackage(
+            id: packageID,
+            providerId: "tmz",
+            regionId: canonicalRegion,
+            name: source.variant.displayName,
+            version: buildVersion,
+            sizeBytes: total,
+            sourceURL: source.url,
+            releaseDate: buildVersion.description,
+            identifier: source.variant.key,
+            downloadSizeBytes: total,
+            installSizeBytes: central.unpackedSize,
+            providerRegionId: source.variant.key,
+            canonicalRegionId: canonicalRegion,
+            mapType: source.variant.mapType,
+            geographicRegionId: "JP",
+            countryCodes: ["JP"],
+            regionKind: .country,
+            tags: [source.variant.mapType, "cycling", "japan"],
+            capabilities: ["main"],
+            releaseMetadata: releaseMetadata,
+            artifacts: [artifact]
+        )
+        guard TMZProviderAdapter().expectedIMGIdentity(for: package) != nil else {
+            throw MapCatalogError.invalidMetadata("T-MZ synthesized package failed self-validation")
+        }
+        return package
+    }
+
+    private struct RangeProbeResult {
+        let bytes: [UInt8]
+        let start: UInt64
+        let end: UInt64
+        let total: UInt64
+        let etag: String
+        let lastModified: String
+    }
+
+    private func fetchRange(url: URL, rangeHeader: String) async throws -> RangeProbeResult {
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.timeoutInterval = 20
+        request.setValue(rangeHeader, forHTTPHeaderField: "Range")
+        request.setValue("identity", forHTTPHeaderField: "Accept-Encoding")
+        request.setValue("Terento/1.3 (+https://terento.app)", forHTTPHeaderField: "User-Agent")
+
+        let (data, http) = try await fetchWithRetry(request: request)
+        guard http.statusCode == 206,
+              http.url == url,
+              let etag = http.value(forHTTPHeaderField: "ETag")?.trimmingCharacters(in: .whitespacesAndNewlines),
+              etag.hasPrefix("\""), etag.hasSuffix("\""), etag.count > 2,
+              let lastModified = http.value(forHTTPHeaderField: "Last-Modified")?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !lastModified.isEmpty,
+              let contentRange = http.value(forHTTPHeaderField: "Content-Range"),
+              let parsed = Self.parseContentRange(contentRange),
+              parsed.end >= parsed.start,
+              parsed.total > parsed.end,
+              UInt64(data.count) == parsed.end - parsed.start + 1 else {
+            throw MapCatalogError.remoteUnavailable
+        }
+        return RangeProbeResult(
+            bytes: [UInt8](data), start: parsed.start, end: parsed.end, total: parsed.total,
+            etag: etag, lastModified: lastModified
+        )
+    }
+
+    private func fetchWithRetry(request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        var remaining = retryDelays[...]
+        while true {
+            do {
+                let (data, response) = try await dataLoader(request)
+                guard let http = response as? HTTPURLResponse else {
+                    throw MapCatalogError.remoteUnavailable
+                }
+                if [429, 500, 502, 503, 504].contains(http.statusCode), let delay = remaining.popFirst() {
+                    try await sleep(delay)
+                    continue
+                }
+                return (data, http)
+            } catch let error as URLError where FoundationMapPackageDownloadClient.isRetryableConnectionFailure(error) {
+                guard let delay = remaining.popFirst() else { throw error }
+                try await sleep(delay)
+            }
+        }
+    }
+
+    private static func parseContentRange(_ header: String) -> (start: UInt64, end: UInt64, total: UInt64)? {
+        let trimmed = header.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.hasPrefix("bytes ") else { return nil }
+        let parts = trimmed.dropFirst(6).split(separator: "/", omittingEmptySubsequences: false)
+        guard parts.count == 2, let total = UInt64(parts[1]) else { return nil }
+        let bounds = parts[0].split(separator: "-", omittingEmptySubsequences: false)
+        guard bounds.count == 2, let start = UInt64(bounds[0]), let end = UInt64(bounds[1]) else { return nil }
+        return (start, end, total)
+    }
+
+    private struct CentralEntry {
+        let flags: UInt64
+        let crc32: UInt32
+        let packedSize: UInt64
+        let unpackedSize: UInt64
+        let localOffset: UInt64
+    }
+
+    private static func number(_ bytes: [UInt8], _ offset: Int, _ count: Int) throws -> UInt64 {
+        guard offset >= 0, count <= 8, offset <= bytes.count, count <= bytes.count - offset else {
+            throw MapCatalogError.invalidMetadata("Out-of-bounds ZIP read")
+        }
+        return (0..<count).reduce(UInt64(0)) { $0 | UInt64(bytes[offset + $1]) << ($1 * 8) }
+    }
+
+    private static func requireSafeExtraFields(_ extra: [UInt8]) throws {
+        var cursor = 0
+        while cursor < extra.count {
+            let tag = try number(extra, cursor, 2)
+            let length = Int(try number(extra, cursor + 2, 2))
+            guard tag != 0x0001, tag != 0x9901, cursor + 4 + length <= extra.count else {
+                throw MapCatalogError.invalidMetadata("Unsupported ZIP extra field")
+            }
+            cursor += 4 + length
+        }
+    }
+
+    private static func parseCentralDirectory(tailBytes: [UInt8], tailStart: UInt64, totalSize: UInt64) throws -> CentralEntry {
+        guard tailBytes.count >= 22 else { throw MapCatalogError.invalidMetadata("ZIP too small") }
+        let eocdOffset = tailBytes.count - 22
+        let entries = try number(tailBytes, eocdOffset + 10, 2)
+        guard try number(tailBytes, eocdOffset, 4) == 0x06054b50,
+              try number(tailBytes, eocdOffset + 4, 4) == 0,
+              try number(tailBytes, eocdOffset + 8, 2) == entries,
+              entries >= 1, entries <= UInt64(TMZArchiveSafety.maximumEntries),
+              try number(tailBytes, eocdOffset + 20, 2) == 0 else {
+            throw MapCatalogError.invalidMetadata("Invalid ZIP EOCD")
+        }
+        let centralSize = try number(tailBytes, eocdOffset + 12, 4)
+        let centralOffset = try number(tailBytes, eocdOffset + 16, 4)
+        guard centralSize <= 65_535,
+              centralOffset + centralSize == totalSize - 22,
+              centralOffset >= tailStart else {
+            throw MapCatalogError.invalidMetadata("Central directory outside tail probe")
+        }
+        let localStart = Int(centralOffset - tailStart)
+        let localEnd = localStart + Int(centralSize)
+        guard localEnd <= tailBytes.count else { throw MapCatalogError.invalidMetadata("Truncated central directory") }
+        let central = Array(tailBytes[localStart..<localEnd])
+
+        var cursor = 0
+        var payloadEntry: CentralEntry?
+        var seenNames = Set<String>()
+        for _ in 0..<entries {
+            guard try number(central, cursor, 4) == 0x02014b50 else {
+                throw MapCatalogError.invalidMetadata("Invalid central directory signature")
+            }
+            let flags = try number(central, cursor + 8, 2)
+            let method = try number(central, cursor + 10, 2)
+            let entryCRC = try number(central, cursor + 16, 4)
+            let packed = try number(central, cursor + 20, 4)
+            let unpacked = try number(central, cursor + 24, 4)
+            let nameLength = Int(try number(central, cursor + 28, 2))
+            let extraLength = Int(try number(central, cursor + 30, 2))
+            let commentLength = Int(try number(central, cursor + 32, 2))
+            let mode = try number(central, cursor + 38, 4) >> 16
+            let localOffset = try number(central, cursor + 42, 4)
+            let end = cursor + 46 + nameLength + extraLength + commentLength
+            guard end <= central.count, nameLength > 0, commentLength == 0,
+                  try number(central, cursor + 34, 2) == 0 else {
+                throw MapCatalogError.invalidMetadata("Malformed central directory entry")
+            }
+            let name = Array(central[(cursor + 46)..<(cursor + 46 + nameLength)])
+            try requireSafeExtraFields(Array(central[(cursor + 46 + nameLength)..<(cursor + 46 + nameLength + extraLength)]))
+            guard let text = String(bytes: name, encoding: .ascii),
+                  flags & 0x0041 == 0,
+                  !text.contains("/"), !text.contains("\\"), text != "..", text != ".",
+                  (mode & 0xf000 == 0 || mode & 0xf000 == 0x8000),
+                  seenNames.insert(text.lowercased()).inserted,
+                  localOffset < centralOffset else {
+                throw MapCatalogError.invalidMetadata("Unsafe ZIP entry")
+            }
+            if text == "gmapsupp.img" {
+                guard payloadEntry == nil, method == 8,
+                      unpacked >= 0x1000, unpacked <= TMZProviderAdapter.maximumIMGBytes else {
+                    throw MapCatalogError.invalidMetadata("Invalid gmapsupp.img entry")
+                }
+                payloadEntry = CentralEntry(
+                    flags: flags, crc32: UInt32(entryCRC), packedSize: packed,
+                    unpackedSize: unpacked, localOffset: localOffset
+                )
+            } else if text == "gmapsupp_search.img" {
+                guard (method == 8 || method == 0), unpacked <= TMZArchiveSafety.maximumSearchIMGBytes else {
+                    throw MapCatalogError.invalidMetadata("Invalid gmapsupp_search.img entry")
+                }
+            } else {
+                guard text.range(of: TMZArchiveSafety.licensePattern, options: [.regularExpression, .caseInsensitive]) != nil,
+                      unpacked <= TMZArchiveSafety.maximumLicenseBytes else {
+                    throw MapCatalogError.invalidMetadata("Unexpected side file in T-MZ ZIP")
+                }
+            }
+            cursor = end
+        }
+        guard cursor == central.count, let entry = payloadEntry else {
+            throw MapCatalogError.invalidMetadata("Missing gmapsupp.img in T-MZ ZIP")
+        }
+        return entry
+    }
+
+    private static func extractIMGHeader(headBytes: [UInt8], entry: CentralEntry) throws -> [UInt8] {
+        let expectedName = Array("gmapsupp.img".utf8)
+        let headerFixed = 30 + expectedName.count
+        guard headBytes.count > headerFixed,
+              try number(headBytes, 0, 4) == 0x04034b50,
+              try number(headBytes, 6, 2) == entry.flags,
+              try number(headBytes, 8, 2) == 8,
+              try number(headBytes, 26, 2) == UInt64(expectedName.count),
+              Array(headBytes[30..<headerFixed]) == expectedName else {
+            throw MapCatalogError.invalidMetadata("Invalid local header for gmapsupp.img")
+        }
+        let localExtra = Int(try number(headBytes, 28, 2))
+        guard localExtra <= 256, headerFixed + localExtra < headBytes.count else {
+            throw MapCatalogError.invalidMetadata("Invalid local extra length")
+        }
+        try requireSafeExtraFields(Array(headBytes[headerFixed..<(headerFixed + localExtra)]))
+        if entry.flags & 8 == 0 {
+            guard try number(headBytes, 14, 4) == UInt64(entry.crc32),
+                  try number(headBytes, 18, 4) == entry.packedSize,
+                  try number(headBytes, 22, 4) == entry.unpackedSize else {
+                throw MapCatalogError.invalidMetadata("Local header metadata mismatch")
+            }
+        }
+        let dataStart = headerFixed + localExtra
+        let availablePacked = min(UInt64(headBytes.count - dataStart), entry.packedSize)
+        let compressed = Array(headBytes[dataStart..<(dataStart + Int(availablePacked))])
+        guard let inflated = inflateRawDeflate(compressed, maxOutputBytes: imgInspectBytes),
+              inflated.count >= 0x84 else {
+            throw MapCatalogError.invalidMetadata("Could not inflate gmapsupp.img header")
+        }
+        return inflated
+    }
+
+    static func inflateRawDeflate(_ compressed: [UInt8], maxOutputBytes: Int) -> [UInt8]? {
+        guard !compressed.isEmpty, maxOutputBytes > 0 else { return nil }
+        var output = [UInt8](repeating: 0, count: maxOutputBytes)
+        let decodedCount: Int? = compressed.withUnsafeBufferPointer { srcBuf in
+            output.withUnsafeMutableBufferPointer { dstBuf in
+                guard let srcBase = srcBuf.baseAddress, let dstBase = dstBuf.baseAddress else { return nil }
+                var stream = compression_stream(
+                    dst_ptr: dstBase, dst_size: 0,
+                    src_ptr: srcBase, src_size: 0, state: nil
+                )
+                guard compression_stream_init(&stream, COMPRESSION_STREAM_DECODE, COMPRESSION_ZLIB) == COMPRESSION_STATUS_OK else {
+                    return nil
+                }
+                defer { compression_stream_destroy(&stream) }
+                stream.dst_ptr = dstBase
+                stream.dst_size = dstBuf.count
+                stream.src_ptr = srcBase
+                stream.src_size = srcBuf.count
+                while stream.dst_size > 0 {
+                    let prevDst = stream.dst_size
+                    let prevSrc = stream.src_size
+                    let status = compression_stream_process(&stream, 0)
+                    if status == COMPRESSION_STATUS_END {
+                        break
+                    }
+                    guard status == COMPRESSION_STATUS_OK else { return nil }
+                    if stream.dst_size == prevDst && stream.src_size == prevSrc {
+                        break
+                    }
+                }
+                return dstBuf.count - stream.dst_size
+            }
+        }
+        guard let decodedCount, decodedCount > 0 else { return nil }
+        return Array(output.prefix(decodedCount))
+    }
+
+    private final class NoRedirectDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+        func urlSession(
+            _ session: URLSession,
+            task: URLSessionTask,
+            willPerformHTTPRedirection response: HTTPURLResponse,
+            newRequest request: URLRequest,
+            completionHandler: @escaping (URLRequest?) -> Void
+        ) {
+            completionHandler(nil)
+        }
+    }
+
+    private static let noRedirectDataLoader: @Sendable (URLRequest) async throws -> (Data, URLResponse) = { request in
+        let delegate = NoRedirectDelegate()
+        let session = URLSession(configuration: .ephemeral, delegate: delegate, delegateQueue: nil)
+        defer { session.finishTasksAndInvalidate() }
+        return try await session.data(for: request)
+    }
 }

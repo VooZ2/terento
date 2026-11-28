@@ -341,6 +341,8 @@ struct ReviewedProviderURLPolicy: Sendable {
 
     static let openFietsMap = ReviewedProviderURLPolicy(allowedHosts: [OpenFietsMapProviderAdapter.sourceHost])
 
+    static let tmz = ReviewedProviderURLPolicy(allowedHosts: [TMZProviderAdapter.sourceHost])
+
     let allowedHosts: Set<String>
 
     init(allowedHosts: Set<String>) {
@@ -382,6 +384,9 @@ struct ReviewedProviderURLPolicy: Sendable {
         if host == OpenFietsMapProviderAdapter.sourceHost, OpenFietsMapProviderAdapter.reviewedSource(url) == nil {
             throw MapAcquisitionError.untrustedSourceURL(url.absoluteString)
         }
+        if host == TMZProviderAdapter.sourceHost, TMZProviderAdapter.reviewedSource(url) == nil {
+            throw MapAcquisitionError.untrustedSourceURL(url.absoluteString)
+        }
     }
 }
 
@@ -397,7 +402,8 @@ struct ReviewedProviderURLPolicyRegistry: Sendable {
             "bbbike": .bbbike,
             "osmapa": .osmapa,
             "luckymaps": .luckyMaps,
-            "openfietsmap": .openFietsMap
+            "openfietsmap": .openFietsMap,
+            "tmz": .tmz
         ]
     )
 
@@ -581,7 +587,8 @@ private final class ReviewedProviderRedirectDelegate: NSObject, URLSessionTaskDe
             guard !policy.allowedHosts.contains("data.bbbike.org"),
                   !policy.allowedHosts.contains(OSMapaProviderAdapter.sourceHost),
                   !policy.allowedHosts.contains(LuckyMapsProviderAdapter.sourceHost),
-                  !policy.allowedHosts.contains(OpenFietsMapProviderAdapter.sourceHost) else {
+                  !policy.allowedHosts.contains(OpenFietsMapProviderAdapter.sourceHost),
+                  !policy.allowedHosts.contains(TMZProviderAdapter.sourceHost) else {
                 throw MapAcquisitionError.untrustedSourceURL(url.absoluteString)
             }
             completionHandler(request)
@@ -621,18 +628,23 @@ private final class StreamingDownloadDelegate: NSObject, URLSessionDataDelegate,
     /// exactly at its end with the same validator and total size; a 200 means
     /// the server sent the whole file again and the partial is replaced.
     private let resuming: MapPartialDownload?
+    private let retryTransientHTTP: Bool
 
     init(redirectDelegate: ReviewedProviderRedirectDelegate, fileHandle: FileHandle, maximumBytes: UInt64?,
          validateResponse: @escaping (HTTPURLResponse) throws -> Void,
          onProgress: (@Sendable (MapDownloadProgress) -> Void)?,
-         resuming: MapPartialDownload? = nil) {
+         resuming: MapPartialDownload? = nil,
+         retryTransientHTTP: Bool = false) {
         self.redirectDelegate = redirectDelegate
         self.fileHandle = fileHandle
         self.maximumBytes = maximumBytes
         self.validateResponse = validateResponse
         self.onProgress = onProgress
         self.resuming = resuming
+        self.retryTransientHTTP = retryTransientHTTP
     }
+
+    var bytesReceived: UInt64 { lock.withLock { receivedBytes } }
 
     /// What the server promised about this download, for keeping a partial
     /// file after a failure or cancellation.
@@ -676,6 +688,9 @@ private final class StreamingDownloadDelegate: NSObject, URLSessionDataDelegate,
                 throw MapAcquisitionError.downloadFailed("The provider returned no HTTP response.")
             }
             try validateResponse(httpResponse)
+            if retryTransientHTTP, [429, 500, 502, 503, 504].contains(httpResponse.statusCode) {
+                throw MapDownloadTransientHTTPError(statusCode: httpResponse.statusCode)
+            }
             var resumedAt: UInt64?
             if let resuming {
                 switch httpResponse.statusCode {
@@ -742,6 +757,9 @@ private final class StreamingDownloadDelegate: NSObject, URLSessionDataDelegate,
             guard let response else {
                 return .failure(MapAcquisitionError.downloadFailed("The provider returned no HTTP response."))
             }
+            if (200...299).contains(response.statusCode), expectedBytes > 0, receivedBytes < expectedBytes {
+                return .failure(URLError(.networkConnectionLost))
+            }
             return .success(response)
         }
         if case .success = outcome {
@@ -784,6 +802,12 @@ struct MapDownloadValidator: Equatable, Sendable {
 /// Thrown when a resumed response cannot continue the partial file; the
 /// partial file is discarded and the download restarts from zero.
 struct MapDownloadResumeRejected: Error {}
+
+/// Thrown for transient HTTP 429/5xx responses on providers that recover via
+/// automatic backoff without discarding an already-downloaded partial file.
+struct MapDownloadTransientHTTPError: Error, Equatable, Sendable {
+    let statusCode: Int
+}
 
 /// Bytes already downloaded for one source, kept after a failure or
 /// cancellation so Try again can continue with `Range` and `If-Range`.
@@ -1031,6 +1055,7 @@ struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
         guard let policy = sourcePolicyRegistry.policy(for: package.providerId) else {
             throw MapAcquisitionError.untrustedSourceURL(sourceURL.absoluteString)
         }
+        let isTMZ = MapIdentity.normalizeProvider(package.providerId) == "tmz"
         return try await download(
             from: sourceURL,
             policy: policy,
@@ -1038,7 +1063,9 @@ struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
             sourceProof: package.mainArtifact?.sourceProof,
             resumeKey: MapDownloadResumeKey(packageID: package.id,
                                             artifactID: package.mainArtifact?.id ?? package.id,
-                                            sourceURL: sourceURL.absoluteString)
+                                            sourceURL: sourceURL.absoluteString),
+            providerId: package.providerId,
+            extendedRecovery: isTMZ
         )
     }
 
@@ -1056,21 +1083,54 @@ struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
         )
     }
 
+    /// Progress-making drops on flaky hosts (such as `tmz.skr.jp`) get up to
+    /// twelve automatic Range resumes; consecutive zero-progress failures
+    /// remain bounded by `automaticRetryDelays`.
+    static let maximumProgressResumeRetries = 12
+
     private func download(
         from url: URL,
         policy sourcePolicy: ReviewedProviderURLPolicy,
         onProgress: (@Sendable (MapDownloadProgress) -> Void)?,
         sourceProof: BBBikeSourceProof? = nil,
-        resumeKey: MapDownloadResumeKey? = nil
+        resumeKey: MapDownloadResumeKey? = nil,
+        providerId: String? = nil,
+        extendedRecovery: Bool = false
     ) async throws -> MapPackageDownloadResponse {
         try sourcePolicy.validate(url)
         var remainingDelays = automaticRetryDelays[...]
+        var progressRetriesUsed = 0
+        var lastKnownBytes: UInt64 = 0
         while true {
+            var attemptBytes: UInt64 = 0
             do {
                 return try await downloadOnce(from: url, policy: sourcePolicy, onProgress: onProgress,
-                                              sourceProof: sourceProof, resumeKey: resumeKey)
+                                              sourceProof: sourceProof, resumeKey: resumeKey,
+                                              retryTransientHTTP: extendedRecovery,
+                                              recordedBytes: &attemptBytes)
             } catch {
-                guard Self.isRetryableConnectionFailure(error), let delay = remainingDelays.popFirst() else {
+                let retryableTransientHTTP = extendedRecovery && (error is MapDownloadTransientHTTPError)
+                let retryable = Self.isRetryableConnectionFailure(error) || retryableTransientHTTP
+                guard retryable else {
+                    throw error
+                }
+                let madeProgress = extendedRecovery && attemptBytes > lastKnownBytes
+                if madeProgress {
+                    lastKnownBytes = attemptBytes
+                }
+                let delay: TimeInterval?
+                if madeProgress, !automaticRetryDelays.isEmpty,
+                   progressRetriesUsed < Self.maximumProgressResumeRetries {
+                    progressRetriesUsed += 1
+                    remainingDelays = automaticRetryDelays[...]
+                    delay = remainingDelays.popFirst()
+                } else {
+                    delay = remainingDelays.popFirst()
+                }
+                guard let delay else {
+                    if let httpError = error as? MapDownloadTransientHTTPError, let providerId {
+                        throw MapAcquisitionError.providerUnavailable(providerId: providerId, statusCode: httpError.statusCode)
+                    }
                     throw error
                 }
                 try await sleep(delay)
@@ -1083,14 +1143,18 @@ struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
         policy sourcePolicy: ReviewedProviderURLPolicy,
         onProgress: (@Sendable (MapDownloadProgress) -> Void)?,
         sourceProof: BBBikeSourceProof?,
-        resumeKey: MapDownloadResumeKey?
+        resumeKey: MapDownloadResumeKey?,
+        retryTransientHTTP: Bool,
+        recordedBytes: inout UInt64
     ) async throws -> MapPackageDownloadResponse {
         // BBBike downloads are bound to an exact source proof and are not resumed.
         let key = sourceProof == nil ? resumeKey : nil
         if let key, let store = resumeStore, let partial = store.take(key) {
             do {
                 return try await transfer(from: url, policy: sourcePolicy, onProgress: onProgress,
-                                          sourceProof: nil, resumeKey: key, resuming: partial)
+                                          sourceProof: nil, resumeKey: key, resuming: partial,
+                                          retryTransientHTTP: retryTransientHTTP,
+                                          recordedBytes: &recordedBytes)
             } catch is MapDownloadResumeRejected {
                 // 416, a changed validator or size, another host or a
                 // malformed range: restart from zero.
@@ -1099,7 +1163,9 @@ struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
         }
         do {
             return try await transfer(from: url, policy: sourcePolicy, onProgress: onProgress,
-                                      sourceProof: sourceProof, resumeKey: key, resuming: nil)
+                                      sourceProof: sourceProof, resumeKey: key, resuming: nil,
+                                      retryTransientHTTP: retryTransientHTTP,
+                                      recordedBytes: &recordedBytes)
         } catch is MapDownloadResumeRejected {
             throw MapAcquisitionError.downloadFailed("The provider returned an unexpected partial response.")
         }
@@ -1111,7 +1177,9 @@ struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
         onProgress: (@Sendable (MapDownloadProgress) -> Void)?,
         sourceProof: BBBikeSourceProof?,
         resumeKey: MapDownloadResumeKey?,
-        resuming: MapPartialDownload?
+        resuming: MapPartialDownload?,
+        retryTransientHTTP: Bool,
+        recordedBytes: inout UInt64
     ) async throws -> MapPackageDownloadResponse {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
@@ -1173,7 +1241,8 @@ struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
                     }
                 },
                 onProgress: onProgress,
-                resuming: resuming
+                resuming: resuming,
+                retryTransientHTTP: retryTransientHTTP
             )
             let session = URLSession(
                 configuration: sessionConfiguration(),
@@ -1185,13 +1254,20 @@ struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
             do {
                 httpResponse = try await streaming.run(request: request, session: session)
             } catch {
+                recordedBytes = max(streaming.bytesReceived, resuming?.bytes ?? 0)
                 // Keep what arrived for a later Try again, unless the response
                 // itself was unusable or the Mac ran out of space.
                 if let resumeKey, let resumeStore, !(error is MapDownloadResumeRejected),
-                   !MacStorageCheck.isOutOfSpace(error),
-                   let partial = streaming.resumablePartial(fileURL: temporaryURL, sourceURL: url) {
-                    resumeStore.keep(partial, for: resumeKey)
-                    keepTemporaryFile = true
+                   !MacStorageCheck.isOutOfSpace(error) {
+                    if let partial = streaming.resumablePartial(fileURL: temporaryURL, sourceURL: url) {
+                        resumeStore.keep(partial, for: resumeKey)
+                        keepTemporaryFile = true
+                    } else if let resuming {
+                        // A transient connection/HTTP failure before any new
+                        // response arrived must not discard previously kept bytes.
+                        resumeStore.keep(resuming, for: resumeKey)
+                        keepTemporaryFile = true
+                    }
                 }
                 throw error
             }
@@ -1204,6 +1280,8 @@ struct FoundationMapPackageDownloadClient: MapPackageDownloadClient, Sendable {
         } catch let error as MapAcquisitionError {
             throw error
         } catch let error as MapDownloadResumeRejected {
+            throw error
+        } catch let error as MapDownloadTransientHTTPError {
             throw error
         } catch let error as URLError {
             // Keep structured network failures for the provider-aware acquisition boundary.
@@ -1988,6 +2066,10 @@ struct MapPackageAcquirer: Sendable {
            OpenFietsMapProviderAdapter().expectedIMGIdentity(for: acquisitionPackage) == nil {
             throw MapAcquisitionError.invalidPackage("The OpenFietsMap source proof is incomplete. Refresh the catalog.")
         }
+        if MapIdentity.normalizeProvider(acquisitionPackage.providerId) == "tmz",
+           TMZProviderAdapter().expectedIMGIdentity(for: acquisitionPackage) == nil {
+            throw MapAcquisitionError.invalidPackage("The T-MZ source proof is incomplete. Refresh the catalog.")
+        }
         let acquisitionWorkspace: MapAcquisitionWorkspace
         do {
             if let suppliedWorkspace = requestedWorkspace {
@@ -2129,6 +2211,10 @@ struct MapPackageAcquirer: Sendable {
            (format != .zip || downloadSize != package.expectedDownloadSizeBytes) {
             throw MapAcquisitionError.invalidPackage("The OpenFietsMap package changed. Refresh the catalog.")
         }
+        if MapIdentity.normalizeProvider(package.providerId) == "tmz",
+           (format != .zip || downloadSize != package.expectedDownloadSizeBytes) {
+            throw MapAcquisitionError.invalidPackage("The T-MZ package changed. Refresh the catalog.")
+        }
         let imgURL: URL
         switch format {
         case .rawIMG:
@@ -2157,6 +2243,16 @@ struct MapPackageAcquirer: Sendable {
                     try OpenFietsMapArchiveSafety.validate(archiveURL: workspace.downloadURL, proof: proof)
                 } catch {
                     throw MapAcquisitionError.invalidPackage("The OpenFietsMap package changed. Refresh the catalog.")
+                }
+            }
+            if MapIdentity.normalizeProvider(package.providerId) == "tmz" {
+                guard let proof = package.mainArtifact?.tmzSourceProof else {
+                    throw MapAcquisitionError.invalidPackage("The T-MZ source proof is incomplete. Refresh the catalog.")
+                }
+                do {
+                    try TMZArchiveSafety.validate(archiveURL: workspace.downloadURL, proof: proof)
+                } catch {
+                    throw MapAcquisitionError.invalidPackage("The T-MZ package changed. Refresh the catalog.")
                 }
             }
             try archiveExtractor.extract(
@@ -2326,6 +2422,17 @@ struct MapPackageAcquirer: Sendable {
                     == extractionDirectory.appendingPathComponent(proof.payloadPath).standardizedFileURL.path else {
                 throw MapAcquisitionError.ambiguousIMG
             }
+        }
+        if MapIdentity.normalizeProvider(expectedPackage.providerId) == "tmz" {
+            let mainPath = extractionDirectory.appendingPathComponent("gmapsupp.img").standardizedFileURL.path
+            let searchPath = extractionDirectory.appendingPathComponent("gmapsupp_search.img").standardizedFileURL.path
+            guard candidates.allSatisfy({
+                let path = $0.url.standardizedFileURL.path
+                return path == mainPath || path == searchPath
+            }), let main = candidates.first(where: { $0.url.standardizedFileURL.path == mainPath }) else {
+                throw MapAcquisitionError.ambiguousIMG
+            }
+            return main.url
         }
         let matching = candidates.filter { metadata in
             guard let expectedIdentity = expectedPackage.identity,
@@ -2650,6 +2757,118 @@ enum OpenFietsMapArchiveSafety {
                 try require(!text.contains("/") && !text.lowercased().hasSuffix(".img")
                     && text.range(of: sideFilePattern, options: [.regularExpression, .caseInsensitive]) != nil
                     && unpacked <= maximumSideFileBytes && mode & 0xf000 != 0x4000)
+            }
+            cursor = end
+        }
+        try require(cursor == central.count)
+        guard let entry = payloadEntry else { throw Failure.invalidArchive }
+        let local = try read(entry.localOffset, 30 + UInt64(payload.count))
+        try require(try number(local, 0, 4) == 0x04034b50 && number(local, 6, 2) == entry.flags
+            && number(local, 8, 2) == 8 && number(local, 26, 2) == UInt64(payload.count)
+            && Array(local[30...]) == payload)
+        let localExtra = try number(local, 28, 2)
+        try require(localExtra <= 256)
+        try requireExtraFields(try read(entry.localOffset + 30 + UInt64(payload.count), localExtra))
+        if entry.flags & 8 == 0 {
+            try require(try number(local, 14, 4) == crc && number(local, 18, 4) == entry.packed
+                && number(local, 22, 4) == proof.installSizeBytes)
+        }
+        let dataOffset = entry.localOffset + 30 + UInt64(payload.count) + localExtra
+        try require(dataOffset <= centralOffset && entry.packed <= centralOffset - dataOffset)
+    }
+}
+
+/// Inspects the downloaded T-MZ ZIP before extraction: the reviewed size, a
+/// classic central directory of at most eight entries, one deflated
+/// `gmapsupp.img` whose size and CRC-32 equal the catalog proof, optional
+/// `gmapsupp_search.img` POI add-on (at most 64 MiB), and optional
+/// `osmmap_license.txt` (at most 1 MiB). No other entries, subdirectories,
+/// encryption, ZIP64, symlinks, or unsafe paths.
+enum TMZArchiveSafety {
+    enum Failure: Error { case invalidArchive }
+
+    static let maximumEntries = 8
+    static let maximumSearchIMGBytes: UInt64 = 64 * 1024 * 1024
+    static let maximumLicenseBytes: UInt64 = 1024 * 1024
+    static let licensePattern = #"^(?:osmmap_license|license|readme)\.txt$"#
+
+    static func validate(archiveURL: URL, proof: TMZSourceProof) throws {
+        let handle = try FileHandle(forReadingFrom: archiveURL)
+        defer { try? handle.close() }
+        let size = try handle.seekToEnd()
+        func require(_ condition: Bool) throws {
+            guard condition else { throw Failure.invalidArchive }
+        }
+        func read(_ offset: UInt64, _ count: UInt64) throws -> [UInt8] {
+            try require(count <= 65_557 && offset <= size && count <= size - offset)
+            try handle.seek(toOffset: offset)
+            let bytes = [UInt8](try handle.read(upToCount: Int(count)) ?? Data())
+            try require(UInt64(bytes.count) == count)
+            return bytes
+        }
+        func number(_ bytes: [UInt8], _ offset: Int, _ count: Int) throws -> UInt64 {
+            try require(offset >= 0 && count <= 8 && offset <= bytes.count && count <= bytes.count - offset)
+            return (0..<count).reduce(UInt64(0)) { $0 | UInt64(bytes[offset + $1]) << ($1 * 8) }
+        }
+        func requireExtraFields(_ extra: [UInt8]) throws {
+            var cursor = 0
+            while cursor < extra.count {
+                let tag = try number(extra, cursor, 2)
+                let length = Int(try number(extra, cursor + 2, 2))
+                try require(tag != 0x0001 && tag != 0x9901 && cursor + 4 + length <= extra.count)
+                cursor += 4 + length
+            }
+        }
+        let payload = Array(proof.payloadPath.utf8)
+        guard payload == Array("gmapsupp.img".utf8),
+              let crc = UInt64(proof.crc32, radix: 16), proof.crc32.count == 8 else {
+            throw Failure.invalidArchive
+        }
+        try require(size == proof.downloadSizeBytes && size >= 22)
+        let tail = try read(size - 22, 22)
+        let entries = try number(tail, 10, 2)
+        try require(try number(tail, 0, 4) == 0x06054b50 && number(tail, 4, 4) == 0
+            && number(tail, 8, 2) == entries && entries >= 1 && entries <= UInt64(maximumEntries)
+            && number(tail, 20, 2) == 0)
+        let centralSize = try number(tail, 12, 4)
+        let centralOffset = try number(tail, 16, 4)
+        try require(centralSize <= 65_535 && centralOffset + centralSize == size - 22)
+        let central = try read(centralOffset, centralSize)
+        var cursor = 0
+        var payloadEntry: (flags: UInt64, packed: UInt64, localOffset: UInt64)?
+        var seenNames = Set<[UInt8]>()
+        for _ in 0..<entries {
+            try require(try number(central, cursor, 4) == 0x02014b50)
+            let flags = try number(central, cursor + 8, 2)
+            let method = try number(central, cursor + 10, 2)
+            let entryCRC = try number(central, cursor + 16, 4)
+            let packed = try number(central, cursor + 20, 4)
+            let unpacked = try number(central, cursor + 24, 4)
+            let nameLength = Int(try number(central, cursor + 28, 2))
+            let extraLength = Int(try number(central, cursor + 30, 2))
+            let commentLength = Int(try number(central, cursor + 32, 2))
+            let mode = try number(central, cursor + 38, 4) >> 16
+            let localOffset = try number(central, cursor + 42, 4)
+            let end = cursor + 46 + nameLength + extraLength + commentLength
+            try require(end <= central.count && nameLength > 0 && commentLength == 0
+                && number(central, cursor + 34, 2) == 0)
+            let name = Array(central[(cursor + 46)..<(cursor + 46 + nameLength)])
+            try requireExtraFields(Array(central[(cursor + 46 + nameLength)..<(cursor + 46 + nameLength + extraLength)]))
+            guard let text = String(bytes: name, encoding: .ascii) else { throw Failure.invalidArchive }
+            try require(flags & 0x0041 == 0 && !text.contains("/") && !text.contains("\\")
+                && text != ".." && text != "."
+                && (mode & 0xf000 == 0 || mode & 0xf000 == 0x8000)
+                && seenNames.insert(Array(text.lowercased().utf8)).inserted
+                && localOffset < centralOffset)
+            if name == payload {
+                try require(payloadEntry == nil && method == 8 && entryCRC == crc
+                    && unpacked == proof.installSizeBytes)
+                payloadEntry = (flags, packed, localOffset)
+            } else if text == "gmapsupp_search.img" {
+                try require((method == 8 || method == 0) && unpacked <= maximumSearchIMGBytes)
+            } else {
+                try require(text.range(of: licensePattern, options: [.regularExpression, .caseInsensitive]) != nil
+                    && unpacked <= maximumLicenseBytes)
             }
             cursor = end
         }

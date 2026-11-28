@@ -148,6 +148,7 @@ extension MapArtifact {
             osmapaSourceProof: osmapaSourceProof,
             luckyMapsSourceProof: luckyMapsSourceProof,
             openFietsMapSourceProof: openFietsMapSourceProof,
+            tmzSourceProof: tmzSourceProof,
             carriesSourceProof: carriesSourceProof
         )
     }
@@ -173,6 +174,7 @@ extension MapArtifact {
             osmapaSourceProof: osmapaSourceProof,
             luckyMapsSourceProof: luckyMapsSourceProof,
             openFietsMapSourceProof: openFietsMapSourceProof,
+            tmzSourceProof: tmzSourceProof,
             carriesSourceProof: carriesSourceProof
         )
     }

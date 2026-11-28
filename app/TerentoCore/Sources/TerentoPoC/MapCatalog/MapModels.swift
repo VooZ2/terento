@@ -92,6 +92,7 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
     let osmapaSourceProof: OSMapaSourceProof?
     let luckyMapsSourceProof: LuckyMapsSourceProof?
     let openFietsMapSourceProof: OpenFietsMapSourceProof?
+    let tmzSourceProof: TMZSourceProof?
     /// The catalog sent a non-null `sourceProof`, even one neither proof type
     /// could decode. An unavailable artifact must not carry one at all.
     let carriesSourceProof: Bool
@@ -116,6 +117,7 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
         osmapaSourceProof: OSMapaSourceProof? = nil,
         luckyMapsSourceProof: LuckyMapsSourceProof? = nil,
         openFietsMapSourceProof: OpenFietsMapSourceProof? = nil,
+        tmzSourceProof: TMZSourceProof? = nil,
         carriesSourceProof: Bool? = nil
     ) {
         self.id = id
@@ -137,9 +139,10 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
         self.osmapaSourceProof = osmapaSourceProof
         self.luckyMapsSourceProof = luckyMapsSourceProof
         self.openFietsMapSourceProof = openFietsMapSourceProof
+        self.tmzSourceProof = tmzSourceProof
         self.carriesSourceProof = carriesSourceProof
             ?? (sourceProof != nil || osmapaSourceProof != nil || luckyMapsSourceProof != nil
-                || openFietsMapSourceProof != nil)
+                || openFietsMapSourceProof != nil || tmzSourceProof != nil)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -183,6 +186,7 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
             osmapaSourceProof: try? container.decodeIfPresent(OSMapaSourceProof.self, forKey: .sourceProof),
             luckyMapsSourceProof: try? container.decodeIfPresent(LuckyMapsSourceProof.self, forKey: .sourceProof),
             openFietsMapSourceProof: try? container.decodeIfPresent(OpenFietsMapSourceProof.self, forKey: .sourceProof),
+            tmzSourceProof: try? container.decodeIfPresent(TMZSourceProof.self, forKey: .sourceProof),
             carriesSourceProof: container.contains(.sourceProof) && (try? container.decodeNil(forKey: .sourceProof)) == false
         )
     }
@@ -212,6 +216,8 @@ struct MapArtifact: Codable, Equatable, Identifiable, Sendable {
             try container.encode(luckyMapsSourceProof, forKey: .sourceProof)
         } else if let openFietsMapSourceProof {
             try container.encode(openFietsMapSourceProof, forKey: .sourceProof)
+        } else if let tmzSourceProof {
+            try container.encode(tmzSourceProof, forKey: .sourceProof)
         } else if carriesSourceProof {
             // Keep the marker: an undecodable proof re-decodes as carried.
             try container.encode([String: String](), forKey: .sourceProof)
@@ -372,7 +378,8 @@ struct MapProviderRegistry: Sendable {
         BBBikeProviderAdapter(),
         OSMapaProviderAdapter(),
         LuckyMapsProviderAdapter(),
-        OpenFietsMapProviderAdapter()
+        OpenFietsMapProviderAdapter(),
+        TMZProviderAdapter()
     ])
 
     init(adapters: [any MapProviderAdapter]) {
@@ -1000,7 +1007,7 @@ struct MapPackage: Codable, Equatable, Identifiable, Sendable {
         // Existing providers retain their reviewed catalog contract, including
         // source-unavailable MapRando rows. BBBike and OSMapaPL unavailable source
         // metadata is visible but never a usable install artifact.
-        if ["bbbike", "osmapa", "luckymaps", "openfietsmap"].contains(MapIdentity.normalizeProvider(providerId)),
+        if ["bbbike", "osmapa", "luckymaps", "openfietsmap", "tmz"].contains(MapIdentity.normalizeProvider(providerId)),
            mainArtifact.validationState == .unavailable || mainArtifact.validationState == .failed { return false }
         return mainArtifact.sourceURL != nil || mainArtifact.localURL != nil
     }
@@ -1305,6 +1312,7 @@ enum MapProviderDisplay {
         case "osmapa": return "OSMapaPL"
         case "luckymaps": return "Lucky Maps"
         case "openfietsmap": return "OpenFietsMap"
+        case "tmz": return "T-MZ"
         default: return "The map provider"
         }
     }
@@ -1976,5 +1984,195 @@ struct OpenFietsMapProviderAdapter: MapProviderAdapter, Sendable {
               proof.crc32.range(of: #"^[0-9a-f]{8}$"#, options: .regularExpression) != nil,
               proof.revision.range(of: #"^[a-f0-9]{64}$"#, options: .regularExpression) != nil else { return nil }
         return package.identity
+    }
+}
+
+/// Catalog proof for one T-MZ Japan OSM GPS archive (`tmz.skr.jp`). The live
+/// probe (or catalog server) measured the ZIP central directory and the first
+/// 8 KiB of `gmapsupp.img`; the client binds the downloaded archive and the
+/// whole extracted IMG (size, CRC-32, header title, build date, MDR family ID
+/// 42, and `00000TMZ.TYP`) to it again before any watch write.
+struct TMZSourceProof: Codable, Equatable, Sendable {
+    let sourceURL: URL
+    let etag: String
+    let lastModified: String
+    let downloadSizeBytes: UInt64
+    let installSizeBytes: UInt64
+    let payloadPath: String
+    let crc32: String
+    let sourceIdentity: String
+    let variant: String
+    let mapType: String
+    let familyId: UInt16
+    let imgTitle: String
+    let publishedDate: String
+    let generatedAt: String
+    let headerIdentityValidated: Bool
+    let revision: String
+}
+
+/// T-MZ publishes two Japan cycling map builds per release date: with contour
+/// lines (`gmapsupp_YYMMDDcntr.zip`) and without (`gmapsupp_YYMMDD.zip`). Both
+/// share Garmin family ID 42 (`00000042.MDR`), so only one may be installed at
+/// a time.
+enum TMZVariant: String, CaseIterable, Sendable {
+    case japanContours = "japan-contours"
+    case japan = "japan"
+
+    var key: String { rawValue }
+    var mapType: String { self == .japanContours ? "tmz-contours" : "tmz-standard" }
+    var displayName: String { self == .japanContours ? "Japan (with contours)" : "Japan" }
+    var imgTitle: String { self == .japanContours ? "\"Japan OSM\"" : "OSM Japan" }
+    var hasContours: Bool { self == .japanContours }
+}
+
+/// One reviewed T-MZ Japan GPS download URL.
+struct TMZSource: Equatable, Sendable {
+    let variant: TMZVariant
+    let url: URL
+    /// The OSM source date encoded in the filename (`gmapsupp_YYMMDD[cntr].zip`).
+    let publishedDate: MapVersion
+}
+
+/// T-MZ (`https://tmz.skr.jp/data/gmap.html`) publishes OSM-based routable
+/// Japan cycling maps for English-edition Garmin GPS devices (ODbL 1.0).
+struct TMZProviderAdapter: MapProviderAdapter, Sendable {
+    let id = "tmz"
+    static let sourceHost = "tmz.skr.jp"
+    static let indexURL = URL(string: "https://tmz.skr.jp/data/gmap.html")!
+    static let websiteURL = URL(string: "https://tmz.skr.jp/data/gmap.html")!
+    static let licenseURL = URL(string: "https://opendatacommons.org/licenses/odbl/")!
+    static let sourcePathPattern = #"^/data/gmap/gmapsupp_([0-9]{2})([0-9]{2})([0-9]{2})(cntr)?\.zip$"#
+    static let familyID: UInt16 = 42
+    static let maximumIMGBytes: UInt64 = 4_294_967_295
+    static let maximumBuildDelayDays = 14
+    static let coexistenceReason = "Select either Japan or Japan (with contours) for T-MZ. These maps cannot be installed together."
+
+    static func variant(forKey key: String) -> TMZVariant? {
+        TMZVariant(rawValue: key.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())
+    }
+
+    static func variant(forNormalizedRegion region: String) -> TMZVariant? {
+        let normalized = MapIdentity.normalizeRegion(region)
+        return TMZVariant.allCases.first { MapIdentity.normalizeRegion($0.key) == normalized }
+    }
+
+    /// Parses a valid Gregorian `20YY-MM-DD` date from two-digit components.
+    static func filenameDate(year2: Int, month: Int, day: Int) -> MapVersion? {
+        let year = 2000 + year2
+        var components = DateComponents()
+        components.calendar = Calendar(identifier: .gregorian)
+        components.timeZone = TimeZone(identifier: "UTC")
+        (components.year, components.month, components.day) = (year, month, day)
+        guard components.isValidDate else { return nil }
+        return MapVersion(year: year, month: month, day: day)
+    }
+
+    /// The reviewed source of a URL: HTTPS on `tmz.skr.jp`, below `/data/gmap/`,
+    /// matching `gmapsupp_YYMMDD[cntr].zip` with a valid date, no query, port or escapes.
+    static func reviewedSource(_ url: URL) -> TMZSource? {
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              components.scheme == "https", components.host == sourceHost,
+              components.user == nil, components.password == nil,
+              components.port == nil || components.port == 443,
+              components.query == nil, components.fragment == nil,
+              !url.absoluteString.contains("%"),
+              let regex = try? NSRegularExpression(pattern: sourcePathPattern) else { return nil }
+        let path = components.path
+        guard let match = regex.firstMatch(in: path, range: NSRange(path.startIndex..., in: path)),
+              let yyRange = Range(match.range(at: 1), in: path),
+              let mmRange = Range(match.range(at: 2), in: path),
+              let ddRange = Range(match.range(at: 3), in: path),
+              let yy = Int(path[yyRange]), let mm = Int(path[mmRange]), let dd = Int(path[ddRange]),
+              let publishedDate = filenameDate(year2: yy, month: mm, day: dd) else { return nil }
+        let hasContours = match.range(at: 4).location != NSNotFound
+        return TMZSource(variant: hasContours ? .japanContours : .japan, url: url, publishedDate: publishedDate)
+    }
+
+    static func validIdentity(_ package: MapPackage) -> Bool {
+        guard MapIdentity.normalizeProvider(package.providerId) == "tmz",
+              let variant = variant(forKey: package.providerRegionId),
+              package.id == "tmz-" + variant.key,
+              package.canonicalRegionId == variant.key.uppercased(),
+              package.regionId == variant.key.uppercased(),
+              package.mapType == variant.mapType,
+              package.countryCodes == ["JP"],
+              package.version.day != nil else { return false }
+        return true
+    }
+
+    /// T-MZ compiles each IMG from the OSM snapshot named in the ZIP filename;
+    /// the IMG creation date is typically 0–2 days later.
+    static func releaseMatches(_ version: MapVersion, source: TMZSource) -> Bool {
+        guard let distance = OpenFietsMapProviderAdapter.dayDistance(from: source.publishedDate, to: version) else {
+            return false
+        }
+        return (0...maximumBuildDelayDays).contains(distance)
+    }
+
+    func canonicalRegionIdentity(for package: MapPackage) -> CanonicalMapRegionIdentity? {
+        CanonicalMapRegionIdentity(countryCode: "JP")
+    }
+
+    func expectedIMGIdentity(for package: MapPackage) -> MapIdentity? {
+        guard Self.validIdentity(package), package.artifacts.count == 1,
+              let variant = Self.variant(forKey: package.providerRegionId),
+              let artifact = package.mainArtifact, artifact.required,
+              artifact.validationState == .validated,
+              artifact.sourceProof == nil, artifact.osmapaSourceProof == nil,
+              artifact.luckyMapsSourceProof == nil, artifact.openFietsMapSourceProof == nil,
+              let proof = artifact.tmzSourceProof,
+              proof.sourceURL == package.downloadURL, artifact.sourceURL == proof.sourceURL,
+              let source = Self.reviewedSource(proof.sourceURL), source.variant == variant,
+              proof.publishedDate == source.publishedDate.description,
+              Self.releaseMatches(package.version, source: source),
+              proof.etag.hasPrefix("\""), proof.etag.hasSuffix("\""), proof.etag.count > 2,
+              !proof.lastModified.isEmpty,
+              ISO8601DateFormatter().date(from: proof.generatedAt) != nil,
+              proof.generatedAt.hasPrefix(package.version.description + "T"),
+              proof.sourceIdentity == "tmz:\(variant.key)",
+              proof.variant == variant.key, proof.mapType == variant.mapType,
+              proof.familyId == Self.familyID,
+              proof.imgTitle == variant.imgTitle,
+              proof.headerIdentityValidated,
+              proof.payloadPath == "gmapsupp.img",
+              proof.downloadSizeBytes == package.expectedDownloadSizeBytes,
+              proof.installSizeBytes == package.installSizeBytes,
+              proof.downloadSizeBytes > 0, proof.installSizeBytes >= 0x1000,
+              proof.installSizeBytes <= Self.maximumIMGBytes,
+              artifact.checksum == nil,
+              proof.crc32.range(of: #"^[0-9a-f]{8}$"#, options: .regularExpression) != nil,
+              proof.revision.range(of: #"^[a-f0-9]{64}$"#, options: .regularExpression) != nil else { return nil }
+        return package.identity
+    }
+
+    static func selectionConflictReason(_ packages: [MapPackage]) -> String? {
+        let tmzPackages = packages.filter { MapIdentity.normalizeProvider($0.providerId) == "tmz" }
+        guard tmzPackages.count > 1 else { return nil }
+        return coexistenceReason
+    }
+
+    static func conflicts(_ package: MapPackage, provider: String?, region: String?) -> Bool {
+        guard MapIdentity.normalizeProvider(package.providerId) == "tmz",
+              MapIdentity.normalizeProvider(provider ?? "") == "tmz",
+              let selectedVariant = variant(forKey: package.providerRegionId),
+              let region,
+              let otherVariant = variant(forNormalizedRegion: region) else { return false }
+        return otherVariant != selectedVariant
+    }
+
+    static func conflicts(_ package: MapPackage, filename: String) -> Bool {
+        guard MapIdentity.normalizeProvider(package.providerId) == "tmz",
+              filename.hasPrefix("terento_tmz_"), filename.hasSuffix(".img") else { return false }
+        var token = String(filename.dropFirst("terento_tmz_".count).dropLast(4))
+        if let date = token.range(of: #"_[0-9]{4}-[0-9]{2}-[0-9]{2}$"#, options: .regularExpression) {
+            token.removeSubrange(date)
+        }
+        return conflicts(package, provider: "tmz", region: token)
+    }
+
+    static func installedConflictMessage(for package: MapPackage) -> String {
+        let other: TMZVariant = variant(forKey: package.providerRegionId) == .japanContours ? .japan : .japanContours
+        return "To install T-MZ \(variant(forKey: package.providerRegionId)?.displayName ?? package.name), first remove T-MZ \(other.displayName) in Manage maps. Both T-MZ Japan maps cannot be installed together."
     }
 }
