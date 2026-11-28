@@ -48,7 +48,8 @@ struct MapSourceValidator: Sendable {
         let isBBBike = MapIdentity.normalizeProvider(expectedPackage.providerId) == "bbbike"
         let isOSMapa = MapIdentity.normalizeProvider(expectedPackage.providerId) == "osmapa"
         let isOpenFietsMap = MapIdentity.normalizeProvider(expectedPackage.providerId) == "openfietsmap"
-        let inspected = try inspect(fileURL: fileURL, computeMD5: isBBBike, computeCRC32: isOSMapa || isOpenFietsMap,
+        let isTMZ = MapIdentity.normalizeProvider(expectedPackage.providerId) == "tmz"
+        let inspected = try inspect(fileURL: fileURL, computeMD5: isBBBike, computeCRC32: isOSMapa || isOpenFietsMap || isTMZ,
                                     onProgress: onProgress)
         if isBBBike {
             return try validateBBBike(fileURL: fileURL, expectedPackage: expectedPackage, inspected: inspected)
@@ -61,6 +62,9 @@ struct MapSourceValidator: Sendable {
         }
         if isOpenFietsMap {
             return try validateOpenFietsMap(fileURL: fileURL, expectedPackage: expectedPackage, inspected: inspected)
+        }
+        if isTMZ {
+            return try validateTMZ(fileURL: fileURL, expectedPackage: expectedPackage, inspected: inspected)
         }
 
         guard let metadata = parser.parse(
@@ -199,6 +203,28 @@ struct MapSourceValidator: Sendable {
               OpenFietsMapIMGMetadata.title(inspected.prefix) == proof.imgTitle,
               OSMapaIMGMetadata.mdrFamilyIDs(inspected.prefix) == [proof.familyId],
               let metadata = OpenFietsMapIMGMetadata.metadata(inspected.prefix),
+              MapIdentity.normalizeRegion(metadata.region ?? "") == MapIdentity.normalizeRegion(package.canonicalRegionId) else {
+            throw MapSourceValidationError.identityMismatch
+        }
+        guard metadata.version == package.version else {
+            throw MapSourceValidationError.versionMismatch
+        }
+        return ValidatedMapSource(url: fileURL, sizeBytes: inspected.sizeBytes, sha256: inspected.sha256, metadata: metadata)
+    }
+
+    /// The whole T-MZ Japan IMG is bound to its catalog proof: size, CRC-32,
+    /// header title, MDR family ID 42, `00000TMZ.TYP` table, and build day.
+    private func validateTMZ(fileURL: URL, expectedPackage package: MapPackage,
+        inspected: InspectedSource) throws -> ValidatedMapSource {
+        guard TMZProviderAdapter().expectedIMGIdentity(for: package) != nil,
+              let proof = package.mainArtifact?.tmzSourceProof,
+              fileURL.lastPathComponent == proof.payloadPath,
+              inspected.sizeBytes == proof.installSizeBytes,
+              inspected.crc32 == proof.crc32,
+              TMZIMGMetadata.title(inspected.prefix) == proof.imgTitle,
+              OSMapaIMGMetadata.mdrFamilyIDs(inspected.prefix) == [proof.familyId],
+              TMZIMGMetadata.hasTMZTYP(inFileAt: fileURL),
+              let metadata = TMZIMGMetadata.metadata(inspected.prefix),
               MapIdentity.normalizeRegion(metadata.region ?? "") == MapIdentity.normalizeRegion(package.canonicalRegionId) else {
             throw MapSourceValidationError.identityMismatch
         }

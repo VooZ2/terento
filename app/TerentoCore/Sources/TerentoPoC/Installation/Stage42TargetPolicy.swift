@@ -57,7 +57,8 @@ struct Stage42TargetPolicy: Sendable {
             throw Stage42TargetPolicyError.installationAuthorizationRequired
         }
         if deviceFiles.contains(where: { BBBikeProviderAdapter.conflicts(package, filename: $0.filename)
-            || OSMapaProviderAdapter.conflicts(package, filename: $0.filename) }) {
+            || OSMapaProviderAdapter.conflicts(package, filename: $0.filename)
+            || TMZProviderAdapter.conflicts(package, filename: $0.filename) }) {
             throw Stage42TargetPolicyError.unsupportedPackage
         }
         if MapIdentity.normalizeProvider(package.providerId) == "osmapa" {

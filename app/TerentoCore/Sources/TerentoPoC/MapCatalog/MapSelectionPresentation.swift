@@ -41,6 +41,11 @@ enum MapSelectionPresentationModel: Sendable {
                    && OSMapaProviderAdapter.region(other.package.providerRegionId)?.style == style
                    && (selectedIDs.contains(other.id) || other.comparison.installedMap != nil)
            }) { return false }
+        if !selectedIDs.contains(item.id), MapIdentity.normalizeProvider(item.package.providerId) == "tmz",
+           items.contains(where: { other in
+               other.id != item.id && MapIdentity.normalizeProvider(other.package.providerId) == "tmz"
+                   && (selectedIDs.contains(other.id) || other.comparison.installedMap != nil)
+           }) { return false }
 
         let selectedProviderIDs = Set(
             items

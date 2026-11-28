@@ -158,6 +158,13 @@ struct InstallationPreflightEngine: Sendable {
                 installTarget: profile.targetDirectory,
                 reason: OSMapaProviderAdapter.installedConflictMessage(for: selectedMap, conflict: conflict))
         }
+        if installedMaps.contains(where: { TMZProviderAdapter.conflicts(selectedMap, provider: $0.provider, region: $0.region) })
+            || inspectedFiles.contains(where: { TMZProviderAdapter.conflicts(selectedMap, filename: $0.filename) }) {
+            return blocked(selectedMap: selectedMap, installedMatch: installedMatch, ownership: ownership,
+                comparisonStatus: comparison.status, status: .blockedMapTypeConflict,
+                installTarget: profile.targetDirectory,
+                reason: TMZProviderAdapter.installedConflictMessage(for: selectedMap))
+        }
         let proposedFilename: String
         do {
             proposedFilename = try TerentoManagedFilenameGenerator().filename(
